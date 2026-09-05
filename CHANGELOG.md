@@ -4,6 +4,35 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.50
+
+### Added
+
+- **The turbo rung** (`docs/roadmap.md`, "Owner decisions, 2026-09-05
+  evening", item 3): two step-reduction distills that are not PDD, each
+  under sage alone with Sol absent, on the five ladder scenes at two seeds
+  against the sage 16-step floor. `h3_probe_t2v_turbo_v4_sage` runs the
+  larryvrh v4 step-600 EMA at `h3_config.TURBO_PACK_RUNG_STEPS` (six, the
+  arena's count) through the pack's own loader in bypass;
+  `h3_probe_t2v_turbo_lx12_sage` runs lightx2v's fl2v turbo v1.2 768p file
+  (`TURBO_768P_V12_LORA`, landed 2026-09-05, metadata identical to v1.1's)
+  at the vendor's four steps and 6/3 shift through the stock loader. Both
+  generated, validated against the live server, exempt from Sol by name in
+  `bench/check_attention_defaults.py`. `bench/check_distill_settings.py`
+  gains the v1.2 row, inherited and declared UNATTESTED like v1.1's, grades
+  the new constants, and asserts the rung count inside the pack's documented
+  range. `bench/check_distill_grid.py` routes a documented pack count that
+  does not divide the training grid down the recipe path (simple must be the
+  nearest scheduler there) rather than failing the divisor regime on an arm
+  the vendor documents. Manifests `bench/turbo_rung_arms.json` (with the
+  predictions block, written before any render: adherence apart from
+  rendering quality, audio, what refutes) and
+  `bench/turbo_rung_floor_arms.json` (the floor at the second seed, so every
+  pair is same-seed and same-regime). The launcher, the per-seed blind script
+  and a brief that names no expected defect are under the session's run
+  folder in `internal/`. Launched 2026-09-05 evening on the owner's go.
+  `docs/prompt_catalogue.md` regenerated for the two graphs.
+
 ## 0.99.49
 
 ### Added

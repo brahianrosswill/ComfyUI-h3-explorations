@@ -421,7 +421,19 @@ def main() -> int:
             # arm at any documented count, so it keeps its exact-grid grading
             # rather than being read as an undeclared deviation.
             lo, hi = PACK_STEPS
-            (vendor_arms if lo <= steps <= hi else undeclared_arms).append(row)
+            if not lo <= steps <= hi:
+                undeclared_arms.append(row)
+            elif TRAIN_TIMESTEPS % steps:
+                # A documented pack count that does not divide the grid (six,
+                # the turbo rung's, 2026-09-05). The pack's README documents
+                # `simple` over a RANGE, so the exact-grid claim never applied
+                # to it at such a count; what survives is the recipe arms'
+                # claim, that `simple` is the nearest scheduler there. Graded
+                # on that path rather than loosening EXACT or failing the
+                # divisor regime on an arm the vendor documents.
+                recipe_arms.append(row)
+            else:
+                vendor_arms.append(row)
             continue
         distilled = LEGAL[key].steps if key in LEGAL else frozenset()
         if recipe is not None and steps == recipe["steps"]:

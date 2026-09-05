@@ -132,6 +132,9 @@ LEGAL: dict[str, Row] = {
     # INHERITED from the v1.0 row by filename family, not attested: see
     # UNATTESTED below, which is what keeps that fact from going quiet.
     "turbo_4step_v1.1_768p": Row(6.0, 3.0, frozenset({4})),
+    # v1.2 of the same student, landed 2026-09-05 for the turbo rung. Same
+    # inheritance as v1.1, declared in UNATTESTED likewise.
+    "turbo_4step_v1.2_768p": Row(6.0, 3.0, frozenset({4})),
 }
 
 #: LEGAL rows no vendor source states, and why. `parse_vendor_table` looks each
@@ -145,6 +148,11 @@ LEGAL: dict[str, Row] = {
 #: declared key IS found -- a vendor who publishes the row makes the
 #: declaration stale, and a stale one hides a source that now exists.
 UNATTESTED = {
+    "turbo_4step_v1.2_768p":
+        "lightx2v published this file with no README row (checked 2026-09-05; "
+        "its safetensors metadata matches v1.1's line for line). Its 6/3 shift "
+        "and 4 steps are inherited from the 4-step v1.0 768p row on the "
+        "strength of the filename family, not attested by any vendor source",
     "turbo_4step_v1.1_768p":
         "lightx2v published this file on 2026-08-20 with no README row and it "
         "still has none (checked 2026-08-23). Its 6/3 shift and 4 steps are "
@@ -641,6 +649,10 @@ def main():
         if hasattr(h3_config, "TURBO_768P_LORA"):
             triples.append(("TURBO_768P", h3_config.TURBO_768P_LORA,
                             h3_config.TURBO_768P_STEPS, h3_config.TURBO_768P_SHIFT))
+        if hasattr(h3_config, "TURBO_768P_V12_LORA"):
+            triples.append(("TURBO_768P_V12", h3_config.TURBO_768P_V12_LORA,
+                            h3_config.TURBO_768P_V12_STEPS,
+                            h3_config.TURBO_768P_SHIFT))
         if hasattr(h3_config, "TURBO_REF2VA_LORA"):
             triples.append(("TURBO_REF2VA", h3_config.TURBO_REF2VA_LORA,
                             h3_config.TURBO_REF2VA_STEPS,
@@ -667,6 +679,10 @@ def main():
                 "the pack documents `simple` and nothing else")
             assert h3_config.TURBO_PACK_STRENGTH == 1.0, (
                 "the pack tunes for strength 1.0 across its whole step range")
+            if hasattr(h3_config, "TURBO_PACK_RUNG_STEPS"):
+                assert lo <= h3_config.TURBO_PACK_RUNG_STEPS <= hi, (
+                    f"TURBO_PACK_RUNG_STEPS {h3_config.TURBO_PACK_RUNG_STEPS} "
+                    f"outside the documented {lo}-{hi}")
 
         # NOT intersected with `declared`. It used to be
         # `{...} & declared`, which made `graded` a subset of `declared` by
@@ -675,8 +691,8 @@ def main():
         # at once and the check stayed green while silently grading one triple
         # fewer -- coverage narrowing with no signal, which is worse than a
         # red. Comparing the literal set catches both directions.
-        graded = {"TURBO_LORA", "TURBO_768P_LORA", "TURBO_SLA_LORA",
-                  "TURBO_PACK_LORA", "TURBO_REF2VA_LORA"}
+        graded = {"TURBO_LORA", "TURBO_768P_LORA", "TURBO_768P_V12_LORA",
+                  "TURBO_SLA_LORA", "TURBO_PACK_LORA", "TURBO_REF2VA_LORA"}
         assert declared == graded, (
             f"turbo LoRA constants and this check disagree. Declared in "
             f"h3_config but not graded here: {sorted(declared - graded)}. "
@@ -953,6 +969,11 @@ def main():
             "v1.1 768p must resolve to its OWN row, never to v1.0's -- the "
             "shift is the same by inheritance, and a row of its own is what "
             "keeps UNATTESTED able to say so")
+        assert classify("h3/lightx2v_Minimax-h3-Turbo/"
+                        "minimax_h3_fl2v_turbo_4step_v1.2_768p_comfyui_bf16.safetensors") \
+            == "turbo_4step_v1.2_768p", "v1.2 768p must resolve to its OWN row"
+        assert "turbo_4step_v1.2_768p" in UNATTESTED, (
+            "v1.2's row is inherited like v1.1's; declare it or attest it")
         assert "turbo_4step_v1.1_768p" in UNATTESTED, (
             "v1.1's row is inherited, not attested. If a vendor source now "
             "carries it, drop the UNATTESTED entry -- do not silently keep "

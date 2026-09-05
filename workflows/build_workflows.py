@@ -92,6 +92,7 @@ from h3_config import (  # noqa: E402
     TURBO_LORA, TURBO_LORA_STRENGTH, TURBO_SHIFT, TURBO_STEPS,
     TURBO_768P_LORA, TURBO_768P_SHIFT, TURBO_768P_STEPS,
     TURBO_768P_STRENGTH, TURBO_768P_DISTILLED_STEPS,
+    TURBO_768P_V12_LORA, TURBO_768P_V12_STEPS,
     turbo_label,
     TURBO_SLA_LORA, TURBO_SLA_SHIFT, TURBO_SLA_STEPS,
     TURBO_OWNER_STRENGTH, TURBO_OWNER_SCHEDULER,
@@ -100,7 +101,7 @@ from h3_config import (  # noqa: E402
     REF_VIDEO_BUDGET,
     CAPTURE_REF_IMAGES,
     TURBO_PACK_LORA, TURBO_PACK_STEPS, TURBO_PACK_STRENGTH,
-    TURBO_PACK_SCHEDULER, TURBO_PACK_LOW_VRAM,
+    TURBO_PACK_SCHEDULER, TURBO_PACK_LOW_VRAM, TURBO_PACK_RUNG_STEPS,
     DIALOGUE_REF_IMAGES,
     PDD_MANUAL_EVALS,
     PDD_MANUAL_SIGMAS,
@@ -7233,6 +7234,56 @@ def main():
         # or without sage, so the loss attributes to nothing narrower than
         # the shipped graph. These two are the missing rungs. Their prompts
         # are patched per scene from the bank by bench/pdd_ladder_arms.json.
+        # **The turbo rung, 2026-09-05** (docs/roadmap.md, "Owner decisions,
+        # 2026-09-05 evening"; bench/turbo_rung_arms.json): two step-reduction
+        # distills that are NOT PDD, each under sage alone with Sol absent so
+        # the pair against the sage floor differs in the distill and its step
+        # count only. The prompts are patched per scene from the bank by the
+        # manifest; the seed comes from the runner.
+        ("h3_probe_t2v_turbo_v4_sage.json", "t2v-turbo-v4-sage", "t2v", LONG_T2V_PROMPT,
+         dict(turbo_pack=True, dense_attn="sage",
+              lora=(TURBO_PACK_LORA, TURBO_PACK_STRENGTH),
+              steps=TURBO_PACK_RUNG_STEPS, scheduler_name=TURBO_PACK_SCHEDULER,
+              out_prefix="Video/h3_probe_t2v_turbo_v4_sage",
+              variant_note=_probe_note(
+                  "the larryvrh v4 step-600 EMA at six steps under sage "
+                  "alone: the turbo rung's pack arm",
+                  "workflows/bench/h3_text_to_video_stamped_api.json (the "
+                  "sage 16-step floor)",
+                  "the LoRA (the pack's v4 step-600 EMA through its own "
+                  "loader, bypass injection, strength 1.0, scheduler simple) "
+                  "and the step count (six against sixteen). Shift stays at "
+                  "the base 12/3. sage on every step; no Sol.",
+                  "prompt adherence apart from rendering quality, per the "
+                  "2026-09-05 judging section of docs/eval_comparison.md; "
+                  "then texture, on-screen text, lighting, framing, and the "
+                  "audio on the pair; the predictions are in the manifest, "
+                  "written before any render.",
+                  "bench/turbo_rung_arms.json renders it on the five ladder "
+                  "scenes at two seeds beside the lightx2v arm and the floor.")),
+         "text -> video + audio at six steps via the larryvrh v4 turbo pack, sage alone"),
+
+        ("h3_probe_t2v_turbo_lx12_sage.json", "t2v-turbo-lx12-sage", "t2v", LONG_T2V_PROMPT,
+         dict(dense_attn="sage",
+              lora=(TURBO_768P_V12_LORA, TURBO_LORA_STRENGTH),
+              steps=TURBO_768P_V12_STEPS, shift=TURBO_768P_SHIFT,
+              out_prefix="Video/h3_probe_t2v_turbo_lx12_sage",
+              variant_note=_probe_note(
+                  "the lightx2v fl2v turbo v1.2 768p at the vendor's four "
+                  "steps under sage alone: the turbo rung's lightx2v arm",
+                  "workflows/bench/h3_text_to_video_stamped_api.json (the "
+                  "sage 16-step floor)",
+                  "the LoRA (lightx2v's v1.2 768p 4-step file through the "
+                  "stock loader at the vendor's strength 1.0), the step count "
+                  "(four against sixteen) and the shift (6/3, the schedule "
+                  "the student was distilled at, so two things move at once "
+                  "as they must for this file). sage on every step; no Sol.",
+                  "the same properties as the pack arm, and the 4-step "
+                  "count's own signature: fine detail and text first.",
+                  "bench/turbo_rung_arms.json renders it beside the pack arm "
+                  "and the floor at two seeds.")),
+         "text -> video + audio at four steps via lightx2v turbo v1.2 768p, sage alone"),
+
         ("h3_probe_t2v_pdd8_sage.json", "t2v-pdd8-sage", "t2v", LONG_T2V_PROMPT,
          dict(pdd=True, dense_attn="sage", sampler_name="euler",
               lora=(PDD_FL2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS,

@@ -1,0 +1,29 @@
+{
+  "what": "The sage 16-step floor at the turbo rung's second seed (730451894), so every pair at that seed is same-seed and same-regime. Same graph as the ladder's sage rows (workflows/bench/h3_text_to_video_stamped_api.json), same five scenes, 1344x768, 345 frames.",
+  "scenes": {
+    "standoff": "t2va_frontier_standoff -- see bench/ladder_arms.json for what each scene tests",
+    "diner": "t2va_diner_breakup -- see bench/ladder_arms.json for what each scene tests",
+    "opera": "t2va_opera_grand_stage -- see bench/ladder_arms.json for what each scene tests",
+    "stairwell": "t2va_stairwell_dialogue -- see bench/ladder_arms.json for what each scene tests",
+    "subway": "t2va_subway_chase -- see bench/ladder_arms.json for what each scene tests"
+  },
+  "prompts": "named by bank id through the runner's @bank: value; the text lives only in prompt_bank/",
+  "arms": {
+    "standoff_sage": "workflows/bench/h3_text_to_video_stamped_api.json",
+    "diner_sage": "workflows/bench/h3_text_to_video_stamped_api.json",
+    "opera_sage": "workflows/bench/h3_text_to_video_stamped_api.json",
+    "stairwell_sage": "workflows/bench/h3_text_to_video_stamped_api.json",
+    "subway_sage": "workflows/bench/h3_text_to_video_stamped_api.json"
+  },
+  "patches": [
+    "standoff_sage:MiniMaxH3Conditioning.prompt=@bank:t2va_frontier_standoff",
+    "diner_sage:MiniMaxH3Conditioning.prompt=@bank:t2va_diner_breakup",
+    "opera_sage:MiniMaxH3Conditioning.prompt=@bank:t2va_opera_grand_stage",
+    "stairwell_sage:MiniMaxH3Conditioning.prompt=@bank:t2va_stairwell_dialogue",
+    "subway_sage:MiniMaxH3Conditioning.prompt=@bank:t2va_subway_chase"
+  ],
+  "run": "run_graph_arms.py --manifest bench/turbo_rung_floor_arms.json --runs 1 --seed 730451894 --hold-seed --no-alternate --out bench/results/2026-09-05_turbo_rung_floor_s2.jsonl (no warmup: the turbo runs before it warmed the server)",
+  "requires": "a ComfyUI server up with this pack's graphs regenerated against the live /object_info; the larryvrh node pack loaded (MiniMaxH3TurboLoRA and MiniMaxH3TurboSampler in /object_info); the two LoRA files under models/loras/h3; the server unarmed (no H3_* keys but the capture root).",
+  "policy": "sage always on (owner decision 2026-09-04); both arms rendered under sage alone so Sol is not in the comparison. Two seeds allowed again (owner decision 2026-09-05 evening).",
+  "companion": "bench/turbo_rung_arms.json"
+}

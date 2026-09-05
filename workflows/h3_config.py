@@ -1075,6 +1075,19 @@ TURBO_768P_LORA = "h3/lightx2v_Minimax-h3-Turbo/minimax_h3_fl2v_turbo_4step_v1.1
 # rewriting the vendor's row.
 TURBO_768P_DISTILLED_STEPS = 4
 
+# **v1.2 of the same 768p 4-step student, landed 2026-09-05** for the turbo
+# rung (docs/roadmap.md, "Owner decisions, 2026-09-05 evening"). Its metadata
+# is v1.1's line for line: rank 128, alpha 8.0, training_scale 0.0625, base
+# `minimax_h3_fl2va_bf16`, the same qkv fusion and SwiGLU mapping; the vendor
+# publishes no row for it, so `bench/check_distill_settings.py` grades it on
+# a row INHERITED from the v1.0 768p one and says so in UNATTESTED. Rendered
+# at the vendor's own count and strength (4 steps, 1.0), never the owner
+# recipe above, so the rung compares the file the vendor ships as they ship
+# it. Kept beside v1.1 rather than replacing it: the owner graphs and the
+# check's history name v1.1.
+TURBO_768P_V12_LORA = "h3/lightx2v_Minimax-h3-Turbo/minimax_h3_fl2v_turbo_4step_v1.2_768p_comfyui_bf16.safetensors"
+TURBO_768P_V12_STEPS = TURBO_768P_DISTILLED_STEPS
+
 # **The render recipe: owner-selected, 2026-08-23, and provisional.** Six steps
 # at strength 0.75 on the owner's own trials -- "it seems to be working best".
 # Not a vendor number and not measured here against a distribution, so it is
@@ -1284,6 +1297,13 @@ TURBO_PACK_STEPS = 8
 TURBO_PACK_STRENGTH = 1.0
 TURBO_PACK_SCHEDULER = "simple"
 TURBO_PACK_LOW_VRAM = False
+# The turbo rung's count for the pack (docs/roadmap.md, "Owner decisions,
+# 2026-09-05 evening"): six, the count the acceleration arena's winning entry
+# ran at and the low end of the README's "6-8 noticeably better" band
+# (`internal/refs/SCR-20260905-*.png` for the arena tabs). TURBO_PACK_STEPS
+# above stays eight for the ref2va probes, which chose it for audio; the rung
+# tests the arena's configuration, not ours.
+TURBO_PACK_RUNG_STEPS = 6
 
 # Parallel Decoding Distillation (alibaba-pai), the acceleration LoRA that is
 # not a step distillation. The trajectory stays a 32-point grid; what changes
