@@ -68,6 +68,13 @@ artifact.
 
 ### Added
 
+- **The bake pair verdict**, `bench/results/2026-09-05_pdd_bake_2026-09-05_verdict.json`: scored by the owner the afternoon
+  it rendered, pairs only. The baked arm lost to the sage floor on four
+  scenes on the properties the merged arm had lost on; the roadmap's
+  bake hypothesis did not hold at this seed, and the bake stands as
+  hygiene and cost. One pair's verdict contradicts its note and is
+  flagged in the record pending the owner.
+
 - **The PDD ladder verdict**, `bench/results/2026-09-05_pdd_ladder_2026-09-04_verdict.json`: the owner scored the twenty pairs
   (singles unscored), joined with the sealed key. Directional reading in
   `docs/evidence.md` and the roadmap: the PDD8 loss to the sage floor is

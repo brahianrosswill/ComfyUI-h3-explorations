@@ -264,8 +264,12 @@ first pair, and a risk table with a control per row. **State 2026-09-05
 afternoon: the bake is built and verified** (CHANGELOG 0.99.46 to 0.99.48;
 `docs/pdd_artifacts.md` for the files), the graphs are wired, and the
 merged-versus-baked pair is rendering as `bench/pdd_bake_arms.json`; the
-owner scores it blind as `pdd_bake_2026-09-05` once
-`internal/2026-09-05_run/pdd_bake_blind.sh` has run on the finished JSONL. It shares
+owner scored it blind as `pdd_bake_2026-09-05` the same afternoon (`bench/results/2026-09-05_pdd_bake_2026-09-05_verdict.json`):
+the baked arm lost to the sage floor on four scenes of five on the same
+properties the merged arm had lost on, so **the hypothesis did not hold at
+this seed**: the PDD8 look is the schedule's, not the merge's. The bake
+stays as hygiene (exact weights, nothing requantised at load) and the next
+PDD quality lever is the partition. It shares
 nothing with the attention lane and must not wait for it. Granular PDD strength comes after
 the bake, on PDD's own ladder.
 

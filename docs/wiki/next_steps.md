@@ -13,12 +13,19 @@ pointer goes; this list is stale the moment the roadmap disagrees with it.
 Items from the `mrpink` helper lane first; `evalman`'s render lane appends its
 own below the rule.
 
-- The bake pair: when `bench/results/2026-09-05_pdd_bake_arms.jsonl` holds
-  five non-warmup rows, run `internal/2026-09-05_run/pdd_bake_blind.sh`
-  (appends the merged twins and the sage floor, blinds as
-  `pdd_bake_2026-09-05`), tell the owner, then `bench/score_session.py` on
-  the export. The pair differs in one thing, the merge against the bake;
-  `bench/pdd_bake_arms.json` says how to read it.
+- The bake pair: SCORED and joined 2026-09-05, pairs only (`bench/results/2026-09-05_pdd_bake_2026-09-05_verdict.json`, read its
+  `join_notes_2026-09-05`). The baked arm lost to the sage floor on four
+  scenes and read same on one, on the same properties the merged arm lost
+  on the day before (audio level, lighting, framing, the subway sign
+  text); merged against baked read same on two, split on two, and one
+  pair's verdict contradicts its note (subway, owner asked). Reading: at
+  this seed the PDD8 defects are the schedule's, not the merge's; the
+  bake is a hygiene and cost change and stays the PDD8 checkpoint of
+  choice for that reason alone. Next lever for PDD quality is the
+  partition (the tail-weighted six-evaluation schedule the node already
+  accepts, `h3_config.PDD_MANUAL_SIGMAS`), not the weights. Owed here:
+  the outputs record and loudness record for the bake run, then the
+  frontier table.
 - Scoring page rubric (`bench/rubrics/default.json`): the pair tab's per-half
   quick tags reuse the singles' option list, so "same" and "can't tell"
   appear as tags on one half of a pair, where they mean nothing (the owner
