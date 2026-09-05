@@ -23,9 +23,12 @@ own below the rule.
   bake is a hygiene and cost change and stays the PDD8 checkpoint of
   choice for that reason alone. Next lever for PDD quality is the
   partition (the tail-weighted six-evaluation schedule the node already
-  accepts, `h3_config.PDD_MANUAL_SIGMAS`), not the weights. Owed here:
-  the outputs record and loudness record for the bake run, then the
-  frontier table.
+  accepts, `h3_config.PDD_MANUAL_SIGMAS`), not the weights. Records beside it:
+  `bench/results/2026-09-05_pdd_bake_outputs.json`,
+  `..._pdd_bake_audio_loudness.json` (absolute levels; the merged twins'
+  are in the 2026-09-04 ladder record) and
+  `..._pdd_bake_2026-09-05_frontier.json`, where the baked arm's sampler
+  time sits beside the merged arm's, as predicted.
 - Scoring page rubric (`bench/rubrics/default.json`): the pair tab's per-half
   quick tags reuse the singles' option list, so "same" and "can't tell"
   appear as tags on one half of a pair, where they mean nothing (the owner

@@ -73,7 +73,10 @@ artifact.
   scenes on the properties the merged arm had lost on; the roadmap's
   bake hypothesis did not hold at this seed, and the bake stands as
   hygiene and cost. One pair's verdict contradicts its note and is
-  flagged in the record pending the owner.
+  flagged in the record pending the owner. Beside it the run's outputs,
+  loudness and frontier records (`2026-09-05_pdd_bake_outputs.json`,
+  `2026-09-05_pdd_bake_audio_loudness.json`,
+  `2026-09-05_pdd_bake_2026-09-05_frontier.json`).
 
 - **The PDD ladder verdict**, `bench/results/2026-09-05_pdd_ladder_2026-09-04_verdict.json`: the owner scored the twenty pairs
   (singles unscored), joined with the sealed key. Directional reading in
