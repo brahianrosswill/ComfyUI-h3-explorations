@@ -68,6 +68,11 @@ artifact.
 
 ### Added
 
+- **The just-Sol verdict**, `bench/results/2026-09-05_sol_nosage_2026-09-04_verdict.json`: scored by the owner, pairs only. The
+  floor won four with one can't-tell and Sol as shipped won three with
+  two same, nearly all on composition; direction against Sol without
+  sage, evidence weak. Frontier blocked on the label split (to-do).
+
 - **The bake pair verdict**, `bench/results/2026-09-05_pdd_bake_2026-09-05_verdict.json`: scored by the owner the afternoon
   it rendered, pairs only. The baked arm lost to the sage floor on four
   scenes on the properties the merged arm had lost on; the roadmap's

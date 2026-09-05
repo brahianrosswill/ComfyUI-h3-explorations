@@ -67,11 +67,17 @@ own below the rule.
 
 Items from the `evalman` render lane:
 
-- Blind the just-Sol session when its last row lands
-  (`internal/2026-09-04_run/phase_c2_blind.sh` on the server that rendered
-  it: against the ladder's sage and Sol rows, subway and standoff first),
-  then the owner scores it, singles included. Closes with the verdict
-  record for `sol_nosage_2026-09-04`.
+- Just-Sol session: SCORED and joined 2026-09-05, pairs only (`bench/results/2026-09-05_sol_nosage_2026-09-04_verdict.json`, read its
+  `join_notes_2026-09-05`). The sage floor beat just-Sol on four scenes with
+  one can't-tell; Sol as shipped beat it on three and read same on two; the
+  tau-raised arm lost both its subway pairs. Nearly every win is a
+  composition difference (sample divergence), the one quality loss is
+  stairwell (lighting, skin, level), so the direction is against running
+  Sol without sage and the evidence is weak. The shipped chain (sage
+  outer steps, Sol inside) stays the leader. Frontier table blocked: the
+  tool splits labels at the last underscore and `subway_solnosage_tau12`
+  reads as a scene; fix the split (rung is the known rung set, not the
+  last token) in `bench/frontier_table.py` and `bench/measure_clip_loudness.py`.
 - One pair, no card time: the all-rows sink mode's armed subway clip
   against the 2026-09-03 subway Sol clip
   (`bench/results/2026-09-04_probe_allrows_vs_shipped_pixels.json` says the

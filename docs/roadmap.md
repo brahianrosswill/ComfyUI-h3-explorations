@@ -133,8 +133,10 @@ scene where Sol lost blind, the subway chase, lost the same way under sage
 alone, so the proxy-to-perception link is untested in the direction that
 matters); whether the all-rows sink mode is visible (its pixel footprint at
 one seed is the size of dense-versus-sage, and the blind pair is rendered
-but unjudged, step 3 above); just-Sol against the floor (blinded, the
-owner's to score; PDD8 under sage alone against the floor WAS judged
+but unjudged, step 3 above); just-Sol against the floor WAS judged 2026-09-05
+(`bench/results/2026-09-05_sol_nosage_2026-09-04_verdict.json`: the floor won four with one can't-tell and Sol as shipped won three
+with two same, nearly all on composition, so the direction is against
+Sol without sage and the evidence is weak); PDD8 under sage alone against the floor WAS judged
 2026-09-05, pairs only, `bench/results/2026-09-05_pdd_ladder_2026-09-04_verdict.json`: the floor won every scene, so the PDD8
 loss is PDD's own and not Sol's, and Sol on two of eight steps read
 same as sage alone on all five); and
