@@ -314,8 +314,8 @@
         "n_scored": 1,
         "reading": "a preference over distributions, not a per-pair verdict: each stack presents two different samples",
         "tally": {
-          "subway_pdd8baked": 1,
-          "subway_pdd8sage": 0
+          "subway_pdd8baked": 0,
+          "subway_pdd8sage": 1
         },
         "tags_by_arm": {
           "subway_pdd8baked": {
@@ -332,7 +332,8 @@
             "clip_2_arm": "subway_pdd8sage",
             "clip_2_seed": 730451892
           }
-        ]
+        ],
+        "corrected_by_owner_2026-09-05": "verdict Clip 1 better -> Clip 2 better, see by_pair"
       },
       "subway_pdd8baked vs subway_sage": {
         "arms": [
@@ -620,8 +621,10 @@
             "off"
           ]
         },
-        "verdict": "Clip 1 better",
-        "preferred_arm": "subway_pdd8baked"
+        "verdict": "Clip 2 better",
+        "preferred_arm": "subway_pdd8sage",
+        "verdict_as_exported": "Clip 1 better",
+        "corrected_by_owner_2026-09-05": "the owner confirmed in conversation that Clip 2 better was meant; the note (scrambled text and artifacts on clip 1) already said so. The export on the share is unchanged."
       },
       {
         "pair": "pair_10.mp4",
@@ -782,7 +785,7 @@
   },
   "join_notes_2026-09-05": {
     "singles": "not scored, by the owner's choice (hard to tell on single clips); audio rests on the pair notes and on the loudness record beside this file",
-    "subway_pdd8baked vs subway_pdd8sage": "the verdict (Clip 1 better, resolving to the baked arm) contradicts the note (text scrambled and artifacts everywhere in clip 1, a few in 2); no audio was heard on this pair. Flagged to the owner at join time; until the owner confirms, this contest is read from the note, i.e. baked worse, and is excluded from any tally quoted in prose",
-    "triangle": "baked vs the sage floor: floor 4, same 1 (diner, on a composition difference the note calls 'both good'); merged vs floor in the 2026-09-04 ladder: floor 5. Merged vs baked: merged 1 (standoff, 'way better'), baked 1 (diner, a composition difference), same 2 (opera, stairwell), subway see above. Reading: the baked arm loses to the floor on the same properties merged did (audio level, lighting, framing, the subway sign text), so at this seed the PDD8 defects attribute to the schedule, not to the requantised merge; the bake stands as a hygiene and cost change, not a quality one. Pre-registered in bench/pdd_bake_arms.json::predictions."
+    "subway_pdd8baked vs subway_pdd8sage": "RESOLVED: the owner confirmed Clip 2 better (the merged arm); the verdict and tally above are corrected in this record with the exported value kept beside them. So merged beat baked on subway (scrambled sign text and artifacts on the baked clip).",
+    "triangle": "baked vs the sage floor: floor 4, same 1 (diner, on a composition difference the note calls 'both good'); merged vs floor in the 2026-09-04 ladder: floor 5. Merged vs baked: merged 1 (standoff, 'way better'), baked 1 (diner, a composition difference), same 2 (opera, stairwell), merged 1 more on subway after the owner's correction (merged 2, baked 1, same 2 in all). Reading: the baked arm loses to the floor on the same properties merged did (audio level, lighting, framing, the subway sign text), so at this seed the PDD8 defects attribute to the schedule, not to the requantised merge; the bake stands as a hygiene and cost change, not a quality one. Pre-registered in bench/pdd_bake_arms.json::predictions."
   }
 }

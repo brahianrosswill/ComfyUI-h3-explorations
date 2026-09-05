@@ -1090,8 +1090,8 @@
      "speed_vs_dense": 4.73368535195132,
      "verdicts": {
       "counts": {
-       "preferred": 1,
-       "not_preferred": 1,
+       "preferred": 0,
+       "not_preferred": 2,
        "same": 0,
        "cant_tell": 0
       },
@@ -1108,8 +1108,8 @@
       {
        "against": "subway_pdd8sage",
        "pair": "pair_09.mp4",
-       "verdict": "Clip 1 better",
-       "bucket": "preferred",
+       "verdict": "Clip 2 better",
+       "bucket": "not_preferred",
        "this_arm_was": "clip 1",
        "text": "text scrambled in clip 1. artifacts everywhere in clip 1. a few in 2 but not nearly as many",
        "source": "2026-09-05_pdd_bake_2026-09-05_verdict.json"
@@ -1142,8 +1142,8 @@
      "speed_vs_dense": 4.7105786025207035,
      "verdicts": {
       "counts": {
-       "preferred": 0,
-       "not_preferred": 1,
+       "preferred": 1,
+       "not_preferred": 0,
        "same": 0,
        "cant_tell": 0
       },
@@ -1159,8 +1159,8 @@
       {
        "against": "subway_pdd8baked",
        "pair": "pair_09.mp4",
-       "verdict": "Clip 1 better",
-       "bucket": "not_preferred",
+       "verdict": "Clip 2 better",
+       "bucket": "preferred",
        "this_arm_was": "clip 2",
        "text": "text scrambled in clip 1. artifacts everywhere in clip 1. a few in 2 but not nearly as many",
        "source": "2026-09-05_pdd_bake_2026-09-05_verdict.json"

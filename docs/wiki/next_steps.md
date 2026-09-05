@@ -17,8 +17,9 @@ own below the rule.
   `join_notes_2026-09-05`). The baked arm lost to the sage floor on four
   scenes and read same on one, on the same properties the merged arm lost
   on the day before (audio level, lighting, framing, the subway sign
-  text); merged against baked read same on two, split on two, and one
-  pair's verdict contradicts its note (subway, owner asked). Reading: at
+  text); merged against baked read same on two, merged won two (standoff, subway,
+  the latter after the owner corrected a mis-clicked verdict) and baked won
+  diner on composition. Reading: at
   this seed the PDD8 defects are the schedule's, not the merge's; the
   bake is a hygiene and cost change and stays the PDD8 checkpoint of
   choice for that reason alone. Next lever for PDD quality is the

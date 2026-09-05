@@ -77,8 +77,9 @@ artifact.
   it rendered, pairs only. The baked arm lost to the sage floor on four
   scenes on the properties the merged arm had lost on; the roadmap's
   bake hypothesis did not hold at this seed, and the bake stands as
-  hygiene and cost. One pair's verdict contradicts its note and is
-  flagged in the record pending the owner. Beside it the run's outputs,
+  hygiene and cost. One verdict was corrected by the owner after the join
+  (a mis-click the note already contradicted); the record keeps the
+  exported value beside the correction. Beside it the run's outputs,
   loudness and frontier records (`2026-09-05_pdd_bake_outputs.json`,
   `2026-09-05_pdd_bake_audio_loudness.json`,
   `2026-09-05_pdd_bake_2026-09-05_frontier.json`).
