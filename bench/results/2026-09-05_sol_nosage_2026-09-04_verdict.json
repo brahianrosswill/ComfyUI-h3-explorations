@@ -953,5 +953,11 @@
     "what_the_notes_say": "most of the floor's and the shipped arm's wins are composition (framing and zoom, the orchestra behind the singer, the diner menu across the wall, the suspect behind the chaser), which docs/eval_comparison.md classes as sample divergence, not the arm. The quality words appear once: stairwell, where the floor had better lighting, skin fidelity and louder audio. So the direction is against just-Sol, and the evidence for it is weak: one quality loss and four composition losses at one seed.",
     "the diner menu": "the 'menu extending across the wall with corrupted text' appeared on the just-Sol diner clip and on every PDD8 diner arm except the baked one, and on no sage or shipped-Sol diner clip; a composition mode of that prompt at this seed that several arms fall into, not a defect of one arm",
     "frontier": "bench/frontier_table.py refuses this verdict: it splits a label at its last underscore, so subway_solnosage_tau12 reads as scene subway_solnosage; same defect as measure_clip_loudness.py's, both in the wiki to-do"
-  }
+  },
+  "owner_notes_after_join_2026-09-05": [
+    {
+      "scene": "diner",
+      "note": "owner, after the join 2026-09-05: aside from the menu-across-the-wall clips, almost all diner scenes were good or equal. So every diner verdict in the three sessions is the menu and nothing else; the arms that drew it at this seed were pdd8 (shipped), pdd8sage, pdd8sol2 and just-Sol, and the ones that did not were sage, Sol as shipped and pdd8baked. The menu carries corrupted text, so where it appears it is a rendering defect on that sample, not a composition preference."
+    }
+  ]
 }

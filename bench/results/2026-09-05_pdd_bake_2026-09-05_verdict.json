@@ -787,5 +787,11 @@
     "singles": "not scored, by the owner's choice (hard to tell on single clips); audio rests on the pair notes and on the loudness record beside this file",
     "subway_pdd8baked vs subway_pdd8sage": "RESOLVED: the owner confirmed Clip 2 better (the merged arm); the verdict and tally above are corrected in this record with the exported value kept beside them. So merged beat baked on subway (scrambled sign text and artifacts on the baked clip).",
     "triangle": "baked vs the sage floor: floor 4, same 1 (diner, on a composition difference the note calls 'both good'); merged vs floor in the 2026-09-04 ladder: floor 5. Merged vs baked: merged 1 (standoff, 'way better'), baked 1 (diner, a composition difference), same 2 (opera, stairwell), merged 1 more on subway after the owner's correction (merged 2, baked 1, same 2 in all). Reading: the baked arm loses to the floor on the same properties merged did (audio level, lighting, framing, the subway sign text), so at this seed the PDD8 defects attribute to the schedule, not to the requantised merge; the bake stands as a hygiene and cost change, not a quality one. Pre-registered in bench/pdd_bake_arms.json::predictions."
-  }
+  },
+  "owner_notes_after_join_2026-09-05": [
+    {
+      "scene": "diner",
+      "note": "owner, after the join 2026-09-05: aside from the menu-across-the-wall clips, almost all diner scenes were good or equal. So every diner verdict in the three sessions is the menu and nothing else; the arms that drew it at this seed were pdd8 (shipped), pdd8sage, pdd8sol2 and just-Sol, and the ones that did not were sage, Sol as shipped and pdd8baked. The menu carries corrupted text, so where it appears it is a rendering defect on that sample, not a composition preference."
+    }
+  ]
 }
