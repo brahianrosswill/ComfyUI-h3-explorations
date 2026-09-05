@@ -166,6 +166,11 @@ def load_outputs(paths: list[Path]) -> dict:
             label = r.get("label")
             if not label:
                 continue
+            if r.get("warmup"):
+                # A warmup render shares its arm's label and is discarded by
+                # the runner; without this it read as the same arm timed
+                # twice (2026-09-05, the PDD ladder's outputs record).
+                continue
             if label in arms:
                 sys.exit(f"refuse: arm {label!r} appears in both {arms[label]['source']} and {p.name}; "
                          f"one timing per arm, pick the record")

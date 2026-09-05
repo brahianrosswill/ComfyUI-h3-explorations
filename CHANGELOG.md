@@ -72,8 +72,10 @@ artifact.
   (singles unscored), joined with the sealed key. Directional reading in
   `docs/evidence.md` and the roadmap: the PDD8 loss to the sage floor is
   PDD's own, Sol on two of eight steps is free against sage alone, the
-  shipped window cost on two scenes. Frontier table blocked on the
-  outputs record's duplicated warmup label (wiki to-do).
+  shipped window cost on two scenes. Frontier record beside it,
+  `bench/results/2026-09-05_pdd_ladder_2026-09-04_frontier.json`;
+  `bench/frontier_table.py` now skips warmup rows, which share their
+  arm's label and read as the arm timed twice.
 
 - **`docs/eval_comparison.md` says what the judge records and what to
   ignore**: the two halves of a pair are two samples, so composition

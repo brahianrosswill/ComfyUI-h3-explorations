@@ -36,11 +36,10 @@ own below the rule.
   artifacts) and read *same* on three. The owner heard the floor louder than
   PDD on every scene compared; `bench/results/2026-09-04_pdd_ladder_audio_loudness.json`
   is the level record. Merge against schedule is what the bake pair decides.
-- Frontier table on that verdict: `bench/frontier_table.py` refuses the
-  outputs record because the warmup render and the scored render share the
-  label `standoff_pdd8sage`; the tool needs to skip `warmup` rows (or the
-  outputs builder to drop them) before this closes. Then commit the frontier
-  record under `bench/results/`.
+- Frontier table on that verdict: DONE 2026-09-05,
+  `bench/results/2026-09-05_pdd_ladder_2026-09-04_frontier.json`, speed against
+  the sage floor beside the owner's note per pair (the tool now skips
+  warmup rows, which shared their arm's label).
 - The chain assert's call-time proof on the no-sage graph: the exercise
   skips for headroom on this card with the DiT staged, so the Sol-over-stock
   state is proved at registration only. Size the exercise to the probes the
