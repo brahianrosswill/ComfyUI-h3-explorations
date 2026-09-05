@@ -308,13 +308,19 @@ rather than restate it.
 ways.** The trajectory diverges at frame zero under any change to the
 sampler's inputs (`CLAUDE.md`, "A rendered clip cannot A/B a numerical
 change"), so two arms at one seed differ in composition, blocking, faces and
-line delivery before either arm's quality is in play. Those differences are
-the divergence, not the arm. **Ignore them.** What the judge compares is the
-quality of each half as a sample of the same prompt: texture and skin, text
-legibility, motion coherence, flicker, brightness, audio clarity and level,
-sync, and whether a half dropped something the prompt asked for. The
-question to answer is "which of these two would I rather have received for
-this prompt, and why". One pair per scene is one sample; the read is across
+line delivery before either arm's quality is in play. **Composition
+differences count, framed as prompt adherence** (owner's decision,
+2026-09-05 evening, after scoring three sessions): a half whose scene makes
+less sense for the prompt (the orchestra behind the singer, the suspect
+behind the chaser, a menu across a wall) has adhered less, and that is a
+loss for its arm, recorded in the text so the join can separate adherence
+from rendering quality. Until that evening this section said to ignore
+composition as sample divergence; the three 2026-09-05 verdict records were
+first read that way and their notes say so. Rendering quality is judged
+beside adherence: texture and skin, text legibility, motion coherence,
+flicker, brightness, audio clarity and level, sync. The question to answer
+is "which of these two would I rather have received for this prompt, and
+why", and the text says which kind of loss it was. One pair per scene is one sample; the read is across
 the session's scenes, and a rung that loses on four scenes for the same
 defect is a finding where a rung that loses one pair on composition is
 noise. The text field is how the join tells the two apart.

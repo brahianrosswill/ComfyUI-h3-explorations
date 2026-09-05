@@ -13,6 +13,11 @@ pointer goes; this list is stale the moment the roadmap disagrees with it.
 Items from the `mrpink` helper lane first; `evalman`'s render lane appends its
 own below the rule.
 
+- **Owner decisions 2026-09-05 evening** (`docs/roadmap.md`, the decisions
+  block): composition counts as prompt adherence; PDD parked; the turbo
+  rung goes with two LoRAs at two seeds (bake session owns it, plus a sage
+  floor render at the second seed); token routing stage one goes (survey
+  session offline at the time, pick it up from the plan page).
 - The bake pair: SCORED and joined 2026-09-05, pairs only (`bench/results/2026-09-05_pdd_bake_2026-09-05_verdict.json`, read its
   `join_notes_2026-09-05`). The baked arm lost to the sage floor on four
   scenes and read same on one, on the same properties the merged arm lost

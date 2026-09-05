@@ -148,6 +148,33 @@ streams), so a probe render's clip is a valid blind sample of its
 configuration; and the post-pull execution regime changed timing only
 (`bench/results/2026-09-04_stairwell_dense_retime_pixels.json`).
 
+## Owner decisions, 2026-09-05 evening, after scoring three sessions
+
+Recorded here the same hour; each supersedes what stood before it.
+
+1. **Composition differences count as prompt adherence.** A half whose scene
+   makes less sense for the prompt has adhered less, and that is a loss for
+   its arm. `eval_comparison.md`'s judging section carries it; the three
+   2026-09-05 verdict records were first read the other way and say so.
+2. **PDD is parked.** PDD8 lost to the sage floor on every scene under sage
+   alone, and the bake did not move it, so the look is the schedule's. No
+   partition arm; "move on to something better."
+3. **The turbo rung goes**, with two LoRAs: the larryvrh v4 step-600 EMA at
+   six steps and the lightx2v fl2v turbo v1.2 768p at its own step count
+   (`models/loras/h3/lightx2v_Minimax-h3-Turbo/`, the v1.2 file landed
+   2026-09-05), each under sage alone on the five ladder scenes, blinded
+   against the sage floor. Owned by the bake session, which proposed it.
+4. **Token routing stage one goes** (`research/2026-09-05_token_aug_plan.md`,
+   step 7 below). The survey session was offline when the go was given, so
+   this line is the handoff.
+5. **Two seeds**, superseding "no more seeds" of 2026-09-04: the turbo rung
+   renders at the ladder's seed and one more, which means the sage floor is
+   rendered at the second seed too.
+
+Standing from the day: the shipped chain (sage on the outer steps, Sol
+inside) is the leader; nothing beat it and nothing matched it faster. The
+bake stays as the PDD8 checkpoint on hygiene alone.
+
 ## Current forward plan — 2026-09-03
 
 The short form, for a session that only wants the next action, is

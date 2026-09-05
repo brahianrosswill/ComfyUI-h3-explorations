@@ -68,6 +68,12 @@ artifact.
 
 ### Added
 
+- **Owner decisions of 2026-09-05 evening** in the roadmap: composition
+  counts as prompt adherence (the eval protocol's judging section
+  revised, saying what it used to claim), PDD parked, the turbo rung goes
+  with two LoRAs at two seeds, token routing stage one goes, two seeds
+  supersede none.
+
 - **The just-Sol verdict**, `bench/results/2026-09-05_sol_nosage_2026-09-04_verdict.json`: scored by the owner, pairs only. The
   floor won four with one can't-tell and Sol as shipped won three with
   two same, nearly all on composition; direction against Sol without
