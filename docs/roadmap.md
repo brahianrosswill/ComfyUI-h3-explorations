@@ -133,8 +133,11 @@ scene where Sol lost blind, the subway chase, lost the same way under sage
 alone, so the proxy-to-perception link is untested in the direction that
 matters); whether the all-rows sink mode is visible (its pixel footprint at
 one seed is the size of dense-versus-sage, and the blind pair is rendered
-but unjudged, step 3 above); PDD8 under sage alone against the floor and
-just-Sol against the floor (both blinded, both the owner's to score); and
+but unjudged, step 3 above); just-Sol against the floor (blinded, the
+owner's to score; PDD8 under sage alone against the floor WAS judged
+2026-09-05, pairs only, `bench/results/2026-09-05_pdd_ladder_2026-09-04_verdict.json`: the floor won every scene, so the PDD8
+loss is PDD's own and not Sol's, and Sol on two of eight steps read
+same as sage alone on all five); and
 the size of the tau lever, which the owner reports as a quality loss without
 a measured curve. Two things established on the way: arming the probe does
 not perturb a render (`bench/results/2026-09-04_probe_render_vs_unarmed_pixels.json`,
@@ -230,8 +233,12 @@ ladder per block, not alternatives.
    ladder of its own after all: stock attention, sage alone, and the shipped
    graph, same scenes and seed. Built 2026-09-04 as
    `bench/pdd_ladder_arms.json` with a narrower-window Sol rung beside the
-   three; the owner has ruled out more seeds for now, so what is owed before
-   this step is met is that render, judged blind with the singles scored.
+   three; the owner has ruled out more seeds for now. Rendered 2026-09-04,
+   judged 2026-09-05 on pairs only (`bench/results/2026-09-05_pdd_ladder_2026-09-04_verdict.json`): PDD8 under sage alone lost
+   to the floor on all five scenes, the narrow Sol window was free
+   against sage alone on all five, the shipped window cost on two. The
+   step is met on the pairs; the singles were not scored, so the audio
+   half rests on the owner's notes and the loudness record.
 
 **In parallel, not behind the above: the PDD bake.** It removes merge-time
 requantisation at no runtime cost and is the strongest practical PDD

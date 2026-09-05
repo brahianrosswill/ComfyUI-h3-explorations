@@ -26,14 +26,21 @@ own below the rule.
   (good / not good / off per half) before the next session is built; the
   three built pages are unaffected and the join ignores those two tags on
   a half.
-- Score the blinded PDD ladder, `pdd_ladder_2026-09-04` (20 pairs, 20
-  singles). The pairs now play each half's audio on selection (Hear: Clip 1
-  / Clip 2) and export which halves were heard; hear both before a verdict.
-  Closes with `bench/score_session.py` writing its verdict record.
-- Frontier table on that verdict beside
-  `bench/results/2026-09-04_pdd_ladder_outputs.json` (`bench/frontier_table.py`):
-  speed against the sage floor beside what was noticed, per scene. Closes
-  with the frontier record committed under `bench/results/`.
+- PDD ladder: SCORED and joined 2026-09-05, pairs only, singles unscored by
+  the owner's choice (`bench/results/2026-09-05_pdd_ladder_2026-09-04_verdict.json`). Reading, one seed, five scenes: the sage
+  16-step floor beat PDD8 under sage alone on every scene and beat PDD8 with
+  the narrow Sol window on four with one can't-tell, so the PDD8 loss is
+  PDD's own, not Sol's; Sol on two of eight steps read *same* as sage alone
+  on all five; the shipped four-step window lost to sage alone on standoff
+  (background definition) and subway (scrambled first-frame text,
+  artifacts) and read *same* on three. The owner heard the floor louder than
+  PDD on every scene compared; `bench/results/2026-09-04_pdd_ladder_audio_loudness.json`
+  is the level record. Merge against schedule is what the bake pair decides.
+- Frontier table on that verdict: `bench/frontier_table.py` refuses the
+  outputs record because the warmup render and the scored render share the
+  label `standoff_pdd8sage`; the tool needs to skip `warmup` rows (or the
+  outputs builder to drop them) before this closes. Then commit the frontier
+  record under `bench/results/`.
 - The chain assert's call-time proof on the no-sage graph: the exercise
   skips for headroom on this card with the DiT staged, so the Sol-over-stock
   state is proved at registration only. Size the exercise to the probes the
