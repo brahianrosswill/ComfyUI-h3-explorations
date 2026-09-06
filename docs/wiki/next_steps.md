@@ -112,15 +112,17 @@ Items from the `evalman` render lane:
 
 Items from the PDD backbone bake lane (the alibaba-pai PDD LoRA folded into the fl2va int8 checkpoint; the peer session that built it happens to share a name with the larryvrh turbo LoRA, which is a different artifact and not part of this bake):
 
-- **The turbo rung is rendering** (launched 2026-09-05 evening; owner
-  decision 3 in `../roadmap.md`): `bench/turbo_rung_arms.json` at the
-  ladder seed and a second seed, then `bench/turbo_rung_floor_arms.json` at
-  the second seed, into `bench/results/2026-09-05_turbo_rung_{s1,s2,floor_s2}.jsonl`.
-  When all three hold their rows, run the per-seed blind script under
-  `internal/2026-09-05_run/` for `s1` then `s2`, tell the owner, then
-  `bench/score_session.py` on each export. Pairs only; the predictions to
-  grade against are the manifest's `predictions` block. Closes with the
-  two verdict records and a frontier row per arm.
+- **The turbo rung is RENDERED and BLINDED** (owner decision 3 in
+  `../roadmap.md`; run records `bench/results/2026-09-05_turbo_rung_{s1,s2,floor_s2}.jsonl`,
+  judged JSONLs beside them, every arm present, night of 2026-09-05). The
+  owner scores `turbo_rung_s1_2026-09-05` and `turbo_rung_s2_2026-09-05`
+  under the output folder's blind directory, 15 pairs each, pairs only.
+  Then `bench/score_session.py` on each export, graded against the
+  manifest's `predictions` block, and the frontier table per seed
+  (`bench/frontier_table.py` with the run's outputs record; build that with
+  `bench/build_outputs_record.py` against the server that rendered, which
+  is the one up now). Closes with the two verdict records and a frontier
+  row per arm.
 
 - The bake script's open review candidates: a control-before-bake gate,
   the contract check's retyped filenames now that `h3_config` names the

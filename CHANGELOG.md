@@ -8,6 +8,11 @@ artifact.
 
 ### Added
 
+- **The turbo rung rendered and blinded** the same night: all three runs
+  complete with every arm recorded (`bench/results/2026-09-05_turbo_rung_{s1,s2,floor_s2}.jsonl`),
+  blinded per seed as `turbo_rung_s1_2026-09-05` and `turbo_rung_s2_2026-09-05`,
+  fifteen pairs each against a same-seed sage floor. Unscored.
+
 - **The turbo rung** (`docs/roadmap.md`, "Owner decisions, 2026-09-05
   evening", item 3): two step-reduction distills that are not PDD, each
   under sage alone with Sol absent, on the five ladder scenes at two seeds
