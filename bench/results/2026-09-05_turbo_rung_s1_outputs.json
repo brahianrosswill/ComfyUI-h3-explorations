@@ -1,0 +1,272 @@
+{
+  "what": "the turbo rung run s1 (bench/turbo_rung_arms.json or its floor manifest), joined to the rendering server's /history the same night",
+  "measured": "2026-09-05",
+  "produced_by": "bench/build_outputs_record.py joining 2026-09-05_turbo_rung_s1.jsonl to the rendering server's /history; basenames only, the clips live in the output folder the launcher names",
+  "source_jsonl": "bench/results/2026-09-05_turbo_rung_s1.jsonl",
+  "arms": [
+    {
+      "label": "standoff_turbov4",
+      "prompt_id": "cfbeab65-5340-4b70-9b4e-ad23118819a9",
+      "seed": 730451891,
+      "graph": "workflows/h3_probe_t2v_turbo_v4_sage_api.json",
+      "graph_sha256": "bea460835696e11b",
+      "rendered": {
+        "prompt_id": "t2va_frontier_standoff",
+        "prompt_sha256": "3466c32a073280babf9a3630e098344f867d5b7ea12765cee7e5f4fd53c6b9ce",
+        "prompt_text": null,
+        "length": 345,
+        "canvas": "1344x768",
+        "seed": 730451891
+      },
+      "warmup": true,
+      "total_s": 333.32771419799974,
+      "sampler_s": 292.5581911959998,
+      "decode_s": 33.57590670999707,
+      "suspect_cache_hit": false,
+      "outputs": [
+        "h3_probe_t2v_turbo_v4_sage_standoff_turbov4_00001-audio.mp4"
+      ],
+      "note": null
+    },
+    {
+      "label": "standoff_turbov4",
+      "prompt_id": "1a8df5da-c6bc-4370-9187-17297d033671",
+      "seed": 730451892,
+      "graph": "workflows/h3_probe_t2v_turbo_v4_sage_api.json",
+      "graph_sha256": "bea460835696e11b",
+      "rendered": {
+        "prompt_id": "t2va_frontier_standoff",
+        "prompt_sha256": "3466c32a073280babf9a3630e098344f867d5b7ea12765cee7e5f4fd53c6b9ce",
+        "prompt_text": null,
+        "length": 345,
+        "canvas": "1344x768",
+        "seed": 730451892
+      },
+      "warmup": false,
+      "total_s": 328.91470771199965,
+      "sampler_s": 291.44454261600185,
+      "decode_s": 33.574509630998364,
+      "suspect_cache_hit": false,
+      "outputs": [
+        "h3_probe_t2v_turbo_v4_sage_standoff_turbov4_00002-audio.mp4"
+      ],
+      "note": null
+    },
+    {
+      "label": "diner_turbov4",
+      "prompt_id": "82640426-9a88-47eb-a5e6-9a2359d85bfc",
+      "seed": 730451892,
+      "graph": "workflows/h3_probe_t2v_turbo_v4_sage_api.json",
+      "graph_sha256": "bea460835696e11b",
+      "rendered": {
+        "prompt_id": "t2va_diner_breakup",
+        "prompt_sha256": "1183fd392aab1a76d527a1f9588448002e470add649c2d481898b0f83af6111d",
+        "prompt_text": null,
+        "length": 345,
+        "canvas": "1344x768",
+        "seed": 730451892
+      },
+      "warmup": false,
+      "total_s": 331.6953891180019,
+      "sampler_s": 291.6686279179994,
+      "decode_s": 33.67124435000005,
+      "suspect_cache_hit": false,
+      "outputs": [
+        "h3_probe_t2v_turbo_v4_sage_diner_turbov4_00001-audio.mp4"
+      ],
+      "note": null
+    },
+    {
+      "label": "opera_turbov4",
+      "prompt_id": "e026dc72-9e41-422d-9bef-b7f1988bbf74",
+      "seed": 730451892,
+      "graph": "workflows/h3_probe_t2v_turbo_v4_sage_api.json",
+      "graph_sha256": "bea460835696e11b",
+      "rendered": {
+        "prompt_id": "t2va_opera_grand_stage",
+        "prompt_sha256": "5db991257040d53caca4c63671183c809a3858660918e20d5937ce7582118f96",
+        "prompt_text": null,
+        "length": 345,
+        "canvas": "1344x768",
+        "seed": 730451892
+      },
+      "warmup": false,
+      "total_s": 331.716290903998,
+      "sampler_s": 291.7497999520019,
+      "decode_s": 33.65370247000101,
+      "suspect_cache_hit": false,
+      "outputs": [
+        "h3_probe_t2v_turbo_v4_sage_opera_turbov4_00001-audio.mp4"
+      ],
+      "note": null
+    },
+    {
+      "label": "stairwell_turbov4",
+      "prompt_id": "b671867c-7ca7-4265-8aef-bbdb05a783da",
+      "seed": 730451892,
+      "graph": "workflows/h3_probe_t2v_turbo_v4_sage_api.json",
+      "graph_sha256": "bea460835696e11b",
+      "rendered": {
+        "prompt_id": "t2va_stairwell_dialogue",
+        "prompt_sha256": "6a88162bb9d2ca42082c066b1b0032f50aac55cdc58a5f9c11e0cac1c7bee497",
+        "prompt_text": null,
+        "length": 345,
+        "canvas": "1344x768",
+        "seed": 730451892
+      },
+      "warmup": false,
+      "total_s": 331.03483906199835,
+      "sampler_s": 291.2658918659981,
+      "decode_s": 33.70058698399953,
+      "suspect_cache_hit": false,
+      "outputs": [
+        "h3_probe_t2v_turbo_v4_sage_stairwell_turbov4_00001-audio.mp4"
+      ],
+      "note": null
+    },
+    {
+      "label": "subway_turbov4",
+      "prompt_id": "0a76fe28-f9d1-4291-a906-581bbe616c70",
+      "seed": 730451892,
+      "graph": "workflows/h3_probe_t2v_turbo_v4_sage_api.json",
+      "graph_sha256": "bea460835696e11b",
+      "rendered": {
+        "prompt_id": "t2va_subway_chase",
+        "prompt_sha256": "fefad8304d0daf72ea3661fb1e3786e7d4a174de42112a8856a27b5ba4114772",
+        "prompt_text": null,
+        "length": 345,
+        "canvas": "1344x768",
+        "seed": 730451892
+      },
+      "warmup": false,
+      "total_s": 331.8571389200006,
+      "sampler_s": 291.2537914470013,
+      "decode_s": 33.63354745600009,
+      "suspect_cache_hit": false,
+      "outputs": [
+        "h3_probe_t2v_turbo_v4_sage_subway_turbov4_00001-audio.mp4"
+      ],
+      "note": null
+    },
+    {
+      "label": "standoff_turbolx12",
+      "prompt_id": "e50659ef-0f27-4277-bdf3-16fde34fac39",
+      "seed": 730451892,
+      "graph": "workflows/h3_probe_t2v_turbo_lx12_sage_api.json",
+      "graph_sha256": "aefa380d8b85dfb1",
+      "rendered": {
+        "prompt_id": "t2va_frontier_standoff",
+        "prompt_sha256": "3466c32a073280babf9a3630e098344f867d5b7ea12765cee7e5f4fd53c6b9ce",
+        "prompt_text": null,
+        "length": 345,
+        "canvas": "1344x768",
+        "seed": 730451892
+      },
+      "warmup": false,
+      "total_s": 225.60492314899966,
+      "sampler_s": 185.49027894199753,
+      "decode_s": 33.59956044700084,
+      "suspect_cache_hit": false,
+      "outputs": [
+        "h3_probe_t2v_turbo_lx12_sage_standoff_turbolx12_00001-audio.mp4"
+      ],
+      "note": null
+    },
+    {
+      "label": "diner_turbolx12",
+      "prompt_id": "98908b14-4d75-4278-ba20-a6b71bc22127",
+      "seed": 730451892,
+      "graph": "workflows/h3_probe_t2v_turbo_lx12_sage_api.json",
+      "graph_sha256": "aefa380d8b85dfb1",
+      "rendered": {
+        "prompt_id": "t2va_diner_breakup",
+        "prompt_sha256": "1183fd392aab1a76d527a1f9588448002e470add649c2d481898b0f83af6111d",
+        "prompt_text": null,
+        "length": 345,
+        "canvas": "1344x768",
+        "seed": 730451892
+      },
+      "warmup": false,
+      "total_s": 225.81285769900205,
+      "sampler_s": 185.60799205399962,
+      "decode_s": 33.699660604997916,
+      "suspect_cache_hit": false,
+      "outputs": [
+        "h3_probe_t2v_turbo_lx12_sage_diner_turbolx12_00001-audio.mp4"
+      ],
+      "note": null
+    },
+    {
+      "label": "opera_turbolx12",
+      "prompt_id": "cb7dee01-50b3-4e9a-be5a-6137753ec2ee",
+      "seed": 730451892,
+      "graph": "workflows/h3_probe_t2v_turbo_lx12_sage_api.json",
+      "graph_sha256": "aefa380d8b85dfb1",
+      "rendered": {
+        "prompt_id": "t2va_opera_grand_stage",
+        "prompt_sha256": "5db991257040d53caca4c63671183c809a3858660918e20d5937ce7582118f96",
+        "prompt_text": null,
+        "length": 345,
+        "canvas": "1344x768",
+        "seed": 730451892
+      },
+      "warmup": false,
+      "total_s": 225.88232024000172,
+      "sampler_s": 185.59305005900023,
+      "decode_s": 33.740325831997325,
+      "suspect_cache_hit": false,
+      "outputs": [
+        "h3_probe_t2v_turbo_lx12_sage_opera_turbolx12_00001-audio.mp4"
+      ],
+      "note": null
+    },
+    {
+      "label": "stairwell_turbolx12",
+      "prompt_id": "6e6446de-487d-42a8-8f06-cf0f23ce7af4",
+      "seed": 730451892,
+      "graph": "workflows/h3_probe_t2v_turbo_lx12_sage_api.json",
+      "graph_sha256": "aefa380d8b85dfb1",
+      "rendered": {
+        "prompt_id": "t2va_stairwell_dialogue",
+        "prompt_sha256": "6a88162bb9d2ca42082c066b1b0032f50aac55cdc58a5f9c11e0cac1c7bee497",
+        "prompt_text": null,
+        "length": 345,
+        "canvas": "1344x768",
+        "seed": 730451892
+      },
+      "warmup": false,
+      "total_s": 225.24402728600035,
+      "sampler_s": 185.19974877700224,
+      "decode_s": 33.60496605099979,
+      "suspect_cache_hit": false,
+      "outputs": [
+        "h3_probe_t2v_turbo_lx12_sage_stairwell_turbolx12_00001-audio.mp4"
+      ],
+      "note": null
+    },
+    {
+      "label": "subway_turbolx12",
+      "prompt_id": "f53260d9-8a0c-4b0a-9f51-a6d40d521b2d",
+      "seed": 730451892,
+      "graph": "workflows/h3_probe_t2v_turbo_lx12_sage_api.json",
+      "graph_sha256": "aefa380d8b85dfb1",
+      "rendered": {
+        "prompt_id": "t2va_subway_chase",
+        "prompt_sha256": "fefad8304d0daf72ea3661fb1e3786e7d4a174de42112a8856a27b5ba4114772",
+        "prompt_text": null,
+        "length": 345,
+        "canvas": "1344x768",
+        "seed": 730451892
+      },
+      "warmup": false,
+      "total_s": 225.7803965230014,
+      "sampler_s": 185.21347796400005,
+      "decode_s": 33.622018767000554,
+      "suspect_cache_hit": false,
+      "outputs": [
+        "h3_probe_t2v_turbo_lx12_sage_subway_turbolx12_00001-audio.mp4"
+      ],
+      "note": null
+    }
+  ]
+}

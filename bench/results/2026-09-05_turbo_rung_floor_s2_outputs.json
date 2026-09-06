@@ -1,0 +1,128 @@
+{
+  "what": "the turbo rung run floor_s2 (bench/turbo_rung_arms.json or its floor manifest), joined to the rendering server's /history the same night",
+  "measured": "2026-09-05",
+  "produced_by": "bench/build_outputs_record.py joining 2026-09-05_turbo_rung_floor_s2.jsonl to the rendering server's /history; basenames only, the clips live in the output folder the launcher names",
+  "source_jsonl": "bench/results/2026-09-05_turbo_rung_floor_s2.jsonl",
+  "arms": [
+    {
+      "label": "standoff_sage",
+      "prompt_id": "97919ce3-699e-4508-8b1a-bbb2879364fe",
+      "seed": 730451894,
+      "graph": "workflows/bench/h3_text_to_video_stamped_api.json",
+      "graph_sha256": "9497b30d8e0118b0",
+      "rendered": {
+        "prompt_id": "t2va_frontier_standoff",
+        "prompt_sha256": "3466c32a073280babf9a3630e098344f867d5b7ea12765cee7e5f4fd53c6b9ce",
+        "prompt_text": null,
+        "length": 345,
+        "canvas": "1344x768",
+        "seed": 730451894
+      },
+      "warmup": false,
+      "total_s": 774.5629607619994,
+      "sampler_s": 734.4431757229977,
+      "decode_s": 33.61427853499845,
+      "suspect_cache_hit": false,
+      "outputs": [
+        "h3_t2v_standoff_sage_00002-audio.mp4"
+      ],
+      "note": null
+    },
+    {
+      "label": "diner_sage",
+      "prompt_id": "dbdbe556-ce22-4ce1-a503-dd37e53aa399",
+      "seed": 730451894,
+      "graph": "workflows/bench/h3_text_to_video_stamped_api.json",
+      "graph_sha256": "9497b30d8e0118b0",
+      "rendered": {
+        "prompt_id": "t2va_diner_breakup",
+        "prompt_sha256": "1183fd392aab1a76d527a1f9588448002e470add649c2d481898b0f83af6111d",
+        "prompt_text": null,
+        "length": 345,
+        "canvas": "1344x768",
+        "seed": 730451894
+      },
+      "warmup": false,
+      "total_s": 774.3060554830008,
+      "sampler_s": 734.4254274710001,
+      "decode_s": 33.60127480899973,
+      "suspect_cache_hit": false,
+      "outputs": [
+        "h3_t2v_diner_sage_00002-audio.mp4"
+      ],
+      "note": null
+    },
+    {
+      "label": "opera_sage",
+      "prompt_id": "612c7dc6-540b-4969-a2b0-fc173aedfbc6",
+      "seed": 730451894,
+      "graph": "workflows/bench/h3_text_to_video_stamped_api.json",
+      "graph_sha256": "9497b30d8e0118b0",
+      "rendered": {
+        "prompt_id": "t2va_opera_grand_stage",
+        "prompt_sha256": "5db991257040d53caca4c63671183c809a3858660918e20d5937ce7582118f96",
+        "prompt_text": null,
+        "length": 345,
+        "canvas": "1344x768",
+        "seed": 730451894
+      },
+      "warmup": false,
+      "total_s": 774.5890538329986,
+      "sampler_s": 734.3891400219982,
+      "decode_s": 33.613353567998274,
+      "suspect_cache_hit": false,
+      "outputs": [
+        "h3_t2v_opera_sage_00002-audio.mp4"
+      ],
+      "note": null
+    },
+    {
+      "label": "stairwell_sage",
+      "prompt_id": "65821343-7ae0-45ce-b933-67880f8d259f",
+      "seed": 730451894,
+      "graph": "workflows/bench/h3_text_to_video_stamped_api.json",
+      "graph_sha256": "9497b30d8e0118b0",
+      "rendered": {
+        "prompt_id": "t2va_stairwell_dialogue",
+        "prompt_sha256": "6a88162bb9d2ca42082c066b1b0032f50aac55cdc58a5f9c11e0cac1c7bee497",
+        "prompt_text": null,
+        "length": 345,
+        "canvas": "1344x768",
+        "seed": 730451894
+      },
+      "warmup": false,
+      "total_s": 772.9123210059988,
+      "sampler_s": 732.7865230479947,
+      "decode_s": 33.59323437100102,
+      "suspect_cache_hit": false,
+      "outputs": [
+        "h3_t2v_stairwell_sage_00002-audio.mp4"
+      ],
+      "note": null
+    },
+    {
+      "label": "subway_sage",
+      "prompt_id": "0707149d-9283-4a1f-aa16-c48e39dd77a1",
+      "seed": 730451894,
+      "graph": "workflows/bench/h3_text_to_video_stamped_api.json",
+      "graph_sha256": "9497b30d8e0118b0",
+      "rendered": {
+        "prompt_id": "t2va_subway_chase",
+        "prompt_sha256": "fefad8304d0daf72ea3661fb1e3786e7d4a174de42112a8856a27b5ba4114772",
+        "prompt_text": null,
+        "length": 345,
+        "canvas": "1344x768",
+        "seed": 730451894
+      },
+      "warmup": false,
+      "total_s": 773.225434699998,
+      "sampler_s": 732.7250247179982,
+      "decode_s": 33.68563454000105,
+      "suspect_cache_hit": false,
+      "outputs": [
+        "h3_t2v_subway_sage_00002-audio.mp4"
+      ],
+      "note": null
+    }
+  ]
+}
