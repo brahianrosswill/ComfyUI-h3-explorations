@@ -2161,11 +2161,21 @@ render.**
    effect, and the record says so. A scattered result would have refuted it;
    this one does not establish it.
 
-2. **The other three captured blocks. DONE 2026-09-08, same record.** All four
-   of the other captured blocks are bitwise deterministic under the same
-   budget, so all five have now been tested and block 49 is the only unstable
-   one. "The last block is special" survives another round without being
-   confirmed; nothing here says why depth would matter.
+2. **The other three captured blocks. DONE 2026-09-08, same record, and
+   widened twice.** All four of the other captured blocks are bitwise
+   deterministic under the same budget, at every captured step rather than at
+   one, and block 49 is unstable at every captured step. So the claim rests on
+   the whole grid of captured cells, not on a single point of the trajectory --
+   which matters, because sigma changes the score distribution and that is the
+   quantity the mechanism says decides stability.
+   **Each control cell carries a plain arm of its own**, because "bitwise
+   deterministic" is otherwise ambiguous between two opposite readings: the
+   lever ran and its selection was stable, or the lever admitted nothing and
+   the arm is the plain path under another name. The record's `engagement`
+   field settles it -- token routing changes the output on every control cell,
+   so the stable blocks are stable rather than inert.
+   "The last block is special" survives with more behind it, and still
+   unconfirmed: nothing here says why depth would matter.
 
 3. **Budgets 128 and 256. DONE 2026-09-08, same record.** The instability is
    present at every budget and does not scale smoothly with it, and the

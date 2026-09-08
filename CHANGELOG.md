@@ -17,9 +17,17 @@ artifact.
   block. It cannot confirm a changed admitted set and says so.
 
 - **Open experiment 29's arms 2 and 3 are answered by the same run.** All five
-  captured blocks have now been tested and 49 is the only unstable one; the
-  instability is present at every budget and does not scale with it. Both were
-  eliminations and neither was expected to be the answer.
+  captured blocks have now been tested at every captured step, and 49 is the
+  only unstable one, at all of them; the instability is present at every budget
+  and does not scale with it. Both were eliminations and neither was expected
+  to be the answer.
+
+- **Every control cell carries a plain arm, so "deterministic" is not
+  ambiguous.** Without it, a bitwise-stable control block reads equally as "the
+  lever ran and its selection held" and "the lever admitted nothing here", which
+  support opposite conclusions about depth. The record's `engagement` field
+  reports the arm against the plain path: token routing changes the output on
+  every control cell, so the stable blocks are stable rather than inert.
 
 ### Fixed
 

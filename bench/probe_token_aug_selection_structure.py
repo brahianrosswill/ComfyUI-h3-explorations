@@ -218,7 +218,17 @@ def _mean_jaccard(sets):
     return sum(vals) / len(vals)
 
 
-def run_arm(q, k, v, repeats, token_aug, tau, head_chunk, shuffle_seed):
+def run_arm(q, k, v, repeats, token_aug, tau, head_chunk, shuffle_seed,
+            baseline=None):
+    """One arm's stability, and optionally whether the lever engaged at all.
+
+    `baseline` is the plain arm's output. Comparing this arm's first launch
+    against it separates the two readings a deterministic result would
+    otherwise conflate: token_aug ran and its selection was stable, or
+    token_aug admitted nothing here and this is the plain path under another
+    name. Those support opposite conclusions about a block, so a stability
+    claim without this is ambiguous.
+    """
     import comfy_kitchen as ck
     import torch
     first = None
@@ -242,14 +252,36 @@ def run_arm(q, k, v, repeats, token_aug, tau, head_chunk, shuffle_seed):
         del out
         torch.cuda.empty_cache()
 
+    engaged = None
+    if baseline is not None and first is not None:
+        bmask, bpeak = moved_mask(first, baseline, head_chunk)
+        rows = int(bmask.any(dim=1).sum())
+        engaged = {
+            "rows_differing_from_plain": rows,
+            "max_abs_delta_from_plain": bpeak,
+            "lever_engaged": rows > 0,
+            "what": "this arm's output against the plain arm's. If the lever "
+                    "did not engage, a deterministic result below says nothing "
+                    "about token_aug's stability -- it is the plain path.",
+        }
+        del bmask
+
     if union is None or not bool(union.any()):
-        return {
+        r = {
             "repeats": repeats, "token_aug": token_aug,
             "mean_abs_output": scale, "max_abs_delta": peak,
             "rows_moved": 0, "shape": "deterministic",
             "reading": "no element moved over any launch, so there is no "
                        "structure to have a shape",
         }
+        if engaged is not None:
+            r["engagement"] = engaged
+            if not engaged["lever_engaged"]:
+                r["shape"] = "lever inert"
+                r["reading"] = ("output is bit-identical to the plain arm, so "
+                                "token_aug admitted nothing here. This is not "
+                                "evidence of a stable selection.")
+        return r, first
 
     stats, _ = window_stats(union, GROUP_ROWS)
     null = shuffled_stats(union, GROUP_ROWS, shuffle_seed)
@@ -257,8 +289,12 @@ def run_arm(q, k, v, repeats, token_aug, tau, head_chunk, shuffle_seed):
     offset = halves_stats(union, BLOCK)
     sets = [frozenset(c) for c in per_launch]
     ratio = stats["rows_per_touched_window"]
+    # Reasoned, not measured: a factor of four over the run's own scattered
+    # control, and over 1.0 in absolute terms. Chosen to be far from both the
+    # null and the observed values rather than tuned to either; the record
+    # carries both numbers, so a reader can apply a different line.
     clustered = ratio >= 4.0 and ratio >= 4.0 * null["rows_per_touched_window"]
-    return {
+    result = {
         "repeats": repeats, "token_aug": token_aug,
         "mean_abs_output": scale, "max_abs_delta": peak,
         "delta_over_mean_output": peak / max(scale, 1e-9),
@@ -302,6 +338,9 @@ def run_arm(q, k, v, repeats, token_aug, tau, head_chunk, shuffle_seed):
             f"{null['rows_per_touched_window']:.1f} scattered, so it does not "
             f"have the granularity of a per-centroid selection change."),
     }
+    if engaged is not None:
+        result["engagement"] = engaged
+    return result, first
 
 
 def main():
@@ -326,8 +365,12 @@ def main():
     print(f"window = TOK_GROUP {TOK_GROUP} x BLOCK {BLOCK} = {GROUP_ROWS} rows\n")
 
     # The plain arm first: if this moves, nothing below belongs to token_aug.
+    plain_first = None
     for name, aug in [("plain_token_aug_0", 0)] + [(f"token_aug_{b}", b) for b in budgets]:
-        r = run_arm(q, k, v, args.repeats, aug, args.tau, args.head_chunk, args.shuffle_seed)
+        r, out_first = run_arm(q, k, v, args.repeats, aug, args.tau, args.head_chunk,
+                               args.shuffle_seed, baseline=plain_first)
+        if aug == 0:
+            plain_first = out_first
         arms[name] = r
         print(f"  {name:20s} rows {r['rows_moved']:6d}  "
               f"windows {r.get('windows_touched', 0):5d}  "
@@ -337,19 +380,26 @@ def main():
               f"both halves {r.get('both_halves_move', {}).get('aligned_grid', {}).get('frac_both_halves', 0):.2f}"
               f" vs shifted {r.get('both_halves_move', {}).get('grid_shifted_by_one_query_block', {}).get('frac_both_halves', 0):.2f}  "
               f"-> {r['shape']}")
-    del q, k, v
+    del q, k, v, plain_first
 
     import torch
     torch.cuda.empty_cache()
+    # Every control cell runs the plain arm too, so a deterministic result can
+    # be told apart from a lever that never engaged there.
     for path in args.also_cell:
         cq, ckk, cv, cmeta = load_cell(path)
-        r = run_arm(cq, ckk, cv, args.repeats, budgets[0], args.tau,
-                    args.head_chunk, args.shuffle_seed)
-        r["block"] = cmeta["block"]
-        arms[f"block_{cmeta['block']}_token_aug_{budgets[0]}"] = r
-        print(f"  block {cmeta['block']:<14} rows {r['rows_moved']:6d}  "
-              f"windows {r.get('windows_touched', 0):5d}  -> {r['shape']}")
-        del cq, ckk, cv
+        _, cplain = run_arm(cq, ckk, cv, 1, 0, args.tau, args.head_chunk,
+                            args.shuffle_seed)
+        r, _ = run_arm(cq, ckk, cv, args.repeats, budgets[0], args.tau,
+                       args.head_chunk, args.shuffle_seed, baseline=cplain)
+        r["block"], r["step"] = cmeta["block"], cmeta["step"]
+        arms[f"block_{cmeta['block']}_step_{cmeta['step']}_token_aug_{budgets[0]}"] = r
+        eng = r.get("engagement", {})
+        print(f"  block {cmeta['block']:>2} step {cmeta['step']:<3} "
+              f"rows {r['rows_moved']:6d}  windows {r.get('windows_touched', 0):5d}  "
+              f"engaged {eng.get('lever_engaged')} "
+              f"({eng.get('rows_differing_from_plain', 0)} rows vs plain)  -> {r['shape']}")
+        del cq, ckk, cv, cplain
         torch.cuda.empty_cache()
 
     record = {
@@ -375,6 +425,16 @@ def main():
             "that a clustered result proves a changed admitted set. It is "
             "consistent with any per-centroid effect; a scattered result is "
             "what would have refuted the mechanism.",
+            "what the SHIPPED call does. These calls pass no sink_blocks or "
+            "sink_q, where the node does. Sinks change which key blocks are "
+            "candidates, and the candidate pool is what an overflow is an "
+            "overflow of, so a per-window result here need not carry over to a "
+            "render's own selection.",
+            "the size of the unstable pool. Each launch is compared against "
+            "the first, so windows_touched is a lower bound that grows with "
+            "repeats; the pairwise overlap beside it says how far from "
+            "converged the union is. Nothing in the reading depends on the "
+            "count, only on its shape.",
         ],
     }
     if args.out:

@@ -288,8 +288,10 @@ hotspot, refuted by measurement the same day), and
 (`bench/probe_token_aug_selection_structure.py`) says the moving rows carry the
 granularity of one token-routing centroid, against a scattered control the run
 measures on its own rows and a shifted-grid control for the alignment. All five
-captured blocks have now been tested and 49 is the only unstable one; every
-budget behaves the same way.
+captured blocks have now been tested at every captured step and 49 is the only
+unstable one, at all of them; every budget behaves the same way. Each control
+cell carries its own plain arm, so a deterministic block is one where the lever
+engaged and stayed stable rather than one where it admitted nothing.
 **Its predecessor's "unobservable from outside the kernel" is half wrong and
 open experiment 29 carries the correction**: the kernel's source says the
 selection boundary is a histogram bin edge, not a rank cut, and that a token
