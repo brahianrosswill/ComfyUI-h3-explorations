@@ -278,6 +278,18 @@ what would close it; it leans to the cheaper arm and is not closed. No
 action is queued on it; a second seed is the manifest's `run` line if the
 owner wants one.
 
+**Block 49's token-routing instability: two explanations eliminated, none
+found.** `bench/probe_token_aug_determinism.py` and
+`bench/results/2026-09-08_token_aug_determinism_shape.json`. With `token_aug`
+on, one captured block's output differs between launches on identical inputs
+while the plain arms and the other captured blocks are bitwise stable. It is
+not accumulation order: the deltas are far too large against the output's own
+scale for a reordered sum. Read the record before proposing a cause, because
+it names the two obvious ones and why each is already dead -- centroid
+fidelity, refuted by our own morton measurement, and the high-norm-row
+hotspot, refuted by measurement the same day. What varies inside the kernel is
+still unobservable from outside it.
+
 **How much of an H3 render is attention: a floor, derived rather than
 profiled.** `bench/derive_attention_share.py` writes
 `bench/results/2026-09-08_attention_share_bound.json` from the 2026-09-03

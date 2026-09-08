@@ -39,6 +39,14 @@ about to rank its roadmap on the dense number.
 
 ## What this cannot say
 
+**It does not transfer to another clip length, and that is the first thing to
+check before quoting it.** Attention is O(S^2) in sequence length while the
+projections and the MLP are O(S), so attention's share RISES with the clip and
+no single figure is correct for the model. A share measured at a short clip
+reads lower than one at the ceiling for a reason that has nothing to do with
+the kernel. The geometry every figure was taken at is recorded in the output
+beside the figure, from the source record rather than by hand.
+
 Sampler time only. VAE decode is outside it. Bounds, not point estimates. One
 seed. And the dense-versus-sparse step split that produces `t_sol` is specific
 to the ladder's step count and shift -- `docs/open_experiments.md` warns not
@@ -58,6 +66,24 @@ DEFAULT_SOURCE = _REPO / "bench/results/2026-09-03_ladder_outputs.json"
 # `sol` is the reference that bounds N, so it must be the cheapest arm; the
 # script asserts that rather than assuming it.
 DENSE, SAGE, SOL = "dense", "sage", "sol"
+
+
+def conditions(record):
+    """Geometry and weight format the arms actually ran at.
+
+    Read from the record rather than written here, because the share is
+    length-dependent: a reader who does not know the geometry cannot tell
+    whether the figure applies to their clip.
+    """
+    seen = {}
+    for arm in record.get("arms", []):
+        r = arm.get("rendered") or {}
+        for key in ("canvas", "length"):
+            if r.get(key) is not None:
+                seen.setdefault(key, set()).add(r[key])
+        if arm.get("graph"):
+            seen.setdefault("graph", set()).add(arm["graph"])
+    return {k: (sorted(v)[0] if len(v) == 1 else sorted(v)) for k, v in seen.items()}
 
 
 def sampler_times(record):
@@ -123,6 +149,14 @@ def main():
         "derived": "2026-09-08",
         "produced_by": "bench/derive_attention_share.py",
         "source": str(src.relative_to(_REPO)),
+        "conditions": conditions(record),
+        "conditions_matter_because": "attention is O(S^2) in sequence length "
+            "while the projections and the MLP are O(S), so attention's share "
+            "rises with the clip. This figure describes the geometry above and "
+            "no other; a shorter clip reads lower for a reason unrelated to the "
+            "kernel. The weight format matters for the same reason in reverse: "
+            "these are real renders of the shipped graph, so the Linears ran "
+            "quantized as they do in production rather than in bf16.",
         "is_not": "a profile. Nothing here times attention directly; the "
                   "floors follow from the arms and from A_sol >= 0.",
         "scenes_paired": len(paired),

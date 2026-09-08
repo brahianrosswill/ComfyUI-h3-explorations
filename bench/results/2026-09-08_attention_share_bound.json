@@ -3,6 +3,17 @@
   "derived": "2026-09-08",
   "produced_by": "bench/derive_attention_share.py",
   "source": "bench/results/2026-09-03_ladder_outputs.json",
+  "conditions": {
+    "canvas": "1344x768",
+    "length": 345,
+    "graph": [
+      "workflows/bench/h3_text_to_video_dense_stamped_api.json",
+      "workflows/bench/h3_text_to_video_stamped_api.json",
+      "workflows/h3_text_to_video_api.json",
+      "workflows/h3_text_to_video_pdd_api.json"
+    ]
+  },
+  "conditions_matter_because": "attention is O(S^2) in sequence length while the projections and the MLP are O(S), so attention's share rises with the clip. This figure describes the geometry above and no other; a shorter clip reads lower for a reason unrelated to the kernel. The weight format matters for the same reason in reverse: these are real renders of the shipped graph, so the Linears ran quantized as they do in production rather than in bf16.",
   "is_not": "a profile. Nothing here times attention directly; the floors follow from the arms and from A_sol >= 0.",
   "scenes_paired": 4,
   "scenes_skipped": [
