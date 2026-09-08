@@ -6,6 +6,15 @@ artifact.
 
 ## 0.99.51
 
+### Added
+
+- **Open experiment 28: the kitchen VAE kernels, declined rather than
+  deferred.** kijai's comfy-kitchen PR 167 and its ComfyUI half PR 16187
+  speed up the H3 video VAE. The owner's rule, stated 2026-09-08: a
+  performance change that lives only in an unmerged PR is not worth carrying.
+  The entry records the sizing that bounds the upside, the derivation command
+  for it, and the core-patch blocker, so the question is not re-derived.
+
 ### Changed
 
 - **The Sol kernel is rebased onto comfy-kitchen v0.2.33 and rebuilt.** torch

@@ -2028,3 +2028,43 @@ which the h3_config note names as the open risk.
 cubes and ours are 64-row runs in raster order on the shipped configuration
 (`morton=False` in every SOL dict), and their selection has no pooled
 correction; only the schedule transfers, as a prior.
+
+## 28. The kitchen VAE kernels: DECLINED 2026-09-08, not deferred
+
+Added and closed the same day. comfy-kitchen [PR 167](https://github.com/Comfy-Org/comfy-kitchen/pull/167)
+(kijai, opened 2026-09-08) adds fused encoder pad/norm, fp16-accumulate
+conv3d and GEMM, and an int8 residual epilogue for the H3 video VAE. It only
+does anything with its core half, ComfyUI
+[PR 16187](https://github.com/Comfy-Org/ComfyUI/pull/16187), which rewrites
+`comfy/ldm/minimax/vae.py` and `comfy/ops.py` to call those kernels.
+
+**The owner's rule, 2026-09-08: a performance change that lives only in an
+unmerged PR is not worth carrying.** It is a standing rule, not a verdict on
+these two. What we carry is what unblocks work upstream does not offer --
+`blk_cnt` is observability our own tooling hard-refuses to run without, which
+is why it is carried while this is not. A speedup can wait for a merge.
+
+**The sizing, so nobody re-derives it.** Across the 74 rendered arms in the
+`*_outputs.json` records that carry both fields, VAE decode is a mean 6.6% of
+render wall time, ranging 1.9% to 14.9%. Re-derive it rather than trusting
+this sentence; every input is in the repo:
+
+    python3 -c "import json,glob; a=[(x['decode_s'],x['total_s']) \
+      for f in glob.glob('bench/results/*_outputs.json') \
+      for x in json.load(open(f)).get('arms',[]) \
+      if x.get('decode_s') and x.get('total_s')]; \
+      print(len(a), sum(d for d,_ in a)/sum(t for _,t in a))"
+ Whatever the
+kernels do to decode, the render sees at most that share of it, and the
+sampler is the rest.
+
+**The other blocker, which is not cost.** Evaluating it at all means applying
+16187 to the ComfyUI checkout, and this repo's rule is that the checkout is
+stock (`CLAUDE.md`; `bench/check_vsa_core_patch.py` is the pattern for a
+tracked exception, where absence is legitimate and half-applied is the
+failure). So it is a deliberate core patch with a provenance record, not a
+`gh pr checkout`.
+
+**Reopens when** both PRs merge, or when decode's share of a shipped render
+grows enough to matter -- a longer canvas or a cheaper sampler moves that
+share without anyone touching the VAE.
