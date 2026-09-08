@@ -307,8 +307,15 @@ repro and the smallest input that still moves are in
 `bench/results/2026-09-08_token_aug_repro_shapes.json`; reproduction is
 non-monotone in head count and sequence length, so **a negative on one shape is
 not evidence of correctness** and candidates must be tested in fresh processes.
-What would settle the cause is arm 5 there, an out-parameter for the admitted
-count in the shape of `blk_cnt`.
+**The cause is measured** (arm 5, which needed no kernel change after all --
+the workspace and the count's offset are both reachable from Python): the
+admitted token count exceeds the budget by orders of magnitude on a few hundred
+centroid groups, the same groups every launch, and every group whose output
+moves is one that overflowed
+(`bench/results/2026-09-08_token_aug_admitted_count.json`). Above the budget the
+kernel's slot assignment is decided by atomic arrival order. Note the first
+proposed fix is retracted in the entry: the overshoot is far too large for the
+boundary-rounding explanation.
 
 **How much of an H3 render is attention: a floor, derived rather than
 profiled.** `bench/derive_attention_share.py` writes

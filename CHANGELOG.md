@@ -4,6 +4,45 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.54
+
+### Added
+
+- **The cause of the `token_aug` nondeterminism, measured.**
+  `bench/probe_token_aug_admitted_count.py` reads the token stage's admitted
+  count out of the installed build and finds it exceeds the budget by orders of
+  magnitude on a few hundred centroid groups, deterministically the same groups
+  every launch. Every group whose output moves is one that overflowed, and none
+  moves that never did, on two independently sized slices. That is the
+  condition under which the kernel's slot assignment stops being
+  order-independent, so the earlier fingerprint now has a cause behind it.
+
+- **Arm 5 needed no kernel build, contrary to what the entry assumed.** The
+  Python wrapper allocates the kernel's workspace and the plan already exports
+  the count's offset, so the same C entry point called with a workspace we keep
+  reads it out of the shipped build. No wheel swap, and the ComfyUI venv was
+  never touched. The probe carries a replication control, because it does not
+  call the public wrapper: with the lever off its output must be bitwise equal
+  to `sol_attn`'s.
+
+### Fixed
+
+- **A proposed fix is retracted before anything was built on it.** Aligning
+  pass 1's binning arithmetic with pass 2's threshold reconstruction would leak
+  a handful of boundary tokens; the measured overshoot is far larger, so that
+  was never the defect. The threshold derivation does not bound what pass 2
+  admits, and reproducibility is a separable question: the drop is decided by
+  atomic arrival order, and making that deterministic fixes the nondeterminism
+  whether or not the count is bounded.
+
+- **A false green in the probe's own verdict, caught before it was recorded.**
+  With no rows moving, "every moving group also overflowed" is vacuously true,
+  and the first run printed CONFIRMED on exactly that. It reports INCONCLUSIVE
+  when nothing moved. The reason nothing moved is worth carrying too: a
+  synchronising call in the launch loop suppresses the race, and an empty
+  caching allocator is enough to do it, because the underlying allocation
+  synchronises.
+
 ## 0.99.53
 
 ### Added

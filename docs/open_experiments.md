@@ -2220,8 +2220,37 @@ render.**
    one shape is not evidence of correctness, which is the trap for anyone
    re-testing this.
 
-5. **The one that would settle it: report the admitted count.** Added
-   2026-09-08, after arm 1 went as far as an outside observer can. The
+5. **The one that settled it: the admitted count. DONE 2026-09-08, and it
+   needed no kernel change.** The entry said this was a kernel build and a
+   wheel swap. It is not: the Python wrapper allocates the kernel's workspace
+   itself and the plan already exports a `tokCnt` offset, so calling the same C
+   entry point with a workspace we keep reads the count out of the installed
+   build. `bench/probe_token_aug_admitted_count.py` and
+   `bench/results/2026-09-08_token_aug_admitted_count.json`.
+   **The count exceeds the budget, by orders of magnitude rather than at the
+   margin**, on a few hundred of several thousand centroid groups. Which groups
+   overflow is identical across launches, as the mechanism predicts: what
+   overflows is a function of the input and only the winners inside are racy.
+   **And the correlation holds exactly**: every centroid group whose output
+   moved between launches is one that overflowed, with none moving that never
+   did, on two independently sized slices. That is what turns the earlier
+   fingerprint into a cause.
+   The kernel's own code anticipates the state -- `min(tok_cnt, n_tok)` appears
+   in both the sort and the exact stage -- so the docstring's "the set never
+   depends on scheduling" is not backed by the implementation it describes.
+   Two things the probe cannot do: name which tokens were dropped, since the
+   count is a count, and rule out some other way the kernel could vary. It
+   carries a replication control, because it does not call the public wrapper:
+   with `token_aug` off its output must be bitwise equal to `sol_attn`'s.
+   **The size of the overshoot refutes the first fix that was proposed for
+   it.** A float-association difference between how pass 1 bins a score and how
+   pass 2 reconstructs the threshold would leak tokens at the boundary, a
+   handful at most. It cannot produce a count this far above the budget, so the
+   threshold derivation does not bound what pass 2 admits at all, and aligning
+   those two expressions would not have fixed the defect. Whatever the
+   derivation's flaw is, it is a separate question from reproducibility: the
+   drop is decided by the order atomics arrive in, and making that deterministic
+   fixes the nondeterminism whether or not the count is ever bounded. The
    mechanism says a window is unstable exactly when the count clearing the
    threshold exceeds the budget, and that count is a kernel-internal array the
    caller never sees. An optional out-parameter for it is the same shape as the
@@ -2237,8 +2266,7 @@ render.**
    one.
 
 **Decision each would change.** 4 landing gives the block-policy step a reason
-to trust or distrust token routing per block; 5 gives it a cause or kills the
-mechanism. 2 and 3 were eliminations, both spent, and neither was expected to
+to trust or distrust token routing per block; 5 gave it the cause. 2 and 3 were eliminations, both spent, and neither was expected to
 be the answer.
 
 **Stopping condition, as met.** This entry said it stops if arm 1 showed the
