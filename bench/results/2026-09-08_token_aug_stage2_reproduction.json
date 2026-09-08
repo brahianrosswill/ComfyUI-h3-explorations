@@ -58,10 +58,14 @@
     "reading": "the 2026-09-04 direction holds: better on blocks 0, 24, 32, 40 and worse on 49. The smallest per-cell effect is far larger than the largest run-to-run delta, so the finding is not noise."
   },
   "new_and_worth_upstream": {
-    "observation": "the nondeterminism is CONCENTRATED. Blocks 0, 24, 32 and 40 reproduce bitwise across runs; block 49 does not, at any step.",
-    "why_it_matters": "block 49 is also the only block where token routing makes Sol WORSE. The one block that is not reproducible is the one block the lever hurts, which is a mechanism hint rather than a coincidence.",
-    "contradicts": "comfy_kitchen's own sol_attn docstring says token selection uses 'whole histogram bins only, so the set never depends on scheduling'. Block 49 falsifies that as written.",
-    "not_established": "the cause. This says the outputs vary run to run on one block; it does not say why, and a tie in the histogram selection is a hypothesis rather than a finding."
+    "observation": "the nondeterminism is CONCENTRATED and it belongs to the token_aug code path. Blocks 0, 24, 32 and 40 reproduce bitwise across runs with token_aug on; block 49 does not, at any step. The PLAIN arms reproduce bitwise on all five blocks including 49, so this is not block 49's data being generally unstable, and not ordinary reduction noise in the surrounding kernel: the same kernel on the same bytes is deterministic without token_aug and is not with it.",
+    "why_it_matters": "block 49 is also the only block where token routing makes Sol worse. One block is not a mechanism, and the two facts may be unrelated, but they are worth carrying together until something separates them.",
+    "not_established": "the cause. This says the outputs vary run to run on one block; it does not say why, and a tie in the histogram selection is a hypothesis rather than a finding.",
+    "what_this_does_NOT_say": [
+      "that the SELECTION SET varies. Only outputs were compared. An output can move while the set is fixed, because accumulation order over the exactly-attended tokens is not associative in floating point. comfy_kitchen's docstring claims the set never depends on scheduling; nothing here tests the set, so nothing here contradicts it. An earlier version of this record said it did.",
+      "that this is a defect. Nondeterminism at this magnitude in a reduction-heavy int8 kernel may be ordinary and intended. Calling it a fault would need a stated determinism guarantee to violate, and the only nearby claim is about the set rather than the output."
+    ],
+    "what_would_separate_them": "re-run one block-49 cell many times on identical inputs. Outputs clustering into a few discrete groups points at a selection flip; outputs varying continuously at reduction scale points at accumulation order. Cheap, and it decides which claim is even available."
   },
   "not_established": [
     "budgets 128 and 256: only 64 was run here, where the 2026-09-04 record carried all three.",
