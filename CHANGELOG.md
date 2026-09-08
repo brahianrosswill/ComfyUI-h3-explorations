@@ -8,6 +8,16 @@ artifact.
 
 ### Added
 
+- **Open experiment 29: what makes token routing's selection unstable on one
+  block.** Four arms, cheapest first, all offline on captured activations and
+  none needing a render, each with what it would settle. Written with the two
+  eliminated causes in front of them, because the value of the entry is
+  stopping the next reader proposing either again: centroid fidelity is dead on
+  our own morton numbers, and the high-norm-row hotspot is dead on measurement.
+  Carries its own stop condition, including that "not reproducible on one
+  block" is by itself sufficient reason not to ship the lever, without ever
+  learning why.
+
 - **Stage 2 of the token routing plan passes, and found the plan's own bar
   unachievable.** Every aggregate not involving `token_aug` is bit-identical
   between kijai's graded build and ours, which is the control the stage exists

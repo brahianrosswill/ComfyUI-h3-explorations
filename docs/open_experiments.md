@@ -1,6 +1,6 @@
 # Open experiments
 
-Last updated: 2026-09-03
+Last updated: 2026-09-08
 
 > **Several of these are now scheduled rather than parked.** The working plan
 > and the render scenes that would settle the quality-blocked ones live in
@@ -2068,3 +2068,77 @@ failure). So it is a deliberate core patch with a provenance record, not a
 **Reopens when** both PRs merge, or when decode's share of a shipped render
 grows enough to matter -- a longer canvas or a cheaper sampler moves that
 share without anyone touching the VAE.
+
+## 29. What makes token routing's selection unstable, on one block
+
+Added 2026-09-08, and it is here rather than closed because two obvious causes
+are already dead and the third guess should not be made without a measurement.
+
+**What is established.** With `token_aug` on, one captured DiT block's output
+differs between launches on bit-identical inputs, while the plain arms and the
+other captured blocks move no element at all over repeated identical calls.
+It is not accumulation order: the deltas are many times the output's own mean
+magnitude on a small fraction of rows, and a reordered sum cannot do that.
+`bench/probe_token_aug_determinism.py` and
+`bench/results/2026-09-08_token_aug_determinism_shape.json` own it.
+
+**What is NOT established, and is the whole question.** What varies. The
+admitted token set is not observable from outside the kernel, so the record
+rules out the benign explanation and identifies nothing.
+
+**Two causes are eliminated, both recorded in that file.** Centroid fidelity,
+because token routing selects by the block centroid and the 2026-08-15 morton
+work measured that fidelity per block -- but of the two depths sampled the
+unstable block has the BETTER centroids under both curves, which is the
+opposite of what the story needs. And the high-norm-row hotspot that survived
+the withdrawal of the "4x the error" claim in `evidence.md`, because none of
+the rows that move are in the top rows by norm and their median norm sits
+below everyone else's.
+
+**Why it matters.** Not for renders today: `token_aug` ships off in every
+graph, so nothing shipped can be affected. It matters because the block-policy
+step wants token routing as a per-block candidate, and a lever whose output
+is not reproducible cannot be graded blind against anything -- two clips from
+the same seed and settings would differ. It also matters to the sister
+project, whose kernel work is ranked against shares measured on this path.
+
+**The arms, cheapest first. All offline on captured activations, none needs a
+render.**
+
+1. **Score separation at the selection boundary.** Per query block, the gap
+   between the last admitted token's score and the first rejected one. The
+   kernel's own docstring says a flat score profile may admit none, so the
+   selection is documented as sensitive to separation. If the unstable block's
+   gaps sit near zero where a stable block's do not, that is the mechanism,
+   and it explains why fidelity failed to predict it: fidelity measures how
+   well a mean stands in for its members, separation measures distance from a
+   threshold, and those are different properties of one distribution. **Do
+   this first.**
+
+2. **The other three captured blocks.** Only two of the five have been tested
+   for stability. If any other is unstable, "the last block is special" dies
+   immediately; if none is, that idea survives a round without being
+   confirmed. Minutes, same probe.
+
+3. **Budgets 128 and 256.** Stage 2 ran only 64 where the 2026-09-04 grade
+   carried all three. Instability scaling with budget says something about the
+   admitted set; flat says something else. One flag on the same probe.
+
+4. **The morton arm, and note what it is now for.** Reordering into compact
+   blocks and re-running the probe. This is no longer a test of the centroid
+   story, which is dead -- it is a test of `morton.md`'s **link 6**, "Morton's
+   canvas dependence matters for output", untested since August because the
+   fidelity metric could only ever measure an input quantity. Selection
+   stability is a downstream observable that did not exist before today. Needs
+   the permutation applied to captured q/k/v ahead of the kernel call, so it
+   is more than a flag flip.
+
+**Decision each would change.** 1 or 4 landing gives the block-policy step a
+reason to trust or distrust token routing per block. 2 and 3 are eliminations:
+they narrow what a cause can be, and neither is expected to be the answer.
+
+**Stops if** arm 1 shows the unstable block's separation is unremarkable. Then
+the cause is not in the selection's own margin, nothing cheap remains, and the
+honest move is to leave `token_aug` off and record that its output is not
+reproducible on at least one block -- which is by itself sufficient reason not
+to ship it, without ever learning why.
