@@ -98,6 +98,25 @@ state is correct is worse than no check. The `shown red` column records which
 checks have a construction; **the tallies live in the table, not in this
 prose.**
 
+### A mutation that perturbs its own oracle proves nothing
+
+**From the sage fork, 2026-09-08, and worth having because their first red
+proof passed and the passing was meaningless.** They were proving a check that
+reads a checkout's VCS state could fail. The mutation was to edit the source
+file that sets the flag -- which also modifies a tracked file, so the thing
+being tested and the thing it reads moved together and the mutation concealed
+itself. A real red needed a detached worktree, the mutation committed inside it
+so the tree was tracked-clean, then an untracked file added there.
+
+The general shape: when a check's subject and its oracle share a substrate,
+mutating the subject can move the oracle by the same amount and the check stays
+green for the wrong reason. Our own controls are exposed to it wherever a check
+reads the working tree, the installed package, or a generated artifact that the
+mutation also regenerates. **A control that cannot distinguish "the check
+works" from "the mutation was invisible to it" is not a control**, and the
+tell is that it passed on the first try without you having to think about
+isolation.
+
 ### A metric that ranks two arms is a claim about the metric
 
 **Adopted 2026-08-31, after two wrong conclusions were published in

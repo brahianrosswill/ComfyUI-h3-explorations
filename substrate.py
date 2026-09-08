@@ -100,11 +100,26 @@ def _run(cmd, timeout=15):
 
 
 def git_head(path):
-    """Short HEAD plus a dirty marker. Same contract as provenance.py's."""
+    """Short HEAD plus a dirty marker, where dirty means TRACKED files differ.
+
+    **This said "same contract as provenance.py's", which is backwards now**:
+    `provenance.py` imports this function and adapts its failure sentinel, so
+    there is one implementation and it is here. Correcting the direction
+    matters because a reader chasing the contract would have gone to a file
+    that no longer defines it.
+    """
     head = _run(["git", "-C", str(path), "rev-parse", "--short", "HEAD"], 5)
     if head is None:
         return None
-    dirty = _run(["git", "-C", str(path), "status", "--porcelain"], 5)
+    # `--untracked-files=no` since 2026-09-08: a scratch file sitting in a
+    # checkout cannot change a compiled kernel, and stamping that as dirty
+    # sends a reader hunting for source edits that are not there. It did
+    # exactly that to the sage fork's tree, which reads dirty to us on one
+    # untracked script with every tracked file clean. If untracked files are
+    # ever wanted in the signal they need their own field, because "dirty"
+    # beside a build is read as uncommitted SOURCE.
+    dirty = _run(["git", "-C", str(path), "status", "--porcelain",
+                  "--untracked-files=no"], 5)
     return head + ("-dirty" if dirty else "")
 
 
@@ -304,6 +319,26 @@ def _package(name, probe_attr=None, with_git=False):
     rec = {"state": "present", "version": ver}
     if probe_attr is not None:
         rec["has_" + probe_attr] = hasattr(mod, probe_attr)
+    # A package that identifies its OWN build outranks anything we derive.
+    # sageattention grew `build_info()` on 2026-09-08 after our stamp recorded
+    # it as bare "2.2.0" through a rebuild that changed compiler, language
+    # standard and framework headers -- a constant cannot corroborate, and in
+    # the one record where it mattered it was the only evidence in play. Its
+    # keys are a contract with a test on their side (version, revision, dirty,
+    # describe; revision a 12-char sha; dirty computed tracked-files-only).
+    #
+    # Kept BESIDE `checkout`, not instead of it, because they answer different
+    # questions: this describes the build that actually loaded into memory,
+    # `checkout` describes the source tree on disk at stamp time. Agreement is
+    # the normal case and a disagreement means the tree moved after import,
+    # which is worth seeing rather than resolving silently in favour of one.
+    info = getattr(mod, "build_info", None)
+    if callable(info):
+        try:
+            rec["build"] = info()
+        except Exception as exc:
+            rec["build"] = {"state": "unobservable",
+                            "why": f"build_info() raised: {type(exc).__name__}: {exc}"}
     if with_git:
         # Routed through _checkout for the same reason builds() is: an
         # installed package's source tree may or may not be a checkout, and

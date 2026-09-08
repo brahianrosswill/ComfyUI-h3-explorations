@@ -8,6 +8,23 @@ artifact.
 
 ### Fixed
 
+- **The substrate stamp identifies which sage build ran.** It recorded
+  `sageattention: "2.2.0"`, a constant that survived a rebuild under a changed
+  compiler, language standard and framework headers, while identifying
+  comfy-kitchen exactly in the same block. On the one record where the
+  distinction mattered, the 2026-09-03 ladder, the stamp could not corroborate
+  anything because an identifier that cannot vary cannot disagree. It now takes
+  the package's own `build_info()` where a package offers one, which describes
+  the build that LOADED rather than the checkout on disk, kept beside the
+  checkout reading so a disagreement between them stays visible.
+
+- `substrate.git_head` counts only tracked files as dirty
+  (`--untracked-files=no`). A scratch file in a checkout cannot change a
+  compiled kernel, and stamping it as dirty sends a reader hunting source edits
+  that do not exist, which it was doing to the sage fork's tree. Its docstring
+  also claimed provenance.py owned the contract; provenance.py imports this
+  function, so the direction is corrected.
+
 - **`docs/eval_comparison.md` now names which artifact carries grades**, because
   a peer session read the judged jsonl looking for them, got `n_scored 0` off
   its clips tab, and nearly reported that the sage-versus-dense comparison had
