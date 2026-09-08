@@ -8,6 +8,14 @@ artifact.
 
 ### Fixed
 
+- **`docs/eval_comparison.md` now names which artifact carries grades**, because
+  a peer session read the judged jsonl looking for them, got `n_scored 0` off
+  its clips tab, and nearly reported that the sage-versus-dense comparison had
+  never been graded. It had been, and it answered the question being asked. The
+  judged jsonl is the render record, arms and timings and the judge's notes; the
+  verdict json is the grades. An empty result from the wrong artifact is
+  indistinguishable from a real absence.
+
 - **`h3_trace.py` stopped claiming a block type it cannot know.** The one
   `record` call site passed `module="dit"`, while the forward it lives in
   replaces `Attention.forward` on a class that both `DiTBlock` and

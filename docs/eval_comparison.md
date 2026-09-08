@@ -437,6 +437,17 @@ file that does not cover the batch, naming what is missing, unless `--partial`;
 refuses a key whose session name is not the scores' session; and refuses to
 write an absolute path into the record.
 
+**That file is the only place grades live, and the mistake is worth naming
+because someone made it on 2026-09-08.** A peer session looking for the
+sage-versus-dense result opened `bench/results/<date>_<session>_arms_judged.jsonl`
+instead, which is the RENDER record: arms, timings and the judge's free-text
+notes, with no scores in it. Its clips tab reads `n_scored 0`, and they came
+within one step of reporting that the comparison had been staged and never
+graded, when it existed and answered the question being asked. Grades are in
+the verdict json; the judged jsonl is what was rendered and what the judge
+said, not what the judge decided. An empty result from the wrong artifact
+looks exactly like a real absence.
+
 A contest tally is a preference over distributions, not a per-pair verdict, and
 the record carries that reading in its own field. Blinding controls who knows
 which arm; it does not make two samples comparable.
