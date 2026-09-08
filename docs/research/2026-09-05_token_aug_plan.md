@@ -98,6 +98,10 @@ the one card touch in this stage; run it with the server down.
 count's semantics, or upstream's tests fail on the merged tree for a reason
 the rebase introduced.
 
+> The session that ran stages 1, 2 and 3 has a postmortem:
+> `2026-09-08_session_kernel-rebase-and-token-routing.md` under
+> `internal/postmortems/` (gitignored, so owner's checkout only).
+
 ## Stage 2: reproduce the grade -- DONE 2026-09-08, and the bar was wrong
 
 **Record:** `bench/results/2026-09-08_token_aug_stage2_reproduction.json`.
