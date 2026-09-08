@@ -367,6 +367,7 @@
         false,
         "3d",
         false,
+        "",
         ""
       ],
       "title": "Patch Sol-Attn (PDD recipe - end_percent 0.6, min_tokens 12288; h3_config.SOL_PDD_CUDA)"

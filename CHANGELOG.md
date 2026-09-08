@@ -6,6 +6,31 @@ artifact.
 
 ## 0.99.51
 
+### Added
+
+- **`token_aug_blocks` on `MiniMaxH3SolAttn`: per-block token routing, shipped
+  off.** comfy-kitchen #156 landed the kernel argument in 0.2.33 and nothing
+  here could reach it. The knob takes `tau_profile`'s grammar
+  (`0,24,32=64`), validates the budget against the kernel's admissible set at
+  PATCH time rather than mid-render, and is empty in both shared configs.
+
+  Per block and not global because the grade is per block and mixed: token
+  routing lowered Sol's error against exact attention on four of five captured
+  blocks at every captured step and raised it on one. A global switch can only
+  express the configuration that grade says is wrong. No render has been judged
+  with it on, which is why it ships off; the token-routing plan's stage 5 is
+  the blind pair that would change that.
+
+  Two controls before trusting it: 64 changes the kernel's output, so the value
+  arrives, and 0 is byte-identical to omitting the argument, so the shipped
+  default moves nothing already measured. Every refusal fires, and the shared
+  grammar left `tau_profile` unregressed.
+
+  The generator carries it in `SOL_TAIL_WIDGETS`, last, because ComfyUI lays
+  optional inputs out after required ones whatever the schema order. All 188
+  graphs regenerated and validated against a live server. `_sol_widgets`
+  refused a short list first, which is that guard doing its job.
+
 ### Fixed
 
 - **The substrate stamp identifies which sage build ran.** It recorded

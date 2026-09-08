@@ -249,7 +249,8 @@
       "morton_curve": "3d",
       "pooled_tail": true,
       "verbose": false,
-      "dense_blocks": ""
+      "dense_blocks": "",
+      "token_aug_blocks": ""
     }
   },
   "23": {

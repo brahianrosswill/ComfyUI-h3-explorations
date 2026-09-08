@@ -126,7 +126,26 @@ counts.
 **Stops if** any aggregate moves. Then the rebase changed numerics, and
 Stage 1 is reopened before anything else; nothing is installed.
 
-## Stage 3: the node knob (node code, restart before it counts)
+## Stage 3: the node knob -- DONE 2026-09-08
+
+**Built as `token_aug_blocks`**, a per-block string in `tau_profile`'s grammar,
+empty and off in both shared configs, budget validated at patch time against
+the kernel's admissible set. Per block rather than global because the stage 1
+grade is per block; a global switch could only express the configuration that
+grade says is wrong. The generator carries it in `SOL_TAIL_WIDGETS` and all
+188 graphs regenerated and validated against a live server.
+
+Two controls run before it was trusted: `token_aug=64` changes the kernel's
+output, so the value reaches it; and `token_aug=0` is byte-identical to
+omitting the argument, so the shipped default moves nothing previously
+measured. Every refusal fires (a non-multiple, an over-range budget, a
+non-integer, a missing `=`), and `tau_profile` is unregressed by the shared
+grammar the two parsers now use.
+
+What is NOT done: nothing has rendered with it on. Stage 4 picks the block set
+and stage 5 is the blind pair.
+
+## Stage 3 as planned (node code, restart before it counts)
 
 **Do.** `MiniMaxH3SolAttn` gains a per-block spec input for token routing,
 a string in the `block_spec.py` grammar `dense_blocks` and `tau_profile`

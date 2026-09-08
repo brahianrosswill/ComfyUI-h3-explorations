@@ -136,13 +136,18 @@ _seen = set()
 _BLOCK_INDEX_HOOKED = set()
 
 
-def parse_tau_profile(spec, count):
-    """Parse "0-30=2.0; 39-42=0.9" into {block: tau}.
+def _parse_block_profile(spec, count, name, cast, example):
+    """Parse "0-30=X; 39-42=Y" into {block: value}, for one value kind.
 
     Entries are separated by ';' or newlines, so a multiline text node works as
     well as a single line, and '#' starts a comment. Blocks not listed keep the
-    node's base tau; the block side takes dense_blocks syntax, so "0-2,47=1.8"
+    node's base value; the block side takes dense_blocks syntax, so "0-2,47=X"
     is valid. Later entries win where they overlap.
+
+    `cast` both converts and validates, so a value the kernel would refuse is
+    refused HERE. That placement is the whole point: every caller of this runs
+    at patch time, and a raise from inside the override is swallowed by
+    `make_override` and becomes a silent full-dense render.
     """
     profile = {}
     for entry in re.split(r"[;\n]", str(spec)):
@@ -151,14 +156,55 @@ def parse_tau_profile(spec, count):
             continue
         blocks, sep, value = entry.partition("=")
         if not sep:
-            raise ValueError(f"tau_profile entry {entry!r} needs '=', e.g. '39-42=0.9'")
-        try:
-            level = float(value)
-        except ValueError:
-            raise ValueError(f"tau_profile entry {entry!r} has a non-numeric tau")
+            raise ValueError(f"{name} entry {entry!r} needs '=', e.g. {example!r}")
+        level = cast(value.strip(), entry)
         for block in parse_blocks(blocks, count):
             profile[block] = level
     return profile
+
+
+def parse_tau_profile(spec, count):
+    """Parse "0-30=2.0; 39-42=0.9" into {block: tau}."""
+    def _tau(value, entry):
+        try:
+            return float(value)
+        except ValueError:
+            raise ValueError(f"tau_profile entry {entry!r} has a non-numeric tau")
+    return _parse_block_profile(spec, count, "tau_profile", _tau, "39-42=0.9")
+
+
+# The kernel's own admissible set, from `comfy_kitchen.sol_attn`'s docstring:
+# zero, or a multiple of 64 up to 256. Refused here rather than at the call,
+# for the reason `_parse_block_profile` gives.
+TOKEN_AUG_BUDGETS = (0, 64, 128, 192, 256)
+
+
+def parse_token_aug_profile(spec, count):
+    """Parse "0,24,32=64" into {block: token_aug budget}.
+
+    Per block and not global BECAUSE the grade says so: on the 2026-09-04
+    capture, token routing lowered Sol's error against exact attention on four
+    of five captured blocks at every step and RAISED it on block 49 at every
+    step, so the one configuration measured to be wrong is the one a global
+    switch would express. `docs/research/2026-09-04_sol_token_aug_grade.md`
+    owns the numbers.
+
+    The budget was measured inert across 64/128/256 in both accuracy and
+    isolated kernel time, so 64 is the value to use if any: it buys what the
+    larger ones buy for the smallest buffer. Turning it on at all is not free.
+    """
+    def _budget(value, entry):
+        try:
+            budget = int(value)
+        except ValueError:
+            raise ValueError(f"token_aug_blocks entry {entry!r} has a non-integer budget")
+        if budget not in TOKEN_AUG_BUDGETS:
+            raise ValueError(
+                f"token_aug_blocks entry {entry!r}: budget {budget} is not one of "
+                f"{list(TOKEN_AUG_BUDGETS)}; the kernel takes zero or a multiple "
+                f"of 64 up to 256")
+        return budget
+    return _parse_block_profile(spec, count, "token_aug_blocks", _budget, "0,24,32=64")
 
 
 def _install_block_index(model):
@@ -620,7 +666,7 @@ def _bthd(q, k, v, heads, skip_reshape):
 
 def _run(q, k, v, heads, skip_reshape, skip_output_reshape, scale,
          tau, min_tokens, verbose, sink_blocks=(0, 0), sink_q=(0, 0),
-         topk_ratio=0.0, tail=True, blk_cnt=None):
+         topk_ratio=0.0, tail=True, blk_cnt=None, token_aug=0):
     """Returns the attention output, or None if this call should stay dense.
 
     `blk_cnt`, when given, is an int32 (B, H, ceil(T/64)) buffer the kernel
@@ -645,15 +691,23 @@ def _run(q, k, v, heads, skip_reshape, skip_output_reshape, scale,
     # `key_bias`, `block_len` and `coarse_gate` are left at their defaults --
     # None, None and None. The module docstring says why each is unreachable
     # or inert on this path rather than merely unused.
+    #
+    # `token_aug` is forwarded ONLY when non-zero, for the same reason
+    # `blk_cnt` is forwarded only when not None: zero is the kernel's own
+    # default and omitting it keeps the call byte-identical to what every
+    # measurement in this repo was taken on.
     extra = {} if blk_cnt is None else {"blk_cnt": blk_cnt}
+    if token_aug:
+        extra["token_aug"] = int(token_aug)
     out = _ck.sol_attn(qs, ks, vs, tau=tau, scale=scale,
                        sink_blocks=list(sink_blocks), sink_q=list(sink_q),
                        topk_ratio=topk_ratio, tail=tail, **extra)      # BTHD
     _stats["sparse"] += 1
     if verbose:
         sel = (f"topk={topk_ratio:.3f}" if topk_ratio else f"tau={tau}")
-        _log_once((tuple(qs.shape), "sparse", tail),
+        _log_once((tuple(qs.shape), "sparse", tail, int(token_aug)),
                   f"sparse {tuple(qs.shape)} {sel} cuda-int8"
+                  + (f" token_aug={int(token_aug)}" if token_aug else "")
                   + ("" if tail else " NO POOLED TAIL (SLA/VSA fine stage)"))
 
     if skip_output_reshape:
@@ -719,7 +773,8 @@ def _sink_blocks(transformer_options, tokens, mode):
 def make_override(tau=1.0, min_tokens=4096,
                   sigma_start=None, sigma_end=None, verbose=False,
                   sink_conditioning="exact_kv", dense_blocks=frozenset(),
-                  tau_profile=None, previous=None, topk_ratio=0.0, tail=True,
+                  tau_profile=None, token_aug_profile=None,
+                  previous=None, topk_ratio=0.0, tail=True,
                   settings=None):
     """Build an optimized_attention_override callable.
 
@@ -746,9 +801,12 @@ def make_override(tau=1.0, min_tokens=4096,
         # canonical graph (no dense_blocks, no profile) would have had no
         # block identity at all.
         block = None
-        if dense_blocks or tau_profile or observing:
+        if dense_blocks or tau_profile or token_aug_profile or observing:
             block = (options or {}).get("sol_block")
         block_tau = tau_profile.get(block, tau) if tau_profile else tau
+        # Absent from the profile means zero, which is the kernel's default and
+        # the shipped state: token routing is opt-in per block, never global.
+        block_aug = token_aug_profile.get(block, 0) if token_aug_profile else 0
         sink, sink_q = _sink_blocks(options, tokens, sink_conditioning)
         counts = None
 
@@ -843,7 +901,8 @@ def make_override(tau=1.0, min_tokens=4096,
         try:
             out = _run(q, k, v, heads, skip_reshape, skip_output_reshape,
                        kwargs.get("scale", None), block_tau, min_tokens, verbose,
-                       sink, sink_q, topk_ratio, tail, blk_cnt=counts)
+                       sink, sink_q, topk_ratio, tail, blk_cnt=counts,
+                       token_aug=block_aug)
         except Exception as exc:
             _stats["errors"] += 1
             _log_kernel_failure(exc)
@@ -995,7 +1054,8 @@ def _install_compose_hooks(model, attn_attr):
 
 def _apply_patch(model, *, tau, start_percent, end_percent, min_tokens,
                  sink_conditioning, morton, morton_curve, dense_blocks,
-                 verbose, tau_profile, topk_ratio=0.0, tail=True):
+                 verbose, tau_profile, token_aug_blocks="",
+                 topk_ratio=0.0, tail=True):
     # Before anything else: fail here if the installed kernel cannot take what
     # this node passes. Patch time is the only place that can be said -- see
     # `_require_kernel`.
@@ -1018,12 +1078,24 @@ def _apply_patch(model, *, tau, start_percent, end_percent, min_tokens,
     count = len(blocks) if blocks is not None else 0
     dense = parse_blocks(dense_blocks, count)
     profile = parse_tau_profile(tau_profile or "", count)
+    aug = parse_token_aug_profile(token_aug_blocks or "", count)
+    # A build without `token_aug` would take the keyword only to fail inside
+    # the override, where the failure becomes a silent dense render. Asserted
+    # here, and only when something actually asks for it, so a stock wheel
+    # keeps rendering every graph that leaves the profile empty.
+    if aug:
+        import inspect
+        if "token_aug" not in inspect.signature(_ck.sol_attn).parameters:
+            raise RuntimeError(
+                "token_aug_blocks is set, but the installed comfy_kitchen.sol_attn "
+                "has no token_aug argument. It landed in Comfy-Org/comfy-kitchen "
+                "#156, released in 0.2.33; upgrade, or clear the field.")
     observing = sol_observe.enabled()
-    if (dense or profile or observing) and not _install_block_index(diffusion_model):
+    if (dense or profile or aug or observing) and not _install_block_index(diffusion_model):
         logging.warning(
-            f"[h3-sol] dense_blocks/tau_profile ignored: "
+            f"[h3-sol] dense_blocks/tau_profile/token_aug_blocks ignored: "
             f"{type(diffusion_model).__name__} has no .blocks list to index")
-        dense, profile = frozenset(), {}
+        dense, profile, aug = frozenset(), {}, {}
         if observing:
             logging.warning("[h3-sol] route observation will carry no block identity "
                             "on this model")
@@ -1067,6 +1139,7 @@ def _apply_patch(model, *, tau, start_percent, end_percent, min_tokens,
         "sigma_start": sigma_start, "sigma_end": sigma_end,
         "dense_blocks": sorted(int(b) for b in dense),
         "tau_profile": {str(k): float(v) for k, v in sorted(profile.items())},
+        "token_aug_blocks": {str(k): int(v) for k, v in sorted(aug.items())},
         "morton": bool(reorder), "morton_curve": morton_curve if reorder else None,
         "n_blocks": count, "chained_previous": previous is not None,
     }
@@ -1084,7 +1157,8 @@ def _apply_patch(model, *, tau, start_percent, end_percent, min_tokens,
         make_override(tau=tau, min_tokens=min_tokens,
                       sigma_start=sigma_start, sigma_end=sigma_end,
                       verbose=verbose, sink_conditioning=sink_conditioning,
-                      dense_blocks=dense, tau_profile=profile, previous=previous,
+                      dense_blocks=dense, tau_profile=profile,
+                      token_aug_profile=aug, previous=previous,
                       topk_ratio=topk_ratio, tail=tail, settings=settings)
     if reorder:
         m.model_options["transformer_options"]["sol_morton"] = True
@@ -1162,6 +1236,21 @@ class MiniMaxH3SolAttn(io.ComfyNode):
                                        "The shipped graphs lower it per step count "
                                        "so the LAST step stays dense; a graph whose "
                                        "steps you edit by hand will not."),
+                io.String.Input("token_aug_blocks", optional=True, default="",
+                                tooltip="Per-block token routing, OFF everywhere "
+                                        "when empty, which is what ships. "
+                                        "'blocks=budget' entries separated by ';' "
+                                        "or newlines, e.g. '0,24,32=64'. Budget is "
+                                        "0, 64, 128, 192 or 256; anything else is "
+                                        "refused when the node runs, not mid-render. "
+                                        "Per block and not global because the grade "
+                                        "is per block: on the captured cells it "
+                                        "lowered Sol's error on four blocks at every "
+                                        "step and RAISED it on one. The budget "
+                                        "measured inert across 64/128/256 in both "
+                                        "accuracy and isolated kernel time, so use "
+                                        "64 if you use any. Switching it on is not "
+                                        "free even though widening it is."),
                 io.Int.Input("min_tokens", default=12288, min=0, max=1 << 20, step=512,
                              tooltip="Sequences shorter than this stay dense. "
                                      "H3's two token-refiner attention calls run on "
@@ -1234,7 +1323,7 @@ class MiniMaxH3SolAttn(io.ComfyNode):
     @classmethod
     def execute(cls, model, selection, start_percent, end_percent, min_tokens,
                 sink_conditioning, pooled_tail, morton, morton_curve, verbose,
-                dense_blocks) -> io.NodeOutput:
+                dense_blocks, token_aug_blocks="") -> io.NodeOutput:
         topk = selection["selection"] == "top-k (SLA)"
         return _apply_patch(
             model, tau=selection.get("tau", 1.0),
@@ -1242,5 +1331,6 @@ class MiniMaxH3SolAttn(io.ComfyNode):
             min_tokens=min_tokens, sink_conditioning=sink_conditioning,
             morton=morton, morton_curve=morton_curve, dense_blocks=dense_blocks,
             verbose=verbose, tau_profile=selection.get("tau_profile"),
+            token_aug_blocks=token_aug_blocks,
             topk_ratio=selection["keep_percent"] / 100.0 if topk else 0.0,
             tail=pooled_tail)

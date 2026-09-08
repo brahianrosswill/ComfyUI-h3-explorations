@@ -730,6 +730,29 @@ SOL_RECOMMENDED_CUDA = dict(
     # route capture deliberately runs with this empty so blocks 0-2 and 32 are
     # observable instead of bypassed.
     dense_blocks="",
+    # **Token routing OFF everywhere, and empty is how the node spells that.**
+    # Comfy-Org/comfy-kitchen #156, released in 0.2.33, kept the same tree as
+    # the head this repo graded, so the 2026-09-04 grade transferred without
+    # being redone (`bench/results/2026-09-08_kitchen_0233_blk_cnt_rebase.json`).
+    #
+    # It ships off, and it is per block rather than global, because the grade
+    # is per block and mixed: on the captured Base16 cells token routing
+    # lowered Sol's error against exact attention on four of the five captured
+    # blocks at every captured step, and RAISED it on block 49 at every step.
+    # `docs/research/2026-09-04_sol_token_aug_grade.md` owns the numbers. A
+    # global switch can only express the configuration that grade says is
+    # wrong.
+    #
+    # **No render has ever been judged with it on.** The whole case for it is
+    # offline error on one capture, which is not the standard anything ships
+    # on here; `docs/research/2026-09-05_token_aug_plan.md` stage 5 is the
+    # blind pair that would change that.
+    #
+    # If it is ever turned on, 64 is the budget: 64, 128 and 256 measured
+    # indistinguishable in accuracy AND in isolated kernel time
+    # (`bench/results/2026-09-04_sol_exact_random_1128df6_token_aug_timing.json`),
+    # so the wider budgets buy nothing while switching it on at all costs.
+    token_aug_blocks="",
 )
 
 
@@ -837,6 +860,8 @@ SOL_CUDA_DEFAULTS = dict(
     sink_conditioning="exact_kv_and_rows", morton=False,
     morton_curve="3d", pooled_tail=True,
     verbose=False, dense_blocks="",
+    # Token routing off everywhere. `SOL_RECOMMENDED_CUDA` above owns why.
+    token_aug_blocks="",
 )
 
 # Our own node. `auto`, which resolves to fp8_cuda++ on sm89.

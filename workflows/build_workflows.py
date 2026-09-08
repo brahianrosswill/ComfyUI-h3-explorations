@@ -220,9 +220,16 @@ SOL_SELECTION_INPUTS = {
 }
 # Widgets after the selection group, in the node's declared input order
 # (`model` is a socket, not a widget).
+# `token_aug_blocks` is LAST, and that position is derived rather than chosen:
+# it is declared `optional=True`, and ComfyUI lays optional inputs out after
+# every required one whatever order the schema declares them in. Read it back
+# from /object_info if this ever looks wrong -- a widget list that disagrees
+# with the frontend's order silently assigns values to the wrong knobs, which
+# no API-graph validator can see because API graphs carry no widget list.
 SOL_TAIL_WIDGETS = ("start_percent", "end_percent", "min_tokens",
                     "sink_conditioning", "pooled_tail", "morton",
-                    "morton_curve", "verbose", "dense_blocks")
+                    "morton_curve", "verbose", "dense_blocks",
+                    "token_aug_blocks")
 
 
 def sol_widget_order(sol):
