@@ -89,7 +89,9 @@ Items from the `evalman` render lane:
   --controls` covers the underscored rung, the declared scene and the
   unchanged plain labels. `bench/measure_clip_loudness.py` took the same fix,
   prophylactically: its 2026-09-04 record never included the tau-raised arm,
-  so nothing measured was wrong.
+  so nothing measured was wrong -- but the frontier table now carries a row
+  whose loudness has no entry. Closes when that arm has a loudness row or the
+  record says why it is absent.
 - One pair, no card time: the all-rows sink mode's armed subway clip
   against the 2026-09-03 subway Sol clip
   (`bench/results/2026-09-04_probe_allrows_vs_shipped_pixels.json` says the
