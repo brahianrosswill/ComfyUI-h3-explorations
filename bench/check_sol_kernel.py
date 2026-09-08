@@ -10,17 +10,25 @@ is the check for that, and `smoke_h3.py` is still the only thing that submits.
 
 Why it exists. `comfy_kitchen.sol_attn` used to ship only on kijai's unmerged
 `sol_attn` branch. **It is upstream now** -- Comfy-Org/comfy-kitchen#117
-(`dae00a1`) -- but the reason this file exists survived the merge unchanged,
-because the merged build ALSO declares version `0.2.31`, the same string as
-the PyPI wheel that has no `sol_attn` at all. Three different builds, one
-version string; only the local segment of the dist-info name separates them.
-So the fork build, the merged build and the stock
-wheel are indistinguishable to `pip list`, and a `pip install -r
-requirements.txt --force-reinstall`, a Manager repair, or a fresh venv
-silently swaps the stock wheel back in. The node then falls back to dense on
-every call. **That failure renders successfully.** It is slower and
-numerically different and nothing reports it, which is the same shape as the
-`frame_count` break of 2026-08-13.
+(`dae00a1`) -- and by 0.2.33 the stock PyPI wheel carries the kernel, the
+public `sol_attn_chunked` (#150) and token routing (#156), so the original
+failure this file was built for, a stock wheel with no `sol_attn` at all,
+cannot happen at that version. **This paragraph used to say the merged build
+"ALSO declares version 0.2.31"**, and read the whole risk as three builds
+sharing one version string.
+
+The risk did not go away, it moved. A local build and the stock wheel still
+declare the same `X.Y.Z` and only the local segment separates them, so a
+`pip install -r requirements.txt --force-reinstall`, a Manager repair or a
+fresh venv still swaps ours out silently. What that swap costs is now a
+capability rather than the kernel: on 2026-09-08 exactly this happened, and
+every case here passed on the stock wheel, because the six kwargs the node
+passes on every call are upstream. The `observable` case is what was missing.
+
+The original failure mode still applies to any version before the merge, and
+its shape is why the file is written this way: a silent dense fallback
+renders successfully, slower and numerically different, and nothing reports
+it -- the same shape as the `frame_count` break of 2026-08-13.
 
 ## Presence and gating
 
@@ -85,6 +93,18 @@ Claims, i.e. what breaks if a case is deleted:
                      rather than warns -- it forces the drop to be recorded in
                      vendor/README.md before it can be run.
 
+  observable         an armed server reaches the render before anything says
+                     the installed kernel cannot be observed. `blk_cnt` is
+                     ours (not upstream), the route observer needs it, and
+                     `sol_attn_h3.py::_require_kernel` refuses without it at
+                     PATCH time -- which is after the model is staged, so the
+                     render dies late instead of never starting. The
+                     environment gates the assertion because the requirement
+                     is real only when H3_SOL_OBSERVE asks for it; unarmed,
+                     the case still names the capability, because a reader
+                     comparing two Sol numbers needs to know whether the
+                     build that produced them could be observed at all.
+
   signature          `comfy_kitchen.sol_attn` still accepts every kwarg the
                      node passes. **This is the case that cannot be replaced by
                      a runtime error**, because there is no runtime error: a
@@ -106,6 +126,13 @@ and `signature` reported skipped-for-cause rather than passing vacuously.
 Re-run after the fork wheel was installed to confirm green for the right
 reason. Both transcripts are in the session log.
 
+`observable` shown red 2026-09-08, against the stock `comfy-kitchen==0.2.33`
+that ComfyUI's pin had just installed over our build, with `H3_SOL_OBSERVE=1`
+in the environment: FAIL, exit 1. The same run unarmed passed while printing
+that the build does not take `blk_cnt`, which is the state the case is meant
+to make legible rather than fail on. `--require-observe` forces the armed
+assertion without setting the variable.
+
 Needs neither CUDA nor a model nor a server, and imports no ComfyUI. Runs in
 about a second.
 """
@@ -118,6 +145,7 @@ import importlib
 import importlib.metadata
 import inspect
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -319,6 +347,9 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--require", action="store_true",
                     help="assert sol_attn is present even when no graph wires "
                          "SolAttnMiniMax (used to show this check red)")
+parser.add_argument("--require-observe", action="store_true",
+                    help="assert the kernel takes blk_cnt even with "
+                         "H3_SOL_OBSERVE unset (used to show that case red)")
 args = parser.parse_args()
 
 print("installed comfy_kitchen:")
@@ -339,7 +370,13 @@ has_sol = hasattr(ck, "sol_attn")
 print(f"  ok   installed   version {version}, "
       f"from {getattr(ck, '__file__', '?')}")
 print(f"       sol_attn    {'present' if has_sol else 'ABSENT'}")
-if version == "0.2.31" and has_sol:
+# **This used to read `version == "0.2.31"`**, which stopped firing when
+# ComfyUI moved its pin to 0.2.33 (core `18ebc2af`) -- the note went quiet
+# on exactly the release it describes. The ambiguity was never about one
+# number: any version with no local segment is a version the stock wheel
+# also declares, so that is what is tested now and no upstream version
+# number is copied into this file.
+if "+" not in version and has_sol:
     print("       note        version is indistinguishable from the stock "
           "PyPI wheel; presence of sol_attn is the only signal.")
 
@@ -407,6 +444,45 @@ else:
             check("signature_cuda", not gone,
                   f"direct CUDA entry missing {gone}" if gone
                   else f"direct CUDA entry accepts all required kwargs")
+
+print("\nthe route observer can be served by this build:")
+# **This case earned itself on 2026-09-08**, when torch was upgraded, ComfyUI
+# moved its pin to `comfy-kitchen==0.2.33` and the stock wheel replaced our
+# build. Every case above passed on it: the six kwargs the node passes on
+# every call are all upstream now. What the stock wheel does NOT have is
+# `blk_cnt`, the count out-parameter the route observer reads, and nothing
+# here noticed -- so the check reported a healthy install of a build that
+# `sol_attn_h3.py::_require_kernel` refuses the moment H3_SOL_OBSERVE is set.
+#
+# The environment is the gate, because the requirement is real only when
+# something asks for it. Armed, an absent `blk_cnt` is a hard failure: the
+# node raises at PATCH time, after the model is staged, so the render dies
+# late rather than never starting. Unarmed, a build without it is legal and
+# renders correctly, and the case says so while naming the capability -- a
+# reader comparing two Sol numbers needs to know which build answered.
+observe_env = os.environ.get("H3_SOL_OBSERVE", "")
+if not has_sol:
+    skip("observable", "sol_attn absent; nothing to introspect")
+else:
+    gone = missing_params(ck.sol_attn, ("blk_cnt",))
+    takes_blk_cnt = gone is not None and not gone
+    if observe_env or args.require_observe:
+        why = (f"H3_SOL_OBSERVE={observe_env!r}" if observe_env
+               else "--require-observe given")
+        check("observable", takes_blk_cnt,
+              f"{why}, and the installed sol_attn takes blk_cnt"
+              if takes_blk_cnt else
+              f"{why}, but the installed sol_attn has NO blk_cnt: the route "
+              f"cannot be observed and the node refuses at patch time. "
+              f"Rebuild from the blk_cnt branch (vendor/rebuild_kernel.sh) "
+              f"or start the server without H3_SOL_OBSERVE.")
+    else:
+        check("observable", True,
+              "H3_SOL_OBSERVE unset, so nothing here needs the count; the "
+              "installed build " + ("does take blk_cnt, so an armed server "
+                                    "would work" if takes_blk_cnt else
+                                    "does NOT take blk_cnt, so arming the "
+                                    "observer would be refused at patch time"))
 
 import hashlib
 

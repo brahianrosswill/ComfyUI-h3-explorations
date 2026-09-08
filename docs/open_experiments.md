@@ -1000,7 +1000,7 @@ item was written against is **no longer on disk**; what is there is the
 so the geometry has to be re-derived rather than reused.
 
 **Method, and one constraint that is not optional.** Score with upstream's eager
-reference (`coderef/comfy-kitchen-sol/comfy_kitchen/backends/eager/sol_attn.py`,
+reference (`coderef/comfy-kitchen-kijai/comfy_kitchen/backends/eager/sol_attn.py`,
 routing at `:112-142`), not a fresh transcription of the threshold formula. Its
 own docstring says it "defines the algorithm, not the CUDA kernel's arithmetic",
 which is exactly the right relationship: it is upstream's statement of what
@@ -1160,9 +1160,9 @@ branch is a thin slice.
 ### The layout problem is already solved in-tree
 
 Expected to be the hard part; it is not.
-`coderef/comfy-kitchen-sol/comfy_kitchen/backends/cuda/sage_attention/sol_attn_route.cu::mma_bf16`
+`coderef/comfy-kitchen-kijai/comfy_kitchen/backends/cuda/sage_attention/sol_attn_route.cu::mma_bf16`
 already runs bf16 PV inside the Sol codebase, and
-`coderef/comfy-kitchen-sol/comfy_kitchen/backends/cuda/sage_attention/sol_layout.cuh::pack_bf2`
+`coderef/comfy-kitchen-kijai/comfy_kitchen/backends/cuda/sage_attention/sol_layout.cuh::pack_bf2`
 already carries the helpers it needs.
 
 **Cited by symbol since 2026-08-30, and the reason is a silent miss.** Both
@@ -1182,7 +1182,7 @@ the `m16n8k16` A layout. Sage does the same (`RS_32_to_16` in its
 not derived from a fragment map on paper.
 
 Consequence: **`perm_key` exists only to make the INT8 repack free**
-(`coderef/comfy-kitchen-sol/comfy_kitchen/backends/cuda/sage_attention/sol_layout.cuh:63-65`). A 16-bit path does not need it, and V^T stays in the
+(`coderef/comfy-kitchen-kijai/comfy_kitchen/backends/cuda/sage_attention/sol_layout.cuh:63-65`). A 16-bit path does not need it, and V^T stays in the
 logical key order it is already stored in.
 
 ### MMA issue rates, measured on this box 2026-08-16
@@ -1198,7 +1198,7 @@ f16  m16n8k16 -> f32     1.640        83.8     0.25x
 f16  m16n8k16 -> f16     0.821       167.3     0.50x
 ```
 
-`coderef/comfy-kitchen-sol/comfy_kitchen/backends/cuda/sage_attention/sol_layout.cuh:83` justifies the all-INT8 branch with "sm_120 is issue-rate
+`coderef/comfy-kitchen-kijai/comfy_kitchen/backends/cuda/sage_attention/sol_layout.cuh:83` justifies the all-INT8 branch with "sm_120 is issue-rate
 bound and f32-accumulate forms issue at half rate". **That holds on sm_89 too**
 -- identical instruction count, exactly 2x the time. Verified rather than
 carried over.
@@ -1319,9 +1319,9 @@ written before the manifest tooling existed.*
 | `sage_attention/sol_attn_exact.cu` | the real work. `pack4u8`/`mma_u8s8`/`__dp4a` l-sum become `pack_bf2`/`mma_bf16`/a plain float sum; `PKC` 2 to 4; `LDV` 64 to 128 bytes; the epilogue drops the `vsc` multiply and the 255. Removes the `log2(255)` exponent fold and the num/den-quantize-identically subtlety rather than adding one. |
 | `sage_attention/sol_layout.cuh` | `swz_v` re-derived for a 128-byte V row. The header says to enumerate both 16-lane LDS.64 phases against 32 banks; that is not optional. |
 | `sage_attention/sol_attn_vtranspose.cu` | a bf16 variant: transpose without quantize. |
-| `sage_attention/sol_attn_route.cu` | **the dangerous part.** Both route kernels hand over `o_part * (255/vsc)` and `l * 255` to land in the INT8 exact kernel's units (lines 252-260, 546-551). A 16-bit branch wants plain units. Ten lines -- and `coderef/comfy-kitchen-sol/comfy_kitchen/backends/cuda/sage_attention/sol_layout.cuh:19-21` warns this class of drift "is invisible to either side's own test". |
+| `sage_attention/sol_attn_route.cu` | **the dangerous part.** Both route kernels hand over `o_part * (255/vsc)` and `l * 255` to land in the INT8 exact kernel's units (lines 252-260, 546-551). A 16-bit branch wants plain units. Ten lines -- and `coderef/comfy-kitchen-kijai/comfy_kitchen/backends/cuda/sage_attention/sol_layout.cuh:19-21` warns this class of drift "is invisible to either side's own test". |
 | `sage_attention/sol_attn.cu`, `dlpack_bindings.cpp`, `backends/cuda/__init__.py`, `constraints.py` | plan sizing (`vTi` doubles), the flag, validation. |
-| `coderef/comfy-kitchen-sol/comfy_kitchen/backends/cuda/CMakeLists.txt:135-139` | sol sources are listed explicitly; a new `.cu` needs adding, a template parameter does not. |
+| `coderef/comfy-kitchen-kijai/comfy_kitchen/backends/cuda/CMakeLists.txt:135-139` | sol sources are listed explicitly; a new `.cu` needs adding, a template parameter does not. |
 | `tests/test_sol_attn.py` | parametrize the existing cosine cases over the flag. The eager reference is full-precision and already the oracle for both, so **a case asserting 16-bit scores no worse than INT8 is free, and it is the one that would catch a bad handover.** |
 
 Ours: a node input appended **last** (`vendor/sol_attn_minimax.py`, the

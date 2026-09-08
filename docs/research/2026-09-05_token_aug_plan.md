@@ -35,7 +35,38 @@ card is shared and every stage that touches it says so.
   handling; its head may move. Every stage below pins the sha it used, and a
   moved head means the grade is redone before anything downstream is trusted.
 
-## Stage 1: the rebase (no card)
+## Stage 1: the rebase -- DONE 2026-09-08
+
+**Record:** `bench/results/2026-09-08_kitchen_0233_blk_cnt_rebase.json`.
+
+**The target moved and got better.** Token routing merged as `b678fdf` and
+released in v0.2.33, whose tree is identical to the graded head `1128df6`, so
+the "a moved head means the grade is redone" stop did not trigger and the
+rebase base is a release rather than a PR branch. The branch is
+`sol-blk-cnt-0.2.33` in the fork clone, not the `sol-blk-cnt-token-aug` named
+below: four commits on v0.2.33, `blk_cnt` on `sol_attn` and on
+`sol_attn_chunked`. The four predicted conflicts were exactly the four files
+named below, every one of them the same shape (upstream added `token_aug`
+where we add `blk_cnt`), resolved by keeping both with `token_aug` first so
+upstream's positional order is untouched.
+
+**The design decision below stands**: `blk_cnt` still means routed blocks per
+query block and gained nothing under token routing.
+
+**Counts-as-done, graded.** The branch builds (`vendor/rebuild_kernel.sh`,
+installed as `0.2.33+sol.3ff6a4b`) and every one of our `blk_cnt` cases passes
+on it. Upstream's suite does NOT fully pass, and the record carries the
+attribution: the failures are binding-validation cases whose error only the
+HIP bindings raise, plus one tie case against its own cosine bar, and the
+stock PyPI wheel fails the same ones. Our commits touch no compiled source.
+
+**A stage 2 control arrived early.** On `test_topk_ties_over_select`, the one
+case in the suite that compares the kernel to the eager reference and fails,
+our build and the stock wheel print the same cosine to every digit. That is
+evidence the rebase changed no arithmetic. It is one case, not the capture
+footing stage 2 specifies, so stage 2 still runs.
+
+## Stage 1 as planned (no card)
 
 **Do.** In a detached worktree of the workspace clone at `1128df6`, replay
 the three `blk_cnt` commits by hand, resolving the four conflicting files:
@@ -68,6 +99,13 @@ count's semantics, or upstream's tests fail on the merged tree for a reason
 the rebase introduced.
 
 ## Stage 2: reproduce the grade with telemetry present (minutes of card)
+
+**Amended 2026-09-08.** The scratch-wheel-and-PYTHONPATH arrangement below was
+there to keep an unproven build out of the venv while the source was a PR
+branch. The source is a release now and the owner took the build decision, so
+the stage 1 tip IS the installed wheel (`0.2.33+sol.3ff6a4b`) and the runs
+below use it directly. Everything else in this stage is unchanged, including
+the stop.
 
 **Do.** Build the Stage 1 tip into a scratch wheel, version tagged
 `+sol.<sha>`, unzipped into a scratch directory and selected through

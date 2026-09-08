@@ -380,12 +380,27 @@ earned. Six links, and only the first four are verified.
 
 | # | link | status |
 |---|---|---|
-| 1 | Sol cuts the sequence into 64-token blocks, counted from index 0 | verified, `coderef/comfy-kitchen-sol/comfy_kitchen/backends/cuda/sage_attention/sol_attn_route.cu:18`, `:351`, `:498` |
-| 2 | Routing and the pooled tail are centroid quantities | verified, `coderef/comfy-kitchen-sol/comfy_kitchen/backends/cuda/sage_attention/sol_attn_route.cu:20-21`: "Both the routing decision and the tail VALUES are centroid quantities" |
+| 1 | Sol cuts the sequence into 64-token blocks, counted from index 0 | verified against a checkout state that has moved; see the note below the table |
+| 2 | Routing and the pooled tail are centroid quantities | verified, and re-verified 2026-09-08: `coderef/comfy-kitchen-kijai/comfy_kitchen/backends/cuda/sage_attention/sol_attn_route.cu:18-19`, "Both the routing decision and the tail are centroid quantities" |
 | 3 | Morton changes which tokens share a block | verified, node source and `bench/analyze_morton.py` |
 | 4 | The partition computed here is the partition the kernel uses | deterministic given grid and `video_start`; not an estimate, not a sample |
 | 5 | **A fragmented block's centroid represents its members worse than a compact block's** | **MEASURED 2026-08-15 on captured activations. True.** See below |
 | 6 | Therefore Morton's canvas dependence matters for output | still rests on 5 holding at a size that shows; untested |
+
+**Rows 1 and 2 were cited against a checkout state that no longer exists, and
+row 1 has not been re-verified.** Both pointed into `comfy-kitchen-sol`, which
+was renamed `comfy-kitchen-kijai`; repointing it on 2026-09-08 restored the
+path but not the lines. That checkout is now on branch `sol_attn_continued`,
+where the routing kernel lives under `sage_attention/`. The wording row 2
+quoted -- "the tail VALUES" -- exists only on branch `sol_fp16_pv`, and there
+the file is under `ops/`, so both citations were taken with the checkout on
+that branch. Row 2 is re-verified above against the branch checked out now:
+the claim holds, the line numbers moved by two and the source says "the tail",
+not "the tail VALUES". Row 1's three line numbers are NOT re-verified and
+should be read as unsupported until they are. `bench/check_doc_links.py`
+passes on both, because its `citations_in_range` case asserts the cited line
+exists, not that the quoted text is on it -- a pointer into a shared checkout
+is only as good as the branch that checkout happens to be on.
 
 **Link 5 was a story until 2026-08-15. It is now measured, and it is true.**
 See "What the captured activations say" below. The short version: Morton does
@@ -584,7 +599,7 @@ makes three times.** The routing threshold is not a constant that `tau` scales.
 It is derived from the block partition, so **Morton moves the threshold itself.**
 
 The chain, in
-`coderef/comfy-kitchen-sol/comfy_kitchen/backends/cuda/sage_attention/sol_attn_preprocess.cu`:
+`coderef/comfy-kitchen-kijai/comfy_kitchen/backends/cuda/sage_attention/sol_attn_preprocess.cu`:
 
 1. `kcvar[d]` is the variance **across the NTB block centroids** of dimension
    `d` -- `prep_pooled_stats` means over blocks, then sums `(kc - mean)^2` over
@@ -604,7 +619,7 @@ blocks clear it, so Morton at fixed `tau` is **more** approximate. That
 reasoning moves the threshold and holds the scores fixed, and both move.
 
 **Read from source, not measured.** The routing test is `colmean > thr`
-(`coderef/comfy-kitchen-sol/comfy_kitchen/backends/eager/sol_attn.py:112-142`).
+(`coderef/comfy-kitchen-kijai/comfy_kitchen/backends/eager/sol_attn.py:112-142`).
 `thr` is the quantity above. `colmean` is the query block's mean score against
 the **mean-centred pooled key centroids** -- and a more coherent key block has
 less internal cancellation in its pooled centroid, so its score against a

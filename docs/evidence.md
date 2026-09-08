@@ -491,7 +491,7 @@ version-controlled here. Updated 2026-08-22, where noted:
 - `custom_nodes/ComfyUI-SolAttn-cuda/` created; its `sol_attn_minimax.py` is a
   **symlink into this repo's `vendor/`**. Editing through the installed path
   writes into the tracked file.
-- `coderef/comfy-kitchen-sol/` cloned with submodules; at `c04ef20` from
+- `coderef/comfy-kitchen-kijai/` cloned with submodules; at `c04ef20` from
   2026-08-14 and at `23d1a66` since 2026-08-22. Its `pyproject.toml` is
   **edited during a build only** — `vendor/rebuild_kernel.sh` applies the
   version-tag patch, substitutes the checkout's own short sha, and reverts on

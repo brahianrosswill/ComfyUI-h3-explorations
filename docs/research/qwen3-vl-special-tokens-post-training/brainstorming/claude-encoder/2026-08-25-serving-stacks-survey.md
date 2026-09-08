@@ -6,7 +6,7 @@ authority; nothing here is authorised. Companion to
 [`2026-08-25-calibration-performance-levers.md`](2026-08-25-calibration-performance-levers.md).
 **Method:** three read-only source surveys of `coderef/sglang`,
 `coderef/vllm` (at `bc11ecaf4e`) and `coderef/flashinfer` (0.6.18), plus
-direct checks of `coderef/comfy-kitchen-sol` against the installed wheel and
+direct checks of `coderef/comfy-kitchen-kijai` against the installed wheel and
 the shipped graphs. Everything is SOURCE with a path unless marked MEASURED;
 nothing was benchmarked. The DiT-side sglang comparison (CUDA graphs, step
 caching, AdaLN cache, sequence parallel) is already priced in
@@ -159,7 +159,7 @@ FlexAttention is in torch itself, so the arm would not need vllm.
 
 comfy-kitchen's CUDA and HIP backends bind through nanobind; every kitchen op
 call, `gemv_awq_w4a16` included, passes tensors through `_wrap_for_dlpack`
-(`coderef/comfy-kitchen-sol/comfy_kitchen/backends/cuda/__init__.py:491-506`, a per-tensor `__dlpack__(stream=-1)`
+(`coderef/comfy-kitchen-kijai/comfy_kitchen/backends/cuda/__init__.py:491-506`, a per-tensor `__dlpack__(stream=-1)`
 export working around a PyTorch sync issue). That is microseconds per call
 against a workload of one large attention op and gigabytes of weight movement
 per layer. `nanobind-backend` is its split-mode runtime with no user-facing
@@ -171,7 +171,7 @@ would use; that is a build convenience, not a lever.
 
 **MEASURED, on the checkouts and the installed wheel:**
 
-- `coderef/comfy-kitchen-sol/comfy_kitchen/tensor/awq_w4a16.py` and `coderef/comfy-kitchen-sol/comfy_kitchen/backends/eager/awq.py` are
+- `coderef/comfy-kitchen-kijai/comfy_kitchen/tensor/awq_w4a16.py` and `coderef/comfy-kitchen-kijai/comfy_kitchen/backends/eager/awq.py` are
   byte-identical between `comfy-kitchen-sol` and upstream `comfy-kitchen`;
   the CUDA backend diff contains only `sol_attn` additions. The installed
   `0.2.31+sol.23d1a66` serves both `gemv_awq_w4a16` and `sol_attn` from one

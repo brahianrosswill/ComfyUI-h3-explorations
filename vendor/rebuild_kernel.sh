@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
-# Rebuild and install comfy_kitchen's Sol-Attn kernel from kijai's branch.
+# Rebuild and install comfy_kitchen's Sol-Attn kernel from a source checkout.
 #
-# The checkout at coderef/comfy-kitchen-sol is SOMEONE ELSE'S REPO and this
-# script leaves it exactly as it found it. That is the whole design:
+# **This used to say "from kijai's branch", and that the checkout it built from
+# was SOMEONE ELSE'S REPO.** Sol-Attn is upstream now and the default source
+# moved to our own fork clone (see SRC below); the leave-it-as-you-found-it
+# design did not move, because every checkout under coderef/ is shared with
+# other agents and a tree left dirty blocks the next pull. That is the design:
 #
 #   2026-08-14: the version-tag edit was left as a working-tree modification
 #   on the theory that a future `git pull` would then conflict loudly rather
@@ -34,17 +37,25 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-# Default is kijai's branch checkout, which is where Sol-Attn lived while it
-# was unmerged. **Overridable since 2026-08-29**, when PR #117 landed the
-# kernel in comfy-kitchen main (dae00a1) and the branch stopped being the only
-# place to get it. Point SRC at any clean checkout or worktree:
+# Default is our own fork clone. **It used to be `coderef/comfy-kitchen-sol`**,
+# kijai's branch checkout, which is where Sol-Attn lived while it was unmerged;
+# that directory was renamed `comfy-kitchen-kijai` and the default then pointed
+# at nothing, so the script exited "no checkout at ..." on its own default.
+#
+# The default moved rather than being repaired in place because the source of
+# record moved: everything we carried from kijai's branch is upstream now
+# (#117, #150, #156), our delta is the `blk_cnt` commits, and they live on
+# branches in the fork clone. kijai's checkout is a place to read, not to
+# build from.
+#
+# Overridable, and a worktree is still the polite way to build one specific
+# commit without moving anybody's HEAD:
 #
 #   SRC=/path/to/worktree vendor/rebuild_kernel.sh 89
 #
-# A worktree is the polite way to build a specific upstream commit: both
-# existing checkouts under coderef/ belong to somebody else and this script's
-# whole design is to leave them as it found them.
-SRC="${SRC:-$REPO/coderef/comfy-kitchen-sol}"
+# Every checkout under coderef/ is shared, and this script's whole design is
+# to leave the one it builds from exactly as it found it.
+SRC="${SRC:-$REPO/coderef/comfy-kitchen}"
 ARCH="${1:-89}"
 # Derived from this checkout, not typed: the repo sits at
 # <comfy>/custom_nodes/<pack>, so the venv is two levels up. Override with

@@ -4,6 +4,45 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.51
+
+### Changed
+
+- **The Sol kernel is rebased onto comfy-kitchen v0.2.33 and rebuilt.** torch
+  moved to 2.14.0+cu132 and ComfyUI moved its pin to `comfy-kitchen==0.2.33`,
+  which replaced our `0.2.31+sol` build with the stock wheel. Everything the
+  fork carried from kijai's branch is upstream by 0.2.33, so the delta is now
+  four commits, all of them the `blk_cnt` out-parameter the route observer
+  reads, on `sol_attn` and `sol_attn_chunked`. Installed as
+  `0.2.33+sol.3ff6a4b`. Stage 1 of the token routing plan, retargeted from
+  kijai's PR head to the release that merged it, which has the identical tree,
+  so the 2026-09-04 grade transferred rather than being redone. Record:
+  `bench/results/2026-09-08_kitchen_0233_blk_cnt_rebase.json`.
+
+- `vendor/rebuild_kernel.sh` defaults `SRC` to the fork clone. It pointed at
+  `coderef/comfy-kitchen-sol`, which the rename to `comfy-kitchen-kijai` had
+  removed, so the script exited on its own default. It also needs submodules
+  present, which a fresh worktree does not have.
+
+- Docs pointing into `coderef/comfy-kitchen-sol` now point into
+  `comfy-kitchen-kijai`, in `evidence.md`, `SOLATTN.md`, `morton.md`,
+  `open_experiments.md`, `sol_upstream.md` and one research note.
+  `rules_history.md` keeps the old name, being frozen history.
+
+- `docs/sol_upstream.md`'s upstream snapshot moves to 2026-09-08; the
+  2026-09-04 section is kept below it under its own date.
+
+### Added
+
+- **`check_sol_kernel.py` gained an `observable` case**, earned by an escape:
+  every existing case passed on the stock 0.2.33 wheel, which cannot serve the
+  route observer at all. `H3_SOL_OBSERVE` in the environment (or
+  `--require-observe`) makes it an assertion; unarmed it names the capability
+  instead of failing. Shown red against the stock wheel before the rebuild.
+
+- The check's version-ambiguity note tests for a missing local segment rather
+  than the literal `0.2.31`, which had stopped firing when the pin moved.
+
 ## 0.99.50
 
 ### Added

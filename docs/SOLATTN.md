@@ -236,7 +236,7 @@ The provenance it produces, and where each piece lives:
 
 | what | where |
 |---|---|
-| source | since 2026-09-01: the Comfy-Org clone `coderef/comfy-kitchen` (a symlink to the workspace checkout, which is the git authority), branch `sol-blk-cnt`, built with `SRC=coderef/comfy-kitchen vendor/rebuild_kernel.sh 89`. Before that, `coderef/comfy-kitchen-sol` (kijai's branch clone), which the script still defaults to |
+| source | since 2026-09-01: the Comfy-Org clone `coderef/comfy-kitchen` (a symlink to the workspace checkout, which is the git authority), branch `sol-blk-cnt`, built with `SRC=coderef/comfy-kitchen vendor/rebuild_kernel.sh 89`. Before that, `coderef/comfy-kitchen-kijai` (kijai's branch clone), which the script still defaults to |
 | the local edit | a sed on `pyproject.toml`'s version line inside `vendor/rebuild_kernel.sh`, made for the build only and reverted on every exit path; the local segment is the built commit's short sha. Until 2026-09-03 this was `vendor/patches/001-local-version-tag.patch`, a diff hardcoded against `0.2.31` that stopped applying the day upstream released 0.2.32 |
 | wheel | `<source>/dist/`, one per build, never cleaned |
 | installed | the ComfyUI venv's `site-packages`, as a **built wheel and not an editable install** -- the running kernel does not read from the clone, so changing branches there does nothing until the next rebuild |
@@ -809,7 +809,7 @@ the merge (VSA support, a chunked QKV producer, top-k guards), which reads like
 a kernel we did not have. It is not: verified 2026-08-30 by a whole-tree
 `diff -rq` between the two checkouts, which reports no difference, and by `cmp`
 of the four Python entry files against the installed `site-packages`. So
-`coderef/comfy-kitchen-sol` at its tip, `coderef/comfy-kitchen` at `dae00a1`,
+`coderef/comfy-kitchen-kijai` at its tip, `coderef/comfy-kitchen` at `dae00a1`,
 and the running kernel are one source. **There was nothing to pull and nothing
 to rebuild** -- the whole remaining gap was the node.
 
@@ -857,7 +857,7 @@ evaluated, `pooled_tail` asks WHETHER there is one.
 ### What the kernel exposes, and what this pack does with each
 
 Read from the signature and from
-`coderef/comfy-kitchen-sol/comfy_kitchen/constraints.py::sol_attn_common_call_rule`.
+`coderef/comfy-kitchen-kijai/comfy_kitchen/constraints.py::sol_attn_common_call_rule`.
 
 | kernel argument | status here | what it does |
 |---|---|---|

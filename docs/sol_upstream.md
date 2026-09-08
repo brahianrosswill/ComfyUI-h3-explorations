@@ -151,7 +151,7 @@ Their two modes, in `coderef/Sana/techniques/sparse_backends/sol_attn/preprocess
   blocks for that query.
 
 comfy-kitchen's CUDA kernel computes `kcvar[d]` as the per-dimension variance of
-the key-block centroids (`coderef/comfy-kitchen-sol/comfy_kitchen/backends/cuda/sage_attention/sol_attn_preprocess.cu:122`), reduces
+the key-block centroids (`coderef/comfy-kitchen-kijai/comfy_kitchen/backends/cuda/sage_attention/sol_attn_preprocess.cu:122`), reduces
 `sred[d] = c_d^2 * kcvar[d]` (`:191`), and thresholds at
 `tau * sqrt(sum + 1e-6)` (`:198`), against mean-centred key centroids so the
 mean term is already absorbed. **That is Sol-Engine's `diag` formula.**
@@ -349,7 +349,48 @@ measurements of Morton's effect on output anywhere.
 
 ---
 
-## Comfy-Org/comfy-kitchen, as of 2026-09-04
+## Comfy-Org/comfy-kitchen, as of 2026-09-08
+
+Checked in a working checkout on 2026-09-08, after ComfyUI moved its pin to
+`comfy-kitchen==0.2.33` (core `18ebc2af`) and the stock wheel replaced our
+build. **This section stood at 2026-09-04 and said PR 156 was open and that
+the installed wheel predated the 150 merge; both are stale.** The branches are
+the authority; this is a dated snapshot.
+
+**The fork's delta is now four commits.** Everything we carried from kijai's
+`sol_attn_continued` is upstream: PR 117 (int8 Sol-Attn), 143 (HIP port), 150
+(`4950f16`, full-range P quantisation in the exact branch and a public
+`sol_attn_chunked`), 156 (`b678fdf`, token routing) and 158 (its HIP port).
+What is left that is ours is `blk_cnt`, the routed-count out-parameter the
+route observer reads, on `sol_attn` and on `sol_attn_chunked`. It is a
+Python-only change: the route stage already writes the count into the
+workspace and the public API discarded it.
+
+**The rebase target did not need re-grading.** The 2026-09-04 token routing
+grade was taken against kijai's PR head `1128df6`, and the plan said a moved
+head means the grade is redone. It did not move, it merged: `b678fdf` has the
+identical tree to `1128df6`. Recorded, with the control that shows the diff
+command can print something, in
+`bench/results/2026-09-08_kitchen_0233_blk_cnt_rebase.json`.
+
+**Installed here since 2026-09-08:** `0.2.33+sol.3ff6a4b`, branch
+`sol-blk-cnt-0.2.33` in the fork clone, built by `vendor/rebuild_kernel.sh`.
+`bench/check_sol_kernel.py` reports the local segment and
+`comfy_kitchen_build.json` beside the venv names the branch. The clone's
+checked-out branch need not be that sha: the clone is where sources and
+wheels are kept, the build record is what says which wheel runs, and a reader
+of the folder should trust the record over the checkout.
+
+**Upstream's own Sol suite does not pass on this card**, on the stock PyPI
+wheel or on a local build of the same commit: three groups of nanobind
+binding-validation cases whose expected error is raised only by the HIP
+bindings, and `test_topk_ties_over_select` against its own cosine bar. One of
+the binding cases leaves a sticky CUDA error, so a single gap reads as dozens
+of failures in the same process. Attribution, the stock control and the
+numbers are in the record named above. Not established there: whether these
+fail on upstream's CI, which builds elsewhere with its own flags.
+
+## Comfy-Org/comfy-kitchen, as it stood on 2026-09-04
 
 Checked by fetch and `gh` on 2026-09-04; nothing was pulled into a working
 checkout. This section is a dated snapshot and the branches are the authority.
