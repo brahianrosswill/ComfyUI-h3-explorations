@@ -53,9 +53,22 @@ Valid counts near the top: **… 311, 328, 345, 362**.
 Duration is `frames / 24`, so 362 frames is 15.08 s and 124 is ~5.2 s.
 
 **Two things worth knowing at the top of the range.** Attention grows as S²
-while everything else grows linearly, so at 362 frames attention is ~76% of
-the step against ~50% at 124 — long clips are where kernel and sparsity work
-pays off most. And late-clip identity softening at 362 is the ordinary
+while everything else grows linearly, so the attention share rises with clip
+length and long clips are where kernel and sparsity work pays off most. That
+direction is the load-bearing part and it is not in doubt.
+
+> **The two percentages this sentence used to carry are UNSUPPORTED as of
+> 2026-09-08, and are removed rather than re-pointed.** It said attention is
+> "~76% of the step" at 362 frames "against ~50% at 124". Neither has a
+> findable origin: the only record naming them is
+> [`../bench/results/2026-09-03_prose_measurements_baseline_v2.json`](../bench/results/2026-09-03_prose_measurements_baseline_v2.json),
+> which lists the sentence as prose awaiting migration rather than as its
+> source. What IS supported is narrower and differently shaped:
+> [`../bench/results/2026-09-08_attention_share_bound.json`](../bench/results/2026-09-08_attention_share_bound.json)
+> gives a FLOOR under attention's share of **sampler** time, at 1344x768 and
+> 345 frames on the shipped INT8 path, derived from paired ladder arms rather
+> than profiled. A floor on sampler time is not a share of a step, so it does
+> not replace the withdrawn numbers; it is what we have. And late-clip identity softening at 362 is the ordinary
 long-clip DiT failure at the edge of the trained range; stepping down to 328
 or 345 costs proportionally less attention *and* reduces it. 362 is the
 shipped default, so that step down is a deliberate choice per render, not a

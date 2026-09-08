@@ -6,6 +6,17 @@ artifact.
 
 ## 0.99.51
 
+### Fixed
+
+- **`docs/h3_geometry_and_nodes.md`'s attention-share percentages are withdrawn,
+  not re-pointed.** It said attention is "~76% of the step" at 362 frames against
+  "~50%" at 124. Neither has a findable origin: the only record naming them lists
+  the sentence as prose awaiting migration, which is a worklist entry and not a
+  source. The direction they illustrated is kept, because that part is not in
+  doubt and is the reason the sentence exists. A sister project asking what
+  conditions our saved figure was taken under is what surfaced it, and the
+  answer was that it had none.
+
 ### Added
 
 - **Open experiment 29: what makes token routing's selection unstable on one
