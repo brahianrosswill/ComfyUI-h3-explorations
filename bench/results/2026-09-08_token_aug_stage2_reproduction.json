@@ -1,0 +1,71 @@
+{
+  "what": "stage 2 of the token routing plan: does the v0.2.33 rebase reproduce the 2026-09-04 grade",
+  "measured": "2026-09-08",
+  "produced_by": "bench/measure_sol_exact_variants.py run twice on the installed build, compared against the 2026-09-04 record",
+  "records": {
+    "graded_2026-09-04_on_kijai_1128df6": "bench/results/2026-09-04_sol_exact_base16_capture_1128df6_token_aug.json",
+    "run_1_on_0.2.33+sol.990ae4c": "bench/results/2026-09-08_sol_exact_base16_capture_990ae4c_token_aug.json",
+    "run_2_same_build_same_command": "bench/results/2026-09-08_sol_exact_base16_capture_990ae4c_token_aug_repeat.json"
+  },
+  "verdict": "PASSES, and the plan's bar was mis-stated. Stage 1 does not reopen.",
+  "the_rebase_changed_no_arithmetic": {
+    "deterministic_aggregates_compared": 9,
+    "identical_across_builds": true,
+    "identical_across_runs_on_one_build": true,
+    "reading": "every aggregate that does not involve token_aug is bit-identical between kijai's 1128df6 build and ours, AND between two runs of ours. That is the control stage 2 exists for and it holds."
+  },
+  "why_the_bar_was_wrong": {
+    "claim_in_the_plan": "every aggregate reproduces the 1128df6 record to print precision",
+    "finding": "the token_aug arms are NONDETERMINISTIC run to run on this hardware, so no build can reproduce them exactly, including itself. Eight token_aug aggregates moved between builds; the SAME eight moved between two runs of one build.",
+    "restated_bar": "deterministic arms must be bit-identical; token_aug arms must agree within measured run-to-run noise, and the noise must be measured in the same session rather than assumed."
+  },
+  "the_per_block_finding_survives": {
+    "per_block": {
+      "0": {
+        "reproducible_bitwise": true,
+        "max_run_to_run_delta": 0.0,
+        "mean_signed_effect_vs_plain": 0.002181616670164166,
+        "direction": "better"
+      },
+      "24": {
+        "reproducible_bitwise": true,
+        "max_run_to_run_delta": 0.0,
+        "mean_signed_effect_vs_plain": 0.0008870210334085638,
+        "direction": "better"
+      },
+      "32": {
+        "reproducible_bitwise": true,
+        "max_run_to_run_delta": 0.0,
+        "mean_signed_effect_vs_plain": 0.0008311303862225339,
+        "direction": "better"
+      },
+      "40": {
+        "reproducible_bitwise": true,
+        "max_run_to_run_delta": 0.0,
+        "mean_signed_effect_vs_plain": 0.0015260862583793555,
+        "direction": "better"
+      },
+      "49": {
+        "reproducible_bitwise": false,
+        "max_run_to_run_delta": 2.114579913781167e-05,
+        "mean_signed_effect_vs_plain": -0.0063487113398791985,
+        "direction": "worse"
+      }
+    },
+    "max_run_to_run_noise": 2.114579913781167e-05,
+    "min_absolute_effect": 0.0007213792222999782,
+    "smallest_effect_over_largest_noise": 34.11454055713838,
+    "reading": "the 2026-09-04 direction holds: better on blocks 0, 24, 32, 40 and worse on 49. The smallest per-cell effect is far larger than the largest run-to-run delta, so the finding is not noise."
+  },
+  "new_and_worth_upstream": {
+    "observation": "the nondeterminism is CONCENTRATED. Blocks 0, 24, 32 and 40 reproduce bitwise across runs; block 49 does not, at any step.",
+    "why_it_matters": "block 49 is also the only block where token routing makes Sol WORSE. The one block that is not reproducible is the one block the lever hurts, which is a mechanism hint rather than a coincidence.",
+    "contradicts": "comfy_kitchen's own sol_attn docstring says token selection uses 'whole histogram bins only, so the set never depends on scheduling'. Block 49 falsifies that as written.",
+    "not_established": "the cause. This says the outputs vary run to run on one block; it does not say why, and a tie in the histogram selection is a hypothesis rather than a finding."
+  },
+  "not_established": [
+    "budgets 128 and 256: only 64 was run here, where the 2026-09-04 record carried all three.",
+    "anything perceptual. This is captured-activation error, not a render.",
+    "that block 49's nondeterminism reaches a rendered clip. Every shipped graph leaves token_aug off, so today it cannot."
+  ]
+}

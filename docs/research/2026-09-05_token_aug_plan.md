@@ -98,7 +98,41 @@ the one card touch in this stage; run it with the server down.
 count's semantics, or upstream's tests fail on the merged tree for a reason
 the rebase introduced.
 
-## Stage 2: reproduce the grade with telemetry present (minutes of card)
+## Stage 2: reproduce the grade -- DONE 2026-09-08, and the bar was wrong
+
+**Record:** `bench/results/2026-09-08_token_aug_stage2_reproduction.json`.
+
+**It passes, and stage 1 does not reopen.** Every aggregate that does not
+involve `token_aug` is bit-identical between kijai's graded build and ours,
+which is the control this stage exists for.
+
+**But the stop condition below is unachievable as written, and that is the
+finding.** It says any aggregate moving means the rebase changed numerics.
+Eight `token_aug` aggregates moved -- and then the SAME eight moved again
+between two runs of one build, on the same capture with the same command. The
+`token_aug` arms are nondeterministic run to run on this hardware, so no build
+reproduces them exactly, including itself. A bar that no correct build can
+meet does not detect a bad one.
+
+**Restated:** deterministic arms must be bit-identical; `token_aug` arms must
+agree within run-to-run noise MEASURED IN THE SAME SESSION, never assumed.
+
+**The 2026-09-04 per-block direction survives** -- better on blocks 0, 24, 32,
+40, worse on 49 -- and by a wide margin: the smallest per-cell effect is far
+larger than the largest run-to-run delta. The record carries both.
+
+**One new thing, and it is worth sending upstream.** The nondeterminism is
+concentrated. Blocks 0, 24, 32 and 40 reproduce bitwise across runs; block 49
+does not, at any step. Block 49 is also the only block where token routing
+makes Sol worse. comfy-kitchen's own `sol_attn` docstring says the selection
+uses "whole histogram bins only, so the set never depends on scheduling",
+which block 49 falsifies as written. The cause is not established here and a
+histogram tie is a hypothesis, not a finding.
+
+**Only budget 64 was run**, where the 2026-09-04 record carried 64, 128 and
+256. Stage 4 should not read this as covering the wider budgets.
+
+## Stage 2 as planned (minutes of card)
 
 **Amended 2026-09-08.** The scratch-wheel-and-PYTHONPATH arrangement below was
 there to keep an unproven build out of the venv while the source was a PR

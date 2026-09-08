@@ -8,6 +8,30 @@ artifact.
 
 ### Added
 
+- **Stage 2 of the token routing plan passes, and found the plan's own bar
+  unachievable.** Every aggregate not involving `token_aug` is bit-identical
+  between kijai's graded build and ours, which is the control the stage exists
+  for, so the rebase changed no arithmetic and stage 1 does not reopen. The
+  stop condition said any aggregate moving meant the rebase changed numerics;
+  eight `token_aug` aggregates moved, and then the same eight moved again
+  between two runs of ONE build on the same capture with the same command. A
+  bar no correct build can meet cannot detect a bad one, so it is restated:
+  deterministic arms bit-identical, `token_aug` arms within noise measured in
+  the same session.
+
+  The 2026-09-04 per-block direction survives with room to spare. And the
+  nondeterminism is concentrated on one block, which is the same block the
+  lever hurts, contradicting the kernel docstring's claim that the selection
+  never depends on scheduling. Cause not established. Record:
+  `bench/results/2026-09-08_token_aug_stage2_reproduction.json`.
+
+- **`bench/derive_attention_share.py`**: a floor under attention's share of
+  sampler time, derived from the ladder's paired arms rather than profiled.
+  Two floors, because the dense one and the sage one answer different
+  questions, and ranking kernel work on the dense figure overstates the
+  ceiling. Its deliberate-violation test refuses a ladder whose arms are out
+  of order rather than emitting a nonsense bound. Linked from the wiki.
+
 - **`token_aug_blocks` on `MiniMaxH3SolAttn`: per-block token routing, shipped
   off.** comfy-kitchen #156 landed the kernel argument in 0.2.33 and nothing
   here could reach it. The knob takes `tau_profile`'s grammar
@@ -30,6 +54,17 @@ artifact.
   optional inputs out after required ones whatever the schema order. All 188
   graphs regenerated and validated against a live server. `_sol_widgets`
   refused a short list first, which is that guard doing its job.
+
+  **Its tooltip was rewritten twice on the owner's reading.** The first draft
+  explained syntax, policy and our measurements without ever saying what token
+  routing does. The second explained the mechanism in Sol's own vocabulary,
+  which assumes the reader already knows Sol, and used "block" for two
+  different things in one paragraph -- 64-token sequence slices and DiT
+  layers, the sense `dense_blocks` uses. The shipped version starts from why
+  the trade exists, says "chunk" and "layer" so the collision cannot arise,
+  and interpolates the admissible budgets from `TOKEN_AUG_BUDGETS` rather than
+  retyping them. It also no longer states H3's layer count, which the node
+  derives at runtime and no constant here owns.
 
 ### Fixed
 

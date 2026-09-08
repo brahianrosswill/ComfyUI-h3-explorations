@@ -1237,20 +1237,29 @@ class MiniMaxH3SolAttn(io.ComfyNode):
                                        "so the LAST step stays dense; a graph whose "
                                        "steps you edit by hand will not."),
                 io.String.Input("token_aug_blocks", optional=True, default="",
-                                tooltip="Per-block token routing, OFF everywhere "
-                                        "when empty, which is what ships. "
-                                        "'blocks=budget' entries separated by ';' "
-                                        "or newlines, e.g. '0,24,32=64'. Budget is "
-                                        "0, 64, 128, 192 or 256; anything else is "
-                                        "refused when the node runs, not mid-render. "
-                                        "Per block and not global because the grade "
-                                        "is per block: on the captured cells it "
-                                        "lowered Sol's error on four blocks at every "
-                                        "step and RAISED it on one. The budget "
-                                        "measured inert across 64/128/256 in both "
-                                        "accuracy and isolated kernel time, so use "
-                                        "64 if you use any. Switching it on is not "
-                                        "free even though widening it is."),
+                                tooltip=(
+                                    "Recovers detail that Sol's speed-up smooths "
+                                    "over, on the layers you name.\n\n"
+                                    "Sol makes H3 renders much faster by "
+                                    "approximating most of the attention work "
+                                    "instead of computing it. That approximation "
+                                    "is coarse: it skips whole 64-token chunks at "
+                                    "a time, so a few tokens that mattered get "
+                                    "averaged away with the chunk they sat in. "
+                                    "This reaches back and computes those "
+                                    "properly, and costs render time to do it.\n\n"
+                                    "Off by default, and a list rather than a "
+                                    "switch because it does not help everywhere: "
+                                    "on the layers we measured it helped four and "
+                                    "hurt one.\n\n"
+                                    "Format 'layers=budget'. '0,24,32=64' turns it "
+                                    "on for DiT layers 0, 24 and 32 and leaves the "
+                                    "rest alone. The budget is how many tokens each "
+                                    "chunk may reach back for, one of "
+                                    f"{list(TOKEN_AUG_BUDGETS)}. Use 64; wider "
+                                    "measured no better. docs/SOLATTN.md has the "
+                                    "rest."),
+                                ),
                 io.Int.Input("min_tokens", default=12288, min=0, max=1 << 20, step=512,
                              tooltip="Sequences shorter than this stay dense. "
                                      "H3's two token-refiner attention calls run on "

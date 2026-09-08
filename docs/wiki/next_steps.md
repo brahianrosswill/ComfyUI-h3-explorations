@@ -278,15 +278,27 @@ what would close it; it leans to the cheaper arm and is not closed. No
 action is queued on it; a second seed is the manifest's `run` line if the
 owner wants one.
 
-**Token routing: stages 1 and 3 done 2026-09-08, stage 2 is next and is the
-gate.** The kernel is rebased onto v0.2.33 and installed
+**How much of an H3 render is attention: a floor, derived rather than
+profiled.** `bench/derive_attention_share.py` writes
+`bench/results/2026-09-08_attention_share_bound.json` from the 2026-09-03
+ladder's paired arms. Read it before ranking any attention work, because it
+carries two different floors and they answer different questions: the dense
+one is what "attention dominates H3" means, and the sage one is the
+denominator an Amdahl argument actually needs, since it is the configuration
+that ships. The record states its own limits, including that both are floors
+and neither bounds the share from above.
+
+**Token routing: stages 1, 2 and 3 all done 2026-09-08.** The kernel is rebased onto v0.2.33 and installed
 (`0.2.33+sol.990ae4c`), and `token_aug_blocks` exists on `MiniMaxH3SolAttn`
 as a per-block knob that ships off in every graph. Neither touched the card.
-What has NOT happened is any render with it on, and the next step is stage 2
-of [`../research/2026-09-05_token_aug_plan.md`](../research/2026-09-05_token_aug_plan.md):
-minutes of card reproducing the 2026-09-04 grade on the installed build, the
-control that says the rebase changed no arithmetic. Stage 4 is the expensive
-one and should not begin until stage 2 reproduces.
+Stage 2 reproduced: every aggregate not involving `token_aug` is bit-identical
+to kijai's graded build, so the rebase changed no arithmetic. It also found
+that the plan's stop condition was unachievable as written, because the
+`token_aug` arms are nondeterministic run to run, and that the nondeterminism
+sits on exactly the one block where the lever hurts. Both in
+[`../research/2026-09-05_token_aug_plan.md`](../research/2026-09-05_token_aug_plan.md)
+and its record. What has NOT happened is any render with it on; stage 4 is
+the expensive one and needs the owner's go.
 
 **Both upstream-survey checks landed 2026-09-04.** Token routing
 (Comfy-Org/comfy-kitchen PR 156) graded on the Base16 cells:
