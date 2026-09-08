@@ -127,6 +127,20 @@ not restated here.
    cost, its record, what counts and what stops it; nothing in it starts
    before the owner's go.
 
+   **Stages 1 and 3 are DONE 2026-09-08**, both off the card. Stage 1, the
+   rebase, retargeted from kijai's PR head to v0.2.33 which merged it with an
+   identical tree, so the 2026-09-04 grade transferred rather than being
+   redone; installed as `0.2.33+sol.990ae4c`. Stage 3, the node knob, shipped
+   as `token_aug_blocks` on `MiniMaxH3SolAttn`, per block, empty in both
+   shared configs, budget validated at patch time, all 188 graphs regenerated.
+   Records and controls in the plan page.
+
+   **Stage 2 is the next step and it is the gate**, not stage 4: reproduce the
+   2026-09-04 grade on the installed build, which is minutes of card on the
+   retained Base16 cells and produces the control that says the rebase changed
+   no arithmetic. Stage 4 is where the hours are, and it should not start
+   until stage 2 says the numbers still reproduce.
+
 **Not established after 2026-09-04, and must not be quoted as if it were:**
 any scene on which Sol itself is visibly worse than the sage floor (the one
 scene where Sol lost blind, the subway chase, lost the same way under sage

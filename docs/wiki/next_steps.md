@@ -278,6 +278,16 @@ what would close it; it leans to the cheaper arm and is not closed. No
 action is queued on it; a second seed is the manifest's `run` line if the
 owner wants one.
 
+**Token routing: stages 1 and 3 done 2026-09-08, stage 2 is next and is the
+gate.** The kernel is rebased onto v0.2.33 and installed
+(`0.2.33+sol.990ae4c`), and `token_aug_blocks` exists on `MiniMaxH3SolAttn`
+as a per-block knob that ships off in every graph. Neither touched the card.
+What has NOT happened is any render with it on, and the next step is stage 2
+of [`../research/2026-09-05_token_aug_plan.md`](../research/2026-09-05_token_aug_plan.md):
+minutes of card reproducing the 2026-09-04 grade on the installed build, the
+control that says the rebase changed no arithmetic. Stage 4 is the expensive
+one and should not begin until stage 2 reproduces.
+
 **Both upstream-survey checks landed 2026-09-04.** Token routing
 (Comfy-Org/comfy-kitchen PR 156) graded on the Base16 cells:
 [`../research/2026-09-04_sol_token_aug_grade.md`](../research/2026-09-04_sol_token_aug_grade.md)
