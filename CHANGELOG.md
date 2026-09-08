@@ -34,6 +34,20 @@ artifact.
 
 ### Added
 
+- **The rebuilt kernel is graded on a render, not only on imports and unit
+  cases.** First render on `0.2.33+sol.3ff6a4b` with the route observer armed:
+  every forward complete and routed as configured, the in-window forwards
+  routing sol on all 50 blocks, and `blk_cnt` filled by the kernel on a real
+  render rather than only in the tests. Server restarted unarmed afterwards.
+  In the same record as the rebase.
+
+- **`bench/smoke_h3.py` at its default `--length 39` cannot exercise Sol**, and
+  now says so in its docstring: the sequence is 12,264 tokens against the
+  shipped node's `min_tokens` of 12288, so Sol declines every call and
+  `sparse ran` reads MISSING on a healthy install at any step count. Shown by
+  running it at `--length 49` on the same server and build, where it reads ok.
+  The default is unchanged on purpose.
+
 - **`check_sol_kernel.py` gained an `observable` case**, earned by an escape:
   every existing case passed on the stock 0.2.33 wheel, which cannot serve the
   route observer at all. `H3_SOL_OBSERVE` in the environment (or

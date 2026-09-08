@@ -14,6 +14,23 @@ reversed and you are silently paying full price, with no error anywhere.
 That seam is a protocol two third-party repos agree on and neither owns, so
 it is worth re-checking on every update rather than assuming.
 
+## The default length cannot exercise Sol, found 2026-09-08 by running it
+
+`--length 39`, the default, renders a 12,264-token sequence. The shipped Sol
+node pins `min_tokens` at 12288, so Sol declines every call and `sparse ran`
+reads MISSING however many steps you ask for. That is not a stale needle and
+not buffering: the needle fires correctly at `--length 49` (17,360 tokens) on
+the same server and the same build, which is how this was established rather
+than argued. `verbose` is not the cause either -- this file sets it True on
+the node before submitting.
+
+So a run at the default length says nothing about the Sol path in either
+direction, and the Sol path is the one a kernel change puts at risk. Use
+`--length 49` when the question is whether Sol still routes. The default is
+left alone because it is the cheap "does the chain compose" run, and because
+raising it silently would make every future reader think the shorter run had
+been covering Sol all along.
+
 ## Two ways this file was wrong until 2026-08-14, both found by running it
 
 **The sage needle never matched.** It looked for `"sage routing:"`, a string
