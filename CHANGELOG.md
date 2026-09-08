@@ -22,10 +22,9 @@ artifact.
   The 2026-09-04 per-block direction survives with room to spare. The
   nondeterminism belongs to the `token_aug` path rather than to one block's
   data: the same kernel on the same bytes is bitwise deterministic without it
-  and is not with it. It is NOT established that the selection set varies,
-  only that outputs do, and those are different claims -- accumulation order
-  is not associative. Nor is it established to be a defect. An earlier draft
-  of this entry asserted both. Record:
+  and is not with it. What that does not establish is that the selection SET
+  varies -- only outputs were compared, and accumulation order is not
+  associative -- nor that it is a defect. Record:
   `bench/results/2026-09-08_token_aug_stage2_reproduction.json`.
 
 - **`bench/derive_attention_share.py`**: a floor under attention's share of

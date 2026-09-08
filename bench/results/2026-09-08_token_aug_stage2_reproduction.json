@@ -62,8 +62,8 @@
     "why_it_matters": "block 49 is also the only block where token routing makes Sol worse. One block is not a mechanism, and the two facts may be unrelated, but they are worth carrying together until something separates them.",
     "not_established": "the cause. This says the outputs vary run to run on one block; it does not say why, and a tie in the histogram selection is a hypothesis rather than a finding.",
     "what_this_does_NOT_say": [
-      "that the SELECTION SET varies. Only outputs were compared. An output can move while the set is fixed, because accumulation order over the exactly-attended tokens is not associative in floating point. comfy_kitchen's docstring claims the set never depends on scheduling; nothing here tests the set, so nothing here contradicts it. An earlier version of this record said it did.",
-      "that this is a defect. Nondeterminism at this magnitude in a reduction-heavy int8 kernel may be ordinary and intended. Calling it a fault would need a stated determinism guarantee to violate, and the only nearby claim is about the set rather than the output."
+      "that the SELECTION SET varies. Only outputs were compared, and an output can move while the set is fixed, because accumulation over the exactly-attended tokens is not associative. comfy_kitchen's docstring claims the set never depends on scheduling; nothing here tests the set.",
+      "that this is a defect. Nondeterminism at this magnitude in a reduction-heavy int8 kernel may be ordinary and intended, and calling it a fault would need a stated determinism guarantee to violate."
     ],
     "what_would_separate_them": "re-run one block-49 cell many times on identical inputs. Outputs clustering into a few discrete groups points at a selection flip; outputs varying continuously at reduction scale points at accumulation order. Cheap, and it decides which claim is even available."
   },

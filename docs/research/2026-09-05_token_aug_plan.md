@@ -128,14 +128,13 @@ PLAIN arms reproduce bitwise on all five including 49. So the same kernel on
 the same bytes is deterministic without `token_aug` and is not with it, which
 rules out ordinary reduction noise in the surrounding code.
 
-**What it does NOT say, and an earlier version of this section said both.**
-It does not say the SELECTION SET varies: only outputs were compared, and an
-output can move while the set is fixed, because accumulation order over the
+**It does not say the selection set varies.** Only outputs were compared, and
+an output can move while the set is fixed, because accumulation over the
 exactly-attended tokens is not associative. comfy-kitchen's docstring claims
-the set never depends on scheduling; nothing here tests the set, so nothing
-here contradicts it. And it does not say this is a defect. Nondeterminism at
-this magnitude in a reduction-heavy int8 kernel may be ordinary and intended,
-and calling it a fault needs a stated guarantee to violate.
+the set never depends on scheduling; nothing here tests the set. Nor does it
+say this is a defect: nondeterminism at this magnitude in a reduction-heavy
+int8 kernel may be ordinary and intended, and calling it a fault would need a
+stated guarantee to violate.
 
 Block 49 is also the only block where routing hurts. One block is not a
 mechanism and the two facts may be unrelated; they are carried together
