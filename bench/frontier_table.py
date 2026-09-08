@@ -10,7 +10,8 @@ Inputs: one or more verdict records written by `bench/score_session.py`
 owner's free text), and one or more outputs records carrying per-arm timings
 (`arms[].label`, `sampler_s`, `total_s`, `decode_s`, `seed`, `graph`, an
 optional `note`; `bench/build_outputs_record.py` writes that shape). Arm
-labels are `<scene>_<rung>`, split on the last underscore.
+labels are `<scene>_<rung>`, split on the first underscore, so a rung may
+carry one; `--scene` declares the scene set when a scene name does.
 
     python bench/frontier_table.py --verdict V.json [--verdict ...] \\
         --outputs O.json [--outputs ...] [--floor sage] [--dense-rung dense] \\
@@ -85,12 +86,34 @@ def _scrub(node, where="record"):
             sys.exit(f"refuse: {where} carries an absolute path: {node!r}")
 
 
-def split_label(label: str) -> tuple[str, str]:
-    """`<scene>_<rung>` on the last underscore; a label without one is its
-    own scene with an empty rung, which the table shows as such."""
+# Declared scene names, empty unless --scene is given; see split_label.
+_SCENES: tuple[str, ...] = ()
+
+
+def split_label(label: str, scenes: tuple[str, ...] | None = None) -> tuple[str, str]:
+    """`<scene>_<rung>` on the FIRST underscore, or on a declared scene.
+
+    **This used to split on the LAST underscore**, which is right only while no
+    rung carries one. `subway_solnosage_tau12` then read as scene
+    `subway_solnosage` with rung `tau12`, and since that invented scene had no
+    floor arm the table refused rather than rendering -- which is how it was
+    found. Scene names in every record here are single tokens and rungs are the
+    part that grows (`solnosage_tau12`), so the first underscore is the side
+    that holds.
+
+    It is still an assumption, not a law: a scene named `night_market` would
+    break it the same way. `--scene` declares the set explicitly when that
+    happens, and a declared scene is matched longest-first so one scene name
+    can prefix another.
+    """
+    for s in sorted(_SCENES if scenes is None else scenes, key=len, reverse=True):
+        if label == s:
+            return s, ""
+        if label.startswith(s + "_"):
+            return s, label[len(s) + 1:]
     if "_" not in label:
         return label, ""
-    scene, rung = label.rsplit("_", 1)
+    scene, rung = label.split("_", 1)
     return scene, rung
 
 
@@ -350,6 +373,20 @@ def controls() -> int:
     except SystemExit as e:
         dup = str(e)
     case("the same label in two outputs records refuses", dup is not None and "both" in dup)
+
+    # The underscored rung, added 2026-09-08 with the split fix. Splitting on
+    # the LAST underscore put `subway_solnosage_tau12` in an invented scene
+    # `subway_solnosage`, which then had no floor arm and refused. Both halves
+    # are asserted, because getting the scene right and losing the rung's tail
+    # would be the same bug wearing a different face.
+    scene, rung = split_label("subway_solnosage_tau12")
+    case("a rung carrying an underscore stays in its own scene",
+         (scene, rung) == ("subway", "solnosage_tau12"), f"-> {scene!r}, {rung!r}")
+    case("a declared scene wins over the first underscore",
+         split_label("night_market_sol", ("night_market",)) == ("night_market", "sol"))
+    case("the ladder's plain labels are unchanged by the fix",
+         split_label("diner_dense") == ("diner", "dense")
+         and split_label("standoff") == ("standoff", ""))
     try:
         _scrub({"x": "/somewhere"}); refused = False
     except SystemExit:
@@ -367,7 +404,13 @@ def main() -> int:
     ap.add_argument("--dense-rung", default=DENSE_RUNG, help=f"the rung shown as the second reference (default {DENSE_RUNG})")
     ap.add_argument("--json", type=Path, default=None, help="also write the table as a tracked record")
     ap.add_argument("--controls", action="store_true", help="run the controls against the 2026-09-03 ladder and exit")
+    ap.add_argument("--scene", action="append", default=[],
+                    help="declare a scene name; repeatable. Only needed when a "
+                         "scene name itself contains an underscore, which "
+                         "would otherwise be split into scene and rung")
     args = ap.parse_args()
+    global _SCENES
+    _SCENES = tuple(args.scene)
     if args.controls:
         return controls()
     if not args.verdict or not args.outputs:

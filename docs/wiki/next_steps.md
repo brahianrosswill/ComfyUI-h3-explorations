@@ -80,10 +80,16 @@ Items from the `evalman` render lane:
   composition difference (sample divergence), the one quality loss is
   stairwell (lighting, skin, level), so the direction is against running
   Sol without sage and the evidence is weak. The shipped chain (sage
-  outer steps, Sol inside) stays the leader. Frontier table blocked: the
-  tool splits labels at the last underscore and `subway_solnosage_tau12`
-  reads as a scene; fix the split (rung is the known rung set, not the
-  last token) in `bench/frontier_table.py` and `bench/measure_clip_loudness.py`.
+  outer steps, Sol inside) stays the leader. Frontier table: UNBLOCKED and
+  written 2026-09-08,
+  `bench/results/2026-09-08_sol_nosage_2026-09-04_frontier.json` (the session's
+  own outputs record plus the ladder's, which carries the sage floor rows).
+  The split now takes the FIRST underscore, so a rung may carry one, with
+  `--scene` to declare a scene name that does; `bench/frontier_table.py
+  --controls` covers the underscored rung, the declared scene and the
+  unchanged plain labels. `bench/measure_clip_loudness.py` took the same fix,
+  prophylactically: its 2026-09-04 record never included the tau-raised arm,
+  so nothing measured was wrong.
 - One pair, no card time: the all-rows sink mode's armed subway clip
   against the 2026-09-03 subway Sol clip
   (`bench/results/2026-09-04_probe_allrows_vs_shipped_pixels.json` says the

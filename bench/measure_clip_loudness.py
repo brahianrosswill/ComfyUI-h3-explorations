@@ -71,9 +71,34 @@ def has_audio(path: Path) -> bool:
     return bool(out)
 
 
-def split_label(label: str) -> tuple[str, str]:
-    """`<scene>_<rung>` as the ladder manifest spells it."""
-    scene, _, rung = label.rpartition("_")
+# Declared scene names, empty unless --scene is given; see split_label.
+_SCENES: tuple[str, ...] = ()
+
+
+def split_label(label: str, scenes: tuple[str, ...] | None = None) -> tuple[str, str]:
+    """`<scene>_<rung>` on the FIRST underscore, or on a declared scene.
+
+    **This used to split on the LAST underscore**, which is right only while no
+    rung carries one. `subway_solnosage_tau12` then read as scene
+    `subway_solnosage` with rung `tau12`, and since that invented scene had no
+    floor arm the table refused rather than rendering -- which is how it was
+    found. Scene names in every record here are single tokens and rungs are the
+    part that grows (`solnosage_tau12`), so the first underscore is the side
+    that holds.
+
+    It is still an assumption, not a law: a scene named `night_market` would
+    break it the same way. `--scene` declares the set explicitly when that
+    happens, and a declared scene is matched longest-first so one scene name
+    can prefix another.
+    """
+    for s in sorted(_SCENES if scenes is None else scenes, key=len, reverse=True):
+        if label == s:
+            return s, ""
+        if label.startswith(s + "_"):
+            return s, label[len(s) + 1:]
+    if "_" not in label:
+        return label, ""
+    scene, rung = label.split("_", 1)
     return scene, rung
 
 
@@ -89,7 +114,13 @@ def main() -> int:
                     help="the rung every other rung in a scene is compared against")
     ap.add_argument("--out", required=True)
     ap.add_argument("--note", default=None, help="one sentence on why this record exists")
+    ap.add_argument("--scene", action="append", default=[],
+                    help="declare a scene name; repeatable. Only needed when a "
+                         "scene name itself contains an underscore, which "
+                         "would otherwise be split into scene and rung")
     args = ap.parse_args()
+    global _SCENES
+    _SCENES = tuple(args.scene)
     root = Path(args.output_root) if args.output_root else comfy_output()
     if not root.is_dir():
         sys.exit(f"refuse: output root is not a directory: {root}")

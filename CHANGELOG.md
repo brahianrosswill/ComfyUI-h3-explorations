@@ -4,6 +4,30 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.55
+
+### Fixed
+
+- **Arm labels split on the last underscore, so a rung could not carry one.**
+  `subway_solnosage_tau12` read as scene `subway_solnosage`, which then had no
+  floor arm and made `bench/frontier_table.py` refuse rather than render -- the
+  blockage that had the just-Sol frontier table outstanding since 2026-09-05.
+  Both it and `bench/measure_clip_loudness.py` split on the first underscore
+  now, since scene names here are single tokens and the rung is the part that
+  grows. That is an assumption rather than a law, so `--scene` declares the set
+  when a scene name itself carries an underscore, matched longest-first.
+  Three cases join `--controls`: the underscored rung keeps its whole name in
+  its own scene, a declared scene beats the first underscore, and the ladder's
+  plain labels split as before. The existing controls stayed green across the
+  change, which is the regression evidence; the refusal before it is the red
+  proof.
+
+- **The just-Sol frontier table exists**,
+  `bench/results/2026-09-08_sol_nosage_2026-09-04_frontier.json`, built from the
+  session's outputs record and the ladder's, which is where the sage floor rows
+  live. The tau-raised arm now sits in subway beside the arms it was judged
+  against. The loudness record needed no rebuild: it never carried that arm.
+
 ## 0.99.54
 
 ### Added
