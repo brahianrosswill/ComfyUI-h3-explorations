@@ -298,9 +298,17 @@ selection boundary is a histogram bin edge, not a rank cut, and that a token
 clearing it takes a slot by `atomicAdd` and is dropped if the slot exceeds the
 budget -- so the docstring's "the set never depends on scheduling" holds only
 while the count clearing the threshold fits. Read entry 29 before proposing a
-cause. What would settle it is arm 5 there, an out-parameter for the admitted
-count in the shape of `blk_cnt`, and it is the owner's call because it means a
-kernel build and a wheel swap.
+cause. **It is upstream's defect, measured and not merely argued**: it reproduces on a
+plain upstream wheel holding none of our code, with a positive control on each
+arm that it is the wheel it claims to be
+(`bench/results/2026-09-08_token_aug_stock_wheel_control.json`). A standalone
+repro and the smallest input that still moves are in
+`bench/repro_token_aug_nondeterminism.py` and
+`bench/results/2026-09-08_token_aug_repro_shapes.json`; reproduction is
+non-monotone in head count and sequence length, so **a negative on one shape is
+not evidence of correctness** and candidates must be tested in fresh processes.
+What would settle the cause is arm 5 there, an out-parameter for the admitted
+count in the shape of `blk_cnt`.
 
 **How much of an H3 render is attention: a floor, derived rather than
 profiled.** `bench/derive_attention_share.py` writes

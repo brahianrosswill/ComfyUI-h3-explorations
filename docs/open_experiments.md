@@ -2192,6 +2192,34 @@ render.**
    the permutation applied to captured q/k/v ahead of the kernel call, so it
    is more than a flag flip.
 
+4b. **Provenance and a shippable repro. DONE 2026-09-08.** Two things the
+   entry needed before any of this could leave the machine.
+   *It is upstream's, not ours.* Our delta against the tag is Python only and
+   the selection kernel is byte-identical, but that is an argument; the
+   measurement is `bench/compare_token_aug_wheels.py` and
+   `bench/results/2026-09-08_token_aug_stock_wheel_control.json`, which runs
+   the repro under a plain upstream wheel holding none of our code. It
+   reproduces there in every cold run, and each arm carries a positive control
+   that it is the wheel it claims to be, because otherwise "stock reproduces"
+   could be our build under two labels.
+   *A capture cell is not a repro.* `bench/repro_token_aug_nondeterminism.py`
+   is standalone and imports nothing from this repo, and
+   `bench/verify_token_aug_repro_shapes.py` found the smallest input that still
+   moves, recorded in `bench/results/2026-09-08_token_aug_repro_shapes.json`.
+   **The methodology note is the part worth keeping**: the first search ran
+   inside one process and the artifact it chose failed when run cold, because
+   this is an intermittent race and a warm process is not the state the
+   receiver is in. Candidates are re-tested in fresh processes now.
+   *And the finding that came out of the search rather than the plan:*
+   reproduction depends on head count and sequence length **non-monotonically**
+   -- shapes reproduce, slightly larger ones do not, and the full tensor does.
+   Needing concurrency to manifest is what a scheduling race looks like from
+   outside and what a wrong-but-deterministic computation does not do. Random
+   tensors at the same shapes never reproduce, so the trigger is in the
+   activations rather than in the code path alone. It also means a negative on
+   one shape is not evidence of correctness, which is the trap for anyone
+   re-testing this.
+
 5. **The one that would settle it: report the admitted count.** Added
    2026-09-08, after arm 1 went as far as an outside observer can. The
    mechanism says a window is unstable exactly when the count clearing the

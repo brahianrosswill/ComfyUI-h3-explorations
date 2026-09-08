@@ -1,0 +1,151 @@
+{
+  "what": "the smallest artifact that still reproduces token_aug's run-to-run nondeterminism, so the defect can be reported without shipping a capture cell",
+  "produced_by": "bench/minimise_token_aug_repro.py",
+  "kernel_build": "0.2.33+sol.990ae4c",
+  "source_cell": "qkv_L104361_S104361_b49_s14.pt",
+  "token_aug": 64,
+  "tau": 1.0,
+  "repeats": 40,
+  "arms": {
+    "random_full_shape": {
+      "max_abs_delta": 0.0,
+      "rows_differing": 0,
+      "launches": 40,
+      "mean_abs_output": 0.0032220310531556606,
+      "reproduces": false,
+      "reading": "not seen in 40 launches, which is not the same as stable: an intermittent race can sit out a run"
+    },
+    "unstable_heads": {
+      "count": 7,
+      "of": 56,
+      "first_few": [
+        9,
+        10,
+        11,
+        22,
+        25,
+        30,
+        47
+      ]
+    },
+    "head_count_sweep": {
+      "heads_1": {
+        "max_abs_delta": 0.0,
+        "rows_differing": 0,
+        "launches": 40,
+        "mean_abs_output": 59.02779769897461,
+        "reproduces": false,
+        "reading": "not seen in 40 launches, which is not the same as stable: an intermittent race can sit out a run",
+        "unstable_heads_included": 1
+      },
+      "heads_2": {
+        "max_abs_delta": 4.649162292480469e-06,
+        "rows_differing": 2,
+        "launches": 40,
+        "mean_abs_output": 39.593624114990234,
+        "reproduces": true,
+        "reading": "moved",
+        "unstable_heads_included": 1
+      },
+      "heads_4": {
+        "max_abs_delta": 275.625,
+        "rows_differing": 126,
+        "launches": 40,
+        "mean_abs_output": 34.1674919128418,
+        "reproduces": true,
+        "reading": "moved",
+        "unstable_heads_included": 1
+      },
+      "heads_8": {
+        "max_abs_delta": 0.0,
+        "rows_differing": 0,
+        "launches": 40,
+        "mean_abs_output": 31.9991455078125,
+        "reproduces": false,
+        "reading": "not seen in 40 launches, which is not the same as stable: an intermittent race can sit out a run",
+        "unstable_heads_included": 1
+      },
+      "heads_16": {
+        "max_abs_delta": 460.0,
+        "rows_differing": 213,
+        "launches": 40,
+        "mean_abs_output": 26.433679580688477,
+        "reproduces": true,
+        "reading": "moved",
+        "unstable_heads_included": 3
+      },
+      "heads_32": {
+        "max_abs_delta": 460.0,
+        "rows_differing": 490,
+        "launches": 40,
+        "mean_abs_output": 27.1082820892334,
+        "reproduces": true,
+        "reading": "moved",
+        "unstable_heads_included": 6
+      },
+      "heads_56": {
+        "max_abs_delta": 460.0,
+        "rows_differing": 944,
+        "launches": 40,
+        "mean_abs_output": 26.190610885620117,
+        "reproduces": true,
+        "reading": "moved",
+        "unstable_heads_included": 7
+      }
+    },
+    "smallest_reproducing_head_count": 2,
+    "random_slice_shape": {
+      "max_abs_delta": 0.0,
+      "rows_differing": 0,
+      "launches": 40,
+      "mean_abs_output": 0.0032369932159781456,
+      "reproduces": false,
+      "reading": "not seen in 40 launches, which is not the same as stable: an intermittent race can sit out a run"
+    },
+    "length_sweep": {
+      "len_65536": {
+        "max_abs_delta": 0.0,
+        "rows_differing": 0,
+        "launches": 40,
+        "mean_abs_output": 39.51420593261719,
+        "reproduces": false,
+        "reading": "not seen in 40 launches, which is not the same as stable: an intermittent race can sit out a run"
+      },
+      "len_32768": {
+        "max_abs_delta": 1.0,
+        "rows_differing": 7,
+        "launches": 40,
+        "mean_abs_output": 39.89552688598633,
+        "reproduces": true,
+        "reading": "moved"
+      },
+      "len_16384": {
+        "max_abs_delta": 305.5,
+        "rows_differing": 25,
+        "launches": 40,
+        "mean_abs_output": 38.74211883544922,
+        "reproduces": true,
+        "reading": "moved"
+      },
+      "len_8192": {
+        "max_abs_delta": 372.25,
+        "rows_differing": 138,
+        "launches": 40,
+        "mean_abs_output": 36.41998291015625,
+        "reproduces": true,
+        "reading": "moved"
+      }
+    },
+    "saved_slice_shape": [
+      1,
+      8192,
+      2,
+      128
+    ]
+  },
+  "superseded_for_the_artifact_by": "bench/results/2026-09-08_token_aug_repro_shapes.json",
+  "cannot_settle": [
+    "that a non-reproducing arm proves the trigger absent. Each arm is a fixed number of launches; instability that is rarer than that reads as absent here.",
+    "WHICH SHAPE TO SHIP AS A REPRO. Every arm here runs inside ONE process, after other launches, with a warm allocator. The effect is an occupancy-sensitive race, and the first slice this file picked failed when run cold. bench/verify_token_aug_repro_shapes.py re-tests candidates in fresh processes and owns the artifact; what stands here is the head sweep and the random arms."
+  ]
+}

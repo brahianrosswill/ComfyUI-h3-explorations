@@ -4,6 +4,40 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.53
+
+### Added
+
+- **The defect is upstream's, and now measured rather than argued.**
+  `bench/compare_token_aug_wheels.py` runs the repro under a plain upstream
+  `comfy-kitchen` wheel holding none of our code, and it reproduces there in
+  every cold run. Each arm carries a positive control that it is the wheel it
+  claims to be -- our fork's added parameter is absent from every upstream
+  release, so its absence identifies stock -- because without that, "stock
+  reproduces" could be our own build running twice under two labels.
+
+- **A repro someone else can run.**
+  `bench/repro_token_aug_nondeterminism.py` is standalone and imports nothing
+  from this repo, and `bench/verify_token_aug_repro_shapes.py` searched for the
+  smallest input that still moves. The capture cell it came from is gigabytes;
+  the artifact is small enough to attach to an issue.
+
+- **Reproduction is non-monotone in shape, which is a finding, not a nuisance.**
+  Head count and sequence length both decide whether it manifests, and larger
+  is not more likely. Needing concurrency is what a scheduling race looks like
+  from outside; a wrong-but-deterministic computation would not care. Random
+  tensors at the same shapes never reproduce, so the trigger is in the
+  activations. The practical consequence is that a negative on one shape is not
+  evidence of correctness.
+
+### Fixed
+
+- **The first minimisation searched in-process and picked an artifact that did
+  not work.** A slice that moved during a warm sweep failed on a cold start,
+  because an intermittent race is sensitive to the state the receiver is not
+  in. Candidates are re-tested in fresh processes now, and the in-process
+  record says what it can and cannot choose.
+
 ## 0.99.52
 
 ### Added
