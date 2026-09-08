@@ -1,6 +1,6 @@
 # MiniMax H3: valid geometry, and which nodes to use
 
-Last updated: 2026-08-23.
+Last updated: 2026-09-08.
 
 Everything here is read out of ComfyUI's own `comfy_extras/nodes_minimax_h3.py`
 or measured on a 4090, not inferred from community lore.
@@ -54,25 +54,20 @@ Duration is `frames / 24`, so 362 frames is 15.08 s and 124 is ~5.2 s.
 
 **Two things worth knowing at the top of the range.** Attention grows as S²
 while everything else grows linearly, so the attention share rises with clip
-length and long clips are where kernel and sparsity work pays off most. That
-direction is the load-bearing part and it is not in doubt.
+length, and long clips are where kernel and sparsity work pays off most. The
+only measured figure this repo has for that share is
+[`../bench/results/2026-09-08_attention_share_bound.json`](../bench/results/2026-09-08_attention_share_bound.json),
+and it is a floor over sampler time at one geometry rather than a share of a
+step. Two percentages that used to sit in this sentence were withdrawn on
+2026-09-08 as having no findable origin.
 
-> **The two percentages this sentence used to carry are UNSUPPORTED as of
-> 2026-09-08, and are removed rather than re-pointed.** It said attention is
-> "~76% of the step" at 362 frames "against ~50% at 124". Neither has a
-> findable origin: the only record naming them is
-> [`../bench/results/2026-09-03_prose_measurements_baseline_v2.json`](../bench/results/2026-09-03_prose_measurements_baseline_v2.json),
-> which lists the sentence as prose awaiting migration rather than as its
-> source. What IS supported is narrower and differently shaped:
-> [`../bench/results/2026-09-08_attention_share_bound.json`](../bench/results/2026-09-08_attention_share_bound.json)
-> gives a FLOOR under attention's share of **sampler** time, at 1344x768 and
-> 345 frames on the shipped INT8 path, derived from paired ladder arms rather
-> than profiled. A floor on sampler time is not a share of a step, so it does
-> not replace the withdrawn numbers; it is what we have. And late-clip identity softening at 362 is the ordinary
-long-clip DiT failure at the edge of the trained range; stepping down to 328
-or 345 costs proportionally less attention *and* reduces it. 362 is the
-shipped default, so that step down is a deliberate choice per render, not a
-setting you inherit.
+And late-clip identity softening at 362 is the ordinary long-clip DiT failure
+at the edge of the trained range; stepping down to 328 or 345 costs
+proportionally less attention *and* reduces it. **The shipped graphs render at
+`h3_config.LONG_LENGTH`, which is 345, not 362** — this said "362 is the
+shipped default" until 2026-09-08, which was wrong in the direction that
+matters, since it implied you inherit the most expensive legal length rather
+than choosing it.
 
 ## Three modality tags, not two
 
@@ -115,8 +110,10 @@ into runs rather than tagging it wholesale.
 The default pair is `er_sde` / `simple`, one model eval per step, so sampler
 choice here is a quality decision and not a speed one. That is not true of the
 whole sampler list: `heun`, `dpm_2`, and the `2s`/`3s`/`res_Ns` families are
-2-6 evals per step, and picking one silently multiplies the ~91% of render
-time the sampler occupies. `SAMPLING` in `workflows/h3_config.py` is the only
+2-6 evals per step, and picking one silently multiplies whatever the sampler
+occupies — which is nearly all of a render, decode being the small remainder
+(derive it from the `*_outputs.json` records with the command in entry 28 of
+[`open_experiments.md`](open_experiments.md)). `SAMPLING` in `workflows/h3_config.py` is the only
 place the defaults live, and it carries the reasoning.
 
 ### Use from this repo
@@ -239,8 +236,8 @@ dense+sparse, so remove it once you have the numbers.
 ### Use from KJNodes
 
 **`ModelPreviewOverrideKJ`** — taeh3 preview during sampling. Worth more
-than any kernel knob: it lets a bad seed die in ~90 s instead of costing a
-full render. Deliberately kept out of the API-format workflows, since its
+than any kernel knob: it lets a bad seed be killed in the first moments
+instead of costing a full render. Deliberately kept out of the API-format workflows, since its
 decodes would land in any timing run as an unattributed cost.
 
 ### Skip, with reasons
@@ -250,19 +247,21 @@ job as our node and patches the same key, so they conflict and the last one
 applied wins. Ours additionally registers the attention override. Pick one;
 there is no benefit to both.
 
-**`MiniMaxLowVRAMAttention`** (KJNodes) — head chunking. Shrinks the
-kernel's internal transients by the chunk count (**~3227 MiB at 4 groups**,
-measured; `workflows/h3_config.py`, three times the ~1070 MiB this doc
-and the shipped graph notes previously carried), but
-turns 1000 attention calls per render into 4000. On a 24 GB 4090 freed VRAM
-converts to wall-clock at a ~2.6% ceiling — weight streaming is already
-hidden behind compute — so it is buying headroom you cannot spend. Take it
+**`MiniMaxLowVRAMAttention`** (KJNodes) — head chunking. Shrinks the kernel's
+internal transients by the chunk count, and the measured figure is several
+times what this doc and the shipped graph notes used to carry
+(`workflows/h3_config.py`, the head-chunk arms beside `SAGE_NODE`). It
+multiplies the attention call count by the same factor. Freed VRAM converts to
+wall-clock at a low ceiling on this card — the value is in the same config
+note — because weight streaming is already hidden behind compute, so it is
+buying headroom you cannot spend. Take it
 only if you are actually hitting OOM. As of KJNodes `35e5956` it composes
 with an existing attention patch rather than conflicting.
 
-**`MiniMaxChunkFeedForward`** (KJNodes) — at 362 frames attention peaks
-around 17.8 GiB against the FFN's 9-12, so chunking the FFN lowers a peak
-that is not the binding one. It is a short-clip feature; at short lengths
+**`MiniMaxChunkFeedForward`** (KJNodes) — at the top of the frame range the
+attention peak is well above the FFN's, so chunking the FFN lowers a peak that
+is not the binding one. The arms are in `workflows/h3_config.py` beside the
+head-chunk ones. It is a short-clip feature; at short lengths
 the two peaks are close.
 
 **`PathchSageAttentionKJ`** — the global sage switch. It sages every

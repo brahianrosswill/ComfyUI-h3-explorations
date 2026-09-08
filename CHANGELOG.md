@@ -8,6 +8,19 @@ artifact.
 
 ### Fixed
 
+- **`docs/h3_geometry_and_nodes.md` said 362 was the shipped default.** It is
+  not: `h3_config.LONG_LENGTH` is 345 and 90 shipped API graphs carry 345. The
+  claim was wrong in the direction that matters, since it told a reader they
+  inherit the most expensive legal length rather than choosing it. Found while
+  removing measurements from that file's prose.
+
+- **That file's prose measurements are removed or repointed.** The sampler's
+  share of a render, the preview node's payoff, the head-chunk transient and
+  ceiling, and the FFN-versus-attention peak all carried numbers with no home
+  or with a home they did not name. Each now states the direction and points at
+  the constant or the record that holds the value. What remains flagged is
+  identifiers and arithmetic shown in place, which the rule permits.
+
 - **`docs/h3_geometry_and_nodes.md`'s attention-share percentages are withdrawn,
   not re-pointed.** It said attention is "~76% of the step" at 362 frames against
   "~50%" at 124. Neither has a findable origin: the only record naming them lists
