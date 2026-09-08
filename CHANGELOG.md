@@ -4,6 +4,39 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.52
+
+### Added
+
+- **`bench/probe_token_aug_selection_structure.py` and its record**: what shape
+  block 49's `token_aug` instability has. The previous probe said the variation
+  is not accumulation order and could not say what varies; this one says the
+  moving rows carry the granularity of one token-routing centroid, on two
+  tests, each with its own control -- clustering against the same rows
+  permuted within each head, and alignment against a grid shifted by one query
+  block. It cannot confirm a changed admitted set and says so.
+
+- **Open experiment 29's arms 2 and 3 are answered by the same run.** All five
+  captured blocks have now been tested and 49 is the only unstable one; the
+  instability is present at every budget and does not scale with it. Both were
+  eliminations and neither was expected to be the answer.
+
+### Fixed
+
+- **"The admitted set is not observable from outside the kernel" was half
+  wrong.** The kernel's source says how the set is chosen, and open experiment
+  29 now leads with three facts from it: the selection unit is the centroid's
+  query blocks, the boundary is a histogram bin edge rather than a rank cut,
+  and a token clearing the threshold takes its slot by `atomicAdd` and is
+  dropped above the budget. The third is a mechanism for the symptom, and it
+  bounds the docstring claim that the set never depends on scheduling.
+
+- **Open experiment 29's arm 1 asked for a quantity the kernel does not
+  compute.** "The gap between the last admitted token's score and the first
+  rejected one" presumes a rank cut. It is replaced by the measurement above,
+  with the reason recorded in place, and a new arm 5 names the out-parameter
+  that would turn the fingerprint into a cause.
+
 ## 0.99.51
 
 ### Fixed

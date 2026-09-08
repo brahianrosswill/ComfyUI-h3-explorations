@@ -2082,9 +2082,40 @@ magnitude on a small fraction of rows, and a reordered sum cannot do that.
 `bench/probe_token_aug_determinism.py` and
 `bench/results/2026-09-08_token_aug_determinism_shape.json` own it.
 
-**What is NOT established, and is the whole question.** What varies. The
-admitted token set is not observable from outside the kernel, so the record
-rules out the benign explanation and identifies nothing.
+**What was NOT established when this entry was written, and is the whole
+question.** What varies. The admitted token set is not observable from outside
+the kernel, so the first record rules out the benign explanation and identifies
+nothing.
+
+**"Not observable from outside the kernel" was half wrong, and the correction
+is the reason arm 1 changed.** The kernel's source says exactly how the set is
+chosen (comfy-kitchen `sol_attn_token.cu`, on the branch the installed wheel
+was built from; `bench/check_sol_kernel.py` reports which build that is). Three
+facts from it, each load-bearing below:
+
+- **A centroid is shared by `TOK_GROUP` neighbouring query blocks.** The unit
+  of selection is `TOK_GROUP * BLOCK` contiguous token rows, per head, so a
+  changed set has a granularity that IS observable from outside.
+- **The boundary is a histogram bin edge, not a rank cut.** Pass 1 histograms
+  every candidate's score; pass 2 admits whole bins from the top until the next
+  would overflow the budget, and thresholds at that bin's lower edge. So arm 1
+  as first written -- "the gap between the last admitted token's score and the
+  first rejected one" -- names a quantity the kernel never computes. The
+  statistics it implicates instead are the occupancy of the boundary bin and
+  the slack between the admitted count and the budget.
+- **A token clearing the threshold takes a slot by `atomicAdd` and is listed
+  only if its slot is below the budget.** The docstring's claim that the set
+  "does not depend on scheduling" holds while the count clearing the threshold
+  is at most the budget. Above it, which tokens survive is decided by the order
+  the atomics land in. That is a scheduling-dependent set, and it is the
+  symptom.
+
+One more source fact that bears on how such an overflow could arise: the scores
+are an int8 matmul scaled per key block, so score values are discrete. Pass 1
+bins on `(s - ref) + HLO` and pass 2 compares `s` against `(ref - HLO) + edge`
+-- equal in exact arithmetic, not in floating point. Because the scores are
+quantised, a disagreement at the boundary moves a whole clump of equal-scoring
+tokens at once rather than one marginal token.
 
 **Two causes are eliminated, both recorded in that file.** Centroid fidelity,
 because token routing selects by the block centroid and the 2026-08-15 morton
@@ -2105,24 +2136,42 @@ project, whose kernel work is ranked against shares measured on this path.
 **The arms, cheapest first. All offline on captured activations, none needs a
 render.**
 
-1. **Score separation at the selection boundary.** Per query block, the gap
-   between the last admitted token's score and the first rejected one. The
-   kernel's own docstring says a flat score profile may admit none, so the
-   selection is documented as sensitive to separation. If the unstable block's
-   gaps sit near zero where a stable block's do not, that is the mechanism,
-   and it explains why fidelity failed to predict it: fidelity measures how
-   well a mean stands in for its members, separation measures distance from a
-   threshold, and those are different properties of one distribution. **Do
-   this first.**
+1. ~~**Score separation at the selection boundary.**~~ **REPLACED and DONE
+   2026-09-08: the shape of the moving rows.** Replaced because the source
+   above says the boundary is a bin edge, so the original statistic does not
+   exist, and reconstructing the bin occupancy offline would mean
+   reimplementing the route stage, the int8 centroid quantisation and the
+   reference score -- a lot of surface to get subtly wrong for a quantity the
+   kernel could report directly (arm 5). What was measured instead is the
+   granularity of the variation, which the first fact above makes observable:
+   whether the moving rows cluster inside centroid-sized windows, and whether
+   both query blocks sharing a centroid move together.
+   `bench/probe_token_aug_selection_structure.py` and
+   `bench/results/2026-09-08_token_aug_selection_structure.json`.
+   **The movement carries the selection unit's fingerprint on both tests**: it
+   clusters far above the run's own scattered control, which is the same rows
+   permuted within each head rather than a null asserted from theory, and the
+   aligned grid beats a grid shifted by one query block by a wide margin on
+   whether both halves of a window move. A single window can move nearly all
+   its rows, which is more than one query block holds. The delta magnitude is
+   the size a token moving between exact and pooled treatment would produce,
+   which is the consistency check the mechanism has to pass.
+   **What it does not do is confirm the mechanism**: the fingerprint is
+   consistent with a changed admitted set and with any other per-centroid
+   effect, and the record says so. A scattered result would have refuted it;
+   this one does not establish it.
 
-2. **The other three captured blocks.** Only two of the five have been tested
-   for stability. If any other is unstable, "the last block is special" dies
-   immediately; if none is, that idea survives a round without being
-   confirmed. Minutes, same probe.
+2. **The other three captured blocks. DONE 2026-09-08, same record.** All four
+   of the other captured blocks are bitwise deterministic under the same
+   budget, so all five have now been tested and block 49 is the only unstable
+   one. "The last block is special" survives another round without being
+   confirmed; nothing here says why depth would matter.
 
-3. **Budgets 128 and 256.** Stage 2 ran only 64 where the 2026-09-04 grade
-   carried all three. Instability scaling with budget says something about the
-   admitted set; flat says something else. One flag on the same probe.
+3. **Budgets 128 and 256. DONE 2026-09-08, same record.** The instability is
+   present at every budget and does not scale smoothly with it, and the
+   fingerprint of arm 1 holds at each. Under the overflow mechanism that is
+   what to expect: the budget changes which windows overflow rather than how
+   badly. It is a weak discriminator and it is now spent.
 
 4. **The morton arm, and note what it is now for.** Reordering into compact
    blocks and re-running the probe. This is no longer a test of the centroid
@@ -2133,12 +2182,33 @@ render.**
    the permutation applied to captured q/k/v ahead of the kernel call, so it
    is more than a flag flip.
 
-**Decision each would change.** 1 or 4 landing gives the block-policy step a
-reason to trust or distrust token routing per block. 2 and 3 are eliminations:
-they narrow what a cause can be, and neither is expected to be the answer.
+5. **The one that would settle it: report the admitted count.** Added
+   2026-09-08, after arm 1 went as far as an outside observer can. The
+   mechanism says a window is unstable exactly when the count clearing the
+   threshold exceeds the budget, and that count is a kernel-internal array the
+   caller never sees. An optional out-parameter for it is the same shape as the
+   `blk_cnt` parameter this fork already added, and against the same argument:
+   observability our tooling cannot work without. It would turn a fingerprint
+   into a cause -- and if the counts never exceed the budget, it refutes the
+   mechanism outright, which nothing available today can do.
+   **Blocker: the owner's call, on two things.** It is a kernel change, so it
+   is a build through `vendor/rebuild_kernel.sh` and a wheel swap in the
+   ComfyUI venv, which is not something to do under a shared checkout without
+   asking. And the finding it would confirm is a defect in a third-party
+   kernel, so where it is written up is a placement decision, not a technical
+   one.
 
-**Stops if** arm 1 shows the unstable block's separation is unremarkable. Then
-the cause is not in the selection's own margin, nothing cheap remains, and the
-honest move is to leave `token_aug` off and record that its output is not
-reproducible on at least one block -- which is by itself sufficient reason not
-to ship it, without ever learning why.
+**Decision each would change.** 4 landing gives the block-policy step a reason
+to trust or distrust token routing per block; 5 gives it a cause or kills the
+mechanism. 2 and 3 were eliminations, both spent, and neither was expected to
+be the answer.
+
+**Stopping condition, as met.** This entry said it stops if arm 1 showed the
+selection's own margin was unremarkable. Arm 1 was replaced rather than run,
+and its replacement went the other way: the variation carries the selection
+unit's granularity. So the cheap outside-the-kernel work is finished and did
+not stop the lane -- but it did not name a cause either, and everything left
+(4 and 5) costs more than a flag flip. The disqualifying fact stands on its own
+either way: `token_aug`'s output is not reproducible on at least one block, and
+a lever that cannot render the same clip twice cannot be graded blind, which is
+sufficient reason not to ship it without ever learning why.

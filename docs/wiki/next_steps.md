@@ -278,17 +278,27 @@ what would close it; it leans to the cheaper arm and is not closed. No
 action is queued on it; a second seed is the manifest's `run` line if the
 owner wants one.
 
-**Block 49's token-routing instability: two explanations eliminated, none
-found.** `bench/probe_token_aug_determinism.py` and
-`bench/results/2026-09-08_token_aug_determinism_shape.json`. With `token_aug`
-on, one captured block's output differs between launches on identical inputs
-while the plain arms and the other captured blocks are bitwise stable. It is
-not accumulation order: the deltas are far too large against the output's own
-scale for a reordered sum. Read the record before proposing a cause, because
-it names the two obvious ones and why each is already dead -- centroid
-fidelity, refuted by our own morton measurement, and the high-norm-row
-hotspot, refuted by measurement the same day. What varies inside the kernel is
-still unobservable from outside it.
+**Block 49's token-routing instability: the variation has the selection unit's
+shape, and the kernel source names a mechanism.** Two records, read in order:
+`bench/results/2026-09-08_token_aug_determinism_shape.json` establishes that
+the variation is not accumulation order and eliminates the two obvious causes
+(centroid fidelity, refuted by our own morton measurement; the high-norm-row
+hotspot, refuted by measurement the same day), and
+`bench/results/2026-09-08_token_aug_selection_structure.json`
+(`bench/probe_token_aug_selection_structure.py`) says the moving rows carry the
+granularity of one token-routing centroid, against a scattered control the run
+measures on its own rows and a shifted-grid control for the alignment. All five
+captured blocks have now been tested and 49 is the only unstable one; every
+budget behaves the same way.
+**Its predecessor's "unobservable from outside the kernel" is half wrong and
+open experiment 29 carries the correction**: the kernel's source says the
+selection boundary is a histogram bin edge, not a rank cut, and that a token
+clearing it takes a slot by `atomicAdd` and is dropped if the slot exceeds the
+budget -- so the docstring's "the set never depends on scheduling" holds only
+while the count clearing the threshold fits. Read entry 29 before proposing a
+cause. What would settle it is arm 5 there, an out-parameter for the admitted
+count in the shape of `blk_cnt`, and it is the owner's call because it means a
+kernel build and a wheel swap.
 
 **How much of an H3 render is attention: a floor, derived rather than
 profiled.** `bench/derive_attention_share.py` writes
