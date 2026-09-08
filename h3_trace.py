@@ -15,20 +15,44 @@ What it records, and why each field is here rather than inferred:
                          two points for H3, both inferred from a docstring and
                          a log line in this repo.
   dtype                  bf16 is assumed everywhere; assumption, not evidence.
-  module                 `dit` or `refiner`. H3 has NO cross-attention -- both
-                         DiTBlock and RefinerBlock hold one self-attn over the
-                         packed sequence -- but the refiner runs a different
-                         and much shorter one, and folding the two together
-                         would report a bimodal workload as one average.
-  has_mask, has_scale    both currently cause our override to DECLINE, so
-                         they are the coverage question: any call carrying
-                         either leaves sage silently.
-  route                  which path actually ran. `sage` counts are also
-                         available from the fork's own get_dispatch_counts;
-                         the value here is the DENOMINATOR, because a
-                         fallback-heavy render and a fully-sage one are
-                         indistinguishable in our log today (one warning is
-                         emitted whether 1 or 10,000 calls fell back).
+  module                 **`unknown`, always, and corrected here 2026-09-08.**
+                         This used to say "`dit` or `refiner`", and the one
+                         call site passed "dit" for every call, so every
+                         refiner call was labelled a DiT one. The forward we
+                         patch replaces `Attention.forward` on the CLASS, and
+                         both DiTBlock and RefinerBlock instantiate the same
+                         `Attention`, so the call site cannot tell them apart.
+                         The point the old text made is still true -- the
+                         refiner runs a much shorter sequence and folding the
+                         two would report a bimodal workload as one average --
+                         but `seq` is what separates them, not this field, and
+                         `seq` is part of the counter key, so no data was ever
+                         lost. Split a trace on seq; do not trust this field.
+  has_mask, has_scale    constants, and true by construction rather than
+                         assumed: `Attention.forward(self, x, rope_freqs=None,
+                         transformer_options={})` has nowhere to carry a mask
+                         or a scale. The old text called them "the coverage
+                         question", which described a risk this path cannot
+                         run: a call carrying either would have to come from a
+                         different signature.
+  route                  TWO different things share this name, which is worth
+                         reading twice. `record(route=...)` is passed
+                         "entered" at the single call site and is the
+                         DENOMINATOR: every attention call, whatever happened
+                         next. Attribution is `h3_trace.route(seq, outcome)`,
+                         a separate function called at five exits in
+                         attention.py -- sage, sage_chunked, fallback_kernel,
+                         fallback_chunked, sol_delegate -- which uses the key
+                         stashed at entry. So the numerator does NOT have to
+                         come from the fork's get_dispatch_counts, though
+                         comparing the two would be a real cross-check and
+                         nothing here does it yet.
+
+**Nothing covers this file.** No `bench/check_*.py` drives it, and
+`docs/checks.md` has no row for it, so the five outcomes above are
+correct-by-construction: no one has forced each case and confirmed the field
+lands where it should. Treat a share computed from it as unverified until
+that exists.
 """
 from __future__ import annotations
 

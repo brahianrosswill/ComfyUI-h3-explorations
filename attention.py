@@ -409,8 +409,22 @@ def make_minimax_attn_forward(kernel_fn, kernel_kwargs, head_chunks=1,
             # the ones that reached sage. The fork's get_dispatch_counts gives
             # the numerator; without this, a fallback-heavy render and a
             # fully-sage one are indistinguishable.
+            # `module="unknown"`, not "dit": this forward replaces
+            # `Attention.forward` on the CLASS, and both `DiTBlock` and
+            # `RefinerBlock` in comfy/ldm/minimax/model.py instantiate that
+            # same `Attention`, so the call site cannot tell which one it is
+            # in. It said "dit" until 2026-09-08, which labelled every refiner
+            # call as a DiT one. `seq` separates them -- the refiner's packed
+            # sequence is much shorter -- and it is part of the counter key,
+            # so the two workloads were always distinguishable by shape even
+            # while the label was wrong. Same refusal as
+            # `sol_observe.py`'s scope field, for the same reason.
+            #
+            # has_mask/has_scale are constants because the signature above has
+            # nowhere to carry either; they are true by construction on this
+            # path, not assumptions.
             _trace.record(seq=s, heads=self.heads, head_dim=self.head_dim,
-                          dtype=x.dtype, module="dit",
+                          dtype=x.dtype, module="unknown",
                           has_mask=False, has_scale=False, route="entered")
         # One fused projection, split into three views of the same buffer.
         q, k, v = self.qkv_proj(x).split(self.heads * self.head_dim, dim=-1)

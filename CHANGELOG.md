@@ -6,6 +6,26 @@ artifact.
 
 ## 0.99.51
 
+### Fixed
+
+- **`h3_trace.py` stopped claiming a block type it cannot know.** The one
+  `record` call site passed `module="dit"`, while the forward it lives in
+  replaces `Attention.forward` on a class that both `DiTBlock` and
+  `RefinerBlock` instantiate, so every refiner call was recorded as a DiT one.
+  It records `unknown` now, the same refusal `sol_observe.py` already makes for
+  its scope field. No data was lost either way: `seq` is part of the counter
+  key and the refiner's sequence is much shorter, so the two workloads were
+  always separable by shape rather than by the field named for it. The
+  docstring said the field distinguished them and now says what the code does.
+  Found by the sage fork asking whether the trace could be trusted.
+
+- The same docstring described `route` as one thing when it is two: the
+  `record(route=...)` kwarg is the denominator and always `"entered"`, while
+  `h3_trace.route(seq, outcome)` is the attribution and writes five distinct
+  outcomes at five exits. Both are now stated, along with the fact that nothing
+  covers this file, so a share computed from it is unverified.
+  `docs/checks.md`'s uncontrolled-requirements table carries the row.
+
 ### Added
 
 - **Open experiment 28: the kitchen VAE kernels, declined rather than
