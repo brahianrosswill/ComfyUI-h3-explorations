@@ -14,14 +14,14 @@
       "runs": [
         {
           "reproduces": true,
-          "rows_moved": 162,
+          "rows_moved": 138,
           "stdout_tail": [
             "REPRODUCED: identical inputs, different outputs, with token_aug on."
           ]
         },
         {
           "reproduces": true,
-          "rows_moved": 162,
+          "rows_moved": 138,
           "stdout_tail": [
             "REPRODUCED: identical inputs, different outputs, with token_aug on."
           ]
@@ -54,14 +54,14 @@
         },
         {
           "reproduces": true,
-          "rows_moved": 162,
+          "rows_moved": 138,
           "stdout_tail": [
             "REPRODUCED: identical inputs, different outputs, with token_aug on."
           ]
         },
         {
           "reproduces": true,
-          "rows_moved": 162,
+          "rows_moved": 138,
           "stdout_tail": [
             "REPRODUCED: identical inputs, different outputs, with token_aug on."
           ]

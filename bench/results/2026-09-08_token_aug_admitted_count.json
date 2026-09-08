@@ -319,10 +319,20 @@
   "max_admitted_count": 4241,
   "budget": 64,
   "overflow_set_identical_across_launches": true,
+  "overflow_magnitude": {
+    "budget": 64,
+    "seq_len": 16384,
+    "median": 237.0,
+    "p90": 579.5999755859375,
+    "max": 4241.0,
+    "median_over_budget_ratio": 3.703125,
+    "median_as_frac_of_seq": 0.01446533203125,
+    "what": "how far over the budget the overflowing groups sit. Near the budget points at leakage at a bin edge; a large fraction of the sequence points at the threshold collapsing to the window's lower bound, where the whole unbinned population below it is admitted."
+  },
   "correlation_with_moving_output": {
-    "groups_that_moved": 57,
+    "groups_that_moved": 52,
     "groups_that_overflowed": 413,
-    "moved_and_overflowed": 57,
+    "moved_and_overflowed": 52,
     "moved_but_never_overflowed": 0,
     "frac_of_moving_groups_that_overflow": 1.0
   },

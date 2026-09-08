@@ -29,6 +29,15 @@ WHAT IT DOES NOT SHOW
     order the atomics land in. This script does not verify that the count ever
     exceeds the budget; `tok_cnt` is not exposed to callers.
 
+ANYTHING THAT SERIALISES THE LAUNCHES HIDES IT
+    The race needs the launches to overlap. A synchronising call in the loop is
+    enough to suppress it, and allocation counts: with an empty caching
+    allocator the underlying cudaMalloc synchronises, and that alone was enough
+    here to make 60 launches look perfectly stable on a slice that otherwise
+    moves every time. This script therefore warms up before measuring, and
+    reads nothing back to the host inside the loop. If you adapt it, keep both
+    properties or you will get a false negative.
+
 SENSITIVE TO OCCUPANCY, WHICH IS WHY THE INPUT IS SHAPED THE WAY IT IS
     Whether it reproduces depends on the head count and sequence length in a
     non-monotone way: some shapes reproduce and slightly larger ones do not.
@@ -71,15 +80,22 @@ def main():
         kw = {"tau": tau}
         if aug:
             kw["token_aug"] = aug
+        for _ in range(2):        # warm the allocator; see the docstring
+            del_me = ck.sol_attn(q, k, v, **kw)
+            del del_me
         first = ck.sol_attn(q, k, v, **kw).clone()
-        scale = float(first.abs().float().mean())
-        peak, rows = 0.0, 0
+        # Accumulators stay on the device: float()/int() here would synchronise
+        # every iteration and that is enough to hide the race.
+        peak_t = torch.zeros((), device=q.device)
+        moved_t = torch.zeros(first.shape[1], dtype=torch.bool, device=q.device)
         for _ in range(args.launches - 1):
             out = ck.sol_attn(q, k, v, **kw)
             per_row = (out.float() - first.float()).abs().amax(dim=(0, 2, 3))
-            peak = max(peak, float(per_row.max()))
-            rows = max(rows, int((per_row > 0).sum()))
+            peak_t = torch.maximum(peak_t, per_row.max())
+            moved_t |= per_row > 0
             del out, per_row
+        scale = float(first.abs().float().mean())
+        peak, rows = float(peak_t), int(moved_t.sum())
         verdict = "NOT deterministic" if rows else "deterministic"
         print(f"  {label:22s} {verdict:18s} rows moved {rows:5d}/{first.shape[1]}  "
               f"max|delta| {peak:.4g} vs mean|out| {scale:.4g}")

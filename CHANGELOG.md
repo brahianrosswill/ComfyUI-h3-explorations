@@ -27,13 +27,16 @@ artifact.
 
 ### Fixed
 
-- **A proposed fix is retracted before anything was built on it.** Aligning
-  pass 1's binning arithmetic with pass 2's threshold reconstruction would leak
-  a handful of boundary tokens; the measured overshoot is far larger, so that
-  was never the defect. The threshold derivation does not bound what pass 2
-  admits, and reproducibility is a separable question: the drop is decided by
-  atomic arrival order, and making that deterministic fixes the nondeterminism
-  whether or not the count is bounded.
+- **A retraction that was itself wrong, withdrawn the same day.** The proposed
+  fix -- aligning pass 1's binning with pass 2's threshold reconstruction -- was
+  called refuted because the overshoot is far larger than boundary leakage
+  should produce. That reasoning does not hold: when the threshold loop
+  completes, pass 2's bound collapses to the window's lower edge, precisely
+  where the reassociation straddles, and a flip there admits the whole
+  population pass 1 never binned. The recorded magnitude distribution separates
+  neither story, so it is untested rather than refuted. Reproducibility remains
+  the separable and smaller question: the drop is decided by atomic arrival
+  order.
 
 - **A false green in the probe's own verdict, caught before it was recorded.**
   With no rows moving, "every moving group also overflowed" is vacuously true,

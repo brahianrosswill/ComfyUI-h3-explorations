@@ -171,16 +171,42 @@ def main():
         over = (tc > n_tok)
         over_sets.append(frozenset(map(tuple, over.nonzero().tolist())))
         counts.append({"max": int(tc.max()), "groups_over": int(over.sum()),
-                       "groups": int(tc.numel())})
+                       "groups": int(tc.numel()), "_tc": tc})
     del tcs
     torch.cuda.empty_cache()
 
+    # How far over, not just whether: the two candidate explanations for an
+    # overflow predict different magnitudes. Boundary leakage between pass 1's
+    # binning and pass 2's threshold reconstruction predicts counts a little
+    # above the budget -- UNLESS the flip happens at the bottom edge, where
+    # pass 2's threshold collapses to the window's lower bound and it admits
+    # the whole unbinned population below it. So a distribution hugging the
+    # budget and one sitting at a large fraction of the sequence say different
+    # things about where the derivation fails.
+    import torch as _t
+    last = _t.stack([c.pop("_tc") for c in counts]) if "_tc" in counts[0] else None
     mx = max(c["max"] for c in counts)
     tot_over = max(c["groups_over"] for c in counts)
     stable = len(set(over_sets)) == 1
     print(f"  admitted count: max {mx} against a budget of {n_tok}; "
           f"groups over budget {tot_over} of {counts[0]['groups']}")
     print(f"  overflow set identical across launches: {stable}")
+    over_mag = None
+    if last is not None and tot_over:
+        vals = last[0][last[0] > n_tok].float()
+        qs = [float(vals.quantile(x)) for x in (0.5, 0.9, 1.0)]
+        over_mag = {"budget": n_tok, "seq_len": int(q.shape[1]),
+                    "median": qs[0], "p90": qs[1], "max": qs[2],
+                    "median_over_budget_ratio": qs[0] / n_tok,
+                    "median_as_frac_of_seq": qs[0] / float(q.shape[1]),
+                    "what": "how far over the budget the overflowing groups "
+                            "sit. Near the budget points at leakage at a bin "
+                            "edge; a large fraction of the sequence points at "
+                            "the threshold collapsing to the window's lower "
+                            "bound, where the whole unbinned population below "
+                            "it is admitted."}
+        print(f"  overflow magnitude: median {qs[0]:.0f}, p90 {qs[1]:.0f}, "
+              f"max {qs[2]:.0f} against budget {n_tok} and seq {q.shape[1]}")
 
     # The correlation: are the groups that overflow the groups whose rows move?
     corr = None
@@ -246,6 +272,7 @@ def main():
         "max_admitted_count": mx,
         "budget": n_tok,
         "overflow_set_identical_across_launches": stable,
+        "overflow_magnitude": over_mag,
         "correlation_with_moving_output": corr,
         "verdict": verdict,
         "cannot_settle": [

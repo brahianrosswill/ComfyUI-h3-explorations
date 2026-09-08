@@ -2242,15 +2242,25 @@ render.**
    count is a count, and rule out some other way the kernel could vary. It
    carries a replication control, because it does not call the public wrapper:
    with `token_aug` off its output must be bitwise equal to `sol_attn`'s.
-   **The size of the overshoot refutes the first fix that was proposed for
-   it.** A float-association difference between how pass 1 bins a score and how
-   pass 2 reconstructs the threshold would leak tokens at the boundary, a
-   handful at most. It cannot produce a count this far above the budget, so the
-   threshold derivation does not bound what pass 2 admits at all, and aligning
-   those two expressions would not have fixed the defect. Whatever the
-   derivation's flaw is, it is a separate question from reproducibility: the
-   drop is decided by the order atomics arrive in, and making that deterministic
-   fixes the nondeterminism whether or not the count is ever bounded. The
+   **What the overshoot does and does not say about the first proposed fix.**
+   That fix was to make pass 2 evaluate the same expression pass 1 binned on,
+   since the two are equal in exact arithmetic and not in floating point. The
+   overshoot was first read here as refuting it, on the grounds that boundary
+   leakage is worth a handful of tokens. **That reasoning was wrong and is
+   withdrawn**: when the threshold loop completes without breaking, pass 2's
+   threshold collapses to the window's lower bound, which is exactly where the
+   reassociation straddles, and a flip there admits the entire population below
+   the window that pass 1 never binned. Because the scores are quantised, a
+   clump moves together. So the same defect can produce an overshoot of any
+   size.
+   The magnitude distribution is in the record and does not separate the two:
+   most overflowing groups sit at a small multiple of the budget, a few sit at
+   a large fraction of the sequence. **Untested, not refuted.** What would
+   separate them is whether the overflowing groups are the ones whose threshold
+   loop ran to completion, which needs one more value out of the kernel.
+   Either way, reproducibility is a separable and smaller question: the drop is
+   decided by the order atomics arrive in, so making that deterministic fixes
+   the nondeterminism whether or not the count is ever bounded. The
    mechanism says a window is unstable exactly when the count clearing the
    threshold exceeds the budget, and that count is a kernel-internal array the
    caller never sees. An optional out-parameter for it is the same shape as the
