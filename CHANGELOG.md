@@ -4,6 +4,21 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.57
+
+### Fixed
+
+- **`bench/check_distill_settings.py` went red on a clean tree when LightX2V
+  redefined `infer_steps`.** LightX2V #1511 (`fabad304`) made the H3 key
+  count model evaluations instead of sigma grid points, so its 4-step DMD
+  configs now say 4 where they said 5, with the same number of evaluations
+  either way. The check still subtracted one and failed "vendor table agrees"
+  on the 544p v0.1 row, the one row both vendor sources carry. It now reads
+  `infer_steps` as the step count; the shared-row cross-check that caught the
+  change still runs first, so a checkout older than `fabad304` fails loudly
+  rather than grading wrong. Its docstring had called the old form "N+1
+  evaluations", which it never was, and now says what it counted.
+
 ## 0.99.56
 
 ### Fixed

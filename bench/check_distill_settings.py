@@ -28,7 +28,10 @@ Claims, i.e. what breaks if a case is deleted:
                         The SLA row is not in that README (it shipped as a
                         separate HF repo), so it is graded against the
                         LightX2V inference config that loads it: shifts read
-                        directly, steps as `infer_steps - 1`. That N+1
+                        directly, steps as `infer_steps`, which LightX2V
+                        counts as model evaluations since its #1511
+                        (`fabad304`; before it counted sigma points and this
+                        read `infer_steps - 1`). That
                         convention is itself checked, not assumed -- every
                         row present in BOTH sources must satisfy it, or the
                         case fails before the SLA row is read
@@ -533,10 +536,17 @@ def parse_lightx2v_configs(config_dir: Path):
 
     Each config's `lora_configs[].path` names the LoRA file, which `classify`
     keys the same way it keys a graph's. Shifts are `video_flow_shift` /
-    `audio_flow_shift`. Steps are `infer_steps - 1`: LightX2V runs an N-step
-    DMD LoRA at N+1 evaluations (`h3_step_update: training_euler`), and the
-    caller verifies that convention against the README rather than trusting
-    this docstring.
+    `audio_flow_shift`. Steps are `infer_steps`: since LightX2V #1511
+    (`fabad304`) its H3 scheduler takes `infer_steps` as the number of model
+    evaluations and builds `infer_steps + 1` sigma points
+    (`lightx2v/models/schedulers/minimax_h3/scheduler.py::_make_schedule`).
+    Before that commit the key counted the sigma grid points including the
+    terminal zero, so a 4-step config said 5 and this read `infer_steps - 1`;
+    the evaluation count was the same either way. Until 2026-09-10 this
+    docstring called the old form "N+1 evaluations", which it never was.
+    The caller verifies the convention against the README rather than
+    trusting this docstring, so a LightX2V checkout older than `fabad304`
+    fails loudly instead of grading wrong.
     """
     rows: dict[str, set] = {}
     for path in sorted(config_dir.glob("*.json")):
@@ -546,7 +556,7 @@ def parse_lightx2v_configs(config_dir: Path):
             if key is None:
                 continue
             sv, sa = float(doc["video_flow_shift"]), float(doc["audio_flow_shift"])
-            rows.setdefault(key, set()).add((sv, sa, int(doc["infer_steps"]) - 1))
+            rows.setdefault(key, set()).add((sv, sa, int(doc["infer_steps"])))
     out = {}
     for key, found in rows.items():
         assert len(found) == 1, (
@@ -587,14 +597,14 @@ def main():
 
         # The second source. Its step convention is graded on every row the
         # two sources share before any README-less row is believed: a config
-        # whose `infer_steps - 1` did not reproduce the README's count would
+        # whose `infer_steps` did not reproduce the README's count would
         # mean the convention is wrong, and the SLA row would inherit a
         # wrong step count from a docstring.
         cfg_rows = parse_lightx2v_configs(LIGHTX2V_CONFIGS)
         shared = set(rows) & set(cfg_rows)
         assert shared, (
             "no LoRA appears in both the Turbo README and LightX2V's configs; "
-            "the N+1 step convention cannot be verified, so the config-only "
+            "the infer_steps convention cannot be verified, so the config-only "
             "rows cannot be graded")
         for key in shared:
             sv, sa, steps = cfg_rows[key]
@@ -602,9 +612,10 @@ def main():
                 f"{key}: LightX2V config shift {sv}/{sa} disagrees with the "
                 f"README's {rows[key][0]}/{rows[key][1]}")
             assert steps <= rows[key][2], (
-                f"{key}: LightX2V runs {sorted(steps)[0] + 1} evaluations, "
-                f"which is not one more than any README count "
-                f"{sorted(rows[key][2])}; the N+1 convention does not hold")
+                f"{key}: LightX2V config says infer_steps {sorted(steps)[0]}, "
+                f"which is not any README count {sorted(rows[key][2])}; the "
+                f"infer_steps-counts-evaluations convention does not hold (a "
+                f"LightX2V checkout older than fabad304 counts grid points)")
         for key in set(cfg_rows) - set(rows):
             sv, sa, steps = cfg_rows[key]
             want = LEGAL[key]
