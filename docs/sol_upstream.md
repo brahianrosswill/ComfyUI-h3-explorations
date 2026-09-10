@@ -1,23 +1,34 @@
-# What upstream says: the paper, Sol-Engine, and the other packs
+# What upstream says: the paper, Sol-Engine, Sol-H3, and the other packs
 
-Last updated: 2026-09-04, when the section "Comfy-Org/comfy-kitchen, as of
-2026-09-04" was added; the rest of the page is as it stood on 2026-08-19.
-Renamed from `sol_engine_reference.md` on 2026-08-19, when the paper was
-added and the scope widened past one vendor's framework.
+Last updated: 2026-09-10, when Sana's `sol-engine` branch was re-read at
+`757d902` (the Sol-H3, Sol-H3-Spark, `super_acceleration` and `RTX4090`
+packages), ComfyUI core's own Sol node was added, two sglang SubBlock notes
+were recorded, and the comfy-kitchen snapshot moved forward. The paper and the
+two third-party packs are as read on 2026-08-16. Renamed from
+`sol_engine_reference.md` on 2026-08-19, when the paper was added and the scope
+widened past one vendor's framework.
 
 **This page states what other people do and claim. It asserts none of our
-numbers.** When a comparison against what we run is needed, it lives in the
-doc that owns our side of it: [`docs/SOLATTN.md`](SOLATTN.md) for the knobs and
-the measurements, [`docs/morton.md`](morton.md) for token order. If this page
-and one of those disagree about our configuration, they are right.
-
-Three sources, read three different ways, and the depth differs:
+numbers, and it takes no decision.** When a comparison against what we run is
+needed, it lives in the doc that owns our side of it: [`docs/SOLATTN.md`](SOLATTN.md)
+for the knobs, the measurements, and what we would adopt from upstream (its
+section "What Sana's newer H3 packages offer this card"), and
+[`docs/morton.md`](morton.md) for token order. If this page and one of those
+disagree about our configuration, they are right.
 
 | source | how it was read | when |
 |---|---|---|
 | arXiv 2607.24027, the Sol-Attn paper | fetched: abstract, ablation summary, HTML v1. **Not a full end-to-end read** | 2026-08-16 |
-| Sol-Engine | source, `coderef/Sana` at `origin/sol-engine`, HEAD `6fb7eb1` | 2026-08-15, 2026-08-16 |
+| Sol-Engine's per-hardware H3 cells | source, `coderef/Sana` on `sol-engine`; first read at `6fb7eb1`, pointers re-verified at `757d902` | 2026-08-15, 2026-08-16, 2026-09-10 |
+| Sol-H3, Sol-H3-Spark, `super_acceleration`, `RTX4090` | source at `757d902`: added by `9791888` (RTX4090, 2026-08-17), `2936c47` (Sol-H3, 2026-09-08), `8249b28` (its MXFP8, 2026-09-09), `757d902` (Spark) | 2026-09-10 |
+| [`Efficient-Large-Model/H3-to-LTX-Latent-Adapter`](https://huggingface.co/Efficient-Large-Model/H3-to-LTX-Latent-Adapter) | the Hugging Face model card only | 2026-09-10 |
+| ComfyUI core's `BlockSparseAttention` | source in the ComfyUI checkout at `1f641fd9` | 2026-09-10 |
+| sglang's SubBlock router | source at `ffe98a4279` | 2026-09-10 |
 | two third-party ComfyUI packs | their READMEs only | 2026-08-16 |
+| Comfy-Org/comfy-kitchen | fetch and `gh`; dated sections below | 2026-09-04, 2026-09-08, 2026-09-10 |
+
+Every `coderef/Sana/...` pointer below resolves against a checkout at
+`757d902`. The branch `release/sol-h3-spark` has the same tree as that tip.
 
 ---
 
@@ -37,210 +48,456 @@ contribution** instead of discarding them. The ablation that matters compares
 exact-only against exact-or-approx, and the correction's advantage **widens as
 sparsity rises**.
 
-Five things follow that bear directly on this repo:
+What follows from it:
 
-- **`centroid_tail` is the method, not a side knob.** We ship it on and
-  measured it at 2.5% of render time, which reads as a minor optimisation. It
-  is the paper's core claim. Sol-Engine's own public API has no toggle for it
-  at all.
+- **The pooled tail is the method, not a side knob.** Sol-Engine's public API
+  has no toggle for it at all, and neither does the copy Sol-H3 vendors (both
+  signatures are cited below). Our side of it is `pooled_tail` in
+  [`docs/SOLATTN.md`](SOLATTN.md).
 - **`tau` is the paper's beta, and it is never swept.** The threshold is
   `t_i = mu_i + beta * sigma_i` over the row-wise mean and standard deviation,
-  with beta described as a shared standardized cutoff. That confirms what the
-  CUDA source says our `tau` means, and it means the paper does not settle
-  1.0 against our 1.3. Sol-Engine defaults 1.0.
-- **H3 is not evaluated anywhere in it.** Tested models are Wan 2.1-14B
-  (720p/81f), HunyuanVideo-13B (720p/129f), LTX 2.3-22B (1080p, up to 721f),
-  Bernini-14B for editing, a SANA-WM refiner, Ideogram 4 for 2K text-to-image,
-  and Wan 2.1-1.3B on a 5090. Headline numbers are 2.1x end to end on video
-  generation and 2.3x on editing, against dense.
+  with beta described as a shared standardized cutoff. Sol-Engine defaults 1.0.
+  *Corrected 2026-09-10:* this bullet said "the paper does not settle 1.0
+  against our 1.3"; ours has been 1.0 since 2026-08-20
+  (`workflows/h3_config.py::SOL_RECOMMENDED_CUDA`), and this page does not
+  carry our values.
+- **H3 is not evaluated anywhere in it.** Tested models are Wan 2.1-14B,
+  HunyuanVideo-13B, LTX 2.3-22B, Bernini-14B for editing, a SANA-WM refiner,
+  Ideogram 4 for 2K text-to-image, and Wan 2.1-1.3B on a 5090. The headline
+  speedups are in the abstract, against dense.
 - **No token reordering appears in it.** No Morton, no Z-order, no permutation,
   no spatial block layout. See [`docs/morton.md`](morton.md), which owns what
   that does and does not license.
 - **sm89 was not an official target** when the paper and its docs were written.
-  That changed on 2026-08-15; see the kernel table below.
+  That changed on 2026-08-15; see the kernel section below.
 
 ---
 
-## Sol-Engine's H3 recipe
+## Sol-Engine's per-hardware H3 cells
 
 Sol-Engine **supports MiniMax-H3 as a first-class model** with validated,
-pinned configurations -- worth knowing, because until 2026-08-15 this repo
-assumed H3 support was entirely kijai's port on top of a paper that does not
-mention H3. The paper does not. The framework does.
+pinned configurations. The paper does not mention H3. The framework does.
 
-Every H3 config runs at **1344x768, 124 frames** -- our canvas, and by
-coincidence the exact geometry of the capture in `docs/morton.md`.
+The per-hardware cells run at **1344x768, 124 frames**, 50 steps, on the
+released BF16 weights. *Corrected 2026-09-10:* this said "every H3 config runs
+at 1344x768, 124 frames"; the packages added since run other geometries
+(Sol-H3 at 124, 243 or 362 frames, Spark's draft at 672x384, the
+`super_acceleration` first stage at 896x512), each cited in its own section.
 
-**The recipe is per-hardware-profile, not one policy.** This page said "their
-H3 policy" until 2026-08-16 and that was wrong in a way that mattered: it
-generalised the 4xA100 cell to H3 as a whole.
+**The recipe is per-hardware-profile, not one policy.**
 
-| profile | attention | thresholding | cache |
+| cell | attention | thresholding | cache |
 |---|---|---|---|
-| 4xA100 (sm80) | **Triton reference**, tau 1.0 | `exact` | FirstBlockCache 0.08 |
-| 4xH100 (sm90) | CuTe, tau 1.0 | `exact` | FirstBlockCache 0.08 |
-| 8xGB200 (sm100) | CuTe, tau 1.0 | `diag` | FirstBlockCache 0.08 |
-| **1x RTX 5090 (sm120)** | CuTe, tau 1.0 | `diag` | TeaCache 0.10 |
+| 4xA100 (sm80) | **Triton reference**, tau 1.0 | `exact` | FirstBlockCache |
+| 4xH100 (sm90) | CuTe, tau 1.0 | `exact` | FirstBlockCache |
+| 8xGB200 (sm100) | CuTe, tau 1.0 | `diag` | FirstBlockCache |
+| 1x RTX 5090 (sm120) | CuTe, tau 1.0 | `diag` | TeaCache |
+| **1x RTX 4090 (sm89)**, added 2026-08-17 | SM89 Sol-Attn, tau 1.0 | `diag` | TeaCache |
 
-Sources: `coderef/Sana/models/minimax_h3/A100/adapter.py:550` and the H100 cell's same line,
-`coderef/Sana/models/minimax_h3/GB200/gpu_infer.py:144`,
-`coderef/Sana/models/minimax_h3/RTX5090/adapter.py:477`, and each cell's README.
+Sources: `coderef/Sana/models/minimax_h3/A100/adapter.py:550` and the H100
+cell's same line, `coderef/Sana/models/minimax_h3/GB200/gpu_infer.py:144`,
+`coderef/Sana/models/minimax_h3/RTX5090/adapter.py:477`,
+`coderef/Sana/models/minimax_h3/RTX4090/adapter.py:476-477`, and each cell's
+README.
 
-**A100 is the Triton reference path**, because sm80 has no CuTe kernel. That is
-the cell this page used to quote as "their validated H3 policy", while we
-compare against a CuTe-class kernel. Not the same thing.
+**A100 is the Triton reference path**, because sm80 has no CuTe kernel.
 
-**Every profile runs the first two blocks and the first 10 of 50 steps dense.**
-`SOL_ATTN_FIRST_DENSE_LAYERS=2` (RTX5090), `H3_SOL_DENSE_LAYERS=2` (GB200),
-`dense_blocks: int = 2` (`coderef/Sana/models/minimax_h3/GB10/fusion_install.py:84`,
-whose comment calls it "the released policy's first-two-blocks-dense rule").
+**Every per-hardware cell runs the first two blocks and the first 10 of 50
+steps dense.** `SOL_ATTN_FIRST_DENSE_STEPS` and `SOL_ATTN_FIRST_DENSE_LAYERS`
+(`coderef/Sana/models/minimax_h3/RTX5090/adapter.py:457-460`, the same
+function in the RTX4090 cell at `:457-461`), `H3_SOL_DENSE_LAYERS`
+(`coderef/Sana/models/minimax_h3/GB200/gpu_infer.py:146`), `dense_blocks: int = 2`
+(`coderef/Sana/models/minimax_h3/GB10/fusion_install.py:84`). *Corrected
+2026-09-10:* this said "every profile", and read as NVLabs' H3 policy. The
+packages added since do not follow it: Sol-H3 runs Ref2VA with no dense steps
+or layers, and Spark's Ref2VA draft keeps only step 0 and layer 0 dense, both
+cited below.
 
-**None of them reorders tokens.** Stated explicitly in the A100 README:
-"pinned SGLang BF16 execution without `torch.compile` or token reordering".
+**None of the per-hardware cells reorders tokens.** Stated explicitly in the
+A100 README: "pinned SGLang BF16 execution without `torch.compile` or token
+reordering" (`coderef/Sana/models/minimax_h3/A100/README.md:24`).
 
-### The single-card profile, which is the one to watch
+### The single-card cells: RTX 5090 and RTX 4090
 
 `models/minimax_h3/RTX5090/` runs H3 on **one consumer GPU** with SGLang
-layerwise component offload, and it ships an isolated Sol-only arm:
+layerwise component offload, and it ships an isolated Sol-only arm,
 `config/minimax_h3/rtx5090_sol.toml` against `config/minimax_h3/rtx5090_dense.toml`,
-at 1344x768, 124 frames, 50 steps, seed 0, tau 1.0, `diag`, first 10 steps and
-first two blocks dense.
+with tau 1.0, `diag`, and the dense steps and blocks above. **No number is
+published for that arm**; the RTX 5090 README publishes only the full-opt
+figure (`coderef/Sana/models/minimax_h3/RTX5090/README.md:13`), and full-opt
+includes TeaCache and `torch.compile`.
 
-That is the closest thing upstream has to our own Sol-versus-dense arm: same
-canvas, one card, a dense control rather than a different attention kernel. The
-differences that remain are the card (sm120 against our sm89), the step count
-(50 against our 16) and the baseline (BF16 dense against our sage).
+`models/minimax_h3/RTX4090/` is the same stack on **this repo's card class**:
+the released BF16 FL2VA checkpoint on one 24 GiB RTX 4090, the 33B DiT, the
+Qwen3-VL conditioner and the VAEs under SGLang layerwise component offload
+(`coderef/Sana/models/minimax_h3/RTX4090/README.md:5-7`). Its full-opt recipe
+(`:33-40`): SM89 Sol-Attn at tau 1.0 with `diag`, an exact prefix KV sink and
+dense prefix queries, the first 10 steps and first two blocks dense, TeaCache
+(`coderef/Sana/models/minimax_h3/RTX4090/teacache.py`), and regional
+`torch.compile`. It imports the `sol_attn` package
+(`coderef/Sana/models/minimax_h3/RTX4090/adapter.py:337`, `:474`), whose
+dispatch table in Sana maps compute capability 8.9 to `cute_sm89`
+(`coderef/Sana/techniques/sparse_backends/sol_attn/interface.py:11`).
 
-**No number is published for that arm.** Only the full-opt 4.52x is, and
-full-opt includes TeaCache and `torch.compile`.
+**It publishes a Sol-increment arm, and that arm sits on top of TeaCache, not
+against dense.** The controlled attribution table
+(`coderef/Sana/models/minimax_h3/RTX4090/README.md:20-31`) goes lossless opt,
+then plus TeaCache, then plus TeaCache and Sol-Attn, from one warm timing
+sample per arm with no perceptual or embedding similarity metric, which the
+README says itself. Its correctness evidence is a real-QKV gate against SDPA
+(`:83-85`, the gate at `coderef/Sana/models/minimax_h3/RTX4090/adapter.py:347-362`,
+`tau=-1000` so every block is routed). The README records the evidence as
+collected at Sana `6fb7eb1` before the cell was split into its own directory
+(`:81`, `:88-91`).
 
 ---
 
-## Side by side with `SOL_RECOMMENDED_CUDA`
+## Sol-H3: the multi-GPU production package
 
-Our column is a pointer, not a claim -- [`docs/SOLATTN.md`](SOLATTN.md) owns
-every value in it and the evidence behind it.
+Added by `2936c47` (2026-09-08). A production inference package for text-to-video,
+first-frame image-to-video and Ref2VA at 1344x768 and 24 FPS, for 1, 2, 4 or 8
+GPUs, **validated on 8x NVIDIA B300** (`coderef/Sana/models/minimax_h3/Sol-H3/README.md:5-12`).
+Kernel validation is limited to SM103; the SM90 and SM120 paths are declared
+unvalidated (`:32-34`). One GPU runs dense by contract: the engine refuses SOL
+attention below two processes
+(`coderef/Sana/models/minimax_h3/Sol-H3/h3_runtime/engine.py:147-148`).
 
-| | Sol-Engine H3 | ours | note |
-|---|---|---|---|
-| `tau` | 1.0 | 1.3 | theirs is the paper default; ours was tuned locally. A third-party H3 pack landed on 1.3 independently |
-| threshold mode | `exact` on A100/H100, **`diag` on GB200 and RTX 5090** | `diag`, unconditionally | **not the gap this page used to claim.** See below |
-| KV sink | full prefix, dense prefix queries | `exact_kv_and_rows` | **the same choice.** Both sink the whole prefix and run its query rows dense |
-| dense steps | first 10 of 50 (20%) | `start_percent` 0.2 -> 5 of 16 (31%) | same idea, different spelling; ours is the larger fraction |
-| dense blocks | **first two, on every profile** | **none** | the clearest gap, and the cheapest to close. `SOL_ARTIFACT_INSURANCE` exists here and is not shipped |
-| token reordering | **none, stated explicitly** | `morton=False` | **agrees with us.** [`docs/morton.md`](morton.md) owns why |
-| cache | FirstBlockCache 0.08, or TeaCache 0.10 on the 5090 | none | we have no cache of any kind |
-| steps | 50 | 16 | their baseline is 50-step Diffusers |
+It runs four DiT forwards (`coderef/Sana/models/minimax_h3/Sol-H3/h3_runtime/engine.py:22`: five scheduler points), at shift
+12 for video and 3 for audio (`:214-215`), with the FastH3 4-step preview
+adapter for T2V and I2V and the LightX2V ref2v Turbo 4-step LoRA for Ref2VA
+(`coderef/Sana/models/minimax_h3/Sol-H3/README.md:115`, `:140`). Attention
+backends are `dense`, `sol` and `sol_bsa` (`coderef/Sana/models/minimax_h3/Sol-H3/h3_runtime/engine.py:24`); Ref2VA accepts
+only `dense` or `sol_bsa` (`:149-150`), and `sol_bsa` is the default
+(`coderef/Sana/models/minimax_h3/Sol-H3/README.md:148`).
+
+### Policy per task
+
+One call sets it (`coderef/Sana/models/minimax_h3/Sol-H3/h3_runtime/engine.py:265-272`):
+
+| task | tau | dense steps | dense layers | sink mode |
+|---|---|---|---|---|
+| T2V, I2V | 1.0 | 1 (the first of four forwards) | 2 | `prefix` |
+| Ref2VA | 1.0 | 0 | 0 | `text_audio` |
+
+- **No dense tail.** The only step gate is `step < dense_steps`
+  (`coderef/Sana/models/minimax_h3/Sol-H3/h3_runtime/sparse_attention.py:345`);
+  the layer gate is beside it (`:349`).
+- **The diagonal band is forced exact**, one block either side
+  (`coderef/Sana/models/minimax_h3/Sol-H3/h3_runtime/bsa_metadata.py:84`).
+  comfy-kitchen forces the same band (the `<= 1` line in
+  `coderef/comfy-kitchen/comfy_kitchen/backends/eager/sol_attn.py`).
+- **No top-k list, no per-head or per-block tau.** tau is one value per call.
+
+### How the sink is built
+
+- **`prefix`** marks everything before the target-video tail as an exact KV
+  range (`coderef/Sana/models/minimax_h3/Sol-H3/h3_runtime/sparse_attention.py:296`) and then recomputes every prefix query row
+  with dense attention (`:418-420`). The module docstring gives the reason: the
+  audio rows are generated, not only conditioned on, and one prompt's dialogue
+  fell apart under the text-only policy (`:26-38`).
+- **`text_audio`** leaves the Sol-kernel sink empty (`:287-288`) and instead
+  builds a per-block mask from the text and audio indices, **excluding Ref2VA
+  visual references** (`:298-318`); the BSA route then forces those key blocks
+  and those query blocks (`coderef/Sana/models/minimax_h3/Sol-H3/h3_runtime/bsa_metadata.py:85-88`). So text and audio are exact
+  both ways while reference rows stay sparse. It does this through cuDNN
+  block-sparse attention's per-block selection, not through the Sol kernel's
+  contiguous sink.
+
+### The kernel it carries
+
+- **`sol_bsa`** computes the routed blocks with cuDNN block-sparse attention
+  and merges the pooled term for the omitted blocks through a log-sum-exp in a
+  Triton kernel (`coderef/Sana/models/minimax_h3/Sol-H3/h3_runtime/sol_residual.py:146-160`).
+- **`relayout.py`** is the Ulysses all-to-all layout pair, with an optional
+  int8 wire path after QK-norm and RoPE; it moves heads between GPUs and does
+  not reorder tokens (`coderef/Sana/models/minimax_h3/Sol-H3/h3_runtime/relayout.py:1-27`).
+- **The vendored `sol_attn`** is pinned to Sana `cee25847a` as "released Sol-Attn
+  integration contract" (`coderef/Sana/models/minimax_h3/Sol-H3/SOURCE_SNAPSHOT.json:14-16`).
+  Same algorithm as comfy-kitchen's: 64-token blocks, threshold `mean + tau*std`
+  (`coderef/Sana/models/minimax_h3/Sol-H3/h3_runtime/third_party/sol_attn/preprocess.py:232-240`),
+  and the pooled tail unconditionally on in the Triton reference
+  (`coderef/Sana/models/minimax_h3/Sol-H3/h3_runtime/third_party/sol_attn/triton_ref/fwd.py:108-131`). Differences: it is
+  BF16 throughout (`coderef/Sana/models/minimax_h3/Sol-H3/h3_runtime/third_party/sol_attn/sm120/mainloop.py:727-729`), and its
+  signature has **no top-k, no `sink_q`, no tail toggle**
+  (`coderef/Sana/models/minimax_h3/Sol-H3/h3_runtime/third_party/sol_attn/interface.py:421-433`).
+  **Its architecture table omits sm89**: it lists (9,0), (10,0), (10,3) and
+  (12,0) (`coderef/Sana/models/minimax_h3/Sol-H3/h3_runtime/third_party/sol_attn/interface.py:10-19`), and anything else selects the Triton
+  reference (`:95`).
+- **Its arithmetic gate** runs block-sparse attention with every block selected
+  against dense SDPA on the real Q/K/V, once per shape
+  (`coderef/Sana/models/minimax_h3/Sol-H3/h3_runtime/sparse_attention.py:470-500`).
+- The module docstring repeats the "H3 needs no reordering" statement word for
+  word from the GB200 cell (`coderef/Sana/models/minimax_h3/Sol-H3/h3_runtime/sparse_attention.py:8-12`); see the Morton section.
+
+### MXFP8 and the transport quantization
+
+- **MXFP8 is linears only, and compute capability 10 only.** It replaces the
+  fused QKV, the output projection and the FFN up and down projections in
+  blocks 2 to 46 (`coderef/Sana/models/minimax_h3/Sol-H3/h3_runtime/compute_quant.py:11-12`,
+  `:96-130`), with E4M3 values and one E8M0 scale per 32 along K
+  (`coderef/Sana/models/minimax_h3/Sol-H3/h3_runtime/mxfp8.py:3-4`), and
+  refuses any device whose major capability is not 10 (`coderef/Sana/models/minimax_h3/Sol-H3/h3_runtime/compute_quant.py:27-35`).
+  Attention's QK and PV products are not touched.
+- **The multi-GPU exchange is quantized separately**: group-scaled int8 for the
+  Q/K/V packet and FP8 for the returned output
+  (`coderef/Sana/models/minimax_h3/Sol-H3/h3_runtime/comm_quant.py:1`, `:14-24`,
+  `:130-139`). This exists only when there is an exchange.
+
+### What it validates
+
+The README's latency tables and its own caveat that the Sol-H3 rows are a
+four-forward distilled adapter plus approximate attention, so "the difference
+from either 49-forward baseline is not a runtime-only speedup"
+(`coderef/Sana/models/minimax_h3/Sol-H3/README.md:36-65`). Its one quality
+comparison is MXFP8 against BF16 at one prompt and seed, as decoded-RGB PSNR
+and SSIM (`:67-83`).
 
 ---
 
-## What Sol-Engine has that we do not, and what blocks each
+## Sol-H3-Spark: one DGX Spark, two stages
 
-Re-derived from source on 2026-08-16. Two of these were miscategorised on this
-page for a day: they were written as knobs our node fails to expose, and they
-are not that.
+Added by `757d902`. A two-stage video-and-audio pipeline for **one GB10
+(SM121)**; every stage refuses any other capability
+(`coderef/Sana/models/minimax_h3/Sol-H3-Spark/README.md:1-5`, `:71`;
+`coderef/Sana/models/minimax_h3/Sol-H3-Spark/runtime/stage2.py:181-182`;
+`coderef/Sana/models/minimax_h3/Sol-H3-Spark/runtime/stage1_ops/sol.py:101-102`).
+The recipe is a frozen record whose hash is checked at load
+(`coderef/Sana/models/minimax_h3/Sol-H3-Spark/runtime/config.py:22-27`), so the
+config file is the authority (`coderef/Sana/models/minimax_h3/Sol-H3-Spark/configs/default.json:4-42`):
 
-### `thresh_type` -- the blocker is the kernel, not the node
+1. **Stage 1, an H3 draft** at 672x384x124: FastH3 VSA DataFree LoRA, W8A8 FP8
+   DiT, four updates, VSA at 90% video sparsity on 64-token tiles through cuDNN
+   BSA, no video decode (`coderef/Sana/models/minimax_h3/Sol-H3-Spark/configs/default.json:4-14`). The VSA profile keeps the prefix
+   exempt and has no dense layers or steps
+   (`coderef/Sana/models/minimax_h3/Sol-H3-Spark/runtime/stage1_ops/vsa.py:19-40`).
+2. **Latent transfer**: a learned x2 H3 latent upscaler, then the H3-to-LTX
+   latent adapter, which **replaces an H3 VAE decode followed by an LTX VAE
+   encode** (`coderef/Sana/models/minimax_h3/Sol-H3-Spark/README.md:30`, `:47-51`; `coderef/Sana/models/minimax_h3/Sol-H3-Spark/configs/default.json:15-22`). The adapter is a
+   small Conv3D residual network
+   (`coderef/Sana/models/minimax_h3/Sol-H3-Spark/runtime/stage2_ops/h3_ltx_adapter/model.py:27-42`).
+   Its [model card](https://huggingface.co/Efficient-Large-Model/H3-to-LTX-Latent-Adapter)
+   gives the boundary as a normalized H3 latent `[B, 24, T, H/16, W/16]` in and
+   a normalized LTX-2.5 latent `[B, 128, T, H/32, W/32]` out, and says the
+   checkpoint holds neither model's weights and generates nothing alone.
+3. **Stage 2, an LTX-2.5 refiner**: BF16 LTX-2.5 dev with a distilled LoRA,
+   three joint audio-video updates, Triton Sol with
+   `"taus": [1.0, 1.25, 1.5]`, `diag`, layer 0 dense (`coderef/Sana/models/minimax_h3/Sol-H3-Spark/configs/default.json:23-37`,
+   `coderef/Sana/models/minimax_h3/Sol-H3-Spark/README.md:33`). **This tau ramp runs on the LTX refiner, not on H3.**
+4. **Output**: LTX's own Conv VideoVAE at 1344x768, 121 frames, with H3's
+   generated audio muxed in (`coderef/Sana/models/minimax_h3/Sol-H3-Spark/configs/default.json:38-42`).
+
+### Ref2VA's opt-in Sol draft: per-step tau and a permuted sink
+
+Ref2VA swaps in its own partition and the LightX2V Ref2VA 4-step LoRA, and
+its draft attention is **dense FA4 by default, Sol only when selected**
+(`coderef/Sana/models/minimax_h3/Sol-H3-Spark/runtime/config.py:12`, `:36-51`).
+When Sol is selected the policy is (`coderef/Sana/models/minimax_h3/Sol-H3-Spark/runtime/config.py:52-59`):
+
+- dense for step 0 and for body layer 0 of the later steps;
+- `tau_by_step` `[None, 1.0, 1.25, 1.5]`, i.e. **sparser as denoising
+  proceeds** (higher tau keeps fewer blocks); the same tuple is `TAUS` in
+  `coderef/Sana/models/minimax_h3/Sol-H3-Spark/runtime/stage1_ops/sol.py:12`,
+  routed by `route()` (`:15-18`);
+- text and audio tokens are the sink and their queries run dense; reference
+  image and Qwen-visual tokens are **not** in the sink.
+
+This is the only place in the tree where **H3** runs a per-step tau.
+
+**How the Sol kernel is made to express "text and audio exact, references
+sparse".** The kernel's sink is one contiguous range, and H3 packs reference
+rows between text and audio. `sink_plan` builds a permutation that puts every
+visual row first and every text or audio row last, each part in its native
+order, and records `"sparse_block_grouping_changed": True` in its receipt
+(`coderef/Sana/models/minimax_h3/Sol-H3-Spark/runtime/stage1_ops/sol.py:21-47`). Q, K and V are permuted after RoPE, the kernel runs with the
+sink over the trailing text-audio range, the sink query rows are recomputed
+dense, and the output is permuted back (`coderef/Sana/models/minimax_h3/Sol-H3-Spark/runtime/stage1_ops/sol.py:134-148`). The route counts per
+request are asserted, not assumed (`coderef/Sana/models/minimax_h3/Sol-H3-Spark/runtime/stage1_ops/sol.py:83-92`). Its own validation notes
+describe the same policy (`coderef/Sana/models/minimax_h3/Sol-H3-Spark/docs/validation.md:92-98`).
+
+### Reference matching
+
+"Reference matching" is a **per-image pixel budget**, taken from the draft
+canvas or the final canvas (`coderef/Sana/models/minimax_h3/Sol-H3-Spark/runtime/config.py:43-50`), applied with each image's own
+aspect ratio and nearest-32 alignment, Lanczos resampling
+(`coderef/Sana/models/minimax_h3/Sol-H3-Spark/runtime/qwen_ops/media.py:46-73`;
+`coderef/Sana/models/minimax_h3/Sol-H3-Spark/docs/validation.md:87-90`). It is not an identity matcher.
+
+### What it validates
+
+Functional coverage, stated as such: bitwise context and latent checks, call
+counts, and final media produced, for T2VA, three FL2VA endpoint cases, and a
+small set of Ref2VA image and image-plus-audio cases
+(`coderef/Sana/models/minimax_h3/Sol-H3-Spark/docs/validation.md:25-40`, `:49-106`). The same file says it gives no
+identity, accessory or voice fidelity guarantee and does not establish that
+reducing reference detail preserves quality (`:104-106`).
+
+---
+
+## `super_acceleration`: the same split across two GB200s
+
+H3 FL2VA as stage 1 on one GB200 at 896x512 with the LightX2V four-step LoRA,
+then a tensor handoff to an LTX-2.5 stage 2 on a second GB200
+(`coderef/Sana/models/minimax_h3/super_acceleration/README.md:14-31`). Stage 2
+keeps LTX layer 0 dense and runs layers 1-47 on Sol with taus 1.0, 1.25, 1.5
+(`coderef/Sana/models/minimax_h3/super_acceleration/stage2/sol_attention.py:18`,
+`STAGE2_TAUS`). **That ramp is on the LTX transformer, not H3.** The README
+makes no speedup claim and says its validation "must not be described as a
+quality pass" (`coderef/Sana/models/minimax_h3/super_acceleration/README.md:52-56`). Spark runs the same H3-draft-then-LTX-refiner
+shape on one box.
+
+---
+
+## ComfyUI core's own Sol node, `BlockSparseAttention`
+
+Merged 2026-09-06 (Comfy-Org/ComfyUI #16072, kijai; core commit `e308cc73`),
+display name "Model Sparse Attention", experimental
+(`comfy_extras/nodes_sparse_attention.py:353-365`). Its defaults are read from
+`BlockSparseAttention.define_schema` (`:355-411`), not restated here.
+
+- **Three methods**: `sol-attn` (adaptive tau), `sla` (a fixed keep percent,
+  for LoRAs distilled against that pattern) and `vsa` (FastVideo's cube tiling
+  with the learned coarse branch, for FastH3 weights) (`:368-389`).
+- **Token routing is on for every block by default.** `extra_tokens`
+  (`:398-401`) is passed as kitchen's `token_aug` on both paths (`:208`,
+  `:296`), and is ignored under VSA (`:326-329`). The Python `execute`
+  signature defaults it to 0 (`:414-415`); the schema default is what a graph
+  built in the UI carries.
+- **The sigma window** is `start_percent` / `end_percent` (`:390-393`), turned
+  into sigmas at patch time (`:331-332`); with its default end the window runs
+  to the last step. `dense_blocks` and `min_tokens` gate as their names say
+  (`:68-82`).
+- **Sink modes** `exact_kv`, `exact_kv_and_rows` (the default) and `off`
+  (`:402-406`): the packed prefix is an exact KV range for every query, and the
+  second mode also runs the target-audio query rows dense (`sinks()`, `:84-100`).
+- **Two execution paths.** Generic models go through the attention override,
+  which calls `ck.sol_attn` on full Q/K/V and falls back to whatever override
+  was on the hook before it (`:171-226`). **H3 goes through block patches**
+  (`set_model_patch_replace(..., "dit", "double_block", i)`, `:343-345`) into
+  kitchen's chunked producer: Q/K/V are projected in 4096-row slices straight
+  into the kernel's int8 carriers and never built in full (`:248-307`), and
+  each block's pooled `kmean` / `vscale` statistics are **carried over from the
+  previous step**, per conditioning branch (`:263-270`, `:292-301`). The CUDA
+  backend's `sol_attn_chunked` docstring at comfy-kitchen tag `v0.2.33`
+  describes those two tensors as the last step's statistics, computed fresh
+  when absent.
+- **What core's model gained for it**: a `to_gate_compress` layer created when
+  the checkpoint carries one (`comfy/ldm/minimax/model.py:168-171`, detected at
+  `comfy/model_detection.py:415`, i.e. FastH3 VSA weights), and two
+  `transformer_options` keys for attention patches, `minimax_h3_layout`
+  (`comfy/ldm/minimax/model.py:623`) and `block_index` (`:754`).
+
+---
+
+## sglang's SubBlock router: two notes, read 2026-09-10
+
+[`docs/research/sglang_h3_pipeline.md`](research/sglang_h3_pipeline.md) §11
+owns SubBlock. Two things in the source it does not yet record:
+
+- **A reserved sink block and a forced diagonal were tried and left out.** The
+  router's docstring says both were measured on real H3 attention cells, that
+  the diagonal barely moved the error and the sink helped only in a middle band
+  of DiT layers that did not survive to the pixels
+  (`coderef/sglang/python/sglang/multimodal_gen/runtime/layers/attention/backends/subblock_sparse/router.py:212-215`).
+- **The step and layer cutoffs**, already recorded at
+  `docs/research/sglang_h3_pipeline.md:722-729`, now sit beside a second
+  compute mode: `sage_fp8`, which on SM90 quantizes Q/K to INT8 and V and the
+  softmax probabilities to E4M3
+  (`coderef/sglang/python/sglang/kernels/ops/attention/subblock_sage_fp8_sm90.py:2-8`),
+  added by `ffe98a4279` (2026-09-09) and not the default
+  (`coderef/sglang/python/sglang/multimodal_gen/runtime/layers/attention/backends/subblock_sparse_attn.py:106`;
+  the cutoff defaults and their stated sweep are at `:76-85` of the same file).
+
+---
+
+## Sol-Engine's shared kernel package, and what separates it from comfy-kitchen's
+
+Re-derived from source on 2026-08-16, pointers re-verified 2026-09-10.
+
+### `thresh_type`: two modes, and comfy-kitchen implements one
 
 Their two modes, in `coderef/Sana/techniques/sparse_backends/sol_attn/preprocess.py`:
 
-- **`diag`** (`:178-185`): variance estimated as `sum_d q_d^2 * var(kc_d)` from
-  the per-dimension variance of the key-block centroids, which assumes
-  independence across the 128 dims.
-- **`exact`** (`:255-271`): the real score row's `E[s^2] - E[s]^2` over all key
-  blocks for that query.
+- **`diag`** (`_compute_diag_threshold`): variance estimated as
+  `sum_d q_d^2 * var(kc_d)` from the per-dimension variance of the key-block
+  centroids, which assumes independence across the 128 dims.
+- **`exact`** (`_compute_exact_threshold`): the real score row's
+  `E[s^2] - E[s]^2` over all key blocks for that query.
 
 comfy-kitchen's CUDA kernel computes `kcvar[d]` as the per-dimension variance of
-the key-block centroids (`coderef/comfy-kitchen-kijai/comfy_kitchen/backends/cuda/sage_attention/sol_attn_preprocess.cu:122`), reduces
-`sred[d] = c_d^2 * kcvar[d]` (`:191`), and thresholds at
-`tau * sqrt(sum + 1e-6)` (`:198`), against mean-centred key centroids so the
-mean term is already absorbed. **That is Sol-Engine's `diag` formula.**
+the key-block centroids
+(`coderef/comfy-kitchen-kijai/comfy_kitchen/backends/cuda/sage_attention/sol_attn_preprocess.cu:106`),
+reduces `c_d^2 * kcvar[d]` (`:148`), and thresholds at
+`tau * sqrt(var + 1e-6)` (`:54`), against mean-centred key centroids so the
+mean term is already absorbed. **That is Sol-Engine's `diag` formula.** `exact`
+is therefore a threshold kernel comfy-kitchen does not have, not an input it
+leaves unexposed. *Pointers updated 2026-09-10*: they were `:122`, `:191` and
+`:198`, which no longer land in that checkout.
 
-So `exact` is not an unexposed input. It is a threshold kernel nobody has
-written for this backend, and adding a widget would not produce it. What it
-would buy is the true per-query score-row variance instead of a
-diagonal-covariance estimate; what it costs is a second pass over the same
-`[N x N]` centroid scores before routing can start.
+The single-consumer-card cells (RTX 5090, RTX 4090) both run `diag`.
 
-**And the profile closest to our hardware already uses `diag`.** NVLabs' own
-single-consumer-card H3 cell runs the mode we run.
+### `kv_splits`: SM90 only
 
-### `kv_splits` -- there is nothing to have on this card
+`coderef/Sana/techniques/sparse_backends/sol_attn/interface.py:116` raises
+`"kv_splits=2/4 is currently available on SM90 only"`. A 4090 gets 1 in
+Sol-Engine too. *Corrected 2026-09-10:* this also said "their own docs say
+B200, RTX 4090 and RTX 5090 use `kv_splits=1`"; no such document was found in
+the tree at `757d902`, so only the code claim stands.
 
-`coderef/Sana/techniques/sparse_backends/sol_attn/interface.py:98-100` raises
-`"kv_splits=2/4 is currently available on SM90 only"`, and their own docs say
-B200, RTX 4090 and RTX 5090 use `kv_splits=1`. A 4090 gets 1 in Sol-Engine too.
-This row was a gap on paper only.
+### The SM89 CuTe kernel
 
-### Dense layer guards -- nothing blocks this at all
+PR #464, merged 2026-08-15 (the dispatch commit is `9cfdd07`): "a general BF16
+SM89 CuTe DSL Sol-Attn forward kernel using M64/N64 tiles, cp.async, and warp
+MMA". That is the 4090, and it makes NVLabs' own kernel a **second independent
+implementation** beside comfy-kitchen's.
 
-We have the mechanism (`dense_blocks`) and ship it empty. Every H3 profile they
-publish ships first-two-dense. Adopting it is a string in
-`SOL_RECOMMENDED_CUDA`, not a build.
+The code is at `coderef/Sana/techniques/sparse_backends/sol_attn/sm89/`, with
+dispatch at `coderef/Sana/techniques/sparse_backends/sol_attn/interface.py:11`
+(`(8, 9): "cute_sm89"`). The RTX 4090 cell above is its first published H3
+use. Sol-H3's vendored copy does not carry it (see "The kernel it carries").
 
-What we actually lost when `SolAttnBlockProbe` went with the Triton pack is the
-ability to choose **our own** list from measurement. Copying a validated `0-1`
-needs no instrument. The cost estimate and the decision live in
-[`docs/roadmap.md`](roadmap.md).
+**It is installed and it runs on this box.** `vendor/build_sana_sol_sm89.sh`
+installs the runtime, builds the `sol-attn` wheel out of the checkout, and then
+compiles and exercises the kernel on this card; run it for the versions and the
+deviations, which are printed rather than written down here.
 
-### The SM89 CuTe kernel -- built here, and the seam is still open
+Two things that section of their docs does not say.
 
-PR #464, merged 2026-08-15: "a general BF16 SM89 CuTe DSL Sol-Attn forward
-kernel using M64/N64 tiles, cp.async, and warp MMA". That is the 4090, and it
-makes NVLabs' own kernel a **second independent implementation** beside the
-comfy-kitchen `sol_attn` branch we build locally.
+**The requirements list is incomplete.** It names PyTorch, CUDA, Triton,
+`cuda-python` and the CuTe DSL. Installing the DSL is not sufficient:
+`apache-tvm-ffi` is named in no Sol-Attn requirements list and is not a
+dependency of the DSL wheel either, yet `sol_attn/common/runtime.py` passes
+`enable_tvm_ffi=True` on every tensor and `_compile_sm89` compiles with
+`--enable-tvm-ffi`, so the first SM89 call dies on
+`ModuleNotFoundError: No module named 'tvm_ffi'`. Found by running it,
+2026-08-19.
 
-The code is already in our tree at
-`coderef/Sana/techniques/sparse_backends/sol_attn/sm89/`, with dispatch at
-`coderef/Sana/techniques/sparse_backends/sol_attn/interface.py:11` (`(8, 9): "cute_sm89"`).
-
-**It is installed and it runs.** `vendor/build_sana_sol_sm89.sh` installs the
-runtime, builds the `sol-attn` wheel out of the checkout, and then compiles and
-exercises the kernel on this card; run it for the versions and the deviations,
-which are printed rather than written down here.
-
-Two things that section of their docs will not tell you.
-
-**Their requirements list is incomplete.** It names PyTorch, CUDA, Triton,
-`cuda-python` and the CuTe DSL, and every one of those cleared on this box on
-2026-08-16 except the DSL. Installing the DSL is not sufficient: `apache-tvm-ffi`
-is named in no Sol-Attn requirements list and is not a dependency of the DSL
-wheel either, yet `sol_attn/common/runtime.py` passes `enable_tvm_ffi=True` on
-every tensor and `_compile_sm89` compiles with `--enable-tvm-ffi`, so the first
-SM89 call dies on `ModuleNotFoundError: No module named 'tvm_ffi'`. Found by
-running it, 2026-08-19.
-
-**Their compile-time failure discipline does not cover the import.** Their docs
+**The compile-time failure discipline does not cover the import.** Their docs
 warn that a DSL *version* mismatch fails at compile time rather than falling
-back, "so that a dense run is never reported as a sparse one" -- the same
-discipline `check_sol_kernel.py` enforces here. But an *absent* DSL is a
-different path: `_backend_for_arch` catches the `ImportError` and silently
-returns `"triton"`. That is why the build script asserts
-`get_sol_attn_backend() == "cute_sm89"` before it measures anything.
+back, "so that a dense run is never reported as a sparse one". An *absent*
+runtime is a different path: backend selection returns `"triton"` whenever the
+CuTe runtime is unavailable
+(`coderef/Sana/techniques/sparse_backends/sol_attn/interface.py:84-91`). That is
+why the build script asserts `get_sol_attn_backend() == "cute_sm89"` before it
+measures anything.
 
-The blocker that remains is API surface. Their public entry point
-(`coderef/Sana/techniques/sparse_backends/sol_attn/interface.py:395-406`) is
+**The API surface.** Their public entry point
+(`coderef/Sana/techniques/sparse_backends/sol_attn/interface.py:413-424`) is
 `sol_attn(q, k, v, *, scale, tau, thresh_type, kv_splits, sink_tokens, sink_start)`.
-There is **no `sink_q`**, no `dense_blocks`, no `centroid_tail`, no
-`max_blocks`, no `key_bias`. Our `exact_kv_and_rows` is comfy-kitchen's
-invention; its query half would have to be done at the integration layer, which
-is what their docs mean by "valid text-query rows still use dense attention".
+There is **no `sink_q`**, no `dense_blocks`, no tail toggle, no `max_blocks`,
+no `key_bias`. Their integration contract puts dense query rows at the caller:
+"an MMDiT integration should still compute valid text query rows with dense
+attention" (quoted in
+`coderef/Sana/models/minimax_h3/Sol-H3/h3_runtime/sparse_attention.py:21-24`).
 
-So a head-to-head is now just the seam. The package half is done; what remains
-is that `exact_kv_and_rows`'s query half has no home in their API, and nothing
-in this repo calls their kernel yet.
+### Token pruning and NVFP4
 
-### Token pruning and NVFP4 -- one is hardware, one is plumbing
+Two of Sol-Engine's five methods, and **not applied to their H3 stacks**.
 
-Two of Sol-Engine's five methods, and **not applied to their H3 stack** either.
-
-- **NVFP4 is hardware-blocked here.** `ComfyUI/AGENTS.md:172`: needs Blackwell
-  (sm_100+) plus `transformer_engine`. A 4090 is sm89. Not a choice they made
-  and not one we can make.
-- **Token pruning is not hardware-blocked**, but the policy in
-  `techniques/methods/token_prune.py` is model-agnostic scaffolding whose
-  runtime lives in SGLang rather than in that repo, and it needs a `ModelSpec`
-  seam H3 does not have there. It ships on LTX-2.3, not H3.
+- **NVFP4 needs Blackwell** (sm_100+) plus `transformer_engine`.
+- **Token pruning** is model-agnostic scaffolding in
+  `coderef/Sana/techniques/methods/token_prune.py` whose runtime lives in SGLang,
+  and it needs a `ModelSpec` seam H3 does not have there. It ships on LTX-2.3,
+  not H3.
 
 ---
 
@@ -250,17 +507,22 @@ Correcting a claim this repo made three times on 2026-08-15: **Sol-Engine does
 ship Morton.** It is absent from the paper, absent from the published docs, and
 present and on by default for Wan.
 
-- `techniques/sparse_backends/sol_attn_backend.py` has `_morton3d_perm`
-  ("canonical x/y/z-interleaved") and `install_wan_morton_forward`.
-- Every Wan config description reads "released Sol-Attn at tau 1.0 with
-  **global Morton3D order** and dense guards".
-- HunyuanVideo has it **off**: `HUNYUAN_SOL_MORTON = "0"`.
+- `coderef/Sana/techniques/sparse_backends/sol_attn_backend.py` has
+  `_morton3d_perm` (`:176`, "canonical x/y/z-interleaved") and
+  `install_wan_morton_forward` (`:209`).
+- The Wan Sol configs describe themselves as Sol-Attn "at tau 1.0 with
+  **global Morton3D order** and dense guards"
+  (`coderef/Sana/config/wan21_t2v_1_3b/wan21_sol_only.toml:4`, and the same
+  phrase in the other Wan fullstack and Sol-only configs).
+- HunyuanVideo has it **off**: `HUNYUAN_SOL_MORTON = "0"`
+  (`coderef/Sana/config/hunyuan_video/full.toml:20`).
 - H3 has it absent entirely.
 - **They ship only the 3D curve.** There is no `2d_frame` variant anywhere in
   Sol-Engine; that is kijai's addition for H3's non-uniform temporal axis.
 
 Their stated reason for H3 needing none, from
-`models/minimax_h3/GB200/sol_attn_h3.py`:
+`coderef/Sana/models/minimax_h3/GB200/sol_attn_h3.py:8`, repeated word for word
+in Sol-H3 (`coderef/Sana/models/minimax_h3/Sol-H3/h3_runtime/sparse_attention.py:8-12`):
 
 > **Morton reordering per attention call.** The released
 > `install_wan_morton_forward` docstring says why not: only self-attention is
@@ -275,89 +537,89 @@ And the ablation control they ship for Wan, `config/wan21_t2v_14b/reorder_only.t
 > "reorder-only control: global Morton3D order with every layer forced dense
 > through the Sol-Attn adapter."
 
-`WAN22_SOL_REORDER=1` with `WAN22_SOL_DENSE_LAYERS="0-39"`.
+**One H3 permutation now exists, and it is not a spatial curve.** Spark's
+Ref2VA Sol draft permutes Q, K and V so visual rows come first and text-audio
+rows last, keeping native order inside each part, to make the sink contiguous;
+it records that block grouping changes (see the Spark section). *Corrected
+2026-09-10:* this page said no Sol-Engine H3 path reorders tokens. That still
+holds for spatial reordering; it no longer holds for token order as such.
 
 **Whether any of that transfers to H3 is argued in
-[`docs/morton.md`](morton.md), not here.** That page holds the counter-argument,
-the measurement that disagrees with the assertion above, and what happened when
-the reorder-only control was run on this box.
+[`docs/morton.md`](morton.md), not here.**
 
 ---
 
-## FirstBlockCache
+## FirstBlockCache and TeaCache
 
-`models/minimax_h3/A100/first_block_cache.py`, about 30 lines of policy around a
-threshold. Gated on `H3_FIRSTBLOCKCACHE=1`, default threshold `0.08` from
+`coderef/Sana/models/minimax_h3/A100/first_block_cache.py`: about 30 lines of
+policy around a threshold, gated on `H3_FIRSTBLOCKCACHE=1`, threshold from
 `H3_CACHE_THRESHOLD`, with decisions synchronized across ranks so a multi-GPU
-run cannot diverge. The RTX 5090 cell uses TeaCache at 0.10 instead, with five
-retained steps and one cooldown step.
+run cannot diverge. The RTX 5090 and RTX 4090 cells use TeaCache instead
+(`coderef/Sana/models/minimax_h3/RTX4090/teacache.py`; the retained and
+cooldown steps in `coderef/Sana/models/minimax_h3/RTX4090/README.md:39`).
 
-The idea, which is not ours and not new: run the first transformer block, look
-at how much its output changed against the previous step, and if the change is
-below the threshold, reuse the whole step's residual instead of running the
-remaining blocks. A step-skipping cache, orthogonal to attention entirely.
+The idea, which is not theirs alone and not new: run the first transformer
+block, look at how much its output changed against the previous step, and if
+the change is below the threshold, reuse the step's residual instead of running
+the remaining blocks. A step-skipping cache, orthogonal to attention.
 
-Notes for whoever picks it up:
-
-- It is a **different quality tradeoff from sparse attention**, not a
-  complementary one. Sparse attention approximates within a step; a cache skips
-  steps outright. The `h3-turbo-eval` prior art measured Spectrum, a forecasting
-  variant of the same family, at 0.789 frame correlation against stock, i.e.
-  "closer to changing the seed than to accelerating the same render".
-- Their thresholds are tuned at **50 steps**. We run 16. A cache that skips
-  steps is far more aggressive when there are only 16 of them, and the
-  documented failure mode of too-few-steps on H3 is prompt adherence collapse,
-  not blur (`h3_config.py`: at 12 steps the third scripted shot never happens).
-  So 0.08 should not be carried over.
-- The rank synchronization is irrelevant on one GPU.
-- ComfyUI already has TeaCache-style nodes in the wild; checking whether one
-  works on H3 is cheaper than porting this.
+Their thresholds are tuned at **50 steps**, and every cache cell above runs 50.
+*Corrected 2026-09-10:* this section carried a frame-correlation figure for a
+forecasting cache attributed to "the `h3-turbo-eval` prior art", with no
+findable record; withdrawn rather than re-pointed.
 
 ---
 
 ## Other ComfyUI Sol-Attn packs
 
-Found 2026-08-16, READMEs only. They matter mostly as independent readings of
-the same knobs.
+Found 2026-08-16, READMEs only.
 
 **[Saganaki22/ComfyUI-sol-attn](https://github.com/Saganaki22/ComfyUI-sol-attn)**
 is H3-specific: zero-copy MiniMax H3 nodes, published benchmarks, and
 **scheduled tau** -- ramping the threshold across sampling steps, sparse early
-to dense late, with selectable interpolation curves. Ours is a binary sigma
-window; that is the continuous version of the same idea.
-
-Two details worth carrying:
+to dense late, with selectable interpolation curves. Spark's Ref2VA draft
+ramps the other way, dense first and sparser late.
 
 - They default **tau to 1.3, "tuned locally", against the paper's 1.0**.
-  Independent convergence on the value we ship, arrived at separately. It is
-  not confirmation that 1.3 is right -- two people tuning by eye on different
-  cards can land in the same place for the same wrong reason -- but it is worth
-  more than one.
+  *Corrected 2026-09-10:* this called it independent convergence "on the value
+  we ship"; that was our value until 2026-08-20 and is not now.
 - Their quality evaluation is **correctness against a reference** (L2 against
   SDPA, bit-identical strided views), not perceptual.
-
-Their speed numbers are on a 5090 with `torch.randn` tensors, which is both the
-wrong card and the synthetic-input trap `docs/SOLATTN.md` already carries. Not
-comparable to anything measured here.
+- Their speed numbers are on a 5090 with `torch.randn` tensors, which is both a
+  different card and the synthetic-input trap `docs/SOLATTN.md` already carries.
 
 **[sumeetprashant/ComfyUI-SolAttn](https://github.com/sumeetprashant/ComfyUI-SolAttn)**
 exists and was not read past its README.
 
-**Neither pack reorders tokens.** With the paper and Sol-Engine, that makes four
-searched sources with no token reordering outside kijai's packs, and still zero
-measurements of Morton's effect on output anywhere.
+**Neither pack reorders tokens.** With the paper and the Sol-Engine cells, no
+searched source outside kijai's packs applies a spatial token order to H3.
 
 ---
+
+## Comfy-Org/comfy-kitchen, as of 2026-09-10
+
+Fetch and `gh` only. The branches are the authority; this is a dated snapshot.
+
+- **No tag after `v0.2.33`.** `main` has two commits past it that matter here:
+  PR 162 (`e3d714b`, persistent RoPE allocations) demotes the kernel's cached
+  RoPE reference to a weakref and adds `set_allocation_context`
+  (`comfy_kitchen/allocation.py` on `main`), a hook through which ComfyUI can
+  hand kitchen a context for allocations that outlive a call. Its PR body says
+  this takes ComfyUI's memory compiler to zero graph breaks in every sparse
+  attention mode on H3. PR 165 adds a compile flag. ComfyUI core calls the hook
+  only when kitchen exports it (`comfy/model_prefetch.py:63-64`).
+- **PR 168** (`blk_cnt`, opened 2026-09-08 from the owner's fork) is open.
+  **PR 167** (kijai's H3 VAE kernels) is open, and kijai's `minimax_vae`
+  branch moved on 2026-09-09.
 
 ## Comfy-Org/comfy-kitchen, as of 2026-09-08
 
 Checked in a working checkout on 2026-09-08, after ComfyUI moved its pin to
 `comfy-kitchen==0.2.33` (core `18ebc2af`) and the stock wheel replaced our
 build. **This section stood at 2026-09-04 and said PR 156 was open and that
-the installed wheel predated the 150 merge; both are stale.** The branches are
-the authority; this is a dated snapshot.
+the installed wheel predated the 150 merge; both are stale.**
 
-**The fork's delta is now four commits.** Everything we carried from kijai's
+**The fork's delta is four commits.** Everything we carried from kijai's
 `sol_attn_continued` is upstream: PR 117 (int8 Sol-Attn), 143 (HIP port), 150
 (`4950f16`, full-range P quantisation in the exact branch and a public
 `sol_attn_chunked`), 156 (`b678fdf`, token routing) and 158 (its HIP port).
@@ -373,13 +635,13 @@ identical tree to `1128df6`. Recorded, with the control that shows the diff
 command can print something, in
 `bench/results/2026-09-08_kitchen_0233_blk_cnt_rebase.json`.
 
-**Installed here since 2026-09-08:** `0.2.33+sol.3ff6a4b`, branch
-`sol-blk-cnt-0.2.33` in the fork clone, built by `vendor/rebuild_kernel.sh`.
-`bench/check_sol_kernel.py` reports the local segment and
-`comfy_kitchen_build.json` beside the venv names the branch. The clone's
-checked-out branch need not be that sha: the clone is where sources and
-wheels are kept, the build record is what says which wheel runs, and a reader
-of the folder should trust the record over the checkout.
+**Which build is installed** is read, never written down:
+`bench/check_sol_kernel.py` reports the local segment, and
+`comfy_kitchen_build.json` beside the venv names the branch it came from, built
+by `vendor/rebuild_kernel.sh`. *Corrected 2026-09-10:* this paragraph named the
+installed build and branch as of 2026-09-08; the build has been rebuilt since,
+which is why it now points instead. The clone's checked-out branch need not be
+the built sha: the build record is what says which wheel runs.
 
 **Upstream's own Sol suite does not pass on this card**, on the stock PyPI
 wheel or on a local build of the same commit: three groups of nanobind
@@ -398,58 +660,51 @@ checkout. This section is a dated snapshot and the branches are the authority.
 **In `main`.** PR 117 (int8 Sol-Attn, 2026-08-29), PR 143 (the HIP port,
 2026-08-31), and PR 150 (kijai, merged 2026-09-03 as `4950f16`): full-range
 P quantisation in the exact branch, fp16 q/k/v/out through an `elem` code,
-and a public `sol_attn_chunked`. The installed wheel here predates that
-merge but was built from kijai's `sol_attn_continued`, which carried the
-same exact-branch algorithm, so the merge moved nothing numerically on this
-box; `bench/check_sol_kernel.py` reports the installed local segment and
-`comfy_kitchen_build.json` beside the venv names the branch it came from.
-The workspace clone's checked-out branch is not that sha and need not be:
-the clone is where sources and wheels are kept, the build record is what
-says which wheel runs, and a reader of the folder should trust the record
-over the checkout.
+and a public `sol_attn_chunked`. The installed wheel then predated that merge
+but was built from kijai's `sol_attn_continued`, which carried the same
+exact-branch algorithm, so the merge moved nothing numerically on this box.
 
-**Open.** [PR 156](https://github.com/Comfy-Org/comfy-kitchen/pull/156)
+**Open then.** [PR 156](https://github.com/Comfy-Org/comfy-kitchen/pull/156)
 (kijai, opened 2026-09-04, head `sol_token_aug_main`): a `token_aug` knob,
-zero or a multiple of 64 up to 256, validated in `comfy_kitchen/constraints.py`
-on that branch. Each query block additionally attends up to that many
-top-scoring individual tokens outside its routed blocks, and the remaining
-tail is made exact for the block centroid; a new `sol_attn_token.cu` does the
-selection, the eager reference ignores the knob, HIP warns and runs without
-it. The PR body carries his numbers on an H3 capture and names the defect
-it targets as a DC bias that shows as brightness pulsing on a five-latent-frame
-period. **Our `sol-blk-cnt` commits do not cherry-pick onto that branch**:
-tried 2026-09-04 in a scratch worktree, conflicts in `comfy_kitchen/__init__.py`,
-both backend `__init__.py` files and `backends/eager/sol_attn.py`. A build
-carrying both `token_aug` and `blk_cnt` is a rebase, not a cherry-pick. The
-grading footing for it is the one `bench/measure_sol_exact_variants.py
---capture` used for PR 150 (the 2026-09-03 record in `docs/research/`).
-[PR 146](https://github.com/Comfy-Org/comfy-kitchen/pull/146) (Sage INT8
-consumer for the Sol exact branch, `tail=False` only) is open and idle since
-2026-09-01; every shipped graph here is `tail=True`.
-[PR 124](https://github.com/Comfy-Org/comfy-kitchen/pull/124) is not Sol at
-all but is the other open change that touches every int8 H3 render: it
-rounds the fused SwiGLU product to the storage dtype before ConvRot
-quantisation, and `docs/research/quant_levers.md` owns why that path is
-reached on the shipped model.
-
-**kijai's fork.** `sol_exact_pquant` (merged as 150, plus a
-`sol_attn_is_available` export that 156 also carries), `sol_token_aug_main`
-(156), and `minimax_vae` (kernels for ComfyUI's `comfy/ldm/minimax/vae.py`
-that nothing in core calls yet, unchanged since 2026-09-03).
+zero or a multiple of 64 up to 256. Each query block additionally attends up
+to that many top-scoring individual tokens outside its routed blocks, and the
+remaining tail is made exact for the block centroid; a new `sol_attn_token.cu`
+does the selection, the eager reference ignores the knob, HIP warns and runs
+without it. The PR body carries his numbers on an H3 capture and names the
+defect it targets as a DC bias that shows as brightness pulsing on a
+five-latent-frame period. **Our `sol-blk-cnt` commits did not cherry-pick onto
+that branch**: conflicts in `comfy_kitchen/__init__.py`, both backend
+`__init__.py` files and `backends/eager/sol_attn.py`; resolved by the
+2026-09-08 rebase above. [PR 146](https://github.com/Comfy-Org/comfy-kitchen/pull/146)
+(Sage INT8 consumer for the Sol exact branch, `tail=False` only) was open and
+idle since 2026-09-01. [PR 124](https://github.com/Comfy-Org/comfy-kitchen/pull/124)
+is not Sol but touches every int8 H3 render: it rounds the fused SwiGLU product
+to the storage dtype before ConvRot quantisation, and
+`docs/research/quant_levers.md` owns why that path is reached on the shipped
+model.
 
 ---
 
-## Numbers, and why not to quote them against ours
+## Published numbers, and why not to quote them against ours
 
-Sol-Engine's published H3 speedups: **4.52x on 1x RTX 5090** (1045.4 s ->
-231.2 s), 3.95x on 8xGB200, 3.92x on DGX Spark GB10, 3.56x on 4xH100, 3.55x on
-4xA100 (217.32 s -> 61.28 s).
+Where upstream's H3 figures live, each with the conditions beside it:
 
-**None of these is a Sol-Attn number.** Full-opt for H3 is context parallel plus
-kernel fusion plus Sol-Attn plus a cache, against a 50-step dense baseline. Ours
-is Sol-Attn against sage at 16 steps on one 4090. Different stack, different
-baseline, different hardware, different step count.
+- the per-hardware cells: each cell's README, e.g.
+  `coderef/Sana/models/minimax_h3/RTX5090/README.md:13`;
+- the RTX 4090 cell, including its TeaCache-then-Sol attribution:
+  `coderef/Sana/models/minimax_h3/RTX4090/README.md:9-31`;
+- Sol-H3 on B300: `coderef/Sana/models/minimax_h3/Sol-H3/README.md:36-65`;
+- `super_acceleration` on GB200: `coderef/Sana/models/minimax_h3/super_acceleration/README.md:40-66`.
 
-This is `docs/SOLATTN.md`'s unit trap at a larger scale, and the numbers are not
-comparable in either direction. The one arm that *would* be comparable --
-`rtx5090_sol` against `rtx5090_dense` -- has no published result.
+**None of these is a Sol-Attn-only number.** Full-opt stacks a cache,
+compilation and, on the multi-GPU cells, context parallelism on top of Sol,
+against a 50-step dense baseline; Sol-H3 compares a four-forward distilled
+adapter against 49-forward baselines and says so; `super_acceleration`
+publishes latency with no baseline. Ours is Sol-Attn against sage at our own
+step count on one 4090. Different stack, different baseline, different step
+count, and on all but one cell different hardware.
+
+This is `docs/SOLATTN.md`'s unit trap at a larger scale. The RTX 4090 cell's
+Sol increment is the closest thing to comparable, and it is an increment over
+TeaCache from one sample. The one arm that *would* be comparable,
+`rtx5090_sol` against `rtx5090_dense`, still has no published result.

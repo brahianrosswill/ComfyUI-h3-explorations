@@ -1,8 +1,8 @@
 # sglang's H3 serving path against ours
 
-last updated: 2026-09-04 (one subsection under "What they do that we do
-not" and the closing section "Third read" added that day; everything else
-is the 2026-08-29 read)
+last updated: 2026-09-10 (closing section "Fourth read" added; one
+subsection under "What they do that we do not" and the section "Third read"
+added 2026-09-04; everything else is the 2026-08-29 read)
 
 What the vendor-side serving implementation does that this install does not,
 what both do where ours may be the weaker version, and what looks like a gap
@@ -511,3 +511,41 @@ that the hazard is real for formats that do, not evidence about ours.
 (our runner's `--warmup` row is the same idea), profiler spans, SM120 paths,
 the SM12.x decoder workaround, key masks under Ulysses, third-party bundle
 loading. Read, priced, no action.
+
+## Fourth read, 2026-09-10
+
+What landed in `coderef/sglang` between `320bdd1ee2` (the third read) and
+`887c401e15`, against what we do. It changes no earlier verdict on this page.
+The two Sol-side items, SubBlock's new Sage compute and its router's note on
+reserved sink blocks and the forced diagonal, are recorded in
+[`../sol_upstream.md`](../sol_upstream.md) and not repeated here.
+
+**"Singularity" is a third-party checkpoint, not a vendor variant.**
+`65400bb420` (#38455) serves `WarmBloodAban/Minimax-h3_Singularity`, an FL/Ref
+fusion fine-tune shipped full or pruned INT8, through `--model-variant hybrid`
+plus an explicit transformer-weights path: one pipeline for t2va, fl2va and
+ref2va, with the partition gate relaxed (sglang's H3 cookbook page, its
+Singularity section). ComfyUI has no partition gate
+([`../comfyui_vendor_gaps.md`](../comfyui_vendor_gaps.md) gap 10), so such a
+file loads here as it is. Nothing to borrow.
+
+**Two fixes that do not apply to core.** `b83f1bdd21` (#38225) removed
+`@torch.jit.script` from the audio VAE's snake activation, because the
+profiling JIT changed its rounding after the first call and a repeated
+reference-audio request stopped matching the first. Core's `snake` is plain
+eager code (`comfy/ldm/minimax/audio_vae.py`). `a8e45f16cc` (#38506) adds a
+shared INT8 embedding lookup for INT8, W4A8 and NVFP4 encoders; the encoder
+this install loads keeps `model.embed_tokens.weight` in BF16 (read from the
+header of `h3_config.MODELS["clip"]`, 2026-09-10).
+
+**Skip-softmax is other silicon.** `0ea8378085` (#37959) adds a
+request-scoped skip-softmax attention through FlashInfer's TRTLLM kernels,
+dispatched only for compute capability 9.0 and 10.x
+(`coderef/sglang/python/sglang/multimodal_gen/runtime/layers/attention/backends/skip_softmax.py`).
+It is one global threshold with a dense warm-up, the same blunt shape as a
+single tau, and nothing of it runs on this card.
+
+**Everything else is serving or other silicon**: XPU (#33366) and Xeon CPU
+(#35147) enablement, GB300/GB200 and DGX Spark recipes (#38296, #37456),
+per-phase warmup memory for residency calibration (#37916), and a docs sync
+(#38784). Read, priced, no action.

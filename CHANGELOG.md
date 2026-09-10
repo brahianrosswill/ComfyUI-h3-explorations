@@ -4,6 +4,32 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.58
+
+### Changed
+
+- **`docs/sol_upstream.md` rewritten against Sana `757d902`** (it was pinned
+  to `6fb7eb1`, read 2026-08-15): Sol-H3, Sol-H3-Spark, `super_acceleration`,
+  the RTX 4090 cell, MXFP8, the vendored kernel against comfy-kitchen's, and
+  ComfyUI core's own `BlockSparseAttention` (#16072) among the other packs.
+  Its stale claims are corrected in place with what each used to say, among
+  them "every profile runs the first two blocks dense", the KV sink being
+  "the same choice" (their prefix sink is our `exact_kv_and_all_rows`), and
+  our tau (1.0 since 2026-08-20, not 1.3). Pointers were re-read at that
+  commit; two that did not land were withdrawn.
+- **`docs/SOLATTN.md` gains "What Sana's newer H3 packages offer this card,
+  2026-09-10"**: each technique, whether it runs on sm89, what would decide
+  it and the cheapest first test; plus the kitchen #162 line and stale
+  defaults in its options table corrected.
+- **The rest of the 2026-09-10 upstream survey got a line each where it
+  belongs**: two core commits that are not gaps (`comfyui_vendor_gaps.md`),
+  open experiment 30 for keyframe-encode determinism and status lines on 27
+  and 28 (`open_experiments.md`), a fourth sglang read
+  (`research/sglang_comparison.md`), what moved by 2026-09-10 across the
+  other engines, HF and the peer packs (`wiki/references.md`), and the
+  unbounded `_SPANS` cache plus the joint-encode cache lesson
+  (`custom_node_gaps.md`).
+
 ## 0.99.57
 
 ### Fixed

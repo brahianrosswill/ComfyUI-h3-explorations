@@ -1,6 +1,6 @@
 # Where our custom nodes differ from every other H3 implementation
 
-last updated: 2026-08-28
+last updated: 2026-09-10 (one §5.4 sentence and one §6 row added; everything else is the 2026-08-28 pass)
 
 The companion to [`comfyui_vendor_gaps.md`](comfyui_vendor_gaps.md). That file
 asks how native ComfyUI differs from the MiniMax release. This one asks the
@@ -407,7 +407,11 @@ Our two conditioners replace core's everywhere. The reference `image_policy` is
 `release` on a few — and per §2 the `encoder` value does not currently run.
 `MiniMaxH3Resolution` is convenience over typing two integers, and is wired
 almost everywhere. The VAE-precision and cache axes are single-graph probes,
-both carrying committed measurements.
+both carrying committed measurements. A conditioning-encode cache, if one is
+ever built, should hold the joint encode only: a peer pack that cached
+separately encoded sections reverted it after reported generation distortion
+(`coderef/ComfyUI-UtilsCollection` `d1921ae`; [`wiki/references.md`](wiki/references.md)
+describes the pack).
 
 **Output is not an axis.** Every graph wires the same video writer with every
 input constant except the filename prefix.
@@ -429,6 +433,7 @@ audit; these are candidates for it, not additions to it.
 | the sigma tail lands outside Sol's window | **nothing.** The node logs the window and tells the reader to check; it never sees the sigmas |
 | the audio stream's higher-order sampler terms are valid on the video schedule | **nothing** (§4.1) |
 | `qkv_proj` row order matches the checkpoint's convention | **nothing on any side.** The same key name denotes two different row orders across implementations; our converter targets the right one on the strength of a comment |
+| `_SPANS` in `sol_attn_h3.py` stays bounded over a long-lived server | **nothing.** Keyed on `id(position_ids)`, one entry per distinct packed layout, each keeping its layout alive on purpose so the id cannot be recycled, and nothing evicts an entry. How fast it grows across many distinct shapes is unmeasured; flagged 2026-09-10, not chased |
 
 One methodological item, which is not a check but belongs on the record:
 **noise for the video and audio streams comes from one seeded generator consumed

@@ -1,6 +1,6 @@
 # Where ComfyUI's H3 path differs from the vendor's
 
-last updated: 2026-09-04 (row 17 added; everything else is the 2026-08-29 snapshot)
+last updated: 2026-09-10 (two core commits recorded under "Settled"; row 17 added 2026-09-04; everything else is the 2026-08-29 snapshot)
 
 **Corrected 2026-08-29: this file described the compressed-tensors W4 AWQ
 artifact as the shipped encoder, and it is not.** All 159 encoder-loader nodes
@@ -909,6 +909,27 @@ owns those numbers.
   stereo as a batch axis with no cross-channel coupling, so the two latent
   channels are bitwise identical, at the two `w`-grid extremes. sglang's `-ac 2`
   does the same. **Do not re-file this as a gap.**
+
+### Core commits read 2026-09-10 that are not gaps
+
+- **`421a1c24` ([Comfy-Org/ComfyUI#15988](https://github.com/Comfy-Org/ComfyUI/pull/15988),
+  merged 2026-09-08) scales each stream's velocity by its denoise mask**
+  (`comfy/ldm/minimax/model.py`, `MiniMaxH3Model.forward`, straight after the
+  graph output), so a masked row's prediction matches the mask-scaled sigma the
+  outer x0 conversion assumes. It reaches only a latent that carries a noise
+  mask, and neither core's H3 nodes (`comfy_extras/nodes_minimax_h3.py`) nor
+  any node in this pack writes one (*read*, a grep for `noise_mask`). A server
+  process started before the checkout pulled it runs without it, so restart
+  before a masked-latent render counts.
+- **The quantized-matmul gating rework
+  ([#16185](https://github.com/Comfy-Org/ComfyUI/pull/16185), then
+  [#16189](https://github.com/Comfy-Org/ComfyUI/pull/16189), both 2026-09-08)
+  leaves the H3 text-encoder encode path where it was.** The mixed-precision
+  `Linear` still dequantizes whenever `_full_precision_mm` is set, and the new
+  `comfy.ops.use_quantized_matmul` context lifts that only inside
+  `CLIP.generate` (`comfy/sd.py`). The H3 conditioners encode through
+  `encode_from_tokens_scheduled` (`comfy_extras/nodes_minimax_h3.py`), never
+  `generate` (*read*).
 
 ---
 

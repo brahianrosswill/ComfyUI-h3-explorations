@@ -1,6 +1,6 @@
 # Open experiments
 
-Last updated: 2026-09-08
+Last updated: 2026-09-10
 
 > **Several of these are now scheduled rather than parked.** The working plan
 > and the render scenes that would settle the quality-blocked ones live in
@@ -2029,6 +2029,14 @@ cubes and ours are 64-row runs in raster order on the shipped configuration
 (`morton=False` in every SOL dict), and their selection has no pooled
 correction; only the schedule transfers, as a prior.
 
+**A second vendor step prior, 2026-09-10.** sglang's SubBlock backend
+(`ffe98a4279`) records a step-cutoff sweep, run independently of its layer
+cutoff, beside `DEFAULT_SKIP_FIRST_STEPS`
+(`coderef/sglang/python/sglang/multimodal_gen/runtime/layers/attention/backends/subblock_sparse_attn.py`).
+[`sol_upstream.md`](sol_upstream.md) records it; read it on our sigma grid by
+sigma, as the mapping record above does for the cube schedule, before it
+informs the arm.
+
 ## 28. The kitchen VAE kernels: DECLINED 2026-09-08, not deferred
 
 Added and closed the same day. comfy-kitchen [PR 167](https://github.com/Comfy-Org/comfy-kitchen/pull/167)
@@ -2068,6 +2076,9 @@ failure). So it is a deliberate core patch with a provenance record, not a
 **Reopens when** both PRs merge, or when decode's share of a shipped render
 grows enough to matter -- a longer canvas or a cheaper sampler moves that
 share without anyone touching the VAE.
+
+**Status 2026-09-10:** both PRs still open; kijai's `minimax_vae` branch moved
+to `a63ca28` on 2026-09-09. Neither reopen condition is met.
 
 ## 29. What makes token routing's selection unstable, on one block
 
@@ -2288,3 +2299,35 @@ not stop the lane -- but it did not name a cause either, and everything left
 either way: `token_aug`'s output is not reproducible on at least one block, and
 a lever that cannot render the same clip twice cannot be graded blind, which is
 sufficient reason not to ship it without ever learning why.
+
+## 30. Is the keyframe VAE encode deterministic on this card
+
+Added 2026-09-10. vllm-omni `30d6a0b4e` (#7191, 2026-09-07) wraps its keyframe
+VAE encode in `torch.backends.cudnn.flags(benchmark=False, deterministic=True,
+allow_tf32=True)`, because cuDNN's default algorithm choice produced
+numerically different keyframe latents on H100s and the denoiser amplified the
+difference (`coderef/vllm-omni/vllm_omni/diffusion/models/minimax_h3/vae.py`,
+`_minimax_h3_keyframe_encode_context`).
+
+**What is known here, by reading.** Core encodes fl2va keyframes through
+`vae.encode` (`comfy_extras/nodes_minimax_h3.py`, both keyframe paths) under
+whatever cuDNN state is global. `cudnn.benchmark` follows `--fast autotune`
+(`comfy/model_management.py::set_cudnn_benchmark`), which this install's launch
+command does not pass, so it is off; `cudnn.deterministic` is never set, so the
+algorithm is cuDNN's heuristic pick, which can depend on free workspace. TF32
+does not enter, because the video VAE runs fp16 (gap 8 in
+[`comfyui_vendor_gaps.md`](comfyui_vendor_gaps.md)). Node caching encodes a
+given input once per server process, so any drift would show across restarts or
+VRAM states, not within one session. **Unmeasured on sm89.**
+
+**The arm, the cheapest in this file.** The same keyframe image encoded in two
+fresh processes at deliberately different free VRAM, latents compared bitwise.
+No render, no judge.
+
+**Decision it changes.** If the bytes differ, fl2va renders here are not
+matched across a server restart even at a matched seed, which bears on every
+fl2va comparison that spans one, and the fix is a flags wrapper around that
+encode -- in a pack node, since the checkout is stock. If they match, close
+this as checked, with the record.
+
+**Blocker:** card time on a server that is not rendering; nothing else.
