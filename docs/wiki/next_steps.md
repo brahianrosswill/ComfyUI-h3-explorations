@@ -22,9 +22,20 @@ own below the rule.
   `start.sh` note) is verified and the server restarted.
 - All-rows sink switch: planned, gated on pair C (`docs/roadmap.md`, forward
   plan step 3).
-- Pair B's attributing instrument: a capture grade of both implementations
-  against exact attention on the same inputs; needs a pre-norm fused-qkv
-  capture hook (`h3_capture.py` records post-RoPE Q/K/V today).
+- Pair B's attributing instrument, BUILT: `H3_CAPTURE=...,pre=1` and
+  `bench/grade_sol_impl_on_capture.py` (both docstrings are the contract).
+  Next, after the A/B batch and a restart (node code): capture on
+  `workflows/bench/h3_text_to_video_stamped_api.json` at the courtroom prompt
+  and the A/B's seed, server armed with
+  `H3_CAPTURE="dir=$H3_CAPTURE_ROOT/2026-09-10_sol_impl_courtroom,blocks=0:24:49,steps=5:6:12:13,cycle=16,pre=1"`
+  (two consecutive step pairs per block, which the carried-statistics arm
+  needs), then the grader with `--limit 2` first. Size the disk first; the
+  pre files are large at this sequence length.
+- `bench/check_dit_prefix_attention.py` is indexed as CPU-only but cannot run
+  with CUDA masked: it imports `comfy_extras.nodes_minimax_h3`, whose import
+  chain reaches `comfy.model_management`, which asks CUDA for a device at
+  import. Run it with the card free, or give it ComfyUI's `--cpu` the way
+  `bench/audit_ref_audio_crop.py` does.
 - Keyframe-encode determinism: `bench/measure_keyframe_encode_determinism.py`,
   written, not yet run (open experiment 30).
 - Reference audio now end-padded to the audio VAE's hop in our path

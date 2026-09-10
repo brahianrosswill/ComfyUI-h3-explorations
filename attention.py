@@ -427,7 +427,17 @@ def make_minimax_attn_forward(kernel_fn, kernel_kwargs, head_chunks=1,
                           dtype=x.dtype, module="unknown",
                           has_mask=False, has_scale=False, route="entered")
         # One fused projection, split into three views of the same buffer.
-        q, k, v = self.qkv_proj(x).split(self.heads * self.head_dim, dim=-1)
+        qkv = self.qkv_proj(x)
+        if _capture.enabled:
+            # BEFORE the in-place RMSNorm+RoPE below rewrites q and k in this
+            # buffer: a `pre=` capture takes the fused projection as ComfyUI
+            # core's own Sol node consumes it (h3_capture.maybe_capture_pre).
+            # Inert unless H3_CAPTURE says `pre=`.
+            _capture.maybe_capture_pre(self, qkv, x, rope_freqs,
+                                       transformer_options=transformer_options,
+                                       length_hint=s)
+        q, k, v = qkv.split(self.heads * self.head_dim, dim=-1)
+        del qkv   # the views hold the storage; no second reference kept alive
         q = q.view(1, s, self.heads, self.head_dim)
         k = k.view(1, s, self.heads, self.head_dim)
         v = v.view(1, s, self.heads, self.head_dim)

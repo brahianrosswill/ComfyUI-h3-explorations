@@ -4,6 +4,32 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.61
+
+### Added
+
+- **A pre-norm capture mode and a grader for the core-versus-ours Sol
+  implementation (the A/B's pair B, on captured activations).**
+  `H3_CAPTURE=...,pre=1` also writes each selected call's fused `qkv_proj`
+  output from before the in-place RMSNorm and RoPE (`qkvpre_*.pt`), with the
+  rope table, the q/k norm weights and eps, the packed layout's segment table
+  and a check that core's first producer chunk projects identically;
+  `pre=only` writes it instead of the post-RoPE file. Off, every file is
+  byte-identical to before (shown on a CPU harness over two renders).
+  `bench/grade_sol_impl_on_capture.py` scores, against fp32 exact attention
+  on identical inputs: ours through our node's own call and sink derivation,
+  core's chunked producer with fresh and with carried statistics, both at
+  `h3_config.SOL_CORE_DEFAULTS`, an all-routed control per implementation,
+  and ours at the shipped values. Manifest schema 1.6.0 carries each tensor's
+  `kind`; the manifest generator, checker and recycler know the new files.
+
+### Fixed
+
+- **`h3_capture._server_stamp` used `torch` without importing it**, since
+  `dae6864` (2026-09-03, after the Base16 capture), so the next armed render
+  would have failed at its first write. The torch version is now stamped as a
+  plain string, so records load with `weights_only=True`.
+
 ## 0.99.60
 
 ### Changed

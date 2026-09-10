@@ -25,6 +25,14 @@ H3's real length writes gigabytes per call.
           window. Omitted means no boundary is detected: the counter keeps
           rising and a second render captures nothing, which `summary()` says.
 
+  pre     `1` also writes the FUSED qkv projection from before RMSNorm and
+          RoPE (`qkvpre_*.pt`, beside the usual file); `only` writes it
+          INSTEAD of the post-RoPE file. For
+          `bench/grade_sol_impl_on_capture.py`, which grades ComfyUI core's
+          chunked-producer Sol path against ours; see `maybe_capture_pre`.
+          Off by default, and off leaves every other file byte-identical to
+          what this module wrote before the key existed (2026-09-10).
+
 Filenames from the second render onward carry `_r{n}`. The first render's names
 are unchanged, so existing captures and every glob over them still match.
 
@@ -81,7 +89,8 @@ _config: dict = {}
 
 
 def _parse(spec):
-    out = {"dir": None, "blocks": {0}, "steps": {1}, "cycle": None, "final": False}
+    out = {"dir": None, "blocks": {0}, "steps": {1}, "cycle": None, "final": False,
+           "pre": None}
     for part in spec.split(","):
         key, _, val = part.partition("=")
         key, val = key.strip(), val.strip()
@@ -91,6 +100,12 @@ def _parse(spec):
             out["cycle"] = int(val)
         elif key == "final" and val:
             out["final"] = val.strip().lower() not in ("0", "false", "no", "off")
+        elif key == "pre" and val:
+            # "only" suppresses the post-RoPE file; any other truthy value
+            # writes the pre-norm file BESIDE it. See maybe_capture_pre.
+            v = val.strip().lower()
+            out["pre"] = ("only" if v == "only"
+                          else None if v in ("0", "false", "no", "off") else "both")
         elif key in ("blocks", "steps") and val:
             out[key] = {int(x) for x in re.split(r"[:;]", val) if x.strip()}
     return out
@@ -111,7 +126,8 @@ def _sync_spec():
                 os.makedirs(_config["dir"], exist_ok=True)
                 print(f"[h3_capture] ARMED: dir={_config['dir']} "
                       f"blocks={sorted(_config['blocks'])} steps={sorted(_config['steps'])}"
-                      + (" final=on" if _config.get("final") else ""))
+                      + (" final=on" if _config.get("final") else "")
+                      + (f" pre={_config['pre']}" if _config.get("pre") else ""))
         else:
             _config = {}
 
@@ -158,54 +174,16 @@ def maybe_capture(module, q, k, v, length_hint=None, kernel="sage",
         return
     import torch
 
-    # Prefer the index the patching loop stamped on the module. First-seen
-    # ordering below is the fallback and it is WRONG ACROSS A MODEL SWAP: the
-    # ids belong to the modules of whichever checkpoint was loaded, so the
-    # first render after a swap assigns 50..99 to the new blocks, no requested
-    # index matches, `block == 0` never fires again, and the render counter
-    # jams. Capture then stops silently for the rest of the process.
-    #
-    # Found 2026-08-21 on the open-experiment-22 arms, which swap checkpoints
-    # between renders by design: the first two arms captured, the remaining
-    # nine wrote nothing and the only symptom was empty directories. The
-    # module comment used to argue against a patch-time tag because it "would
-    # put a capture concern into the patching loop". It is worth that -- the
-    # alternative was an instrument that quietly stops.
-    tagged = getattr(module, "_h3_block_index", None)
-    key = id(module)
     with _lock:
-        if tagged is not None:
-            _block_of[key] = tagged
-        elif key not in _block_of:
-            _block_of[key] = len(_block_of)
-        block = _block_of[key]
-
-        # Render boundary. `cycle` is DECLARED, never guessed, and the default
-        # is no reset at all.
-        #
-        # It was hardcoded to 16 until 2026-08-17 -- a second copy of
-        # `h3_config.SAMPLING["steps"]`, and wrong for everything else this repo
-        # ships. At 20 steps it fired MID-render, so real steps 16-19 were
-        # recorded as 0-3 and a file named `_s3` ended up holding step 19: a
-        # corrupted capture whose filename lied. Below 16 it never fired
-        # (`TURBO_STEPS` is 8, `TURBO_768P_STEPS` is 4), so a second render in
-        # the same server process kept counting upward and captured nothing.
-        #
-        # Nothing here can infer it: the step count varies per graph, and with
-        # Sol-Attn on, sage sees only the steps inside its sigma window rather
-        # than all of them. A guess is guaranteed wrong for somebody, so
-        # `cycle=` in `H3_CAPTURE` is how it gets stated.
-        if _config.get("cycle") and block == 0 and _calls.get(0, 0) >= _config["cycle"]:
-            _render += 1
-            _calls.clear()
-            # The final tap counts forwards on its own axis, so the render
-            # boundary has to reset it here too or a second render's velocity
-            # lands at a step index no filter matches and nothing is written.
-            globals()["_final_step"] = 0
-
-        step = _calls.get(block, 0)
-        _calls[block] = step + 1
+        # Block index, render boundary and step counter live in `_block_step`
+        # since 2026-09-10, shared with `maybe_capture_pre`, which reads the
+        # same indices without advancing them. The behaviour here is unchanged.
+        block, step = _block_step(module, advance=True)
         if block not in _config["blocks"] or step not in _config["steps"]:
+            return
+        # `pre=only`: this call is still COUNTED above, so the step index
+        # stays aligned with `maybe_capture_pre`, but no post-RoPE file.
+        if _config.get("pre") == "only":
             return
         # Keyed by render, and `_written` is never cleared. Clearing it let a
         # second render silently overwrite the first render's files -- multiple
@@ -336,6 +314,202 @@ def maybe_capture(module, q, k, v, length_hint=None, kernel="sage",
           f"{size:.2f} GiB")
 
 
+def _block_step(module, advance):
+    """(block, step) of this call. Call with `_lock` held.
+
+    Shared since 2026-09-10 by `maybe_capture`, which ADVANCES the per-block
+    counter once per call, and `maybe_capture_pre`, which runs earlier in the
+    same forward and only reads it, so the two files of one call carry the
+    same indices and join exactly. The render boundary is idempotent within a
+    call: once it fires the counter is cleared, so the second caller of the
+    same forward cannot fire it again.
+    """
+    global _render
+    # Prefer the index the patching loop stamped on the module. First-seen
+    # ordering below is the fallback and it is WRONG ACROSS A MODEL SWAP: the
+    # ids belong to the modules of whichever checkpoint was loaded, so the
+    # first render after a swap assigns 50..99 to the new blocks, no requested
+    # index matches, `block == 0` never fires again, and the render counter
+    # jams. Capture then stops silently for the rest of the process.
+    #
+    # Found 2026-08-21 on the open-experiment-22 arms, which swap checkpoints
+    # between renders by design: the first two arms captured, the remaining
+    # nine wrote nothing and the only symptom was empty directories. The
+    # module comment used to argue against a patch-time tag because it "would
+    # put a capture concern into the patching loop". It is worth that -- the
+    # alternative was an instrument that quietly stops.
+    tagged = getattr(module, "_h3_block_index", None)
+    key = id(module)
+    if tagged is not None:
+        _block_of[key] = tagged
+    elif key not in _block_of:
+        _block_of[key] = len(_block_of)
+    block = _block_of[key]
+
+    # Render boundary. `cycle` is DECLARED, never guessed, and the default
+    # is no reset at all.
+    #
+    # It was hardcoded to 16 until 2026-08-17 -- a second copy of
+    # `h3_config.SAMPLING["steps"]`, and wrong for everything else this repo
+    # ships. At 20 steps it fired MID-render, so real steps 16-19 were
+    # recorded as 0-3 and a file named `_s3` ended up holding step 19: a
+    # corrupted capture whose filename lied. Below 16 it never fired
+    # (`TURBO_STEPS` is 8, `TURBO_768P_STEPS` is 4), so a second render in
+    # the same server process kept counting upward and captured nothing.
+    #
+    # Nothing here can infer it: the step count varies per graph, and with
+    # Sol-Attn on, sage sees only the steps inside its sigma window rather
+    # than all of them. A guess is guaranteed wrong for somebody, so
+    # `cycle=` in `H3_CAPTURE` is how it gets stated.
+    if _config.get("cycle") and block == 0 and _calls.get(0, 0) >= _config["cycle"]:
+        _render += 1
+        _calls.clear()
+        # The final tap counts forwards on its own axis, so the render
+        # boundary has to reset it here too or a second render's velocity
+        # lands at a step index no filter matches and nothing is written.
+        globals()["_final_step"] = 0
+
+    step = _calls.get(block, 0)
+    if advance:
+        _calls[block] = step + 1
+    return block, step
+
+
+def _chunk_check(module, x, qkv):
+    """Whether core's first producer chunk, projected alone, equals those rows
+    of the full projection. `maybe_capture_pre` says why it is measured.
+
+    Compared in row slices so the check itself allocates next to nothing on a
+    card the model already fills (the reason `maybe_capture` copies to host
+    before reshaping)."""
+    try:
+        from comfy_extras.nodes_sparse_attention import PRODUCER_CHUNK
+    except Exception as exc:                           # noqa: BLE001 -- absent is a value
+        return {"skipped": f"core's PRODUCER_CHUNK unavailable: {type(exc).__name__}"}
+    import torch
+    n = min(int(PRODUCER_CHUNK), int(x.shape[0]))
+    with torch.no_grad():
+        part = module.qkv_proj(x[:n])
+        identical, worst = True, 0.0
+        for i in range(0, n, 512):
+            a, b = part[i:i + 512], qkv[i:min(i + 512, n)]
+            identical = identical and bool(torch.equal(a, b))
+            worst = max(worst, float((a.float() - b.float()).abs().max()))
+    del part
+    return {"rows": n, "producer_chunk": int(PRODUCER_CHUNK),
+            "identical": identical, "max_abs_diff": worst}
+
+
+def maybe_capture_pre(module, qkv, x, rope_freqs, transformer_options=None,
+                      length_hint=None):
+    """Save this call's FUSED qkv projection, before RMSNorm and RoPE.
+
+    Armed by `pre=` in `H3_CAPTURE` and inert otherwise: `pre=1` writes this
+    beside the usual post-RoPE file, `pre=only` instead of it. Exists for
+    `bench/grade_sol_impl_on_capture.py`. ComfyUI core's own Sol node
+    (`comfy_extras/nodes_sparse_attention.py`) does not take the post-RoPE
+    tensors the rest of this module records: its H3 path feeds kitchen's
+    `sol_attn_chunked` the `qkv_proj` output in row chunks and applies the q/k
+    RMSNorm and RoPE inside the kernel. Grading it needs the tensor from BEFORE
+    the in-place norm this forward runs next, plus the rope table, the norm
+    weights and the eps it used.
+
+    **Must be called before `rms_rope_split_half_`**: that op rewrites the q
+    and k columns of this same buffer in place, which is why the copy to host
+    happens here and not later.
+
+    Reads the (block, step) of this call without advancing the counter;
+    `maybe_capture`, later in the same forward, advances it. So a `qkvpre_`
+    file and a `qkv_` file of one call carry the same indices.
+
+    Also records, for the grader:
+      segments        the packed layout's (start, stop, kind) table, from the
+                      `minimax_h3_layout` core publishes on every forward (since
+                      Comfy-Org/ComfyUI#16072), so it is present with Sol
+                      absent, where `maybe_capture` records none;
+      uuids, cond_or_uncond  which conditioning branch this call was, since
+                      core carries its statistics per branch;
+      chunk_check     whether projecting core's first `PRODUCER_CHUNK` rows
+                      alone reproduces those rows of the full projection. The
+                      graded core arm is fed chunks of THIS full projection,
+                      which are core's own bytes only if the linear is
+                      row-independent (kitchen's int8 path quantises
+                      activations per row, `comfy_kitchen/tensor/int8.py`).
+                      Measured on the real weights rather than assumed; the
+                      first chunk only, to keep the cost to one extra slice.
+
+    The norm weights are captured, not read from the checkpoint at grade time:
+    they are a few hundred bytes, and capturing them records what this process
+    actually passed (after `cast_to`) instead of what a file says.
+    """
+    _sync_spec()
+    if not enabled or not _config.get("pre") or rope_freqs is None:
+        return
+    import torch
+    import comfy.model_management
+
+    with _lock:
+        block, step = _block_step(module, advance=False)
+        if block not in _config["blocks"] or step not in _config["steps"]:
+            return
+        if (_render, block, step, "pre") in _written:
+            return
+        _written.add((_render, block, step, "pre"))
+        render = _render
+
+    heads, head_dim = int(module.heads), int(module.head_dim)
+    seq = int(qkv.shape[0])
+    if qkv.ndim != 2 or qkv.shape[1] != 3 * heads * head_dim:
+        raise RuntimeError(
+            f"h3_capture: fused qkv is {tuple(qkv.shape)}, expected [S, {3 * heads * head_dim}]. "
+            f"Refusing to write a pre-norm capture nothing downstream could check.")
+    # Host copies FIRST: the in-place norm that follows this call rewrites q and k.
+    qkv_h = qkv.detach().cpu()
+    qw = comfy.model_management.cast_to(module.q_norm.weight, device=qkv.device).detach().cpu()
+    kw = comfy.model_management.cast_to(module.k_norm.weight, device=qkv.device).detach().cpu()
+    rope_h = rope_freqs.detach().cpu()
+    chunk_check = _chunk_check(module, x, qkv)
+
+    to = transformer_options if isinstance(transformer_options, dict) else {}
+    segments, signature = None, None
+    layout = to.get("minimax_h3_layout")
+    if layout is not None and getattr(layout, "seq_len", None) == seq:
+        segments = [(int(a), int(b), str(k)) for a, b, k in layout.segments]
+        signature = [int(v) for v in (getattr(layout, "signature", ()) or ())]
+    sigma = None
+    sigmas = to.get("sigmas")
+    if sigmas is not None:
+        try:
+            sigma = float(sigmas[0])
+        except (TypeError, IndexError, ValueError):
+            sigma = None
+    if segments is not None and segments[-1][1] != seq:
+        raise RuntimeError(
+            f"h3_capture: layout segments end at {segments[-1][1]} but the fused qkv has "
+            f"{seq} rows; refusing to write a boundary table that mis-bins every consumer.")
+
+    record = {"kind": "qkv_pre", "qkv": qkv_h, "rope_freqs": rope_h,
+              "q_norm_weight": qw, "k_norm_weight": kw,
+              "rope_eps": float(module.q_norm.eps), "rot_dim": int(rope_freqs.shape[-3] * 2),
+              "heads": heads, "head_dim": head_dim,
+              "block": int(block), "step": int(step), "sigma": sigma, "seq_len": seq,
+              "render": int(render), "segments": segments, "layout_signature": signature,
+              "uuids": [str(u) for u in (to.get("uuids") or [])] or None,
+              "cond_or_uncond": [int(c) for c in (to.get("cond_or_uncond") or [])] or None,
+              "chunk_check": chunk_check,
+              "unmerged_blocks": to.get("minimax_h3_unmerged_blocks"),
+              "prompt_id": _prompt_id(), "server": _server_stamp()}
+    suffix = f"_r{render}" if render else ""
+    name = (f"qkvpre_L{length_hint if length_hint is not None else 'na'}"
+            f"_S{seq}_b{block}_s{step}{suffix}.pt")
+    path = os.path.join(_config["dir"], name)
+    torch.save(record, path)
+    size = os.path.getsize(path) / 2**30
+    print(f"[h3_capture] wrote {name}  qkv{tuple(qkv_h.shape)} {qkv_h.dtype}  "
+          f"segments={'yes' if segments else 'NO'}  chunk identical="
+          f"{chunk_check.get('identical', 'n/a')}  {size:.2f} GiB")
+
+
 def wants_final():
     """Whether `final=1` was declared. Read by the patching node."""
     _sync_spec()
@@ -353,7 +527,15 @@ def _prompt_id():
 
 def _server_stamp() -> dict:
     import sys
-    out = {"argv": list(sys.argv), "torch": torch.__version__,
+    # Imported HERE: this module imports torch only inside functions, and
+    # until 2026-09-10 this one used the name without importing it, so the
+    # first record written after the stamp arrived (dae6864, 2026-09-03)
+    # would have raised NameError mid-render. No capture had run since.
+    import torch
+    # str(): `torch.__version__` is a TorchVersion, which a weights_only load
+    # refuses as an unknown global; a plain string keeps every record loadable
+    # with `torch.load(..., weights_only=True)`.
+    out = {"argv": list(sys.argv), "torch": str(torch.__version__),
            "cuda": torch.version.cuda, "comfy_kitchen": None, "pid": os.getpid()}
     try:
         import importlib.metadata as _md

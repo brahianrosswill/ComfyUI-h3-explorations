@@ -20,7 +20,8 @@ A capture is RECYCLABLE when all of:
   - `retention.json`'s `keep_until` has passed, or `--delete` is given with
     `--reason`, which is written into the marker.
 
-Deletion removes `qkv_*.pt` and `final_*.pt` only. `manifest.json`,
+Deletion removes `qkv_*.pt`, `qkvpre_*.pt` (the pre-norm records
+`h3_capture.py` writes with `pre=`) and `final_*.pt` only. `manifest.json`,
 `retention.json` and a new `DELETED.json` (when, why, bytes freed) stay, so
 the directory keeps saying what it was. Nothing here is automatic: the
 owner runs `--delete`, one capture at a time.
@@ -59,7 +60,7 @@ def _tensors(d: Path) -> list[Path]:
     """The files a delete would remove: regular files only, never a symlink,
     never a directory wearing the name (audit finding 3, 2026-09-03)."""
     out = []
-    for p in sorted(d.glob("qkv_*.pt")) + sorted(d.glob("final_*.pt")):
+    for p in sorted(d.glob("qkv_*.pt")) + sorted(d.glob("qkvpre_*.pt")) + sorted(d.glob("final_*.pt")):
         if p.is_symlink() or not p.is_file():
             continue
         out.append(p)

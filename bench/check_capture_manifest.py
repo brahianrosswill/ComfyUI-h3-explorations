@@ -106,7 +106,12 @@ def assert_substrate(block: dict, keys: set, where: str) -> None:
 # schema and the only existing manifest were both 1.1.0, so it would have kept
 # claiming 1.0.0 through every future bump. One constant for the accepted set,
 # and the report states the versions it actually saw rather than a fixed string.
-SCHEMA_VERSIONS = ("1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0")
+#: 1.6.0 (2026-09-10) adds `captured_tensors[].kind`: `qkv_pre` for the fused
+#: pre-norm projection `h3_capture.maybe_capture_pre` writes (`qkvpre_*.pt`,
+#: shape [S, 3*H*D], sequence on axis 0); absent or `qkv` for the post-RoPE
+#: [B, H, S, D] records (sequence on axis 2). Older manifests carry no kind and
+#: read as `qkv`, which is what they hold.
+SCHEMA_VERSIONS = ("1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0")
 
 #: Model-file hashes were added in 1.2.0, gated the same way and for the same
 #: reason as the substrate keys above: a 1.1.0 manifest that never carried them
@@ -317,8 +322,12 @@ def check_manifest(manifest_path: Path):
         if VERIFY_HASHES:
             got = _sha256_file(pt_file)
             assert got == t["sha256"], f"sha256 mismatch for {pt_file.name}: manifest {t['sha256'][:12]}, file {got[:12]}"
-        assert t["shape"][2] == tokens["total_sequence_length"], (
-            f"Tensor shape sequence dimension {t['shape'][2]} does not match total_sequence_length {tokens['total_sequence_length']}"
+        # The sequence axis by kind (1.6.0): axis 0 of a fused pre-norm
+        # `qkv_pre` record, axis 2 of a post-RoPE [B, H, S, D] one.
+        axis = 0 if t.get("kind") == "qkv_pre" else 2
+        assert t["shape"][axis] == tokens["total_sequence_length"], (
+            f"Tensor shape sequence dimension {t['shape'][axis]} (axis {axis}, kind "
+            f"{t.get('kind', 'qkv')}) does not match total_sequence_length {tokens['total_sequence_length']}"
         )
 
 
@@ -355,14 +364,14 @@ def main():
     # answer does not include the failure it was written for, it is the wrong
     # enumeration.
     captures = sorted(d for d in capture_base.iterdir()
-                      if d.is_dir() and any(d.glob("qkv_*.pt")))
+                      if d.is_dir() and (any(d.glob("qkv_*.pt")) or any(d.glob("qkvpre_*.pt"))))
     if not captures:
         print("  skip  no capture directories found to validate")
         return 0
 
     unmanifested = [d for d in captures if not (d / "manifest.json").is_file()]
     if unmanifested:
-        names = "\n".join(f"    {d.name}  ({len(list(d.glob('qkv_*.pt')))} tensors)"
+        names = "\n".join(f"    {d.name}  ({len(list(d.glob('qkv_*.pt'))) + len(list(d.glob('qkvpre_*.pt')))} tensors)"
                           for d in unmanifested)
         print(f"  FAIL  {len(unmanifested)} of {len(captures)} capture "
               f"director(ies) have no manifest.json:\n{names}\n"

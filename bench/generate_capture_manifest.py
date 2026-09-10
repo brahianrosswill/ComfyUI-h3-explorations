@@ -626,17 +626,37 @@ def _record_meta(pt_path: Path) -> dict:
         return {"error": f"{type(exc).__name__}: {exc}"}
     q = data.get("q")
     out = {k: data.get(k) for k in ("block", "step", "sigma", "kernel", "render", "segments", "server", "prompt_id")}
+    # `kind` (schema 1.6.0): a `qkv_pre` record carries one fused [S, 3*H*D]
+    # tensor under `qkv` instead of q/k/v, so its sequence is axis 0.
+    out["kind"] = data.get("kind") or ("qkv" if q is not None else None)
     if q is not None:
         out["shape"] = list(q.shape)
         out["dtype"] = str(q.dtype)
+    elif data.get("qkv") is not None:
+        out["shape"] = list(data["qkv"].shape)
+        out["dtype"] = str(data["qkv"].dtype)
     return out
+
+
+def _seq_axis(kind) -> int:
+    """Where the sequence sits in a record's `shape`, by its kind."""
+    return 0 if kind == "qkv_pre" else 2
+
+
+def _capture_files(cap_dir) -> list[str]:
+    """Every tensor record h3_capture.py writes that a manifest lists: the
+    post-RoPE `qkv_*.pt` and, from schema 1.6.0, the pre-norm `qkvpre_*.pt`.
+    One place, so the listing, the render join and the sequence length cannot
+    each glob a different set."""
+    return (sorted(glob.glob(str(Path(cap_dir) / "qkv_*.pt")))
+            + sorted(glob.glob(str(Path(cap_dir) / "qkvpre_*.pt"))))
 
 
 def _sequence_length(pt_files) -> int | None:
     for pt in pt_files:
         meta = _record_meta(Path(pt))
         if meta.get("shape"):
-            return int(meta["shape"][2])
+            return int(meta["shape"][_seq_axis(meta.get("kind"))])
     return None
 
 
@@ -675,15 +695,14 @@ def main():
 
     canvas, models, sampling, attention, prompt_text, references, underived = extract_from_workflow(wf, input_base)
     rendered = _prompts.describe(wf)
-    render = _render_outputs(pt_files if False else sorted(glob.glob(str(cap_dir / "qkv_*.pt"))),
-                             args.prompt_id, args.outputs, args.host)
+    render = _render_outputs(_capture_files(cap_dir), args.prompt_id, args.outputs, args.host)
     # The render TYPE (t2va, i2va, fl2va, l2va, ref2va) by the conditioner's
     # sockets, the same rule the prompt graders use; None when no conditioner
     # is in the graph, which the checker refuses from 1.5.0.
     task = next((m for m in (mode_of(n) for n in wf.values() if isinstance(n, dict)) if m), None)
 
     # Calculate token accounting dynamically
-    pt_files = sorted(glob.glob(str(cap_dir / "qkv_*.pt")))
+    pt_files = _capture_files(cap_dir)
     # Token accounting, DERIVED. Until 2026-09-03 text and audio were typed
     # here as 7711 and 1206 under a docstring that promised no hardcoded
     # workload constants; the Base16 capture's own files said 104,361 rows
@@ -727,6 +746,9 @@ def main():
 
         captured_tensors.append({
             "filename": pt_path.name,
+            # 1.6.0: which record this is, so the checker reads the sequence
+            # off the right axis (qkv_pre is [S, 3*H*D], qkv is [B, H, S, D])
+            "kind": meta.get("kind"),
             "block": meta.get("block", block_val),
             "step": meta.get("step", step_val),
             # the record's own top-level scalars (h3_capture.py writes them;
@@ -779,7 +801,7 @@ def main():
     models["sha256"] = hash_model_files(models)
 
     manifest = {
-        "schema_version": "1.5.0",
+        "schema_version": "1.6.0",
         "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "provenance": {
             "git_commit": get_git_commit(),

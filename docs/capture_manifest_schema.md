@@ -298,6 +298,15 @@ New keys, all required from 1.5.0 and checked by
   absent, because Sol's rope hook is what publishes the table; a consumer
   that needs sink ranges must derive them from geometry, and the tau arm in
   `bench/measure_sol_exact_variants.py` says so.
+- `captured_tensors[].kind` (1.6.0): `qkv_pre` for the fused pre-norm
+  projection `h3_capture.py` writes with `pre=` armed (`qkvpre_*.pt`, one
+  `[S, 3*H*D]` tensor under `qkv`, sequence on axis 0, plus the rope table,
+  q/k norm weights and eps, and the packed layout's segment table read from
+  core's `minimax_h3_layout`, so it is present with Sol absent); `qkv` for the
+  post-RoPE records. The checker reads the sequence off the axis the kind
+  names, and a manifest older than 1.6.0 carries no kind and reads as `qkv`.
+  These records exist for `bench/grade_sol_impl_on_capture.py`, which grades
+  ComfyUI core's chunked-producer Sol path against ours on identical inputs.
 
 Three checker holes closed the same day, on Codex's second review: the
 recorded `captured_tensors[].sha256` is recomputed under `--verify-hashes`
