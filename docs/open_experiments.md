@@ -2330,4 +2330,17 @@ fl2va comparison that spans one, and the fix is a flags wrapper around that
 encode -- in a pack node, since the checkout is stock. If they match, close
 this as checked, with the record.
 
-**Blocker:** card time on a server that is not rendering; nothing else.
+**Measured 2026-09-10, and closed as checked within a bound**
+(`bench/measure_keyframe_encode_determinism.py`, record
+`bench/results/2026-09-10_keyframe_encode_determinism.json`). Five fresh
+processes at the shipped canvas -- free VRAM as found, a ballast-reduced
+state, the first state again, and both states under
+`cudnn.deterministic=True` -- gave byte-identical latents on every arm and
+every in-process repeat, with no tiled fallback. **The bound:** the encode's
+own peak is most of the card, so the reduced state could remove only a small
+slice of free VRAM before a regular encode stops fitting (the record carries
+both numbers); drift under heavier memory pressure, where ComfyUI would tile
+instead, is not ruled out, and a tiled latent differs for its own reason. No
+flags wrapper is warranted on this evidence. The first run of the tool left a
+guessed margin and ran out of memory, which is why the ballast is now sized
+from the measured peak.

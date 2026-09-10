@@ -4,6 +4,19 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.60
+
+### Changed
+
+- **Open experiment 30 measured and closed within a bound.** The keyframe
+  VAE encode gave byte-identical latents across five fresh processes, two
+  free-VRAM states and `cudnn.deterministic` on and off
+  (`bench/results/2026-09-10_keyframe_encode_determinism.json`). The
+  reduced-VRAM arm could remove only a small slice before a regular encode
+  stops fitting, so heavier pressure is not covered; the doc says so. The
+  tool's first run ran out of memory on a guessed margin, and it now sizes
+  its ballast from the as-found arm's measured encode peak.
+
 ## 0.99.59
 
 ### Fixed
