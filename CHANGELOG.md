@@ -4,6 +4,21 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.56
+
+### Fixed
+
+- **Turbo v1.2 was described as v1.1's metadata "line for line", and it is
+  not.** `workflows/h3_config.py` (above `TURBO_768P_V12_LORA`) and
+  `bench/check_distill_settings.py` (the v1.2 LEGAL comment and its
+  UNATTESTED reason) both said so, quoting v1.2's alpha and scale as both
+  files'. The vendor's own exports declare different `alpha` values, the
+  converted files carry them through as `training_alpha` and
+  `training_scale`, and ComfyUI scales each delta by its own alpha/rank, so
+  the two are not one student at one scale. Read each file's `__metadata__`
+  to see it. Prose only: no row, graph or render recipe changed, and the
+  turbo rung rendered v1.2 at the scale its file declares.
+
 ## 0.99.55
 
 ### Fixed

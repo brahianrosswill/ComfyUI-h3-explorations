@@ -132,8 +132,9 @@ LEGAL: dict[str, Row] = {
     # INHERITED from the v1.0 row by filename family, not attested: see
     # UNATTESTED below, which is what keeps that fact from going quiet.
     "turbo_4step_v1.1_768p": Row(6.0, 3.0, frozenset({4})),
-    # v1.2 of the same student, landed 2026-09-05 for the turbo rung. Same
-    # inheritance as v1.1, declared in UNATTESTED likewise.
+    # v1.2 of the same 768p 4-step family, landed 2026-09-05 for the turbo
+    # rung; not v1.1 renumbered, since it declares a different alpha (see
+    # UNATTESTED). Same inheritance as v1.1, declared in UNATTESTED likewise.
     "turbo_4step_v1.2_768p": Row(6.0, 3.0, frozenset({4})),
 }
 
@@ -149,8 +150,10 @@ LEGAL: dict[str, Row] = {
 #: declaration stale, and a stale one hides a source that now exists.
 UNATTESTED = {
     "turbo_4step_v1.2_768p":
-        "lightx2v published this file with no README row (checked 2026-09-05; "
-        "its safetensors metadata matches v1.1's line for line). Its 6/3 shift "
+        "lightx2v published this file with no README row (checked 2026-09-05). "
+        "Its metadata declares a different alpha from v1.1's, in the vendor "
+        "export and the conversion alike (corrected 2026-09-10 from 'matches "
+        "v1.1's line for line'). Its 6/3 shift "
         "and 4 steps are inherited from the 4-step v1.0 768p row on the "
         "strength of the filename family, not attested by any vendor source",
     "turbo_4step_v1.1_768p":

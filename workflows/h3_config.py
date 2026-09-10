@@ -1100,10 +1100,15 @@ TURBO_768P_LORA = "h3/lightx2v_Minimax-h3-Turbo/minimax_h3_fl2v_turbo_4step_v1.1
 # rewriting the vendor's row.
 TURBO_768P_DISTILLED_STEPS = 4
 
-# **v1.2 of the same 768p 4-step student, landed 2026-09-05** for the turbo
-# rung (docs/roadmap.md, "Owner decisions, 2026-09-05 evening"). Its metadata
-# is v1.1's line for line: rank 128, alpha 8.0, training_scale 0.0625, base
-# `minimax_h3_fl2va_bf16`, the same qkv fusion and SwiGLU mapping; the vendor
+# **v1.2 of the same 768p 4-step family, landed 2026-09-05** for the turbo
+# rung (docs/roadmap.md, "Owner decisions, 2026-09-05 evening"). It shares
+# v1.1's rank, base `minimax_h3_fl2va_bf16`, qkv fusion and SwiGLU mapping,
+# but NOT its alpha: the vendor's own exports declare different `alpha`
+# values, the converted files carry them as `training_alpha` and
+# `training_scale`, and ComfyUI scales each delta by its own alpha/rank, so
+# equal strength is not an equal scale factor (read each file's
+# `__metadata__`). Corrected 2026-09-10: this said v1.2's metadata was v1.1's
+# line for line, quoting v1.2's alpha and scale as both files'. The vendor
 # publishes no row for it, so `bench/check_distill_settings.py` grades it on
 # a row INHERITED from the v1.0 768p one and says so in UNATTESTED. Rendered
 # at the vendor's own count and strength (4 steps, 1.0), never the owner
