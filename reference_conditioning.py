@@ -231,6 +231,46 @@ def _prepare_audio(audio, duration: float, field: str):
     return {"waveform": waveform[..., :sample_count], "sample_rate": sample_rate}
 
 
+def _encode_ref_audio_aligned(audio_vae, audio):
+    """Encode a reference waveform with its END zero-padded to the VAE's hop.
+
+    Core's `_encode_ref_audio` hands the waveform to `VAE.encode`, whose generic
+    crop (`comfy/sd.py::vae_encode_crop_pixels`) narrows the SAMPLE axis to a
+    multiple of `spacial_compression_encode()` and takes the remainder off both
+    ends, so the leading samples go and a soundtrack drifts early against its
+    own frames: gap 16 in `docs/comfyui_vendor_gaps.md`, measured by
+    `bench/audit_ref_audio_crop.py`.
+
+    The release pads the end instead. Its audio VAE's `preprocess`
+    right-pads with zeros to a whole number of hops, the hop being the product
+    of `encoder_rates` (`coderef/MiniMax-H3/Ref2VA/audio_vae/dac_audio_vae.py`,
+    `preprocess`), and sglang's port does the same
+    (`minimax_h3_audio_vae/audio_vae.py::preprocess`). Credit where it is due:
+    the behaviour is MiniMax's, and silveroxides/ComfyUI-UtilsCollection
+    (`image_helpers.py`, its H3 reference-video audio path) is where this repo
+    saw it done in a ComfyUI pack first (2026-09-10).
+
+    Padding here, at the VAE's own rate and to the VAE's own ratio -- the same
+    `spacial_compression_encode()` the crop reads -- makes the crop a no-op, so
+    no sample is dropped and the last partial hop becomes one more latent step,
+    as the release encodes it. Resampling first is the same torchaudio call
+    core makes; core then sees the VAE's rate and does not resample again.
+    Core's own H3 nodes still take the crop until Comfy-Org/ComfyUI#15972 or an
+    equivalent lands; this is our reference path only.
+    """
+    waveform = audio["waveform"]
+    sample_rate = audio["sample_rate"]
+    vae_rate = getattr(audio_vae, "audio_sample_rate", 32000)  # core's fallback
+    if sample_rate != vae_rate:
+        import torchaudio
+        waveform = torchaudio.functional.resample(waveform, sample_rate, vae_rate)
+    hop = int(audio_vae.spacial_compression_encode())
+    right = -int(waveform.shape[-1]) % hop
+    if right:
+        waveform = torch.nn.functional.pad(waveform, (0, right))
+    return _encode_ref_audio(audio_vae, {"waveform": waveform, "sample_rate": vae_rate})
+
+
 def _prepare_reference_video(frames, loaded_fps: float, frame_count: int):
     frames = _resample_video_to_24fps(frames, loaded_fps)
     if frames.shape[0] > frame_count:
@@ -696,7 +736,7 @@ def _compile_reference_records(
             latent = vae.encode(frames)
             audio_latent, ref_audio_t = None, 0
             if soundtrack is not None and audio_vae is not None:
-                audio_latent, ref_audio_t = _encode_ref_audio(audio_vae, soundtrack)
+                audio_latent, ref_audio_t = _encode_ref_audio_aligned(audio_vae,soundtrack)
             ref_blocks.append({
                 "kind": "video_audio" if ref_audio_t else "video",
                 "latent_t": latent.shape[2],
@@ -726,7 +766,7 @@ def _compile_reference_records(
                 # model. Kept for parity with core, and worth knowing before
                 # wiring it as an experiment.
                 continue
-            audio_latent, ref_audio_t = _encode_ref_audio(audio_vae, audio)
+            audio_latent, ref_audio_t = _encode_ref_audio_aligned(audio_vae,audio)
             ref_blocks.append({
                 "kind": "audio",
                 "ref_audio_t": ref_audio_t,

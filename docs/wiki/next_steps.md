@@ -13,6 +13,27 @@ pointer goes; this list is stale the moment the roadmap disagrees with it.
 Items from the `mrpink` helper lane first; `evalman`'s render lane appends its
 own below the rule.
 
+**2026-09-10 (upstream survey session):**
+
+- Core vs ours Sol A/B, BUILT not rendered: `bench/sol_core_ab_arms.json`
+  (courtroom, disco, hacker; two seeds; pairs A ours vs core, B ours at core's
+  values vs core, C ours vs all-rows). Graph `h3_probe_t2v_sol_core` (API only).
+  Blocked until the ComfyUI venv rebuild (`docs/comfy_notes.md`, the
+  `start.sh` note) is verified and the server restarted.
+- All-rows sink switch: planned, gated on pair C (`docs/roadmap.md`, forward
+  plan step 3).
+- Pair B's attributing instrument: a capture grade of both implementations
+  against exact attention on the same inputs; needs a pre-norm fused-qkv
+  capture hook (`h3_capture.py` records post-RoPE Q/K/V today).
+- Keyframe-encode determinism: `bench/measure_keyframe_encode_determinism.py`,
+  written, not yet run (open experiment 30).
+- Reference audio now end-padded to the audio VAE's hop in our path
+  (`reference_conditioning.py::_encode_ref_audio_aligned`), closing gap 16 for
+  this pack; core's own nodes still crop until Comfy-Org/ComfyUI#15972 lands.
+- A doc pointer drifted with today's sglang pull and fails
+  `bench/check_doc_links.py`:
+  `docs/research/qwen3-vl-special-tokens-post-training/brainstorming/claude-encoder/2026-08-25-serving-stacks-survey.md:53`.
+
 - **Owner decisions 2026-09-05 evening** (`docs/roadmap.md`, the decisions
   block): composition counts as prompt adherence; PDD parked; the turbo
   rung goes with two LoRAs at two seeds (bake session owns it, plus a sage

@@ -120,6 +120,11 @@ class _AudioVae:
     def __init__(self):
         self.inputs = []
 
+    def spacial_compression_encode(self):
+        # The real H3 audio VAE's `downscale_ratio` (`comfy/sd.py`, its audio
+        # branch), which is what the generic crop and our end-pad both read.
+        return 800
+
     def encode(self, waveform):
         import torch
         self.inputs.append(waveform)
@@ -215,6 +220,33 @@ def audio_is_stereo_and_target_bounded():
         raise AssertionError("three-channel audio was silently reduced")
 
 
+def ref_audio_end_padded_to_the_hop():
+    """The waveform the audio VAE sees ends on a whole hop, padded, not cropped.
+
+    Gap 16: core's generic crop trims a non-aligned waveform from BOTH ends,
+    dropping leading samples. The release right-pads to a whole hop instead
+    (`reference_conditioning.py::_encode_ref_audio_aligned` cites both), so
+    what reaches `encode` must be the prepared waveform, unchanged at its
+    start, followed by zeros up to the next multiple of the VAE's ratio.
+    Before 2026-09-10 `encode` received the bare trim, and this would fail on
+    the length.
+    """
+    import torch
+    audio = _audio(seconds=2.0, channels=2)
+    prepared = R._prepare_audio(audio, 22 / 24, "test audio")
+    n = int(prepared["waveform"].shape[-1])
+    assert n % 800, f"the case must start unaligned to test anything; {n} samples"
+    vae = _AudioVae()
+    _, t = R._encode_ref_audio_aligned(vae, prepared)
+    seen = vae.inputs[0]                       # [1, samples, channels]
+    want = -(-n // 800) * 800
+    assert seen.shape[1] == want, (seen.shape, want)
+    assert t == want // 800, (t, want)
+    assert torch.equal(seen[0, :n, :], prepared["waveform"][0].movedim(0, -1)), (
+        "the leading samples moved: the pad must be at the end only")
+    assert not seen[0, n:, :].any(), "the pad is not silence"
+
+
 def vhs_lazy_audio_mapping_is_accepted():
     """The AUDIO socket accepts VHS LazyAudioMap, not only core's dict."""
     frames = _frames()
@@ -252,7 +284,11 @@ def compiler_preserves_one_order_for_both_lists():
     assert len(audio_vae.inputs) == 2
     for encoded in audio_vae.inputs:
         # _encode_ref_audio presents [batch, samples, channels] to the VAE.
-        assert tuple(encoded.shape) == (1, round(22 / 24 * 32000), 2), encoded.shape
+        # The trim, then the end-pad to the audio VAE's hop that
+        # `_encode_ref_audio_aligned` adds (2026-09-10; it was the bare trim
+        # before, which is what core's crop then cut from both ends).
+        trimmed = round(22 / 24 * 32000)
+        assert tuple(encoded.shape) == (1, -(-trimmed // 800) * 800, 2), encoded.shape
 
 
 def release_video_policy_is_opt_in_and_two_stage():
@@ -900,6 +936,7 @@ CHECKS = (
     video_metadata_is_owned,
     video_is_normalized_to_24fps,
     audio_is_stereo_and_target_bounded,
+    ref_audio_end_padded_to_the_hop,
     vhs_lazy_audio_mapping_is_accepted,
     compiler_preserves_one_order_for_both_lists,
     release_video_policy_is_opt_in_and_two_stage,

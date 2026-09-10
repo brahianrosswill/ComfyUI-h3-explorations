@@ -1,0 +1,60 @@
+{
+  "what": "ComfyUI core's own Sol node (BlockSparseAttention, Comfy-Org/ComfyUI#16072) against ours (MiniMaxH3SolAttn), plus the owed all-rows sink pair, on three new scenes at two seeds (owner's ask, 2026-09-10). Every arm is the shipped 16-step t2va chain at 1344x768 and 345 frames with sage as the floor underneath; only the Sol node or its values differ.",
+  "policy": "sage always on is the floor decision (docs/roadmap.md 2026-09-04). Three pairs per scene and seed: (A) ours as shipped vs core as shipped -- which node a stock user is better served by; (B) ours re-set to core's knob values vs core -- the implementation difference with the policy matched, which a render can show but not attribute (CLAUDE.md), so its attributing instrument is the capture grade planned beside it; (C) ours as shipped vs ours with sink_conditioning=exact_kv_and_all_rows -- the one-pair blind judgement roadmap step 3 owes, on three scenes instead of one.",
+  "scenes": {
+    "courtroom": "t2va_courtroom_verdict -- two-speaker cross-examination over a score, carved on-screen seal text, a silent judge: speech, lip sync and fine text",
+    "disco": "t2va_disco_roller_rink -- a singer on quad skates with a lyrics pair, tracking shot, zoom and roll: fast motion, music and brightness under motion",
+    "hacker": "t2va_cyber_hacker_den -- breach dialogue with stencilled on-screen text and screens: dense fine detail and text legibility"
+  },
+  "arms": {
+    "courtroom_ours": "workflows/h3_text_to_video_api.json",
+    "courtroom_oursc": "workflows/h3_text_to_video_api.json",
+    "courtroom_core": "workflows/h3_probe_t2v_sol_core_api.json",
+    "courtroom_allrows": "workflows/h3_candidate_t2v_sol_allrows_api.json",
+    "disco_ours": "workflows/h3_text_to_video_api.json",
+    "disco_oursc": "workflows/h3_text_to_video_api.json",
+    "disco_core": "workflows/h3_probe_t2v_sol_core_api.json",
+    "disco_allrows": "workflows/h3_candidate_t2v_sol_allrows_api.json",
+    "hacker_ours": "workflows/h3_text_to_video_api.json",
+    "hacker_oursc": "workflows/h3_text_to_video_api.json",
+    "hacker_core": "workflows/h3_probe_t2v_sol_core_api.json",
+    "hacker_allrows": "workflows/h3_candidate_t2v_sol_allrows_api.json"
+  },
+  "patches": [
+    "courtroom_ours:MiniMaxH3Conditioning.prompt=@bank:t2va_courtroom_verdict",
+    "courtroom_oursc:MiniMaxH3Conditioning.prompt=@bank:t2va_courtroom_verdict",
+    "courtroom_oursc:MiniMaxH3SolAttn.selection.tau=1.3",
+    "courtroom_oursc:MiniMaxH3SolAttn.end_percent=1.0",
+    "courtroom_oursc:MiniMaxH3SolAttn.token_aug_blocks=0-49=256",
+    "courtroom_core:MiniMaxH3Conditioning.prompt=@bank:t2va_courtroom_verdict",
+    "courtroom_allrows:MiniMaxH3Conditioning.prompt=@bank:t2va_courtroom_verdict",
+    "disco_ours:MiniMaxH3Conditioning.prompt=@bank:t2va_disco_roller_rink",
+    "disco_oursc:MiniMaxH3Conditioning.prompt=@bank:t2va_disco_roller_rink",
+    "disco_oursc:MiniMaxH3SolAttn.selection.tau=1.3",
+    "disco_oursc:MiniMaxH3SolAttn.end_percent=1.0",
+    "disco_oursc:MiniMaxH3SolAttn.token_aug_blocks=0-49=256",
+    "disco_core:MiniMaxH3Conditioning.prompt=@bank:t2va_disco_roller_rink",
+    "disco_allrows:MiniMaxH3Conditioning.prompt=@bank:t2va_disco_roller_rink",
+    "hacker_ours:MiniMaxH3Conditioning.prompt=@bank:t2va_cyber_hacker_den",
+    "hacker_oursc:MiniMaxH3Conditioning.prompt=@bank:t2va_cyber_hacker_den",
+    "hacker_oursc:MiniMaxH3SolAttn.selection.tau=1.3",
+    "hacker_oursc:MiniMaxH3SolAttn.end_percent=1.0",
+    "hacker_oursc:MiniMaxH3SolAttn.token_aug_blocks=0-49=256",
+    "hacker_core:MiniMaxH3Conditioning.prompt=@bank:t2va_cyber_hacker_den",
+    "hacker_allrows:MiniMaxH3Conditioning.prompt=@bank:t2va_cyber_hacker_den"
+  ],
+  "core_values": "the oursc patches are h3_config.SOL_CORE_DEFAULTS translated to our node: tau 1.3, end_percent 1.0, token_aug 256 on all 50 DiT blocks (core applies extra_tokens to every eligible call, and only the 50 DiT calls clear min_tokens). start_percent 0.2, min_tokens 12288, sink exact_kv_and_rows and no dense blocks already match in the shipped graph. What cannot be matched is the implementation: core's chunked producer applies q/k-norm and RoPE inside the kernel and carries the previous step's K/V statistics (kitchen sol_attn_chunked); ours hands the kernel ComfyUI's normed, roped tensors and computes them per call",
+  "pairs": [
+    "A: <scene>_ours,<scene>_core",
+    "B: <scene>_oursc,<scene>_core",
+    "C: <scene>_ours,<scene>_allrows"
+  ],
+  "predictions": {
+    "A": "reasoned, not measured: core runs sparser (tau 1.3 against 1.0), routes the last step, and adds token routing on every block, which the 2026-09-04 grade found better on four captured blocks and worse on block 49 (docs/research/2026-09-04_sol_token_aug_grade.md). Expect no consistent winner across scenes on quality, and core slower per render (token routing on every call, kitchen #156's own claim)",
+    "B": "can't-tell dominates: the knob values match and the remaining difference is numerical, which a matched seed turns into two samples; a consistent loss on one side across all six pairs would be the finding",
+    "C": "same or can't-tell: on the probe the all-rows mode collapsed the text segment's error to the audio floor and moved video and audio by nothing the record resolves (bench/results/2026-09-04_sol_probe_subway_allrows_vs_shipped.json); a loss for all-rows on any scene is what would stop the switch"
+  },
+  "run": "python bench/run_graph_arms.py --manifest bench/sol_core_ab_arms.json --runs 2 --seed 730451892 --warmup courtroom_ours --out bench/results/2026-09-10_sol_core_ab_arms.jsonl  (run index 0 renders at the seed, run index 1 at seed+1, the same pair of seeds for every arm); then bench/blind_batch.py with, per scene, --pairs <scene>_ours,<scene>_core --pairs <scene>_oursc,<scene>_core --pairs <scene>_ours,<scene>_allrows; score pairs and singles; bench/score_session.py",
+  "cost": "24 renders plus one warmup. Ours with sage underneath has been timed on the ladder (bench/results/2026-09-03_ladder_arms_judged.jsonl, the <scene>_sol rows); core's arm has never run here, so its time is whatever the first render says",
+  "generated_by": "workflows/build_workflows.py for all three graphs; regenerate there, never edit a graph"
+}

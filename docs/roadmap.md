@@ -103,6 +103,21 @@ not restated here.
    (`bench/results/2026-09-04_probe_render_vs_unarmed_pixels.json`). Owed,
    as a one-pair session against the 2026-09-03 subway Sol clip; until it
    is judged this is free on the proxy and unproven to the eye.
+   **Owner, 2026-09-10: plan the switch as the next step.** The judgement
+   is now pair C of `bench/sol_core_ab_arms.json` (three new scenes, two
+   seeds, ours as shipped against the all-rows candidate). If all-rows
+   loses on no scene, flip `h3_config.SOL_RECOMMENDED_CUDA`'s
+   `sink_conditioning` to `exact_kv_and_all_rows` for t2va and fl2va and
+   rebuild; ref2va keeps `exact_kv_and_rows`, because with a video
+   reference all-rows runs the reference's rows dense, until the Sana-style
+   segment permutation (text and audio dense, references sparse;
+   `docs/SOLATTN.md`, "What Sana's newer H3 packages offer this card") is
+   built. Not flipped before that session renders, because its "ours as
+   shipped" arm is defined as today's default. Two external corroborations
+   beside the probe: Sana's Sol-H3 T2V `prefix` sink is this mode
+   (`docs/sol_upstream.md`), and sglang's dropped "sink block" is a
+   different mechanism, a reserved block inside a fixed budget, so it says
+   nothing against it.
 4. **Block policy**: a per-block tau profile (`tau_profile`) or a dense set
    on the band the probe ranks hottest, same footing.
 5. **Step policy**: the window's start, since the per-step trend rises

@@ -131,6 +131,15 @@ DEVIATIONS = {
 #: Graphs that legitimately ship without live Sol, by MECHANISM. The
 #: single-frame class is not listed here -- it is derived from GRAPH_DIRS below.
 SOL_EXEMPT_STEMS = {
+    "h3_probe_t2v_sol_core":
+        "ComfyUI core's own Sol node (`BlockSparseAttention`, "
+        "comfy_extras/nodes_sparse_attention.py) at its own defaults, for the "
+        "core-versus-ours A/B (bench/sol_core_ab_arms.json). Core's node owns "
+        "the sparse path here: it replaces the attention of the 50 main blocks "
+        "through `double_block` patches and puts its override on top of sage's, "
+        "so our node beside it would either be bypassed on those blocks or route "
+        "the same calls twice. sage stays wired as the floor both nodes fall "
+        "back to, and SageChainAssert still gates it",
     "h3_probe_vsa":
         "VSA and Sol-Attn are mutually exclusive, not merely redundant: VSA "
         "replaces the DiT block forward on the 50 main blocks and Sol-Attn "

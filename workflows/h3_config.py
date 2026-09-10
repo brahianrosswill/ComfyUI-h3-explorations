@@ -589,6 +589,31 @@ SOL_END_PERCENT_BY_STEPS = {4: 0.74, 6: 0.83, 8: 0.87}
 #: has measured it, and there is no bf16 VSA release to measure against.
 VSA_KEEP_PERCENT = 10.0
 
+#: ComfyUI core's own Sol node (`comfy_extras/nodes_sparse_attention.py`,
+#: Comfy-Org/ComfyUI#16072, merged 2026-09-06), for the probe that renders it
+#: against ours (`h3_probe_t2v_sol_core`).
+SOL_CORE_NODE = "BlockSparseAttention"
+
+#: Its inputs at the node's OWN schema defaults, in API form. **Inherited, not
+#: chosen:** read from `BlockSparseAttention.define_schema` at core `1f641fd9`
+#: on 2026-09-10, and compared against the live server's /object_info by
+#: `build_workflows.py` whenever it validates, so a core release that moves a
+#: default fails the build rather than leaving this a quiet copy. Its
+#: "sol-attn" method is the adaptive-tau selection, the counterpart of our
+#: node's "adaptive tau"; `extra_tokens` is kitchen's `token_aug`, applied to
+#: every eligible call.
+SOL_CORE_DEFAULTS = {
+    "selection": "sol-attn",
+    "selection.tau": 1.3,
+    "start_percent": 0.2,
+    "end_percent": 1.0,
+    "dense_blocks": "",
+    "min_tokens": 12288,
+    "extra_tokens": 256,
+    "sink_conditioning": "exact_kv_and_rows",
+    "verbose": False,
+}
+
 SOL_RECOMMENDED_CUDA = dict(
     # "adaptive tau" since the v3 node (2026-08-22). It is the threshold
     # selection every Sol number here was measured under, so it is the

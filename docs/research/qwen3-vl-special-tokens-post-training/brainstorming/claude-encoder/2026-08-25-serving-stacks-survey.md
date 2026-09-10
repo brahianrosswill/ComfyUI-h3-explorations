@@ -50,8 +50,11 @@ authority behind it: the vendor never ran it.
 Two mechanisms transfer:
 
 - **Checkpoint stays mmapped when a host copy would not fit**
-  (`coderef/sglang/python/sglang/multimodal_gen/runtime/loader/component_loaders/text_encoder_loader.py:913-923`, `_keep_this_checkpoint_mapped`; the
-  comment names the 62.13 GiB H3 encoder). Parameters point at the mapped
+  (`coderef/sglang/python/sglang/multimodal_gen/runtime/loader/utils.py::keep_checkpoint_mapped`;
+  re-aimed 2026-09-10: it was `_keep_this_checkpoint_mapped` in the text-encoder
+  loader until sglang `e3f7097591` moved and renamed it, and the comment naming
+  the 62.13 GiB H3 encoder, from `6127d1daee`, did not survive the move).
+  Parameters point at the mapped
   weights with no copy. The Gate 2A load peak of 122 GiB RSS was the opposite
   arrangement; the storage-axis work has since reached 0.2 s loads with 62
   GiB on CPU, which is this mechanism by another route.

@@ -100,15 +100,21 @@ echo "== version: $VER"
 # rather than as a missing environment -- which sends you off installing
 # setuptools somewhere it already is. Derived from $PY so it follows the
 # interpreter override rather than being a second place to configure the venv.
+#
+# `--python "$PY"` as well, since 2026-09-10: VIRTUAL_ENV alone loses to a
+# `.python-version` in the source checkout. The 0.2.33 worktree pins 3.12, so
+# once the ComfyUI venv moved to 3.14 `uv build` picked a managed 3.12 with no
+# setuptools and failed with the same misleading "No module named
+# 'setuptools'" described above. An explicit interpreter beats both.
 export VIRTUAL_ENV="$(cd "$(dirname "$PY")/.." && pwd)"
 echo "== building against $VIRTUAL_ENV"
-COMFY_CUDA_ARCHS="$ARCH" uv build --wheel --no-build-isolation .
+COMFY_CUDA_ARCHS="$ARCH" uv build --wheel --no-build-isolation --python "$PY" .
 # By exact version, not a glob: dist/ keeps every wheel ever built here, so
 # `comfy_kitchen-*.whl` grew to match more than one the first time this script
 # ran twice, and uv would have been handed both.
 WHL=(dist/comfy_kitchen-"$VER"-*.whl)
 [ -f "${WHL[0]}" ] || { echo "ERROR: no wheel built for $VER"; exit 1; }
-uv pip install --force-reinstall --no-deps "${WHL[0]}"
+uv pip install --python "$PY" --force-reinstall --no-deps "${WHL[0]}"
 
 # The build record: ONE file beside the venv saying which build is installed
 # and where its source is, written at the only moment both are known. start.sh

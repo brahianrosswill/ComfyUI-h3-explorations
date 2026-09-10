@@ -87,6 +87,7 @@ from h3_config import (  # noqa: E402
     ENCODER_V2, ENCODER_INT8, CORE_LOADED_ENCODERS, IMAGE_VAE, IMAGE_EDIT_BUDGET,
     ASPECTS, CANVAS, FPS, LENGTH, LONG_LENGTH, MODELS,
     SAMPLING, SAGE_NODE, SEED, SIGMA_SHIFT, SOL_RECOMMENDED_CUDA,
+    SOL_CORE_NODE, SOL_CORE_DEFAULTS,
     VSA_KEEP_PERCENT,
     CACHE_NODE, CACHE_NODE_CLASS,
     TURBO_LORA, TURBO_LORA_STRENGTH, TURBO_SHIFT, TURBO_STEPS,
@@ -1308,7 +1309,8 @@ def _plain_model_chain(g, *, sage, sol, shift, head_chunks):
 
 def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
               length: int = LENGTH, seed: int = SEED,
-              sol: dict | None = None, canvas_mode: str = "match_keyframe",
+              sol: dict | None = None, sol_impl: str = "ours",
+              canvas_mode: str = "match_keyframe",
               last_frame: bool = False,
               first_frame: bool = True,
               stamp: bool = False, unet: str | None = None,
@@ -1852,7 +1854,20 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
                               "keep_percent": keep_percent,
                               "pooled_tail": pooled_tail}}
         model_src = ["46", 0]
-    if sol is not None:
+    if sol is not None and sol_impl == "core":
+        # ComfyUI core's own Sol node in our node's slot, at ITS OWN schema
+        # defaults (h3_config.SOL_CORE_DEFAULTS, inherited and re-read against
+        # /object_info on every validating build). Also after sage: core puts
+        # its override on top of whatever override is already on the hook and
+        # sends every call it declines to that one, so sage stays the floor.
+        # The `sol` recipe is ignored here on purpose -- this arm exists to
+        # render core's node as core ships it.
+        g["21"] = {"class_type": SOL_CORE_NODE,
+                   "inputs": {"model": model_src, **SOL_CORE_DEFAULTS}}
+        model_src = ["21", 0]
+    elif sol is not None:
+        if sol_impl != "ours":
+            raise SystemExit(f"sol_impl={sol_impl!r} is not 'ours' or 'core'")
         # After sage, never before -- SolAttn composes with the attention
         # patches it finds, and reversed it overwrites ours and you silently
         # get sage only. Node id 21 matches `bench/bench_e2e_h3.py`.
@@ -5739,6 +5754,44 @@ def _combo_options(spec):
     return None
 
 
+def core_sol_defaults_drift(oi: dict) -> list[str]:
+    """Where `h3_config.SOL_CORE_DEFAULTS` disagrees with core's served defaults.
+
+    The core-node probe renders ComfyUI's `BlockSparseAttention` AS CORE SHIPS
+    IT, so its inputs must be the node's own schema defaults. The constant is a
+    copy of those, and this is what stops the copy going quiet when a core
+    release moves one: every validating build reads the defaults back out of
+    /object_info and compares. The DynamicCombo branch's own inputs
+    (`selection.tau`) are read from the option the constant selects.
+    """
+    node = oi.get(SOL_CORE_NODE)
+    if node is None:
+        return [f"{SOL_CORE_NODE} is not served, so the core-node probe cannot run here"]
+    spec = node.get("input") or {}
+    inputs = dict(spec.get("required") or {}) | dict(spec.get("optional") or {})
+    served: dict = {}
+    for name, s in inputs.items():
+        meta = s[1] if len(s) > 1 and isinstance(s[1], dict) else {}
+        if s[0] == "COMFY_DYNAMICCOMBO_V3":
+            want = SOL_CORE_DEFAULTS.get(name)
+            opt = next((o for o in meta.get("options", []) if o.get("key") == want), None)
+            if opt is None:
+                continue
+            served[name] = want
+            branch = opt.get("inputs") or {}
+            for sub, ss in (dict(branch.get("required") or {})
+                            | dict(branch.get("optional") or {})).items():
+                sub_meta = ss[1] if len(ss) > 1 and isinstance(ss[1], dict) else {}
+                if "default" in sub_meta:
+                    served[f"{name}.{sub}"] = sub_meta["default"]
+        elif "default" in meta:
+            served[name] = meta["default"]
+    missing = object()
+    return [f"{SOL_CORE_NODE}.{k}: h3_config.SOL_CORE_DEFAULTS has {v!r}, the server "
+            f"serves {served.get(k, '<no default>')!r}"
+            for k, v in SOL_CORE_DEFAULTS.items() if served.get(k, missing) != v]
+
+
 def validate_api(graph: dict, oi: dict, label: str) -> list[str]:
     errs = []
 
@@ -7824,6 +7877,34 @@ def main():
                   "question; the 2026-09-03 ladder never had this rung.")),
          "text -> video + audio, Sol as shipped, no sage: stock attention outside Sol"),
 
+        # ComfyUI core's own Sol node against ours (2026-09-10, owner's ask:
+        # "one with our node using our current default values, and one with
+        # comfy's sol node at its own defaults"). The shipped chain with core's
+        # `BlockSparseAttention` in our node's slot at ITS OWN defaults
+        # (h3_config.SOL_CORE_DEFAULTS); sage stays the floor underneath. API
+        # only: it is driven by run_graph_arms (bench/sol_core_ab_arms.json),
+        # and the UI builder draws no DynamicCombo for a core node.
+        ("h3_probe_t2v_sol_core.json", "t2v-sol-core", "t2v", LONG_T2V_PROMPT,
+         dict(sol_impl="core", api_only=True,
+              out_prefix="Video/h3_probe_t2v_sol_core",
+              variant_note=_probe_note(
+                  "ComfyUI core's BlockSparseAttention at its own defaults, "
+                  "in place of our Sol node",
+                  "h3_text_to_video.json",
+                  "the Sol node is core's, at core's schema defaults: tau "
+                  "1.3, sparse to the last step, token routing on every "
+                  "eligible call, and its chunked producer that carries the "
+                  "previous step's K/V statistics. Sage, the window start and "
+                  "the sink mode are as in the twin.",
+                  "which node a stock ComfyUI user is better served by, as "
+                  "each ships; the policy half of that is read against ours "
+                  "re-set to core's values (the manifest's second pair), the "
+                  "implementation half on captured activations.",
+                  "Different clips from frame zero, as any Sol change gives; "
+                  "no record says which way. Slower than ours per sparse step "
+                  "by token routing on every block (kitchen's own claim).")),
+         "text -> video + audio, sage + core's BlockSparseAttention at its own defaults"),
+
         # **Candidates on trial, 2026-09-05.** The owner asked for canonical
         # graphs carrying the settings the lane currently thinks are its
         # leaders, to render their own prompts on. The evidence stands as
@@ -8266,6 +8347,10 @@ def main():
         _EXTRA_WIDGETS_SEEN[k] = False
     for task, fmt, p, wf in written:
         errs += (validate_api if fmt == "api" else validate_ui)(wf, oi, p.name)
+    # The core-node probe carries core's defaults as a copy; read them back.
+    if any(n.get("class_type") == SOL_CORE_NODE
+           for _t, fmt, _p, wf in written if fmt == "api" for n in wf.values()):
+        errs += core_sol_defaults_drift(oi)
     # An allowance that covers nothing is an allowance waiting to cover the
     # next defect, which is the whole history of the surplus rule above.
     errs += unused_widget_allowances()

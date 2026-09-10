@@ -34,6 +34,19 @@ it silently disarms them (CLAUDE.md, "the server process is the resource").
     kill $PID; sleep 5; ss -ltnp | grep ':8188' || echo "port free"
     (cd <comfy> && setsid nohup ./start.sh > <a log you can read> 2>&1 < /dev/null &)
 
+**`start.sh` must never reach `uv run`.** Until 2026-09-10 its last line fell
+back to `uv run --active python main.py` when `COMFY_PYTHON` was unset. That
+day a restart by this recipe deleted `.venv` and recreated it empty (a fresh
+venv made by the `uv` that ComfyUI-Manager's requirements install inside the
+venv, first on PATH while it is active), so `main.py` could not import torch
+and every package in the environment, the kitchen build and the editable sage
+and torchaudio installs included, had to be rebuilt. `uv run` treats the
+ComfyUI checkout's `pyproject.toml` as a project and may sync or rebuild its
+environment. The owner's `start.sh` now falls back to the venv's own python
+(`$PWD/.venv/bin/python`), which touches nothing; `COMFY_PYTHON` still
+overrides it. If a `start.sh` in front of you still says `uv run`, set
+`COMFY_PYTHON=.venv/bin/python` before launching.
+
 `setsid` puts the server in its own session, and the same prefix belongs on
 every long runner (`bench/run_graph_arms.py`) launched from an agent's
 shell: a process that inherits the agent's session dies with the agent's

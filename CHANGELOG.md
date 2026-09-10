@@ -4,6 +4,62 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.59
+
+### Fixed
+
+- **Our reference audio is end-padded to the audio VAE's hop instead of
+  cropped from both ends (gap 16, for this pack's path).** Core's generic
+  crop narrows a non-aligned waveform to a multiple of the audio VAE's
+  `spacial_compression_encode()` by trimming the front and back, so a
+  soundtrack drifted early against its own frames.
+  `reference_conditioning.py::_encode_ref_audio_aligned` resamples to the
+  VAE's rate, right-pads with silence to a whole hop -- the release's own
+  preprocessing, which sglang ports too -- and hands that to core's
+  `_encode_ref_audio`, where the crop is then a no-op. Credit in the code
+  to MiniMax for the behaviour and to silveroxides/ComfyUI-UtilsCollection,
+  where this repo saw it in a ComfyUI pack. `bench/check_reference_runtime.py`
+  gains `ref_audio_end_padded_to_the_hop` (red on the old behaviour, shown
+  by swapping the old call back in) and its compiler case now expects the
+  padded length. Core's own H3 nodes still crop until
+  Comfy-Org/ComfyUI#15972 lands.
+- **`vendor/rebuild_kernel.sh` names the interpreter on both `uv` calls.**
+  `VIRTUAL_ENV` alone loses to a `.python-version` in the source checkout:
+  the 0.2.33 worktree pins 3.12, so once the ComfyUI venv was rebuilt on
+  3.14 (2026-09-10) `uv build` picked a managed 3.12 without setuptools and
+  failed with the misleading "No module named 'setuptools'". `--python "$PY"`
+  wins over both.
+- **Two doc pointers that stopped resolving, re-aimed.**
+  `docs/research/comfyui_h3_t2va_trace.md` cited comfy-kitchen under the
+  venv's `python3.13` site-packages; the venv is 3.14 now and the installed
+  build is the same `990ae4c`, so only the path moved. The 2026-08-25
+  serving-stacks survey cited sglang's `_keep_this_checkpoint_mapped`, which
+  sglang `e3f7097591` moved to `loader/utils.py::keep_checkpoint_mapped`;
+  the comment it quoted did not survive the move, and the doc now says so.
+
+### Added
+
+- **`h3_probe_t2v_sol_core`**: the shipped t2va chain with ComfyUI core's
+  `BlockSparseAttention` in our Sol node's slot, at core's own schema
+  defaults (`h3_config.SOL_CORE_DEFAULTS`, inherited, and compared against
+  /object_info on every validating build by
+  `build_workflows.py::core_sol_defaults_drift`). API only, exempt from the
+  Sol-default check with its mechanism
+  (`check_attention_defaults.py::SOL_EXEMPT_STEMS`).
+- **`bench/sol_core_ab_arms.json`**: the owner's core-versus-ours A/B on
+  three new scenes at two seeds, plus the owed all-rows sink pair.
+- **`bench/measure_keyframe_encode_determinism.py`**: open experiment 30,
+  the keyframe VAE encode across fresh processes, free-VRAM states and
+  `cudnn.deterministic`.
+
+### Changed
+
+- **`docs/comfy_notes.md`**: the restart recipe says `start.sh` must never
+  reach `uv run`, after a restart through it deleted the ComfyUI venv on
+  2026-09-10. **`docs/roadmap.md`** step 3 plans the all-rows sink switch,
+  gated on the A/B's pair C; **`docs/wiki/next_steps.md`** lists the
+  session's open items.
+
 ## 0.99.58
 
 ### Changed
