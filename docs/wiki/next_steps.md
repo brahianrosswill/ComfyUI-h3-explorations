@@ -35,8 +35,14 @@ own below the rule.
 - A/B scoring: the owner scores `sol_core_ab_2026-09-10`; then
   `bench/score_session.py`, the loudness record
   (`bench/measure_clip_loudness.py --outputs
-  bench/results/2026-09-10_sol_core_ab_outputs.json --baseline-rung ours`),
-  the frontier table, and the all-rows decision from pair C.
+  bench/results/2026-09-10_sol_core_ab_outputs.json --baseline-rung ours
+  --out bench/results/2026-09-10_sol_core_ab_audio_loudness.json`),
+  the frontier table, and the all-rows decision from pair C. Whoever writes
+  the verdict up says two things `score_session.py` has no field for: pair
+  B was settled on activations before scoring, so its verdicts read as
+  sample divergence; and every row's code is "server started 15:55, node code
+  `8870f8e`", because the rows stamp the repo HEAD at render time, not the
+  code the server loaded.
 - The Base16 capture passed its `keep_until` on 2026-09-10 and the recycler
   lists it recyclable; deleting it is the owner's call.
 - `bench/check_dit_prefix_attention.py` is indexed as CPU-only but cannot run
