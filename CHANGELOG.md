@@ -4,6 +4,29 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.63
+
+### Fixed
+
+- **`bench/record_capture_inventory.py` stamped every record "measured
+  2026-08-30"**, the day it was written, as a literal; the Base16 inventory
+  of 2026-09-03 carries that date. It now stamps the day it runs.
+- **The same tool could not read a `pre=` capture**: its filename pattern
+  knew only `qkv_`, so `qkvpre_` files landed in `unparsed_files`. It now
+  records each file's `kind` and the capture's set of kinds.
+- **It embedded the capture's manifest verbatim**, and since schema 1.5.0 a
+  manifest carries the server's argv, share directories and sage install
+  path, which the path-privacy hook refuses in a tracked record.
+  `scrub_paths` cuts each to its basename; `--manifest-copy` writes the
+  scrubbed manifest the recycler matches on graph and tensor hashes.
+
+### Added
+
+- **Repo records for the pair B capture**:
+  `bench/results/2026-09-10_capture_inventory_sol_impl_courtroom.json` and
+  `..._capture_manifest_sol_impl_courtroom.json`, plus a `retention.json`
+  beside the tensors (kept until the full grade is committed and read).
+
 ## 0.99.62
 
 ### Changed

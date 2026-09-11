@@ -34,7 +34,28 @@ import re
 import sys
 from pathlib import Path
 
-NAME = re.compile(r"qkv_L(\d+)_S(\d+)_b(\d+)_s(\d+)(?:_r(\d+))?\.pt$")
+#: `qkvpre_` since 2026-09-10: `h3_capture.py`'s `pre=` mode writes the fused
+#: projection from before RMSNorm and RoPE beside the usual post-RoPE file.
+#: Before this pattern knew it, those files landed in `unparsed_files` and the
+#: record could not say what half a capture held.
+NAME = re.compile(r"qkv(pre)?_L(\d+)_S(\d+)_b(\d+)_s(\d+)(?:_r(\d+))?\.pt$")
+
+
+def scrub_paths(node):
+    """A copy with every absolute or home-relative path cut to its basename.
+
+    Captures live outside the repo, and since schema 1.5.0 their manifests
+    carry the server's own provenance -- its argv, its input and output
+    directories, the sage install path -- which the path-privacy hook refuses
+    in a tracked record. The basename keeps what a reader needs (which output
+    folder, which install) without the location."""
+    if isinstance(node, dict):
+        return {k: scrub_paths(v) for k, v in node.items()}
+    if isinstance(node, list):
+        return [scrub_paths(v) for v in node]
+    if isinstance(node, str) and (node.startswith("/") or node.startswith("~")):
+        return f"<outside repo>/{Path(node).name}"
+    return node
 
 
 def inventory(root: Path) -> dict:
@@ -53,16 +74,18 @@ def inventory(root: Path) -> dict:
                              "bytes": p.stat().st_size})
             continue
         rows.append({"file": str(p.relative_to(root)),
-                     "length": int(m.group(1)),
-                     "sequence": int(m.group(2)), "block": int(m.group(3)),
-                     "step": int(m.group(4)),
-                     "render": int(m.group(5) or 0),
+                     "kind": "qkv_pre" if m.group(1) else "qkv",
+                     "length": int(m.group(2)),
+                     "sequence": int(m.group(3)), "block": int(m.group(4)),
+                     "step": int(m.group(5)),
+                     "render": int(m.group(6) or 0),
                      "bytes": p.stat().st_size})
     man = root / "manifest.json"
     out = {
         "capture": root.name,
         "existed_at_record_time": True,
         "n_tensor_files": len(rows),
+        "kinds": sorted({r["kind"] for r in rows}),
         "arms": sorted({str(p.relative_to(root)).split("/")[0]
                         for p in files if "/" in str(p.relative_to(root))}),
         "total_bytes": (sum(r["bytes"] for r in rows)
@@ -74,7 +97,7 @@ def inventory(root: Path) -> dict:
         "renders": sorted({r["render"] for r in rows}),
         "unparsed_files": unparsed,
         "files": rows,
-        "manifest": json.loads(man.read_text()) if man.is_file() else None,
+        "manifest": scrub_paths(json.loads(man.read_text())) if man.is_file() else None,
         "note": ("Written so this capture can be DELETED without its results "
                  "becoming unreadable. A result citing a capture that no "
                  "longer exists is a frozen measurement, not a reproducible "
@@ -84,9 +107,14 @@ def inventory(root: Path) -> dict:
 
 
 def main() -> int:
+    import datetime as _dt
     ap = argparse.ArgumentParser()
     ap.add_argument("captures", nargs="+", type=Path)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--manifest-copy", default=None,
+                    help="also write the (single) capture's manifest, paths scrubbed, to "
+                         "this path: the repo copy bench/recycle_captures.py matches on graph "
+                         "and tensor hashes before it will delete a capture")
     args = ap.parse_args()
 
     got, absent = [], []
@@ -100,8 +128,16 @@ def main() -> int:
             absent.append(c.name)
             print(f"  ABSENT (recording as already deleted): {c.name}")
 
+    if args.manifest_copy:
+        if len(got) != 1 or got[0]["manifest"] is None:
+            sys.exit("refuse: --manifest-copy needs exactly one present capture with a manifest.json")
+        Path(args.manifest_copy).write_text(json.dumps(got[0]["manifest"], indent=2) + "\n")
+        print(f"  manifest copy (paths scrubbed) -> {args.manifest_copy}")
+
     payload = {
-        "measured": "2026-08-30",
+        # The day this ran. It was the literal "2026-08-30" until 2026-09-10,
+        # so every inventory since claimed the day the script was written.
+        "measured": _dt.date.today().isoformat(),
         "produced_by": "bench/record_capture_inventory.py",
         "what": ("what each H3 capture contained, recorded so the capture "
                  "itself can be deleted without orphaning the results that "
