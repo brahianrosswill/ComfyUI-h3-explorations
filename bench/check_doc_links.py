@@ -65,6 +65,13 @@ Claims, i.e. what breaks if a case is deleted:
                           at the repo root is refused. `sol_layout.cuh:81` is
                           not a path; it is a hint that happens to be unique
                           today. Cite `coderef/<repo>/path/to/sol_layout.cuh`.
+- `no_venv_citations`  -- a link, citation or symbol reference into a venv's
+                          installed packages FAILS, even when it resolves. That
+                          path moves with every venv rebuild and Python
+                          version: the t2va trace's citations into ComfyUI's
+                          venv broke when it was recreated on 2026-09-11, and
+                          were repointed at the tagged source in `606c984`.
+                          Cite the source at a tag, a `coderef/` checkout.
 - `declared_absent_still_absent` -- WARNS when a declared-absent path comes
                           back. Same reasoning as `check_retraction_consumers`'s
                           `stale_allowlist`: it means someone restored
@@ -156,6 +163,10 @@ SYMBOL_REF = re.compile(
 )
 # [text](target) where target is a relative path, not a URL or an anchor.
 DOC_LINK = re.compile(r"\[[^\]]*\]\((?!https?:|mailto:|#)([^)#]+)(?:#[^)]*)?\)")
+# A path into a venv's installed packages (`.venv/`, `.venv314/`,
+# `site-packages/`). It moves with every rebuild and Python version, so it is
+# refused even when it resolves today.
+VENV_PART = re.compile(r"(?:^|/)\.venv[^/]*/|site-packages/")
 
 
 def iter_corpus(argv):
@@ -270,8 +281,12 @@ def main():
     # for markdown links meant a deliberately-removed file could be declared
     # absent only if docs happened to cite it with a line number. Found when
     # the owner removed a gitignored set that two research documents LINK.
+    venv_cited = []
     bad_links = []
     for src, n, target, base in links:
+        if VENV_PART.search(target):
+            venv_cited.append((src, n, target))
+            continue
         if (base / target).exists() or (REPO / target).exists():
             continue
         if Path(target).name in absent:
@@ -286,6 +301,9 @@ def main():
     bare, unresolved, out_of_range, coderef_missing, absent_returned = [], [], [], [], []
     ambiguous = []
     for src, n, cited, start, end in citations:
+        if VENV_PART.search(cited):
+            venv_cited.append((src, n, cited))
+            continue
         if cited in absent:
             if resolve(cited):
                 absent_returned.append((src, n, cited))
@@ -310,6 +328,9 @@ def main():
 
     missing_symbol = []
     for src, n, cited, symbol in symbols:
+        if VENV_PART.search(cited):
+            venv_cited.append((src, n, cited))
+            continue
         if cited in absent:
             continue
         hits = resolve(cited)
@@ -369,6 +390,14 @@ def main():
             f"file has {nlines} lines")
     if not out_of_range:
         print("  ok    citations_in_range every cited line exists")
+
+    for src, n, cited in venv_cited:
+        fails.append(
+            f"  FAIL  no_venv_citations  {src}:{n} -> {cited} points into a "
+            "venv's installed packages, which move with every rebuild; cite the "
+            "source at a tag (a `coderef/` checkout) instead")
+    if not venv_cited:
+        print("  ok    no_venv_citations  no pointer into a venv")
 
     for src, n, cited in absent_returned:
         warns.append(

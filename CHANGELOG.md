@@ -4,6 +4,17 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.78
+
+### Added
+
+- **`check_doc_links.py` refuses a pointer into a venv's installed packages**
+  (`no_venv_citations`), even when it resolves. That path moves with every
+  venv rebuild and Python version: the t2va trace's citations into ComfyUI's
+  venv broke when it was recreated on 2026-09-11, and were repointed at the
+  tagged source in `606c984`. Cite the source at a tag instead. Owner's
+  request.
+
 ## 0.99.77
 
 ### Changed
