@@ -84,7 +84,6 @@ recipe() {
         else
             echo "sol-blk-cnt-$PIN exists; put the fork clone on it:"
             echo "  git -C $CLONE switch sol-blk-cnt-$PIN"
-            echo "  git -C $CLONE submodule update --init --recursive"
         fi
         return
     fi
@@ -97,7 +96,6 @@ recipe() {
     echo "  git -C $CLONE cherry -v v$PIN $old    # '-' = already in v$PIN: skip it"
     echo "  git -C $CLONE switch -c sol-blk-cnt-$PIN v$PIN"
     echo "  git -C $CLONE cherry-pick v${old#sol-blk-cnt-}..$old"
-    echo "  git -C $CLONE submodule update --init --recursive"
     echo "  vendor/rebuild_kernel.sh --check && vendor/rebuild_kernel.sh"
 }
 
@@ -166,7 +164,39 @@ NEWEST="$(git tag -l 'v[0-9]*' --sort=-version:refname | head -1)"
 echo "== upstream main past $NEWEST, untagged, not built by policy: $(git rev-list --count "$NEWEST"..upstream/main 2>/dev/null || echo unknown) commit(s)"
 [ "$CURRENT" = 1 ] || { recipe; exit 1; }
 
+# --- Submodules: the commits this source pins, on every build (owner, 2026-09-11)
+# The CUDA build compiles against third_party/flash-attention and
+# third_party/cutlass (comfy_kitchen/backends/cuda/CMakeLists.txt). A fresh
+# clone or a new worktree -- which every pin move makes -- leaves them empty,
+# and the build then dies deep in the compile with `flash.h: No such file or
+# directory`, naming neither the cause nor the fix. That happened on
+# 2026-09-01 and three postmortems carried the missing check. So the build
+# brings every top-level submodule to the commit the checked-out source
+# records, every time: when a rebase onto a new tag moves a pin, the next
+# build follows it and nothing has to be remembered.
+#
+# "Latest" here means the source's own pins, never the submodules' upstream
+# heads (`git submodule update --remote`). The tag was built and tested
+# against these commits; a moved head would appear nowhere in the
+# `+sol.<sha>` version, so two builds with one version could differ; and it
+# would modify the gitlinks the clean-tree check below reads.
+#
+# Top-level only, as docs/SOLATTN.md's manual recipe does: the build reads
+# nothing under flash-attention's own submodules (its csrc/cutlass, and
+# csrc/composable_kernel, which is ROCm). This is the one change to the source
+# checkout the script keeps, because a submodule off its pin is not a state
+# anyone builds from.
+SUBS="$(git submodule status)"
+SUBS_AT_PIN=1
+if grep -q '^[-+U]' <<<"$SUBS"; then SUBS_AT_PIN=0; fi
+
 if [ "$CHECK_ONLY" = 1 ]; then
+    if [ "$SUBS_AT_PIN" = 1 ]; then
+        echo "== --check: submodules at this source's pins:"
+    else
+        echo "== --check: submodules NOT at this source's pins ('-' empty, '+' other commit); a build checks them out:"
+    fi
+    sed 's/^/     /' <<<"$SUBS"
     WOULD="$PIN+sol.$(git rev-parse --short=7 HEAD)"
     # -I (isolated): without it `-c` puts the current directory -- this source
     # checkout -- first on sys.path, and its build-left comfy_kitchen.egg-info
@@ -180,6 +210,24 @@ if [ "$CHECK_ONLY" = 1 ]; then
     fi
     exit 0
 fi
+
+# Before the clean-tree check: a submodule on another commit shows there as a
+# modified gitlink, and would refuse the build as "local changes" when the fix
+# is this checkout.
+if [ "$SUBS_AT_PIN" = 0 ]; then
+    echo "== submodules: checking out the commits $(git rev-parse --short HEAD) pins"
+    git submodule update --init || {
+        echo "REFUSED: could not check out the submodules this source pins (offline, or"
+        echo "a submodule has local changes); the CUDA build cannot compile without them:"
+        git submodule status; exit 1; }
+    SUBS="$(git submodule status)"
+    if grep -q '^[-+U]' <<<"$SUBS"; then
+        echo "REFUSED: a submodule is still not at the commit this source pins:"
+        echo "$SUBS"; exit 1
+    fi
+fi
+echo "== submodules at this source's pins:"
+sed 's/^/     /' <<<"$SUBS"
 
 if ! git diff --quiet || ! git diff --cached --quiet; then
     echo "ERROR: $SRC has local changes. This script needs a clean tree so it"

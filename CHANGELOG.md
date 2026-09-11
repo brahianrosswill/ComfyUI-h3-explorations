@@ -4,6 +4,28 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.79
+
+### Changed
+
+- **`vendor/rebuild_kernel.sh` brings comfy-kitchen's submodules to the
+  commits the source pins, on every build.** A fresh clone or a new worktree,
+  which every pin move makes, left `third_party/cutlass` and
+  `third_party/flash-attention` empty, and the build died in the compile on
+  `flash.h: No such file or directory`. That happened on 2026-09-01 and
+  2026-09-08, and three postmortems carried the missing check. The build
+  now runs `git submodule update --init` before the clean-tree check, so a
+  rebase onto a new tag takes the new pins with it; it refuses by name if the
+  pinned commits cannot be checked out. `--check` reports whether the
+  submodules are at their pins and changes nothing. "Latest" means the
+  source's own pins, not the submodules' upstream heads: the tag was tested
+  against these commits, and a moved head would not show in the `+sol.<sha>`
+  version. Top-level only, as `docs/SOLATTN.md`'s manual recipe does; the
+  build reads nothing under flash-attention's own submodules. The printed
+  rebase steps lose their `submodule update` line, which the build now does.
+  Exercised on a scratch clone: empty submodules, a submodule off its pin, an
+  unrecoverable submodule, and `--check` on both that clone and the real one.
+
 ## 0.99.78
 
 ### Added
