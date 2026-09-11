@@ -4,6 +4,26 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.65
+
+### Added
+
+- **Upstream reads for 2026-09-11**, docs only. DiffSynth-Studio's H3
+  ControlNet, training adapter and Singularity loader, kijai's kitchen
+  branches and the DiffSynth-ComfyUI pack in `docs/wiki/references.md`; a
+  fifth sglang read in `docs/research/sglang_comparison.md`; a comfy-kitchen
+  snapshot (PRs 171, 172, 167, 168), core PR 16239 read against core's Sol
+  node, and another ComfyUI Sol pack in `docs/sol_upstream.md`; and PR 167's
+  reach into the DiT's INT8 path in `docs/open_experiments.md` #28.
+
+### Corrected
+
+- **`docs/wiki/references.md` listed `comfy-kitchen-sol` as the built,
+  installed clone** and `comfy-kitchen` as its upstream, and
+  `docs/wiki/stages.md` routed kernel sources to the old name. Since
+  2026-09-08 the first is `comfy-kitchen-kijai`, read-only, and the second is
+  the owner's fork and the build source.
+
 ## 0.99.64
 
 ### Added

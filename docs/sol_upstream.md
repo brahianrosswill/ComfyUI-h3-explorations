@@ -1,10 +1,13 @@
 # What upstream says: the paper, Sol-Engine, Sol-H3, and the other packs
 
-Last updated: 2026-09-10, when Sana's `sol-engine` branch was re-read at
-`757d902` (the Sol-H3, Sol-H3-Spark, `super_acceleration` and `RTX4090`
-packages), ComfyUI core's own Sol node was added, two sglang SubBlock notes
-were recorded, and the comfy-kitchen snapshot moved forward. The paper and the
-two third-party packs are as read on 2026-08-16. Renamed from
+Last updated: 2026-09-11, when the comfy-kitchen snapshot moved forward, an
+open core PR against core's Sol node was read, and a third ComfyUI Sol pack
+was added from its README. Before that, 2026-09-10, when Sana's `sol-engine`
+branch was re-read at `757d902` (the Sol-H3, Sol-H3-Spark,
+`super_acceleration` and `RTX4090` packages), ComfyUI core's own Sol node was
+added, two sglang SubBlock notes were recorded, and the comfy-kitchen snapshot
+moved forward. The paper and the two original third-party packs are as read
+on 2026-08-16. Renamed from
 `sol_engine_reference.md` on 2026-08-19, when the paper was added and the scope
 widened past one vendor's framework.
 
@@ -25,7 +28,9 @@ disagree about our configuration, they are right.
 | ComfyUI core's `BlockSparseAttention` | source in the ComfyUI checkout at `1f641fd9` | 2026-09-10 |
 | sglang's SubBlock router | source at `ffe98a4279` | 2026-09-10 |
 | two third-party ComfyUI packs | their READMEs only | 2026-08-16 |
-| Comfy-Org/comfy-kitchen | fetch and `gh`; dated sections below | 2026-09-04, 2026-09-08, 2026-09-10 |
+| xmarre's ComfyUI-Sol-H3 | its README and the body of its PR 9, via `gh` | 2026-09-11 |
+| Comfy-Org/ComfyUI PR 16239 (open) | its diff via `gh`: `nodes_sparse_attention.py` and two helpers in its new module | 2026-09-11 |
+| Comfy-Org/comfy-kitchen | fetch and `gh`; dated sections below | 2026-09-04, 2026-09-08, 2026-09-10, 2026-09-11 |
 
 Every `coderef/Sana/...` pointer below resolves against a checkout at
 `757d902`. The branch `release/sol-h3-spark` has the same tree as that tip.
@@ -386,6 +391,18 @@ display name "Model Sparse Attention", experimental
   `transformer_options` keys for attention patches, `minimax_h3_layout`
   (`comfy/ldm/minimax/model.py:623`) and `block_index` (`:754`).
 
+**An open PR would rewrite this node (read 2026-09-11).** Comfy-Org/ComfyUI
+PR 16239 (another developer; draft, unreviewed) adds a per-key "attention
+measure" to both paths for a mixed-resolution pipeline, handed to kitchen as
+`key_bias` (kitchen PR 171, below). Read against its diff: with no measure in
+`transformer_options`, the non-VSA paths make the same `ck.sol_attn` and
+`sol_attn_chunked` calls with the same arguments, and the pooled-statistics
+key keeps its three fields (`pool_key` in the PR's new
+`comfy_extras/sparse_attention_measure.py`). The VSA branch is restructured,
+and every install registers a capability object into `transformer_options`
+whether or not a measure is requested. If it merges, a record comparing
+against core's node names the core commit it ran on.
+
 ---
 
 ## sglang's SubBlock router: two notes, read 2026-09-10
@@ -591,10 +608,61 @@ ramps the other way, dense first and sparser late.
 **[sumeetprashant/ComfyUI-SolAttn](https://github.com/sumeetprashant/ComfyUI-SolAttn)**
 exists and was not read past its README.
 
-**Neither pack reorders tokens.** With the paper and the Sol-Engine cells, no
+**[xmarre/ComfyUI-Sol-H3](https://github.com/xmarre/ComfyUI-Sol-H3)**, added
+2026-09-11 from its README and the body of its PR 9 only, packages the Sol-H3
+CuTe kernel from the author's own Sana fork and does not substitute
+comfy-kitchen's `sol_attn` for it. Its supported kernel target is SM120 on
+Linux or WSL2, so its sparse route does not run on this card. It composes
+with a family of the same author's H3 packs (VDN, Spectrum,
+Flow-Aligned-Regenerate and others), and PR 9 is the provider half of the
+mixed-resolution work behind kitchen PR 171.
+
+**Neither of the two 2026-08-16 packs reorders tokens.** With the paper and the Sol-Engine cells, no
 searched source outside kijai's packs applies a spatial token order to H3.
 
 ---
+
+## Comfy-Org/comfy-kitchen, as of 2026-09-11
+
+Fetch and `gh` only. Nothing merged since the 2026-09-10 snapshot: `main` is
+still `21003fa`, and there is no tag after `v0.2.33`.
+
+- **PR 171** (another developer; draft, no maintainer review, and its body
+  says a compiled GPU run is still owed) gives `sol_attn_chunked` the
+  `key_bias` the direct `sol_attn` already takes: a natural-log per-key score
+  bias, folded into K-row quantisation so only exact blocks see it, with the
+  pooled statistics left unweighted. Biased blocks must be sinks, and neither
+  path checks it; the contract lives in comments. **Nothing here consumes
+  it**: `sol_attn_h3.py`'s module docstring says why `key_bias` is not
+  offered. The one contact is the fork. The PR puts `*, key_bias` exactly
+  where the fork's chunked `blk_cnt` sits as a positional parameter, and its
+  AST test requires the positional parameters to end at `token_aug`. On a
+  rebase onto a tag that contains it, `blk_cnt` moves behind the `*`; the one
+  caller here that passes it already does so by keyword (the
+  `sol_attn_chunked` call in `sol_chunked_h3.py`).
+- **PR 168 carries only the two `sol_attn` commits.** The chunked `blk_cnt`
+  commit stays a fork delta even if 168 merges.
+- **PR 172** (issue 136) moves the Triton INT8 GEMM's output offsets to
+  int64. The int32 form faults once rows times output width passes the int32
+  range, which H3's widest projection reaches at the shipped long 16:9 length
+  (`workflows/h3_config.py::LONG_LENGTH`; rows per frame in
+  [`h3_geometry_and_nodes.md`](h3_geometry_and_nodes.md); the width is
+  `ffn_hidden_size` in `vendor_config/fl2va_transformer_config.json`, doubled
+  by core's fused `fc1`). **It cannot reach this install, and the reason is a
+  launcher default rather than our code**: core disables kitchen's Triton
+  backend unless `--enable-triton-backend` is passed
+  (`comfy/quant_ops.py:33-41`), this install's launcher does not pass it, the
+  installed build has cuBLASLt so the CUDA backend takes `int8_linear`, and
+  that path's quantise and dequantise kernels index with 64-bit offsets
+  (`comfy_kitchen/backends/cuda/ops/int8_linear.cu` in the kitchen source).
+- **PR 167** has not moved since `a63ca28`, and it is not VAE-only: it
+  changes the launch block size of `quantize_int8_rowwise_convrot64_kernel`,
+  the fused ConvRot quantiser `int8_linear` calls when `convrot` is on and the
+  row width qualifies, and adds opt-in residual and RMSNorm arguments to
+  `int8_linear`. [`open_experiments.md`](open_experiments.md) #28 carries what
+  that means.
+- Nothing else open touches H3 on NVIDIA. PR 134 changed on 2026-09-11 and is
+  HIP-only; 124, 146 and 142 have not moved, and 142 tunes sm86 only.
 
 ## Comfy-Org/comfy-kitchen, as of 2026-09-10
 

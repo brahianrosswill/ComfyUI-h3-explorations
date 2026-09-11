@@ -1,8 +1,8 @@
 # sglang's H3 serving path against ours
 
-last updated: 2026-09-10 (closing section "Fourth read" added; one
-subsection under "What they do that we do not" and the section "Third read"
-added 2026-09-04; everything else is the 2026-08-29 read)
+last updated: 2026-09-11 (closing section "Fifth read" added; "Fourth read"
+added 2026-09-10; one subsection under "What they do that we do not" and the
+section "Third read" added 2026-09-04; everything else is the 2026-08-29 read)
 
 What the vendor-side serving implementation does that this install does not,
 what both do where ours may be the weaker version, and what looks like a gap
@@ -549,3 +549,20 @@ single tau, and nothing of it runs on this card.
 (#35147) enablement, GB300/GB200 and DGX Spark recipes (#38296, #37456),
 per-phase warmup memory for residency calibration (#37916), and a docs sync
 (#38784). Read, priced, no action.
+
+## Fifth read, 2026-09-11
+
+What landed in `coderef/sglang` between `887c401e15` and `593c7a900d`. It
+changes no earlier verdict on this page, and none of it touches an H3 file.
+
+**The RoPE refactor does not reach H3.** `d0035da34e` (#33555) moves DiT
+RoPE onto a shared `RotaryEmbedding` custom op and edits the shared qk-norm
+helpers (`runtime/layers/rotary_embedding/base.py`,
+`runtime/layers/layernorm.py`) for Flux, Qwen-Image, GLM-Image and others.
+H3's DiT imports neither: it keeps its own `MiniMaxH3Rope` and
+`_apply_qk_norm` and calls `sgl_kernel`'s rotary directly
+(`coderef/sglang/python/sglang/multimodal_gen/runtime/models/dits/minimax_h3.py`).
+
+**Everything else is serving**: in-place pinning for layerwise-offload host
+stores (#39021), IPC JIT recovery after an interrupted build (#39034), and
+LLM-side work. Read, priced, no action.

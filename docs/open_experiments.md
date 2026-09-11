@@ -1,6 +1,6 @@
 # Open experiments
 
-Last updated: 2026-09-10
+Last updated: 2026-09-11
 
 > **Several of these are now scheduled rather than parked.** The working plan
 > and the render scenes that would settle the quality-blocked ones live in
@@ -2079,6 +2079,17 @@ share without anyone touching the VAE.
 
 **Status 2026-09-10:** both PRs still open; kijai's `minimax_vae` branch moved
 to `a63ca28` on 2026-09-09. Neither reopen condition is met.
+
+**Status 2026-09-11:** both PRs still open, `minimax_vae` still at `a63ca28`.
+The sizing above prices decode only, and PR 167 is not VAE-only: it changes
+the launch block size of kitchen's fused ConvRot activation quantiser, which
+the DiT's INT8 ConvRot linears call, and adds opt-in arguments to
+`int8_linear` ([`sol_upstream.md`](sol_upstream.md), section
+"Comfy-Org/comfy-kitchen, as of 2026-09-11"). Declining it does not keep it
+out: a kitchen tag that contains it reaches this install through ComfyUI's
+pin or the next fork rebase. Whether the DiT's numbers move is unmeasured.
+The check when that tag lands is the DiT's INT8 linear outputs on a capture,
+before and after, which is cheaper than any render and needs no core patch.
 
 ## 29. What makes token routing's selection unstable, on one block
 

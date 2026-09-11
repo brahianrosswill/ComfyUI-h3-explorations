@@ -1,6 +1,6 @@
 # The sister checkouts: what each one is good for
 
-last updated: 2026-09-10 (section "What moved by 2026-09-10" added; the tables are the 2026-08-28 read)
+last updated: 2026-09-11 (section "What moved by 2026-09-11" added and the two comfy-kitchen rows corrected; "What moved by 2026-09-10" added 2026-09-10; the tables are otherwise the 2026-08-28 read)
 
 `coderef/` holds the reference implementations. `ls -l coderef/` is the list of
 what is currently on disk — some symlinks, some real clones — and this page is
@@ -65,8 +65,8 @@ Recorded here because it is a property of the *references*, not of our code:
 
 | checkout | revision read | what it is |
 |---|---|---|
-| `comfy-kitchen-sol` | `bd3fc78` | **the most-cited clone here.** Its `.cu` files ship in no wheel, so `morton.md` and `sol_upstream.md` quote it by path. The built branch is installed, so import the Python rather than requiring the clone |
-| `comfy-kitchen` | `7490d87` | the upstream of the above |
+| `comfy-kitchen` | `7490d87` | **the build source since 2026-09-08**: the owner's fork, based on an upstream tag and carrying only the `blk_cnt` commits (`vendor/rebuild_kernel.sh` defaults `SRC` to it). The branch matching the installed build is usually checked out in a worktree elsewhere, so run `git worktree list` in it before reading source. Import the installed Python rather than requiring the clone. *Corrected 2026-09-11: this row said "the upstream of the above".* |
+| `comfy-kitchen-kijai` | `bd3fc78` | kijai's fork, **read-only**, renamed from `comfy-kitchen-sol` on 2026-09-08. Its `.cu` files ship in no wheel, so `morton.md` quotes it by path under the old name. *Corrected 2026-09-11: this row named the clone `comfy-kitchen-sol` and said its built branch was installed; neither has been true since 2026-09-08.* |
 | `ComfyUI-UtilsCollection` | `5bac35b` | a third-party pack with its own PDD path. Two of our guards were **adopted from it** |
 | `Minimax-H3-Turbo` | `02e26d5` | the vendor README that publishes the distilled sigma grid `bench/check_distill_grid.py` grades against — a grid from the vendor, not one we computed |
 | `sage-fork` | `56a5be4` | our SageAttention fork |
@@ -139,6 +139,61 @@ work) lives in [`../sol_upstream.md`](../sol_upstream.md).
 - **Hugging Face, not cloned**: community FastH3 conversions (NVFP4 rotated,
   GGUF, a dense-datafree ComfyUI file); `junchaoh-cs/SolarWM-H3-33B` is gated
   and was not read.
+
+---
+
+## What moved by 2026-09-11
+
+Read on 2026-09-11 at the revisions named here. comfy-kitchen, core's Sol
+node and the ComfyUI Sol packs live in [`../sol_upstream.md`](../sol_upstream.md)
+(section "Comfy-Org/comfy-kitchen, as of 2026-09-11"); sglang lives in
+[`../research/sglang_comparison.md`](../research/sglang_comparison.md)
+(section "Fifth read").
+
+- **`DiffSynth-Studio`** (`32ef37e`). `013296e` and `84f93fc` predate the
+  2026-09-10 section and were missed by it; the rest landed since.
+  - `013296e` (#1659) loads alibaba-pai's Fun ControlNet Union: a second
+    stack of DiT blocks whose outputs are added to the main hidden stream
+    after a fixed set of main blocks (`diffsynth/models/minimax_h3_controlnet.py`;
+    the hook is `control_hints` in `diffsynth/models/minimax_h3_dit.py`, the
+    block set is in `diffsynth/configs/model_configs.py`). Core has its own
+    loader (`comfy/ldm/minimax/controlnet.py`, reached from
+    `comfy_extras/nodes_model_patch.py`). Nothing in this repo wires a
+    ControlNet, so this is a second implementation to read if one is ever
+    wired, not a gap.
+  - `84f93fc` (#1655) adds `--audio_loss_weight` to its H3 training script.
+    Training only.
+  - `ce9f454` (#1678), with the README entry that came with it: the
+    "Training Adapter" is a DeCFG LoRA in FL2VA and Ref2VA versions, trained
+    on a self-generated dataset, for fine-tuning on top of the CFG-distilled
+    base, plus two toy LoRAs trained through it. Training only, and it agrees
+    with [`../prompting.md`](../prompting.md) that guidance is CFG-distilled.
+  - `f7b7db9` (#1684) loads the third-party Singularity ref2va v1.3 INT8
+    files, full and pruned, as ComfyUI-format checkpoints quantized for
+    comfy-kitchen's INT8 W8A8. Its converter only strips the
+    `model.diffusion_model.` prefix
+    (`diffsynth/utils/state_dict_converters/minimax_h3_dit.py`), and the two
+    entries leave different modules unquantized (`minimax_h3_series` in
+    `diffsynth/configs/model_configs.py`). That corroborates the fourth
+    sglang read: such a file loads in ComfyUI as it is. No graph here loads
+    it.
+  - `50e5efb` (#1681) announces
+    [DiffSynth-ComfyUI](https://github.com/modelscope/DiffSynth-ComfyUI), a
+    ComfyUI pack that runs DiffSynth's pipelines, created 2026-09-04. Its
+    `example_workflows/` has H3 fl2va, ref2va and pruned-NF4 graphs. Not read
+    past its file list.
+  - Everything else is other models: LTX-2.5 (`a98c6d4`), YuE2 (`32ef37e`),
+    DiffSynth-Music (`a8fc4a6`).
+- **`sglang`** (`593c7a900d`): nothing reaches H3; see the fifth read.
+- **`comfy-kitchen-kijai`** (fetched 2026-09-11). `minimax_vae` has not moved
+  since `a63ca28` (2026-09-09); what its PR means for the DiT is in
+  [`../open_experiments.md`](../open_experiments.md) #28. `w4a8_gemv` holds
+  one commit of its own, `1caa605` (2026-08-24: a single-row W4A8 GEMV and an
+  unrelated `gated_delta` op), and only merges from main since. A W4A8 H3
+  file sits in this install's model directory, and neither
+  `workflows/h3_config.py`, the generator nor any shipped graph names it.
+- **Upstream PRs, not cloned**: Comfy-Org/ComfyUI #16239 and the kitchen and
+  ComfyUI-pack PRs around it are read in `sol_upstream.md`.
 
 ---
 
