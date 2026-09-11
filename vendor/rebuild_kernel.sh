@@ -22,7 +22,9 @@
 # and the stock wheel are indistinguishable to `pip list` -- and a stock wheel
 # silently has no sol_attn, which makes every Sol call fall back to dense with
 # no error. PEP 440 still matches `X.Y.Z+sol.<sha>` against `==X.Y.Z`, so a
-# plain requirements install stays satisfied and will not clobber it.
+# plain requirements install stays satisfied and will not clobber it -- but
+# only while X.Y.Z is exactly ComfyUI's pin, which is why the base has to be
+# the pinned tag (see "Carry blk_cnt, track everything else" below).
 #
 #   2026-09-03: this used to be `git apply vendor/patches/001-local-version-tag.patch`,
 #   a diff hardcoded against `version = "0.2.31"`. Upstream released 0.2.32 on
@@ -33,38 +35,144 @@
 #   in step with upstream.
 #
 # Usage:  vendor/rebuild_kernel.sh [CUDA_ARCH]     (default 89, this box's 4090)
+#         vendor/rebuild_kernel.sh --check         (is the source current? builds nothing)
 
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-# Default is our own fork clone. **It used to be `coderef/comfy-kitchen-sol`**,
-# kijai's branch checkout, which is where Sol-Attn lived while it was unmerged;
-# that directory was renamed `comfy-kitchen-kijai` and the default then pointed
-# at nothing, so the script exited "no checkout at ..." on its own default.
+# --- Carry blk_cnt, track everything else (owner, 2026-09-11) ----------------
+# We carry the `blk_cnt` commits indefinitely, whether or not upstream ever
+# merges them (Comfy-Org/comfy-kitchen #168), and take everything else from
+# upstream. "Current" means those commits rebased onto the tag ComfyUI's
+# requirements pin: not upstream's newest tag, and not main. The reason is
+# PEP 440. Our build declares `X.Y.Z+sol.<sha>`, which satisfies
+# `comfy-kitchen==X.Y.Z` only when X.Y.Z IS the pin; built on a newer tag it
+# stops matching, and the next requirements install silently swaps in the
+# stock wheel, which has no `blk_cnt`. So a newer upstream tag is news, not an
+# instruction: when ComfyUI moves its pin, rebase onto the new tag. The gate
+# below refuses any source that is not `v<pin>` plus our commits, and
+# `--check` runs only the gate.
 #
-# The default moved rather than being repaired in place because the source of
-# record moved: everything we carried from kijai's branch is upstream now
-# (#117, #150, #156), our delta is the `blk_cnt` commits, and they live on
-# branches in the fork clone. kijai's checkout is a place to read, not to
-# build from.
-#
-# Overridable, and a worktree is still the polite way to build one specific
-# commit without moving anybody's HEAD:
+# Derived from this checkout, not typed: the repo sits at
+# <comfy>/custom_nodes/<pack>, so ComfyUI and its venv are two levels up.
+# Override with COMFY=... / PY=... for any other layout.
+COMFY="${COMFY:-$REPO/../..}"
+PY="${PY:-$COMFY/.venv/bin/python}"
+[ -x "$PY" ] || { echo "no interpreter at $PY -- set PY=/path/to/python"; exit 1; }
+PIN="$(sed -n 's/^comfy-kitchen==\([0-9][0-9.]*\).*/\1/p' "$COMFY/requirements.txt" 2>/dev/null | head -1)"
+[ -n "$PIN" ] || { echo "ERROR: no comfy-kitchen==X.Y.Z pin in $COMFY/requirements.txt"; exit 1; }
+CLONE="$REPO/coderef/comfy-kitchen"
+
+CHECK_ONLY=0
+if [ "${1:-}" = "--check" ]; then CHECK_ONLY=1; shift; fi
+ARCH="${1:-89}"
+
+# How to become current, printed wherever the gate refuses. The worktree goes
+# somewhere durable, not a session scratchpad: the build record points at it
+# and start.sh warns when a running build's source is gone.
+pin_worktree() {   # the worktree holding sol-blk-cnt-<pin>, or nothing
+    git -C "$CLONE" worktree list --porcelain 2>/dev/null |
+        awk -v b="branch refs/heads/sol-blk-cnt-$PIN" '/^worktree /{w=substr($0,10)} $0==b{print w; exit}'
+}
+recipe() {
+    echo
+    if git -C "$CLONE" rev-parse -q --verify "refs/heads/sol-blk-cnt-$PIN" >/dev/null; then
+        local wt; wt="$(pin_worktree)"
+        if [ -n "$wt" ]; then
+            echo "sol-blk-cnt-$PIN already carries our commits on v$PIN, in $wt;"
+            echo "run without SRC to build from it."
+        else
+            echo "sol-blk-cnt-$PIN exists but no worktree has it:"
+            echo "  git -C $CLONE worktree add <durable-dir>/ck_$PIN sol-blk-cnt-$PIN"
+            echo "  git -C <durable-dir>/ck_$PIN submodule update --init --recursive"
+        fi
+        return
+    fi
+    local old
+    old="$(git -C "$CLONE" for-each-ref --sort=-version:refname --format='%(refname:short)' \
+           'refs/heads/sol-blk-cnt-[0-9]*' | head -1)"
+    old="${old:-<last-carried-branch>}"
+    echo "To carry the blk_cnt commits onto v$PIN (ComfyUI's pin):"
+    echo "  git -C $CLONE fetch upstream --tags"
+    echo "  git -C $CLONE cherry -v v$PIN $old    # '-' = already in v$PIN: skip it"
+    echo "  git -C $CLONE worktree add <durable-dir>/ck_$PIN -b sol-blk-cnt-$PIN v$PIN"
+    echo "  git -C <durable-dir>/ck_$PIN cherry-pick v${old#sol-blk-cnt-}..$old"
+    echo "  git -C <durable-dir>/ck_$PIN submodule update --init --recursive"
+    echo "  vendor/rebuild_kernel.sh --check && vendor/rebuild_kernel.sh"
+}
+
+# Default source: the worktree holding `sol-blk-cnt-<pin>`. It used to be the
+# clone itself, and before that `coderef/comfy-kitchen-sol` (kijai's checkout,
+# since renamed `comfy-kitchen-kijai`: a place to read, never to build from).
+# The clone's own HEAD is whatever branch was last left there -- on 2026-09-11
+# an old `sol-blk-cnt` based on no current tag -- while the build lives in a
+# worktree, so the default follows the pin, not the HEAD. Overridable, e.g. to
+# build one specific commit:
 #
 #   SRC=/path/to/worktree vendor/rebuild_kernel.sh 89
 #
 # Every checkout under coderef/ is shared, and this script's whole design is
 # to leave the one it builds from exactly as it found it.
-SRC="${SRC:-$REPO/coderef/comfy-kitchen}"
-ARCH="${1:-89}"
-# Derived from this checkout, not typed: the repo sits at
-# <comfy>/custom_nodes/<pack>, so the venv is two levels up. Override with
-# PY=... for any other layout.
-PY="${PY:-$REPO/../../.venv/bin/python}"
-[ -x "$PY" ] || { echo "no interpreter at $PY -- set PY=/path/to/python"; exit 1; }
-
+if [ -z "${SRC:-}" ]; then
+    WANT="sol-blk-cnt-$PIN"
+    SRC="$(git -C "$CLONE" worktree list --porcelain 2>/dev/null |
+           awk -v b="branch refs/heads/$WANT" '/^worktree /{w=substr($0,10)} $0==b{print w; exit}')"
+    if [ -z "$SRC" ]; then
+        echo "REFUSED: no worktree of $CLONE has $WANT checked out, so nothing"
+        echo "carries our commits on ComfyUI's pinned tag."
+        recipe; exit 1
+    fi
+fi
 [ -d "$SRC" ] || { echo "no checkout at $SRC"; exit 1; }
 cd "$SRC"
+echo "== source: $(git rev-parse --abbrev-ref HEAD) @ $(git rev-parse --short HEAD)  (ComfyUI pins comfy-kitchen==$PIN)"
+
+# --- The currency gate -------------------------------------------------------
+# Fetching tags moves refs only, never this tree. Offline, it judges against
+# the tags already here and says so.
+git fetch --quiet upstream --tags 2>/dev/null ||
+    echo "== WARNING: could not fetch upstream; judging against the tags already here"
+CURRENT=1
+DECLARED="$(sed -n 's/^version = "\([^"+]*\).*/\1/p' pyproject.toml | head -1)"
+if ! git rev-parse -q --verify "refs/tags/v$PIN" >/dev/null; then
+    echo "REFUSED: tag v$PIN, ComfyUI's pin, is not in this checkout"; CURRENT=0
+elif ! git merge-base --is-ancestor "v$PIN" HEAD; then
+    echo "REFUSED: this source is not based on v$PIN, the comfy-kitchen ComfyUI pins"; CURRENT=0
+fi
+if [ "$DECLARED" != "$PIN" ]; then
+    echo "REFUSED: the source declares $DECLARED but ComfyUI pins $PIN; $DECLARED+sol.<sha>"
+    echo "would not satisfy the pin, and a requirements install would put the stock wheel back"
+    CURRENT=0
+fi
+if [ "$CURRENT" = 1 ]; then
+    echo "== carried on top of v$PIN (+ ours; - already in v$PIN, drop it on the next rebase):"
+    while read -r mark sha subject; do
+        if git merge-base --is-ancestor "$sha" upstream/main 2>/dev/null; then
+            echo "     $mark ${sha:0:7} $subject   <-- upstream main, in no tag"
+            CURRENT=0
+        else
+            echo "     $mark ${sha:0:7} $subject"
+        fi
+    done < <(git cherry -v "v$PIN" HEAD)
+    [ "$CURRENT" = 1 ] ||
+        echo "REFUSED: the source carries untagged upstream work; the base is a tag, never main"
+fi
+NEWEST="$(git tag -l 'v[0-9]*' --sort=-version:refname | head -1)"
+[ "$NEWEST" = "v$PIN" ] ||
+    echo "== upstream has $NEWEST, newer than the pin: news, not an instruction (see the header)"
+echo "== upstream main past $NEWEST, untagged, not built by policy: $(git rev-list --count "$NEWEST"..upstream/main 2>/dev/null || echo unknown) commit(s)"
+[ "$CURRENT" = 1 ] || { recipe; exit 1; }
+
+if [ "$CHECK_ONLY" = 1 ]; then
+    WOULD="$PIN+sol.$(git rev-parse --short=7 HEAD)"
+    INSTALLED="$("$PY" -c 'import importlib.metadata as m; print(m.version("comfy_kitchen"))' 2>/dev/null || echo none)"
+    if [ "$INSTALLED" = "$WOULD" ]; then
+        echo "== --check: current, and the venv already holds this build ($INSTALLED)"
+    else
+        echo "== --check: current source; the venv holds $INSTALLED, a rebuild would install $WOULD"
+    fi
+    exit 0
+fi
 
 if ! git diff --quiet || ! git diff --cached --quiet; then
     echo "ERROR: $SRC has local changes. This script needs a clean tree so it"
@@ -72,8 +180,6 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
     git status --short
     exit 1
 fi
-
-echo "== source: $(git rev-parse --abbrev-ref HEAD) @ $(git rev-parse --short HEAD)"
 
 # Revert the edit no matter how we leave, including on a failed build. Without
 # this a compile error strands the tree dirty and blocks the next pull, which

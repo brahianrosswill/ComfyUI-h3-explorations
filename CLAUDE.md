@@ -111,10 +111,13 @@ Rules with no other home. The tenet behind each is in `VISION.md`.
 `coderef/` (gitignored) holds the sister checkouts; `ls -l coderef/` is the
 list and more than half of it is symlinks, so use `find -L` and
 `grep -r --dereference-recursive` or a search answers about a minority of it.
-**Do not import Python from it.** The Sol-Attn kernel is installed from
-comfy-kitchen main; every build calls itself the same version, so read the
-local segment of the dist-info, which `bench/check_sol_kernel.py` reports, and
-never a sentence naming a build. `bench/_sol_attn_reference.py` is the vendored
+**Do not import Python from it.** The Sol-Attn kernel is built from the
+owner's fork by `vendor/rebuild_kernel.sh`: the tag ComfyUI pins plus the
+`blk_cnt` commits we carry for good, and `--check` says whether the source is
+current (this said "installed from comfy-kitchen main" until 2026-09-11).
+Every build declares the pinned version, so read the local segment of the
+dist-info, which `bench/check_sol_kernel.py` reports, and never a sentence
+naming a build. `bench/_sol_attn_reference.py` is the vendored
 reference for what can be imported; `vendor/sol_attn_minimax.py` is a
 read-only reference node that is not loaded.
 

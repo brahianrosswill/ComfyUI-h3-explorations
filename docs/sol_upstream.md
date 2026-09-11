@@ -711,6 +711,14 @@ installed build and branch as of 2026-09-08; the build has been rebuilt since,
 which is why it now points instead. The clone's checked-out branch need not be
 the built sha: the build record is what says which wheel runs.
 
+**Carried for good, current by rule (owner, 2026-09-11).** The `blk_cnt`
+commits stay in the fork whether or not PR 168 merges, and everything else
+tracks upstream: the carried commits sit on the tag ComfyUI's requirements
+pin, because a build on any other version stops satisfying that pin and a
+requirements install puts the stock wheel back. `vendor/rebuild_kernel.sh`
+refuses any other source, and `vendor/rebuild_kernel.sh --check` reports
+whether the source is current without building.
+
 **Upstream's own Sol suite does not pass on this card**, on the stock PyPI
 wheel or on a local build of the same commit: three groups of nanobind
 binding-validation cases whose expected error is raised only by the HIP

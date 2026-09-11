@@ -4,6 +4,25 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.66
+
+### Changed
+
+- **`vendor/rebuild_kernel.sh` keeps the kitchen build current.** Owner's
+  rule, 2026-09-11: the `blk_cnt` commits are carried for good, whether or not
+  upstream merges them, and everything else tracks upstream. The script reads
+  ComfyUI's `comfy-kitchen==` pin and refuses a source that is not that tag
+  plus our commits: not based on it, declaring another version (which would
+  stop satisfying the pin, so a requirements install would put the stock
+  wheel back), or carrying untagged upstream work. It lists the carried
+  commits, marking any the tag already contains, reports newer upstream tags
+  as news rather than instructions, and prints the rebase recipe when it
+  refuses. `--check` runs only that. With no `SRC` it now builds from the
+  worktree holding `sol-blk-cnt-<pin>`: the old default, the fork clone's own
+  HEAD, was an out-of-date branch that the gate refuses.
+- **`CLAUDE.md` said the kernel was "installed from comfy-kitchen main"**; it
+  is built from the fork, on the pinned tag, by that script.
+
 ## 0.99.65
 
 ### Added
