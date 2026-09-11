@@ -82,9 +82,9 @@ recipe() {
             echo "sol-blk-cnt-$PIN already carries our commits on v$PIN, in $wt;"
             echo "run without SRC to build from it."
         else
-            echo "sol-blk-cnt-$PIN exists but no worktree has it:"
-            echo "  git -C $CLONE worktree add <durable-dir>/ck_$PIN sol-blk-cnt-$PIN"
-            echo "  git -C <durable-dir>/ck_$PIN submodule update --init --recursive"
+            echo "sol-blk-cnt-$PIN exists; put the fork clone on it:"
+            echo "  git -C $CLONE switch sol-blk-cnt-$PIN"
+            echo "  git -C $CLONE submodule update --init --recursive"
         fi
         return
     fi
@@ -92,22 +92,25 @@ recipe() {
     old="$(git -C "$CLONE" for-each-ref --sort=-version:refname --format='%(refname:short)' \
            'refs/heads/sol-blk-cnt-[0-9]*' | head -1)"
     old="${old:-<last-carried-branch>}"
-    echo "To carry the blk_cnt commits onto v$PIN (ComfyUI's pin):"
+    echo "To carry the blk_cnt commits onto v$PIN (ComfyUI's pin), in the fork clone:"
     echo "  git -C $CLONE fetch upstream --tags"
     echo "  git -C $CLONE cherry -v v$PIN $old    # '-' = already in v$PIN: skip it"
-    echo "  git -C $CLONE worktree add <durable-dir>/ck_$PIN -b sol-blk-cnt-$PIN v$PIN"
-    echo "  git -C <durable-dir>/ck_$PIN cherry-pick v${old#sol-blk-cnt-}..$old"
-    echo "  git -C <durable-dir>/ck_$PIN submodule update --init --recursive"
+    echo "  git -C $CLONE switch -c sol-blk-cnt-$PIN v$PIN"
+    echo "  git -C $CLONE cherry-pick v${old#sol-blk-cnt-}..$old"
+    echo "  git -C $CLONE submodule update --init --recursive"
     echo "  vendor/rebuild_kernel.sh --check && vendor/rebuild_kernel.sh"
 }
 
-# Default source: the worktree holding `sol-blk-cnt-<pin>`. It used to be the
-# clone itself, and before that `coderef/comfy-kitchen-sol` (kijai's checkout,
-# since renamed `comfy-kitchen-kijai`: a place to read, never to build from).
-# The clone's own HEAD is whatever branch was last left there -- on 2026-09-11
-# an old `sol-blk-cnt` based on no current tag -- while the build lives in a
-# worktree, so the default follows the pin, not the HEAD. Overridable, e.g. to
-# build one specific commit:
+# Default source: the checkout holding `sol-blk-cnt-<pin>`, which since
+# 2026-09-11 is the fork clone itself -- one folder. It rests on the build
+# branch; PR 168's branch `sol-blk-cnt-pr` carries the same commits on current
+# upstream main and is switched to only for PR work. (Before that the build and
+# the PR lived in two extra worktrees while the clone sat on an old `sol-blk-cnt`, and
+# before that the default was `coderef/comfy-kitchen-sol`, kijai's checkout,
+# since renamed `comfy-kitchen-kijai`: a place to read, never to build from.)
+# The lookup follows the branch, not a path, so a clone left on some other
+# branch is refused rather than built. Overridable, e.g. to build one specific
+# commit:
 #
 #   SRC=/path/to/worktree vendor/rebuild_kernel.sh 89
 #
@@ -118,8 +121,8 @@ if [ -z "${SRC:-}" ]; then
     SRC="$(git -C "$CLONE" worktree list --porcelain 2>/dev/null |
            awk -v b="branch refs/heads/$WANT" '/^worktree /{w=substr($0,10)} $0==b{print w; exit}')"
     if [ -z "$SRC" ]; then
-        echo "REFUSED: no worktree of $CLONE has $WANT checked out, so nothing"
-        echo "carries our commits on ComfyUI's pinned tag."
+        echo "REFUSED: $CLONE is not on $WANT, the branch that carries our"
+        echo "commits on ComfyUI's pinned tag."
         recipe; exit 1
     fi
 fi
