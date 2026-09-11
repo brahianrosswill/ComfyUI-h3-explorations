@@ -42,8 +42,7 @@ pipeline ever produces this input.
 **A measurement is a statement about its conditions.** Which canvas (a trained
 one, or it can invert), which cache state, which commit. Two rendered clips
 cannot A/B a numerical knob, because a perturbed trajectory is a different
-sample: compare at the call, on captured activations. A perceptual claim needs
-a distribution of seeds judged blind, never a pair.
+sample: compare at the call, on captured activations.
 
 **Capture broadly first; decide what it means second.** A probe that varies
 one axis has assumed the answer is on that axis, and a run that records one

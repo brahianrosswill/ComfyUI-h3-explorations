@@ -602,9 +602,8 @@ first task, not a thing to guess at.
 
 **Decision it changes:** whether #1, #6, #9 and #12 stay blocked on a person.
 
-**The cheaper route, 2026-08-20:** at ~3 minutes a 4-step render, the standard
-CLAUDE.md sets for a perceptual claim -- many seeds per arm, judged blind in
-aggregate -- costs under an hour for 8 seeds x 3 arms, which no base-model
+**The cheaper route, 2026-08-20:** at ~3 minutes a 4-step render, many seeds
+per arm judged blind in aggregate costs under an hour for 8 seeds x 3 arms, which no base-model
 session could afford. That does not build the instrument; it makes the
 owner's judgment affordable enough to drain the queue without one.
 `bench/blind_batch.py` is the batching layer.

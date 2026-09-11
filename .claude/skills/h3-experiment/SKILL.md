@@ -20,8 +20,7 @@ design goes through them.
    1152x768 or 1344x768 with 345 frames (`CLAUDE.md`); a cheaper canvas only
    proves a harness runs. `docs/roadmap.md`'s regime
    section says what transfers between the base model and the distilled
-   students. A perceptual claim needs a distribution of seeds, never a pair
-   (`CLAUDE.md`).
+   students.
 
 3. **How an arm becomes a graph.** `workflows/build_workflows.py` generates
    every graph from `workflows/h3_config.py`; a `workflows/*.json` is never

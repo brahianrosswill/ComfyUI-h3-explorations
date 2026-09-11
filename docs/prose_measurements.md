@@ -96,12 +96,10 @@ command; a measurement with no command behind it is what it reports.
 
 ## The wiki
 
-`docs/wiki/index.md` is derived by `bench/build_wiki_index.py` from
-`CLAUDE.md`'s routing tables and a walk of the link graph. Its generator's
-docstring makes the same argument this file makes: a wiki that retyped the
-blurbs would be a second copy with no invalidation. So the wiki is already the
-shape the rule wants -- a router that owns no values -- and it needs no
-migration of its own.
+`docs/wiki/index.md` is the router, written by hand: each document and the
+question it answers, and the only copy of those routes. It owns no values, so
+it is already the shape the rule wants and needs no migration of its own.
+`bench/build_wiki_index.py` reports the documents no link reaches.
 
 What follows from that:
 
@@ -136,7 +134,7 @@ By read rate, not by hit count. A stale number in a file every session opens
 costs more than fifty in a deep dive.
 
 1. `CLAUDE.md` -- small, read first, and it carries measurements of its own.
-2. The "read these before you start" set the `CLAUDE.md` table names:
+2. The "read these before you start" set `docs/wiki/index.md` names:
    `docs/roadmap.md`, `docs/evidence.md`, `docs/checks.md`,
    `docs/comfyui_vendor_gaps.md`, `docs/custom_node_gaps.md`.
 3. The authorities: `docs/SOLATTN.md`, `docs/h3_references.md`,

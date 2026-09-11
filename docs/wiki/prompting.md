@@ -78,8 +78,7 @@ prompt already in a graph, `bench/preflight_graph.py <graph.json>`.
 | Mood words in the music line break a guide sentence nothing checks; found across a dozen bank entries on 2026-09-03 | `prompt_audit.md` |
 
 **A rendered clip cannot A/B a prompt change.** Two arms that differ in any way
-give different samples, not a better and a worse version of one. A perceptual
-claim needs many seeds per arm, judged blind, in aggregate.
+give different samples, not a better and a worse version of one.
 
 ## Open, closed, withdrawn
 

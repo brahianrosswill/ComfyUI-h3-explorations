@@ -4,6 +4,31 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.72
+
+### Changed
+
+- **`CLAUDE.md` routes to the wiki instead of carrying its tables.** Owner's
+  call, 2026-09-11. The "What is where" tables (read first, reference, code
+  and directories) moved into `docs/wiki/index.md`, which is now written by
+  hand and is their only copy; `CLAUDE.md` keeps a short paragraph pointing
+  there and the three directory rules every agent needs.
+  `bench/build_wiki_index.py` no longer generates the index, since nothing is
+  left to go stale, and now only reports the documents no link from
+  `CLAUDE.md` or the wiki reaches. `docs/checks.md` and
+  `docs/prose_measurements.md` follow.
+- **`docs/wiki/decisions.md`**, a new written page: one dated line per owner
+  decision or corrected claim, with what it used to say and the commit,
+  seeded with 2026-09-11. `CLAUDE.md`'s "say what it used to claim" rule now
+  logs there, and `CLAUDE.md` and `VISION.md` carry no history notes.
+- **"A perceptual claim needs a distribution of seeds judged blind" is
+  withdrawn** from `VISION.md`, `CLAUDE.md`, the `h3-experiment` skill,
+  `docs/open_experiments.md` and `docs/wiki/prompting.md`, under the
+  tinkering-repo rule. `docs/eval_comparison.md` still describes the blind
+  process for when one is wanted.
+- The `CLAUDE.md` half of this sits uncommitted beside another session's
+  hunk, like 0.99.71's.
+
 ## 0.99.71
 
 ### Changed
