@@ -184,16 +184,16 @@ python bench/stack_eval_clips.py \
 ### Force Layout Override:
 ```bash
 # Force side-by-side regardless of aspect:
-uv run python bench/stack_eval_clips.py clip1.mp4 clip2.mp4 --layout horizontal
+python bench/stack_eval_clips.py clip1.mp4 clip2.mp4 --layout horizontal
 
 # Force top-to-bottom regardless of aspect:
-uv run python bench/stack_eval_clips.py clip1.mp4 clip2.mp4 --layout vertical
+python bench/stack_eval_clips.py clip1.mp4 clip2.mp4 --layout vertical
 ```
 
 ### Blind Evaluation Workflow:
 Randomizes the assignment of Clip 1 and Clip 2, stamps anonymous overlays, and writes a sealed keyfile:
 ```bash
-uv run python bench/stack_eval_clips.py \
+python bench/stack_eval_clips.py \
     arm_a.mp4 arm_b.mp4 \
     --blind \
     --keyfile internal/blind_key_test.json \
@@ -453,7 +453,7 @@ the record carries that reading in its own field. Blinding controls who knows
 which arm; it does not make two samples comparable.
 
 ```bash
-H3_COMFY_OUTPUT=<share> uv run python bench/blind_batch.py \
+H3_COMFY_OUTPUT=<share> python bench/blind_batch.py \
     --jsonl bench/results/<date>_<session>.jsonl \
     --session <session> --shuffle-seed <n> \
     --pairs ref,other --pairs ref,another \
@@ -461,5 +461,5 @@ H3_COMFY_OUTPUT=<share> uv run python bench/blind_batch.py \
 
 # open <share>/Video/blind/<session>/score.html, score every item, Export scores
 
-uv run python bench/score_session.py --scores scores_<session>.json
+python bench/score_session.py --scores scores_<session>.json
 ```

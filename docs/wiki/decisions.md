@@ -17,6 +17,10 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-11
 
+- **Run bench scripts with `python`, not `uv run`** (owner). `docs/eval_comparison.md`
+  and the `h3-prompt` skill said `uv run python bench/...`; plain `uv run` in
+  this repo builds a repo-local venv and, with `VIRTUAL_ENV` set, can recreate
+  the ComfyUI one, as `docs/comfy_notes.md` records.
 - **`CLAUDE.md` routes to the wiki instead of carrying its tables** (owner;
   CHANGELOG 0.99.72). The "What is where" tables moved into
   [`index.md`](index.md), which is now written by hand.

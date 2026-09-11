@@ -4,6 +4,17 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.74
+
+### Fixed
+
+- **`docs/eval_comparison.md` runs the clip-stacking, blinding and scoring
+  tools with `python`, not `uv run python`.** Plain `uv run` in this repo
+  builds a repo-local venv and, with `VIRTUAL_ENV` set, can recreate the
+  ComfyUI one (`docs/comfy_notes.md`); all three tools run on plain python.
+  The same fix is applied to the `h3-prompt` skill, whose edit is another
+  session's and still uncommitted.
+
 ## 0.99.73
 
 ### Changed
