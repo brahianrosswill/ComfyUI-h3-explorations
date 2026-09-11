@@ -16,106 +16,24 @@ sentence here has been wrong every time it was tried.
 `bench/build_wiki_index.py`, listed last. The first grades and prices rather
 than gating, and a person runs it before a render rather than the suite running
 it. The second generates a file and, under `--check`, refuses a stale one.
-Listing both is deliberate -- each has a red control and defends real ground --
-and it is why "every check" and "every row" are not the same set.
-
-**A deliberate violation that never applied is a green you will believe.** A
-`sed` whose pattern silently fails to match copies the file through unchanged
-and exits 0, so the "mutant" is a plausible file of plausible size at the
-expected path, the check reports on it correctly, and the proof was vacuous.
-
-**Why this needs its own assertion rather than better tooling: NOTHING
-DOWNSTREAM OF THE MUTATION CAN DETECT IT.** The check ran correctly. The exit
-code was honest. The file size, the path and the timestamps were all right.
-Every signal available was telling the truth *about the wrong artifact*, so no
-amount of hardening the grader or reading its output more carefully reaches
-this class — a tool cannot report a failure it did not have. It has to be
-asserted UPSTREAM, at the mutation, which is the one place the two artifacts can
-still be compared.
-Two instances on 2026-09-01, both in red proofs: one where a peer's substitution
-never matched and the clean result was read as a refutation, and one where a
-`grep -c` exiting 1 on ZERO MATCHES was read as "file missing". The cheap
-discipline is one line before grading: assert the mutant differs from the
-original -- `cmp -s orig mutant && echo "MUTATION DID NOT APPLY"`, or compare
-hashes. **Verify the attempt reached the subject before believing either
-outcome**, and re-run any proof whose mutation you did not confirm: three of
-this repo's own were re-run that way and all three were real.
+Listing both is deliberate -- each defends real ground -- and it is why
+"every check" and "every row" are not the same set.
 
 ## The standard
 
-A check over **mechanically specified** behaviour -- a graph's JSON, a schema
-default, a `node_id`, a label rule, a row count -- is not trusted until it has
-been shown to go red for the right reason: break the thing it guards, watch it
-fail, put it back. This is not theoretical. Three checks written on 2026-08-10
-passed for the wrong reason on first writing, and one reported zero failures
-with the bug reintroduced. There the correct answer is known before the check
-exists, so a control can be built.
+A check reads the thing under test, not its own copy of the answer (see
+"Drive the expression, never restate it" below), and compares it with an
+independent answer where one exists: a vendor file, a committed baseline, a
+second implementation. One that reports red while the state is correct is
+worse than no check. Where the expected value is itself the measurement, as
+with `check_correctness.py`'s error against the stock forward, the check
+records it rather than inventing a threshold.
 
-**It does not extend to a check whose expected value is the measurement.**
-`check_correctness.py` asserts a mean relative error against the stock forward;
-nobody knew that number before running it, and demanding a red-first control
-there invents a threshold instead of testing one. On that class of check a
-`not recorded` cell is a description, not a debt -- and treating it as a debt
-is what made this standard cost more than it caught.
-
-**A mutation control needs its own precondition, and must fail rather than
-pass when it is not met.** Adopted 2026-08-25 after three instances in one day,
-all the same shape: **a reading whose precondition was not met produced a
-verdict anyway.** A scaffold mutation written against the decoded text found
-nothing, because the raw record separates words with U+0120; a still-policy
-mutation picked whichever upscale row came first, which on one bundle was
-keyframe-only, where that field is never exercised; and a disk-tier control
-compared a weight hash it could not read on that tier.
-
-**The direction differed, and that matters.** The first two failed open: the
-control did not apply, and *not applying* looked exactly like *applying and
-finding nothing wrong*. The third failed closed -- its guard yields "unchanged"
-on a null read, which refuses to emit the candidate. A shared shape is not a
-shared failure mode, and a claim that these controls "pass when they should
-fail" is true of two of them.
-
-So a control must assert that it reached its subject before grading the
-outcome: select on the property the arm actually reads, not on a property that
-usually accompanies it, and raise when no eligible subject exists rather than
-silently doing nothing. The two mutation controls were caught by grading each
-mutation on **the arm it targets gaining a problem the unmutated baseline did
-not have**, instead of on a process exit code -- a distinction that matters
-because a subject carrying known findings makes every exit-code comparison pass
-for free. The third was caught by running on a tier it had never met, which no
-grading rule would have found: an assumption that has only ever met one
-implementation is not a tested assumption.
-
-**Audited 2026-08-25 and found not to generalise.** Every violation arm under
-`bench/` was classified in
-[`bench/results/2026-08-25_violation_arm_grading_audit.md`](../bench/results/2026-08-25_violation_arm_grading_audit.md);
-none grades on the exit code of a check that could return non-zero for an
-unrelated reason, and `bench/red/harness.py` already fails *closed* on a red
-baseline. The rule stands for new arms. It earned no rework of existing ones.
-
-What `CLAUDE.md` asks of every check regardless: one whose input already
-satisfies the expected outcome cannot fail, and one reporting red while the
-state is correct is worse than no check. The `shown red` column records which
-checks have a construction; **the tallies live in the table, not in this
-prose.**
-
-### A mutation that perturbs its own oracle proves nothing
-
-**From the sage fork, 2026-09-08, and worth having because their first red
-proof passed and the passing was meaningless.** They were proving a check that
-reads a checkout's VCS state could fail. The mutation was to edit the source
-file that sets the flag -- which also modifies a tracked file, so the thing
-being tested and the thing it reads moved together and the mutation concealed
-itself. A real red needed a detached worktree, the mutation committed inside it
-so the tree was tracked-clean, then an untracked file added there.
-
-The general shape: when a check's subject and its oracle share a substrate,
-mutating the subject can move the oracle by the same amount and the check stays
-green for the wrong reason. Our own controls are exposed to it wherever a check
-reads the working tree, the installed package, or a generated artifact that the
-mutation also regenerates. **A control that cannot distinguish "the check
-works" from "the mutation was invisible to it" is not a control**, and the
-tell is that it passed on the first try without you having to think about
-isolation.
+Until 2026-09-11 this section also required every check over mechanically
+specified behaviour to be shown red before it was trusted (break the thing it
+guards, watch it fail, put it back), with rules for building those mutation
+controls. The owner retired that requirement, and nothing here asks for it
+now. The `shown red` column in the index is kept as a record of what was done.
 
 ### A metric that ranks two arms is a claim about the metric
 
@@ -508,10 +426,9 @@ swept; a full sweep of `docs/` is not done.
 One line each. The narrative behind items marked *(pm)* is in
 [`docs/check_postmortems.md`](check_postmortems.md).
 
-1. **The `shown red` column is the record -- read it, not a count.** Where a
-   check guards mechanically specified behaviour and its cell reads
-   `not recorded`, that is a real debt. Where the expected value *was* the
-   measurement, see The standard.
+1. **The `shown red` column is a record from before 2026-09-11**, when The
+   standard still asked for a check to be shown failing before it was
+   trusted. A `not recorded` cell is not a debt.
 2. **The `claims block` column, likewise.** Where it reads `no`, "what breaks
    if this case is deleted" needs reading the assertions and inferring
    backwards.
@@ -530,10 +447,3 @@ One line each. The narrative behind items marked *(pm)* is in
    `sol_curves.verify_adjacency` was the clearest, fixed 2026-08-16. *(pm)*
 7. **The uncontrolled-requirement audit is one pass deep.** The table above
    covers `CLAUDE.md` only; `docs/` is unswept. *(pm)*
-8. **A whole-check baseline can mis-attribute a mutation.** The nine
-   `bench/red/` harnesses grade a mutation on the *check's* verdict moving, so
-   one aimed at arm X is satisfied by arm Y firing. Not a free pass -- the
-   verdict moved and a defect exists -- but weaker than the named-effect
-   grading eight other arms already achieve. **Known and un-earned:** no
-   observed instance, so by this repo's own bar it buys no rework. Prefer
-   named-effect grading in new arms, where it costs nothing at authoring time.

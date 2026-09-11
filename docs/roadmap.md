@@ -1,6 +1,6 @@
 # Roadmap: what we are trying to find out, and what would count as finding it
 
-Last updated: 2026-09-03.
+Last updated: 2026-09-11.
 
 ## What this is, and who it is for
 
@@ -25,6 +25,22 @@ Two companion documents, and the split matters:
 `docs/evidence.md` is the ledger of things measured that **should not be
 relied on**. This file is the forward-looking one: what we are doing next and
 what would make it a real answer.
+
+## Closed lanes
+
+Closed by the owner; propose nothing on one unless the owner reopens it.
+History that still names them (the changelog, dated records, postmortems,
+session logs) is deliberate and is not drift to clean up.
+
+| lane | closed | what stands instead |
+|---|---|---|
+| the extracted fl2va-to-ref2va reference LoRA | 2026-08-21, `816f704` | reference graphs load the ref2va checkpoint; there is no second path |
+| the int8_convrot video VAE | 2026-08-21, `bc25d89` | the fp16 cast of the release's VAE; `bench/check_model_files.py` grades every model name |
+| single-frame image generation and editing | 2026-08-27 | `docs/h3_image_editing.md` records what moved to `archive/`. Reference-image video graphs are live and not part of this |
+| calibrating or quantising our own encoder (the llm-compressor AWQ/GPTQ lane) | 2026-08-27 | the encoder is `h3_config.MODELS["clip"]`; the lane's record is under `docs/research/qwen3-vl-special-tokens-post-training/` |
+| PDD quality work | parked 2026-09-05 | "Owner decisions, 2026-09-05 evening" below, and `docs/research/pdd/2026-09-05_bake_plan.md` |
+| `bench/restart_comfy.sh` | disabled 2026-09-02 | restart by hand, `docs/comfy_notes.md` |
+| a hook that blocks pattern kills (`pkill`, `killall`) | tried and removed 2026-09-03 | kill one pid, found from the port owner |
 
 ## Current forward plan — 2026-09-04
 
@@ -475,16 +491,15 @@ and is indistinguishable from a real negative.
 ### Accuracy and correctness
 
 **Good = graded against an independent implementation, on inputs with the
-right distribution, with a control that has been shown to fail.**
+right distribution.**
 
 Synthetic `torch.randn` is not the right distribution: it gives a near-uniform
 softmax, so a block-sparse router has nothing to find and the premise of the
 method is absent. That single fact retired every accuracy figure this repo
 used to quote.
 
-A check is untrusted until it has gone red for the right reason. Prefer a
-control the check compares against over asserting numbers computed in the test
-itself.
+Prefer a control the check compares against over asserting numbers computed
+in the test itself.
 
 ### Quality
 

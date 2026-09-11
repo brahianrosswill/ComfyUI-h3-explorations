@@ -4,6 +4,36 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.71
+
+### Changed
+
+- **No check has to be shown red before it is trusted.** Owner's call,
+  2026-09-11: the red-before-green requirement is gone from every operative
+  surface. `VISION.md` "Controls" keeps only that a check must not be red on a
+  correct state. `docs/checks.md` "The standard" is rewritten without it and
+  loses the mutation-control sections and the Gaps item about red harnesses;
+  its `shown red` column stays as a record. `docs/roadmap.md` and two entries
+  in `docs/open_experiments.md` (#22 among them) drop the rule,
+  `docs/drift_frontier.md` F1 to F4, which planned tiers of red harness, are
+  dropped, and `bench/red/README.md` says the harnesses are retired. The
+  harnesses themselves and the negative-control cases inside existing checks
+  are unchanged.
+- **Closed lanes have one home**: `docs/roadmap.md` "Closed lanes" lists the
+  seven the owner closed, which until now were recorded only in agent memory.
+- **`docs/comfy_notes.md`** says not to run a `uv` project command from this
+  repo while `VIRTUAL_ENV` names the ComfyUI venv (one recreated that venv
+  empty on 2026-09-11) and not to restore the June venv list, and step 5 of
+  "Changing a graph" runs the schema check with the ComfyUI venv's python
+  instead of `uv run`.
+- **The `h3-experiment` skill** no longer defaults benches to canvases cheaper
+  than 16:9; probes run at 1152x768 or 1344x768 with 345 frames.
+- **`CLAUDE.md`** opens with the tinkering-repo rule (adopt a default sglang
+  and ComfyUI agree on; rigour proportional to the claim), and gains the
+  probe-canvas line, a pointer to the closed lanes, and the pathspec commit
+  rule in its shared-checkout bullet. That file also holds another session's
+  uncommitted prompt-timing rule, so these edits land with its next commit.
+
 ## 0.99.70
 
 ### Changed

@@ -612,9 +612,7 @@ owner's judgment affordable enough to drain the queue without one.
 **Blocker: none, and that is the point.** Every other entry blocked on owner
 judgment has been listed that way since 2026-08-13 without anyone asking what
 would make the judgment cheaper. A screen that can go red is worth more than
-another parked question, and this repo's own rule — a check is not trusted
-until it has been shown red for the right reason — applies to the instrument
-before it applies to anything it grades.
+another parked question.
 
 ---
 
@@ -1601,10 +1599,9 @@ differ only in `unet_name`, pruned against unpruned, compared at that step.
   step 1 exists for trajectory statistics, which this is not), giving q/k/v
   at five depths per arm. Plus one addition to `h3_capture.py`: an optional
   `final=1` key that writes the final layer's output (the velocity) at the
-  captured steps, the one number that is "the network output". Its
-  deliberate violation: a run with `final=1` on a graph where the tap is
-  bypassed must write nothing, and a written tensor must reproduce the
-  sampler's first-step update to bf16 precision. If the tap is not built,
+  captured steps, the one number that is "the network output". A
+  written tensor must reproduce the sampler's first-step update to bf16
+  precision. If the tap is not built,
   the fallback is the decoded one-step frames, a monotone but nonlinear
   proxy, and the entry must say so.
 - **Arms:** {t2v, ref3} x {fl2va, ref2va} x {pruned, unpruned}, eight

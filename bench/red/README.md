@@ -1,5 +1,10 @@
 # Red harnesses: why each one exists
 
+**Retired 2026-09-11.** The owner dropped the rule these harnesses served (show
+a check going red before trusting it green), and nothing in this repo asks for
+one any more. The scripts stay until the owner decides whether they go; no
+check runs them.
+
 A red harness proves a check can fail. `harness.py` explains the mechanism and
 `spine_control.py` is the control on it. This file is the other half: the
 instances that made the mechanism necessary.

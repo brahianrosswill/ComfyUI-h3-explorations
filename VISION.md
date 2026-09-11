@@ -51,10 +51,9 @@ number per arm cannot be re-asked. Spend the design effort on what to record.
 
 ## Controls
 
-**A control must be able to go red, and only when the state is wrong.** A
-check that cannot fail is not a check. A "must" with no assertion behind it
-says "enforced by nothing". A check that is red on a correct state teaches the
-reader to ignore red, which is worse than no check.
+**A check is red only when the state is wrong.** A check that is red on a
+correct state teaches the reader to ignore red, which is worse than no check.
+A "must" with no assertion behind it says "enforced by nothing".
 
 **Add nothing until something escapes; retire what you replace.** The reflex
 to add an instrument is usually a failure to read the ones installed. Building

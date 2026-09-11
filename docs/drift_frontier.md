@@ -87,7 +87,10 @@ a filed audit run.
 **Recommended: (a).** Peer concurs; the silent-and-external criterion is the
 part that transfers to other repos. Unlocks the most — under (b), F3 and F4
 disappear and F5 shrinks.
-Status: `open`
+Status: `dropped`
+**Dropped 2026-09-11:** the owner retired the rule that a check be shown red
+before it is trusted, so no tier of red harness is asked for. `docs/checks.md`
+"The standard" says what replaced it.
 
 ### F2 — The cells claiming a mutation with no artifact
 Most rows claiming `shown red` have no runnable artifact behind them; three do,
@@ -105,14 +108,20 @@ mutation, dispatching to `adversarial-verify` with a separate needle pass — th
 shipped instrument for exactly this. The run must be **filed**, not just
 performed: an unfiled run makes the cell an unsourceable status claim, which is
 transcribed claims replacing transcribed claims.
-Status: `open`
+Status: `dropped`
+**Dropped 2026-09-11:** the owner retired the rule that a check be shown red
+before it is trusted, so no tier of red harness is asked for. `docs/checks.md`
+"The standard" says what replaced it.
 
 ### F3 — The calibration column's shape
 Two values, both derived: a `path::symbol` citation to a harness in
 `bench/red/`, or a citation to a filed calibration run.
 **Recommended: adopt both.** Stops the column being the standing artifact
 `control-audit` explicitly warns against.
-Status: `open` (depends on F1)
+Status: `dropped`
+**Dropped 2026-09-11:** the owner retired the rule that a check be shown red
+before it is trusted, so no tier of red harness is asked for. `docs/checks.md`
+"The standard" says what replaced it.
 
 ### F4 — How a tier-2 cell cites its run, given a private collection
 F7 keeps postmortems gitignored; the cell lives in a tracked `docs/checks.md`.
@@ -125,7 +134,10 @@ That is `filing.md`'s unreachable-citation case.
 **Recommended: (a).** Tripwire: if a finding will not compress to a clause, the
 cell is carrying more than a cell should, and that record wants to be a
 document. A set of those would mean tier 2 is the wrong shape.
-Status: `open` (depends on F1, F7)
+Status: `dropped`
+**Dropped 2026-09-11:** the owner retired the rule that a check be shown red
+before it is trusted, so no tier of red harness is asked for. `docs/checks.md`
+"The standard" says what replaced it.
 
 ### F5 — Citation rewrite scope
 `path::symbol` is toolchain doctrine (`adversarial-verify` 0.9.0: "the checkable

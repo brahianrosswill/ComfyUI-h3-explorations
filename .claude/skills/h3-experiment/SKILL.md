@@ -16,9 +16,9 @@ design goes through them.
 
 2. **Relative to what, in which regime, at which canvas and seeds.** The
    baseline is defined in words in `VISION.md` and named as a graph in
-   `CLAUDE.md`; every claim is relative to it and says so. Ask the owner
-   which canvases and aspect ratios before any bench, and default to ones
-   cheaper than 16:9 (a standing instruction). `docs/roadmap.md`'s regime
+   `CLAUDE.md`; every claim is relative to it and says so. Probes run at
+   1152x768 or 1344x768 with 345 frames (`CLAUDE.md`); a cheaper canvas only
+   proves a harness runs. `docs/roadmap.md`'s regime
    section says what transfers between the base model and the distilled
    students. A perceptual claim needs a distribution of seeds, never a pair
    (`CLAUDE.md`).

@@ -47,6 +47,17 @@ environment. The owner's `start.sh` now falls back to the venv's own python
 overrides it. If a `start.sh` in front of you still says `uv run`, set
 `COMFY_PYTHON=.venv/bin/python` before launching.
 
+**No `uv` project command from this repo while `VIRTUAL_ENV` names the
+ComfyUI venv.** Sessions here inherit that variable, and `uv run` or `uv sync`
+treats this repo's `pyproject.toml` as a project and can recreate the active
+venv empty. It happened on 2026-09-11 from this checkout, the day after the
+`start.sh` wipe above: the recreated venv's `pyvenv.cfg` carried this
+project's name as its prompt. Run scripts with `<comfy-venv-python>`
+directly, and before starting the server or a kitchen build confirm the
+venv's `site-packages` is not empty. **Do not restore the June
+`known_good_venv.txt` / `restore_venv.sh` environment**: the owner ruled it
+too old on 2026-09-10. Rebuild instead.
+
 `setsid` puts the server in its own session, and the same prefix belongs on
 every long runner (`bench/run_graph_arms.py`) launched from an agent's
 shell: a process that inherits the agent's session dies with the agent's
@@ -130,7 +141,7 @@ so when the power limit is not stock.
    python, never `uv run`: the repo-local venv lacks `packaging`; while a
    render holds the card, prefix `CUDA_VISIBLE_DEVICES=`, see `docs/checks.md`
    "Running them")
-5. `uv run python bench/check_workflow_schema.py`, then the smoke. With no
+5. `<comfy-venv-python> bench/check_workflow_schema.py`, then the smoke. With no
    paths it walks `graph_paths(include_bench=True)`, so no directory is typed
    here; pass paths only to narrow it. It exits 2, not 0, when no server
    answered -- nothing validated is not nothing wrong.

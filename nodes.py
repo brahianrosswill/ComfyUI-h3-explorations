@@ -190,9 +190,7 @@ class MiniMaxH3SageAttention(io.ComfyNode):
         # the real ModelPatcher the assertion cannot fail.
         # The final-layer tap for `docs/open_experiments.md` #22. Installed
         # here rather than in its own node so that BYPASSING THIS NODE TURNS IT
-        # OFF -- the deliberate violation the entry asks for is a run with
-        # `final=1` on a graph where the tap is bypassed writing nothing, and
-        # that is only true if the tap rides on a patch. Inert unless
+        # OFF, which is only true if the tap rides on a patch. Inert unless
         # `H3_CAPTURE` carries `final=1`, which is every normal render.
         if h3_capture.wants_final():
             _original_forward = diffusion_model.forward
