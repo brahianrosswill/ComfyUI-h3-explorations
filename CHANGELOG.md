@@ -4,6 +4,17 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.67
+
+### Changed
+
+- **The `h3-experiment` skill no longer asks for a deliberate-violation
+  test.** Owner's call, 2026-09-11: proving that a check can go red before
+  trusting it is no longer a standing step for sessions here. Step 5 cited
+  `CLAUDE.md` for the rule, and `CLAUDE.md` does not carry it. The same rule
+  still stands in `docs/checks.md` ("The standard") and `VISION.md`
+  ("Controls"), pending the owner's decision on those.
+
 ## 0.99.66
 
 ### Changed

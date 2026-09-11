@@ -42,8 +42,7 @@ design goes through them.
 5. **Before the card.** `bench/preflight_graph.py <graph>` on any new or
    hand-built graph. `bench/check_distill_settings.py` on any LoRA row.
    Regenerate and run the fast checks `docs/checks.md` indexes. A new bench
-   tool gets one throwaway invocation read end to end before any batch, and
-   an instrument gets a deliberate-violation test (`CLAUDE.md`).
+   tool gets one throwaway invocation read end to end before any batch.
 
 6. **Running and judging.** The `h3-ab-session` sibling skill and
    `docs/eval_comparison.md` section 3 own everything from the first render
