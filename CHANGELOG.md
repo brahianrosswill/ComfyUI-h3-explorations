@@ -4,6 +4,21 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.64
+
+### Added
+
+- **Pair B graded on activations**
+  (`bench/results/2026-09-10_sol_impl_capture_grade.json`): twelve cells,
+  blocks 0/24/49 at steps 5/6/12/13, courtroom at the A/B's first seed. At
+  matched knobs ComfyUI core's chunked-producer Sol path and our node's call
+  differ by no more than the kernel's all-routed floor in every cell, core's
+  carried statistics make no measurable difference, and the Q/K/V rebuilt
+  from the pre-norm capture equal the post-RoPE capture. The implementation
+  is not a variable; the A/B's pair B renders can show only sample
+  divergence. Ours as shipped is closer to exact than core's defaults on the
+  same cells, and the text segment is the worst in every arm.
+
 ## 0.99.63
 
 ### Fixed

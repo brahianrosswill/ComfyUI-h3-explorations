@@ -2170,6 +2170,25 @@ version of this table until 2026-09-10:
   `bench/check_attention_defaults.py::SOL_EXEMPT_STEMS`), and core's
   `BlockSparseAttention` runs it too.
 
+### Core's `BlockSparseAttention` against ours: the implementation is not a variable (2026-09-10)
+
+*Measured on captured activations*
+(`bench/results/2026-09-10_sol_impl_capture_grade.json`, graded by
+`bench/grade_sol_impl_on_capture.py` on the `pre=` capture recorded in
+`bench/results/2026-09-10_capture_inventory_sol_impl_courtroom.json`). At
+matched knobs (`h3_config.SOL_CORE_DEFAULTS`), core's chunked producer --
+q/k-norm and RoPE inside the kernel, K/V statistics carried from the previous
+step -- and our node's call on ComfyUI's own normed, roped tensors land the
+same distance from exact attention in every cell, and differ from each other
+by no more than the kernel's all-routed floor for that block. Carrying the
+statistics changes nothing measurable. So the two nodes differ in POLICY
+(their defaults, the knob column above), not in arithmetic, and a rendered
+pair at matched knobs can only show sample divergence. On the same cells ours
+as shipped sits closer to exact than core's defaults; whether that difference
+is visible is the blind session `sol_core_ab_2026-09-10`'s pair A
+(`bench/sol_core_ab_arms.json`). One capture, one scene, three blocks, four
+steps: a statement about these cells, not every layer.
+
 ---
 
 ## What is open

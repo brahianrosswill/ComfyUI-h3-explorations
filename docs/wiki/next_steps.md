@@ -22,15 +22,23 @@ own below the rule.
   `start.sh` note) is verified and the server restarted.
 - All-rows sink switch: planned, gated on pair C (`docs/roadmap.md`, forward
   plan step 3).
-- Pair B's attributing instrument, BUILT: `H3_CAPTURE=...,pre=1` and
-  `bench/grade_sol_impl_on_capture.py` (both docstrings are the contract).
-  Next, after the A/B batch and a restart (node code): capture on
-  `workflows/bench/h3_text_to_video_stamped_api.json` at the courtroom prompt
-  and the A/B's seed, server armed with
-  `H3_CAPTURE="dir=$H3_CAPTURE_ROOT/2026-09-10_sol_impl_courtroom,blocks=0:24:49,steps=5:6:12:13,cycle=16,pre=1"`
-  (two consecutive step pairs per block, which the carried-statistics arm
-  needs), then the grader with `--limit 2` first. Size the disk first; the
-  pre files are large at this sequence length.
+- Pair B, GRADED on activations
+  (`bench/results/2026-09-10_sol_impl_capture_grade.json`, capture
+  `2026-09-10_sol_impl_courtroom`, its repo records beside it): at matched
+  knobs core's chunked producer and our node differ by no more than the
+  kernel's own all-routed floor in every cell, carried statistics are inert,
+  and the rebuilt Q/K/V equal the capture. So pair B's rendered pairs can only
+  show sample divergence. The same record has ours as shipped closer to exact
+  than core's defaults; pair A's scores say whether that is visible. The text
+  segment is the worst segment in every arm, which is the all-rows argument
+  again.
+- A/B scoring: the owner scores `sol_core_ab_2026-09-10`; then
+  `bench/score_session.py`, the loudness record
+  (`bench/measure_clip_loudness.py --outputs
+  bench/results/2026-09-10_sol_core_ab_outputs.json --baseline-rung ours`),
+  the frontier table, and the all-rows decision from pair C.
+- The Base16 capture passed its `keep_until` on 2026-09-10 and the recycler
+  lists it recyclable; deleting it is the owner's call.
 - `bench/check_dit_prefix_attention.py` is indexed as CPU-only but cannot run
   with CUDA masked: it imports `comfy_extras.nodes_minimax_h3`, whose import
   chain reaches `comfy.model_management`, which asks CUDA for a device at
