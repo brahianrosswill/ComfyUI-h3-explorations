@@ -4,6 +4,23 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.70
+
+### Changed
+
+- **The owner's `start.sh` no longer cross-checks the comfy-kitchen build
+  record at launch; it prints the installed version and nothing else.** The
+  check was added on 2026-09-03, when the fork carried kernel work the stock
+  wheel lacked, so a silent reinstall of the stock wheel changed what Sol
+  did. Since 0.2.33 the fork's whole delta is the `blk_cnt` out-parameter
+  (`bench/results/2026-09-08_kitchen_0233_blk_cnt_rebase.json`): unarmed, the
+  node never passes it, and armed, `sol_attn_h3.py::_require_kernel` refuses
+  a wheel without it. The pin, record and source-commit checks are
+  `vendor/rebuild_kernel.sh --check`'s. `start.sh` is not in this repo; the
+  two comments in `vendor/rebuild_kernel.sh` that said it reads the record
+  now say who does. The record is still written, because `docs/SOLATTN.md`
+  and `docs/sol_upstream.md` cite it.
+
 ## 0.99.69
 
 ### Changed

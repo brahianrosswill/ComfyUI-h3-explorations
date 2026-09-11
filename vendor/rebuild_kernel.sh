@@ -68,8 +68,8 @@ if [ "${1:-}" = "--check" ]; then CHECK_ONLY=1; shift; fi
 ARCH="${1:-89}"
 
 # How to become current, printed wherever the gate refuses. The worktree goes
-# somewhere durable, not a session scratchpad: the build record points at it
-# and start.sh warns when a running build's source is gone.
+# somewhere durable, not a session scratchpad: the build record points at it,
+# and a record naming a source that has been deleted answers nothing.
 pin_worktree() {   # the worktree holding sol-blk-cnt-<pin>, or nothing
     git -C "$CLONE" worktree list --porcelain 2>/dev/null |
         awk -v b="branch refs/heads/sol-blk-cnt-$PIN" '/^worktree /{w=substr($0,10)} $0==b{print w; exit}'
@@ -230,11 +230,15 @@ WHL=(dist/comfy_kitchen-"$VER"-*.whl)
 uv pip install --python "$PY" --force-reinstall --no-deps "${WHL[0]}"
 
 # The build record: ONE file beside the venv saying which build is installed
-# and where its source is, written at the only moment both are known. start.sh
-# prints it on every launch and cross-checks it against the installed wheel,
-# so "which comfy-kitchen is running" has one answer and one path to it
-# (owner's ask, 2026-09-03). A stock reinstall replaces the wheel but not this
-# file, which is exactly the mismatch start.sh is there to shout about.
+# and where its source is, written at the only moment both are known (owner's
+# ask, 2026-09-03). It is read by a person and cited by docs/SOLATTN.md and
+# docs/sol_upstream.md. A stock reinstall replaces the wheel but not this
+# file, so a record whose version differs from the installed one means
+# something reinstalled comfy-kitchen after this script ran. Until 2026-09-11
+# start.sh printed and cross-checked it on every launch; it now prints only
+# the installed version, because the node refuses an armed route observer on
+# a wheel without blk_cnt (sol_attn_h3.py::_require_kernel) and --check
+# covers the pin.
 RECORD="$VIRTUAL_ENV/comfy_kitchen_build.json"
 "$PY" - "$RECORD" "$VER" "$SRC" "${WHL[0]}" "$ARCH" <<'PYEOF'
 import json, subprocess, sys, time
