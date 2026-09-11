@@ -225,6 +225,12 @@ turn a mix into a time are the medians in
 `bench/results/2026-09-03_ladder_outputs.json`. Nothing below is a verdict,
 and the last column says why it is on the list and what would make it one.
 
+**The step mixes below predate `07b903c` (2026-09-11)**, which moved
+`end_percent` to 1.0 and removed the dense last step. The leader and the
+all-rows candidate now run four sage and twelve Sol of sixteen, reasoned from
+the Sol window's sigma band at shift 12 rather than re-rendered; the PDD rows
+changed too and are not recounted here.
+
 | graph | what it is | step mix (of 16, or of 8 under PDD) | why it is here, and what settles it |
 |---|---|---|---|
 | `workflows/h3_candidate_t2v_pdd8_sol_narrow.json` | PDD8 with Sol on two of the eight steps | six sage, two Sol | the shipped PDD8 rung lost every scene blind and carried Sol on four steps; this asks whether Sol on the coarse schedule is what lost. Blinded as `pdd_ladder_2026-09-04`; unjudged |

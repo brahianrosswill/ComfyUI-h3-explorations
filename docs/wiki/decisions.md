@@ -17,6 +17,9 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-11
 
+- **The frontier table in `next_steps.md` counted a dense last step.** It said
+  the leader runs five sage and eleven Sol of sixteen; since `07b903c` it runs
+  four and twelve (reasoned, not rendered). A note above the table says so.
 - **`docs/comfy_notes.md` said Sage runs `fp16 (most accurate)`, not `auto`.**
   The config has shipped `auto` since `497b421` (2026-08-18), which scoped the
   fp16 verdict to renders without Sol; the paragraph now says so.

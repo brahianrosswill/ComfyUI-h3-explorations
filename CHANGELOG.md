@@ -4,6 +4,15 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.85
+
+### Fixed
+
+- **`docs/wiki/next_steps.md`'s frontier table is marked as predating
+  `07b903c`.** Its step mixes counted a dense last step; the leader now runs
+  four sage and twelve Sol of sixteen, reasoned from the Sol window's sigma
+  band.
+
 ## 0.99.84
 
 ### Fixed
