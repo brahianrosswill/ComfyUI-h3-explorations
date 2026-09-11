@@ -235,10 +235,10 @@ uv pip install --python "$PY" --force-reinstall --no-deps "${WHL[0]}"
 # docs/sol_upstream.md. A stock reinstall replaces the wheel but not this
 # file, so a record whose version differs from the installed one means
 # something reinstalled comfy-kitchen after this script ran. Until 2026-09-11
-# start.sh printed and cross-checked it on every launch; it now prints only
-# the installed version, because the node refuses an armed route observer on
-# a wheel without blk_cnt (sol_attn_h3.py::_require_kernel) and --check
-# covers the pin.
+# start.sh printed and cross-checked it on every launch; it now prints the
+# installed version and says to run this script when that is the stock wheel,
+# because the node refuses an armed route observer on a wheel without blk_cnt
+# (sol_attn_h3.py::_require_kernel) and --check covers the pin.
 RECORD="$VIRTUAL_ENV/comfy_kitchen_build.json"
 "$PY" - "$RECORD" "$VER" "$SRC" "${WHL[0]}" "$ARCH" <<'PYEOF'
 import json, subprocess, sys, time
