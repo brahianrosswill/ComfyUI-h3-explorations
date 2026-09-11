@@ -4,6 +4,26 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.62
+
+### Changed
+
+- **`bench/blind_batch.py`'s clip join is one function, `locate_clips`**, and
+  its "clips predate the JSONL's first row" guard now measures from the first
+  row, as its docstring always said, instead of the first judged row. Benign
+  either way in practice: a warmup's clip is written just before the first
+  judged render starts, inside the guard's slack, and on the 2026-09-10 A/B
+  the old guard and the new one agree (checked directly). It would only have
+  differed had a warmup finished well before the first judged render began.
+
+### Added
+
+- **`bench/build_outputs_record.py --counter-fallback`** joins rows the
+  server's history no longer knows through that same `locate_clips` (filename
+  counter plus mtime window), and records per arm which route found its clip
+  (`clip_source`). Needed on 2026-09-10, when a restart for node code came
+  before the outputs record of the core-versus-ours A/B was built.
+
 ## 0.99.61
 
 ### Added

@@ -184,6 +184,69 @@ def prefix_of(graph_path: Path, label: str) -> str | None:
     return None
 
 
+def locate_clips(rows: list[dict], host: str, root: Path) -> dict[int, Path]:
+    """Every row's silent clip on the share, keyed by JSONL row index, warmup rows included.
+
+    `/history` by prompt id first; else the filename counter among the rows of
+    that label, cross-checked against each row's render window by mtime (the
+    module docstring, "How a row finds its clip"). Refuses with SystemExit
+    rather than guessing. Shared since 2026-09-10 with
+    `bench/build_outputs_record.py`, which needs the same join when the
+    rendering server has restarted and its history is gone.
+
+    **The predates-the-JSONL guard reads the JSONL's FIRST row, warmup
+    included**, as the module docstring says. Until 2026-09-10 it read the
+    first JUDGED row. The two agree in practice -- a warmup's clip is written
+    just before the first judged render starts, inside the window's slack, and
+    they agreed on that day's A/B -- and would only differ had a warmup
+    finished well before the first judged render began.
+    """
+    # A row's `ts` is written when the render FINISHES, so its clip's mtime
+    # precedes `ts` by up to `wall_s`; every window is [ts - wall_s - slack, ts + slack].
+    def window(r):
+        t_end = time.mktime(time.strptime(r["ts"], "%Y-%m-%dT%H:%M:%S"))
+        return t_end - float(r.get("wall_s") or 0) - 120, t_end + 5
+    first_start = min(window(r)[0] for r in rows)
+    # Counter alignment walks EVERY row of a label, warmup included: the
+    # warmup's clip took a counter slot too, and aligning only the judged rows
+    # shifted every clip by one on the first self-test (2026-08-20).
+    per_label: dict[str, list] = {}
+    for i, r in enumerate(rows):
+        per_label.setdefault(r["label"], []).append((i, r))
+    located: dict[int, Path] = {}
+    for label, lrows in per_label.items():
+        pending = []
+        for i, r in lrows:
+            files = history_outputs(host, r.get("prompt_id")) if r.get("prompt_id") else None
+            if files:
+                if len(files) != 1:
+                    sys.exit(f"refuse: row {i} ({label}) has {len(files)} video outputs in history; expected one")
+                located[i] = root / files[0]
+            else:
+                pending.append((i, r))
+        if not pending:
+            continue
+        if any(i in located for i, _ in lrows):
+            sys.exit(f"refuse: {label}: some rows resolve by prompt_id and some do not; the counter "
+                     "order cannot be aligned across a partial history")
+        graph = REPO / lrows[0][1]["graph"]
+        pfx = prefix_of(graph, label)
+        if pfx is None:
+            sys.exit(f"refuse: {graph} has no filename_prefix to search by")
+        cands = sorted((root / Path(pfx).parent).glob(Path(pfx).name + "_[0-9][0-9][0-9][0-9][0-9].mp4"))
+        if any(c.stat().st_mtime < first_start for c in cands):
+            sys.exit(f"refuse: {label}: clips with this prefix predate the JSONL's first row; "
+                     "the counter continues from earlier renders and order cannot be trusted")
+        if len(cands) < len(pending):
+            sys.exit(f"refuse: {label}: {len(cands)} clips on the share for {len(pending)} rows")
+        for (i, r), c in zip(pending, cands):
+            lo, hi = window(r)
+            if not (lo <= c.stat().st_mtime <= hi):
+                sys.exit(f"refuse: {label} row {i}: {c.name} mtime is outside the row's render window")
+            located[i] = c
+    return located
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=_SUMMARY)
     ap.add_argument("--jsonl", required=True)
@@ -239,53 +302,10 @@ def main() -> int:
             sys.exit(f"refuse: --pairs {a},{b}: {na} against {nb} judged rows; "
                      "pairs match by run index and the arms are uneven")
 
-    # Resolve every row's clip before copying anything. A row's `ts` is
-    # written when the render FINISHES, so its clip's mtime precedes `ts` by up
-    # to `wall_s`; every window below is [ts - wall_s - slack, ts + slack].
-    def window(r):
-        t_end = time.mktime(time.strptime(r["ts"], "%Y-%m-%dT%H:%M:%S"))
-        return t_end - float(r.get("wall_s") or 0) - 120, t_end + 5
-    first_start = min(window(r)[0] for _, r in rows_idx)
-    # Counter alignment walks EVERY row of a label, warmup included: the
-    # warmup's clip took a counter slot too, and aligning only the judged rows
-    # shifted every clip by one on the first self-test (2026-08-20).
-    per_label: dict[str, list] = {}
-    for i, r in enumerate(rows):
-        per_label.setdefault(r["label"], []).append((i, r))
+    # Resolve every row's clip before copying anything (`locate_clips`, which
+    # `bench/build_outputs_record.py` shares for the same join).
     judged = {i for i, _ in rows_idx}
-    located: dict[int, Path] = {}
-    for label, lrows in per_label.items():
-        pending = []
-        for i, r in lrows:
-            files = history_outputs(args.host, r.get("prompt_id")) if r.get("prompt_id") else None
-            if files:
-                if len(files) != 1:
-                    sys.exit(f"refuse: row {i} ({label}) has {len(files)} video outputs in history; expected one")
-                located[i] = root / files[0]
-            else:
-                pending.append((i, r))
-        if not pending:
-            continue
-        if any(i in located for i, _ in lrows):
-            sys.exit(f"refuse: {label}: some rows resolve by prompt_id and some do not; the counter "
-                     "order cannot be aligned across a partial history")
-        graph = REPO / lrows[0][1]["graph"]
-        pfx = prefix_of(graph, label)
-        if pfx is None:
-            sys.exit(f"refuse: {graph} has no filename_prefix to search by")
-        cands = sorted((root / Path(pfx).parent).glob(Path(pfx).name + "_[0-9][0-9][0-9][0-9][0-9].mp4"))
-        if any(c.stat().st_mtime < first_start for c in cands):
-            sys.exit(f"refuse: {label}: clips with this prefix predate the JSONL's first row; "
-                     "the counter continues from earlier renders and order cannot be trusted")
-        if len(cands) < len(pending):
-            sys.exit(f"refuse: {label}: {len(cands)} clips on the share for {len(pending)} rows")
-        for (i, r), c in zip(pending, cands):
-            lo, hi = window(r)
-            if not (lo <= c.stat().st_mtime <= hi):
-                sys.exit(f"refuse: {label} row {i}: {c.name} mtime is outside the row's render window")
-            if i in judged:
-                located[i] = c
-    located = {i: p for i, p in located.items() if i in judged}
+    located = {i: p for i, p in locate_clips(rows, args.host, root).items() if i in judged}
     missing = [i for i, _ in rows_idx if i not in located or not located[i].is_file()]
     if missing:
         sys.exit(f"refuse: clips not found for rows {missing}")
