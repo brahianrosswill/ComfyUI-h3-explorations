@@ -5,8 +5,9 @@ The observer's value is that a row can be trusted to describe the call it
 came from: the right prompt, the right block, the counts the kernel actually
 produced, and a failure that stops the capture rather than thinning it. So
 the cases are about identity, completeness and non-perturbation; the count
-semantics themselves are pinned upstream (`tests/test_sol_attn.py` on the
-`sol-blk-cnt` branch) with closed-form equalities at both tau extremes.
+semantics themselves are pinned upstream (`tests/test_sol_attn.py` on our
+comfy-kitchen build branch, `h3-build`) with closed-form equalities at both
+tau extremes.
 
 Claims, i.e. what breaks if a case is deleted:
 

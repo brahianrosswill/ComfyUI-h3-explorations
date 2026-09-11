@@ -474,7 +474,7 @@ else:
               if takes_blk_cnt else
               f"{why}, but the installed sol_attn has NO blk_cnt: the route "
               f"cannot be observed and the node refuses at patch time. "
-              f"Rebuild from the blk_cnt branch (vendor/rebuild_kernel.sh) "
+              f"Rebuild the kernel with vendor/rebuild_kernel.sh "
               f"or start the server without H3_SOL_OBSERVE.")
     else:
         check("observable", True,

@@ -61,65 +61,90 @@ PY="${PY:-$COMFY/.venv/bin/python}"
 [ -x "$PY" ] || { echo "no interpreter at $PY -- set PY=/path/to/python"; exit 1; }
 PIN="$(sed -n 's/^comfy-kitchen==\([0-9][0-9.]*\).*/\1/p' "$COMFY/requirements.txt" 2>/dev/null | head -1)"
 [ -n "$PIN" ] || { echo "ERROR: no comfy-kitchen==X.Y.Z pin in $COMFY/requirements.txt"; exit 1; }
-CLONE="$REPO/coderef/comfy-kitchen"
+CLONE="${CLONE:-$REPO/coderef/comfy-kitchen}"
 
 CHECK_ONLY=0
 if [ "${1:-}" = "--check" ]; then CHECK_ONLY=1; shift; fi
 ARCH="${1:-89}"
 
-# How to become current, printed wherever the gate refuses. The worktree goes
-# somewhere durable, not a session scratchpad: the build record points at it,
-# and a record naming a source that has been deleted answers nothing.
-pin_worktree() {   # the worktree holding sol-blk-cnt-<pin>, or nothing
+# --- The build branch: one name, always (owner, 2026-09-11) ------------------
+# The owner's fork (the clone's `origin`) holds exactly:
+#
+#   main            a mirror of upstream main; never built
+#   h3-build        ComfyUI's pinned tag plus our blk_cnt commits: what we build
+#   sol-blk-cnt-pr  PR 168's head, our commits on upstream main; for the PR
+#                   only, and deleted when the PR closes
+#   archive/* tags  retired builds that records here cite by sha, kept
+#                   reachable so those shas still resolve
+#
+# Until 2026-09-11 every pin got its own branch (sol-blk-cnt-0.2.32,
+# sol-blk-cnt-0.2.33, ...) and the old ones piled up on the fork. Now a pin
+# move rebases h3-build in place, after tagging its old tip
+# archive/h3-build-<old version>.
+#
+# A build from h3-build installs as `<pin>+sol.<sha>`: the version names the
+# upstream release and the sha names our commits, so
+# `git -C coderef/comfy-kitchen log v<pin>..<sha>` is everything we add. That
+# is why the base is a tag and never main: main declares the last release's
+# version while holding later code, so the version would stop saying what is
+# in the build.
+#
+# The rebase stays manual on purpose. The gate below refuses a build whose
+# base is not the pin and prints the exact steps (recipe), so a forgotten
+# rebase cannot produce a wrong build. An automatic one would rewrite a branch
+# in a clone other agents share, and would make what is in the build depend
+# on when it was last built.
+BRANCH="h3-build"
+branch_worktree() {   # the worktree that has $BRANCH checked out, or nothing
     git -C "$CLONE" worktree list --porcelain 2>/dev/null |
-        awk -v b="branch refs/heads/sol-blk-cnt-$PIN" '/^worktree /{w=substr($0,10)} $0==b{print w; exit}'
+        awk -v b="branch refs/heads/$BRANCH" '/^worktree /{w=substr($0,10)} $0==b{print w; exit}'
 }
+# How to become current, printed wherever the script refuses. The clone is
+# durable, not a session scratchpad: the build record points at it, and a
+# record naming a source that has been deleted answers nothing.
 recipe() {
     echo
-    if git -C "$CLONE" rev-parse -q --verify "refs/heads/sol-blk-cnt-$PIN" >/dev/null; then
-        local wt; wt="$(pin_worktree)"
-        if [ -n "$wt" ]; then
-            echo "sol-blk-cnt-$PIN already carries our commits on v$PIN, in $wt;"
-            echo "run without SRC to build from it."
-        else
-            echo "sol-blk-cnt-$PIN exists; put the fork clone on it:"
-            echo "  git -C $CLONE switch sol-blk-cnt-$PIN"
-        fi
-        return
+    if ! git -C "$CLONE" rev-parse -q --verify "refs/heads/$BRANCH" >/dev/null; then
+        echo "$CLONE has no $BRANCH; take it from the fork:"
+        echo "  git -C $CLONE fetch origin && git -C $CLONE switch $BRANCH"
+        return 0
+    fi
+    if [ -z "$(branch_worktree)" ]; then
+        echo "$CLONE is not on $BRANCH; put it there:"
+        echo "  git -C $CLONE switch $BRANCH"
+        return 0
     fi
     local old
-    old="$(git -C "$CLONE" for-each-ref --sort=-version:refname --format='%(refname:short)' \
-           'refs/heads/sol-blk-cnt-[0-9]*' | head -1)"
-    old="${old:-<last-carried-branch>}"
-    echo "To carry the blk_cnt commits onto v$PIN (ComfyUI's pin), in the fork clone:"
+    old="$(git -C "$CLONE" show "$BRANCH:pyproject.toml" 2>/dev/null |
+           sed -n 's/^version = "\([^"+]*\).*/\1/p' | head -1 || true)"
+    # On the pin already: the refusal above says what else is wrong.
+    if [ -z "$old" ] || [ "$old" = "$PIN" ]; then return 0; fi
+    echo "ComfyUI now pins v$PIN and $BRANCH is built on v$old. Keep the old build"
+    echo "reachable, carry our commits onto the new tag, build, and back it up:"
     echo "  git -C $CLONE fetch upstream --tags"
-    echo "  git -C $CLONE cherry -v v$PIN $old    # '-' = already in v$PIN: skip it"
-    echo "  git -C $CLONE switch -c sol-blk-cnt-$PIN v$PIN"
-    echo "  git -C $CLONE cherry-pick v${old#sol-blk-cnt-}..$old"
+    echo "  git -C $CLONE tag -a archive/$BRANCH-$old $BRANCH -m \"$BRANCH on v$old, retired when ComfyUI pinned v$PIN\""
+    echo "  git -C $CLONE rebase --onto v$PIN v$old $BRANCH    # commits upstream already has drop out"
     echo "  vendor/rebuild_kernel.sh --check && vendor/rebuild_kernel.sh"
+    echo "  git -C $CLONE push --force-with-lease origin $BRANCH refs/tags/archive/$BRANCH-$old"
 }
 
-# Default source: the checkout holding `sol-blk-cnt-<pin>`, which since
-# 2026-09-11 is the fork clone itself -- one folder. It rests on the build
-# branch; PR 168's branch `sol-blk-cnt-pr` carries the same commits on current
-# upstream main and is switched to only for PR work. (Before that the build and
-# the PR lived in two extra worktrees while the clone sat on an old `sol-blk-cnt`, and
-# before that the default was `coderef/comfy-kitchen-sol`, kijai's checkout,
-# since renamed `comfy-kitchen-kijai`: a place to read, never to build from.)
-# The lookup follows the branch, not a path, so a clone left on some other
-# branch is refused rather than built. Overridable, e.g. to build one specific
-# commit:
+# Default source: the checkout that has $BRANCH, which is the fork clone
+# itself -- one folder. The lookup follows the branch, not a path, so a clone
+# left on some other branch (sol-blk-cnt-pr, for PR work) is refused rather
+# than built. (Before 2026-09-11 the branch was sol-blk-cnt-<pin>; before
+# 2026-09-08 the default was kijai's checkout, now coderef/comfy-kitchen-kijai:
+# a place to read, never to build from.) Overridable, e.g. to build one
+# specific commit:
 #
 #   SRC=/path/to/worktree vendor/rebuild_kernel.sh 89
 #
 # Every checkout under coderef/ is shared, and this script's whole design is
-# to leave the one it builds from exactly as it found it.
+# to leave the one it builds from as it found it; the submodule step below is
+# the one exception, and says why.
 if [ -z "${SRC:-}" ]; then
-    WANT="sol-blk-cnt-$PIN"
-    SRC="$(git -C "$CLONE" worktree list --porcelain 2>/dev/null |
-           awk -v b="branch refs/heads/$WANT" '/^worktree /{w=substr($0,10)} $0==b{print w; exit}')"
+    SRC="$(branch_worktree)"
     if [ -z "$SRC" ]; then
-        echo "REFUSED: $CLONE is not on $WANT, the branch that carries our"
+        echo "REFUSED: $CLONE is not on $BRANCH, the branch that carries our"
         echo "commits on ComfyUI's pinned tag."
         recipe; exit 1
     fi

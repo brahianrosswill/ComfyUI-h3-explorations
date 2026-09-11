@@ -647,8 +647,8 @@ def _require_kernel():
         raise RuntimeError(
             "H3_SOL_OBSERVE is set, but the installed comfy_kitchen.sol_attn "
             "has no blk_cnt argument, so the route cannot be observed. Rebuild "
-            "from the sol-blk-cnt branch (vendor/rebuild_kernel.sh) or start "
-            "the server without H3_SOL_OBSERVE.")
+            "the kernel with vendor/rebuild_kernel.sh, or start the server "
+            "without H3_SOL_OBSERVE.")
 
 
 def _bthd(q, k, v, heads, skip_reshape):

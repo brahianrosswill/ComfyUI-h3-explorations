@@ -4,6 +4,39 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.81
+
+### Changed
+
+- **The comfy-kitchen build branch is `h3-build`, one name for good, and the
+  owner's fork is cut down to what that needs.** Owner's call, 2026-09-11: the
+  simplest layout to maintain and for any session to read. Until now every pin
+  got its own branch (`sol-blk-cnt-0.2.32`, `sol-blk-cnt-0.2.33`, ...) and the
+  old ones stayed on the fork. The fork now holds `main` (a mirror of
+  upstream), `h3-build` (ComfyUI's pinned tag plus the `blk_cnt` commits,
+  created at the same commit `sol-blk-cnt-0.2.33` held, so nothing is
+  rebuilt), PR 168's `sol-blk-cnt-pr`, and four `archive/*` tags for retired
+  builds whose shas records here cite (`archive/sol-blk-cnt-continued`,
+  `archive/sol_attn`, `archive/sol-blk-cnt`, `archive/sol-blk-cnt-0.2.33`).
+  Six branches were deleted from the fork after each tag was confirmed there;
+  `sol-blk-cnt-0.2.32` got no tag because nothing cites its commits.
+- **The base stays a tag, not upstream main.** Main declares the last
+  release's version while holding later code, so a main-based
+  `0.2.33+sol.<sha>` would stop saying what is in the build; with a tag base,
+  `git log v<pin>..<sha>` in the clone is everything we add. The script's
+  header, "The build branch", records the fork's layout and this reason.
+- **`vendor/rebuild_kernel.sh` finds `h3-build` by name, and a pin move is a
+  rebase in place.** When ComfyUI moves its pin, the script refuses and prints
+  the steps: tag the old tip `archive/h3-build-<old>`, `git rebase --onto
+  v<pin> v<old> h3-build`, build, push both. The rebase stays manual: the
+  refusal makes a forgotten one harmless, and an automatic one would rewrite a
+  branch in a shared clone. `CLONE` is now overridable, like `COMFY` and `PY`.
+- The refusal messages in `sol_attn_h3.py` and `bench/check_sol_kernel.py`,
+  which said "rebuild from the sol-blk-cnt branch", now name
+  `vendor/rebuild_kernel.sh`. `bench/check_sol_observe.py`'s docstring,
+  `docs/SOLATTN.md`'s source row and `docs/wiki/references.md`'s
+  comfy-kitchen row name `h3-build`.
+
 ## 0.99.80
 
 ### Changed
