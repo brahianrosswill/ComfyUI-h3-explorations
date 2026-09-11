@@ -17,6 +17,12 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-11
 
+- **`CLAUDE.md` cut to what every session acts on** (owner). Seven "Settled
+  about H3" facts, the numeric-input and capture-broadly rules, and the
+  `coderef/` search advice moved to `docs/evidence.md`, `VISION.md` and
+  [`references.md`](references.md); nothing was withdrawn. "A rendered clip
+  cannot A/B a numerical change" stayed, because code and docs cite it as
+  `CLAUDE.md`'s.
 - **`bench/red/` removed** (owner). The red harnesses and their shared spine
   served only the retired red-before-green rule, and nothing imported or ran
   them; git history has them.

@@ -59,7 +59,7 @@ REQUIRED_REFERENCE_KEYS = {"slot", "source_file", "sha256", "raw_dimensions", "f
 #   key present, set  -> recorded. Passes.
 #
 # Reading absence as "presumably stock" rebuilds the exact hole these fields
-# exist to close, and it is CLAUDE.md's rule that anything gaining an absent
+# exist to close, and it is VISION.md's rule that anything gaining an absent
 # state makes every assertion about it inherit a third case.
 # `vae_quantization` is NOT here. It is singular, and a reference graph loads two
 # VAEs at different quantizations -- video `int8_convrot` beside audio `fp32` in

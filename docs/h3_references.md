@@ -824,7 +824,7 @@ encoder was calibrated on.
 
 **Renamed 2026-08-31.** This was a flat `qwen_short_edge` Int with default 0,
 where 0 meant "no separate view" -- a number selecting a mode, which is the
-shape CLAUDE.md's literal-widget rule forbids and which also rendered
+shape the literal-widget rule (`bench/check_literal_widgets.py`) forbids and which also rendered
 differently through the UI than through an API prompt that omitted it.
 `MiniMaxH3AppendRefImage.qwen_view` gives the text encoder a
 view of the reference that the video VAE does not encode. With 0, Qwen sees

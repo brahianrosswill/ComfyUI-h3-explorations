@@ -300,7 +300,7 @@ def make_sage_override(kernel_fn, kernel_kwargs, previous=None):
     # any Sol setting out of this closure -- there are none, it is not Sol --
     # and reports the render as unattributable. On a sage-only graph that is
     # the difference between "Sol is correctly absent" and "Sol is broken",
-    # which is the third-state rule in CLAUDE.md. The chain is exposed for the
+    # which is the third-state rule in VISION.md. The chain is exposed for the
     # same reason: whoever inspects this needs to reach what it wrapped.
     override.h3_kernel = "sage"
     override.h3_previous = previous

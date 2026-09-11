@@ -533,6 +533,28 @@ toward the woman in the charcoal coat" — or by its subject label in ref2va. re
 - How reliably a model follows an addressing cue is **unmeasured** here; the
   guides show it once. Write it, and do not assume it lands. [OPEN]
 
+### 5.10 Dialogue duration, word budgeting, and dynamic scene timing
+
+**Added 2026-09-11:** Automated generation easily falls into "cookie-cutter"
+patterns: repeating identical cut timestamps across different scenes (e.g.
+always cutting at `00:05.600`), forcing identical shot counts, or writing
+dialogue that does not fit the temporal window of the shot.
+
+- **Scene-driven shot cuts and counts**: Cut timestamps and the number of shots
+  must be dictated by the emotional beats, actions, and pacing of the specific
+  narrative. Never copy-paste fixed cut timestamps across scenes. The final cut
+  must leave at least 2.5s for the closing shot ($T_{\text{last}} \le \text{duration} - 2.5\text{s}$). [HOUSE]
+- **Natural speech cadence**: Spoken English delivers at approximately
+  **2.2 to 2.8 words per second**. [HOUSE]
+- **Action buffers**: Every speaking shot requires $0.6\text{s} - 1.2\text{s}$ of
+  physical blocking/action before speech begins and $0.6\text{s} - 0.8\text{s}$ of
+  explicit mouth/jaw closure (§5.6) after speech concludes. [HOUSE]
+- **Word budget formula**:
+  $\text{Word Budget} \approx (\text{Shot Duration} - \text{Buffers}) \times 2.5\text{ words/second}$.
+  Writing 20+ words into a 4-second shot forces the Audio VAE into unnatural,
+  slurred "auctioneer" delivery; writing 2 words in a 6-second shot without
+  diegetic action creates dead air and increases lip-drift entropy. [HOUSE]
+
 ## 6. On-screen text
 
 base §4.5, *stated*: place any **banner, sign, label, subtitle, or neon text**

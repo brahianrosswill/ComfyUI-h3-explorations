@@ -21,7 +21,13 @@ rule. `docs/wiki/prompting.md` is the router if you want the map first.
 **Writing a new one.** Section 2 of `docs/prompting.md` decides the field
 structure per mode; section 10 has graded worked examples to copy the shape
 of. Fix the frame count before writing: a prompt is only correct at a
-duration, for the reason section 2 gives.
+duration, for the reason section 2 gives. Fit scene beats, shot counts, and cut
+timestamps dynamically to the narrative; never copy-paste fixed cut timestamps
+(e.g. `00:05.600`) across prompts. Budget dialogue words strictly to shot duration
+(2.2–2.8 words/sec minus physical pre-speech and post-speech buffers) so actors
+neither fast-talk nor sit in dead air. For character likeness in T2VA, introduce
+subjects as `[Name] (played by [Actor] in [Show])` once in Shot 1, keeping vocal
+timbre in narrative prose outside `<d>`.
 
 **Editing or improving a shipped one.** The text lives in `prompt_bank/`
 and nowhere else; `docs/prompt_bank.md` says which graphs render each
@@ -36,9 +42,9 @@ where our shipped prompts diverged and what happened to each. Do not
 pattern-match a fix across the base and reference formats; section 12 owns
 the boundary.
 
-**Deciding whether a prompt is good.** `bench/grade_prompt_text.py` grades
-loose text; `bench/preflight_graph.py` grades a prompt already in a graph
-and prices the sequence; `bench/diff_prompt_corpus.py` reports where our
+**Deciding whether a prompt is good.** `python bench/grade_prompt_text.py --mode <mode> <prompt.txt>`
+grades loose text; `python bench/preflight_graph.py` grades a prompt already in a graph
+and prices the sequence; `python bench/diff_prompt_corpus.py` reports where our
 prompts diverge from vendor practice. Each docstring is its contract.
 
 **Handing the rules to someone outside this repo.**

@@ -4,6 +4,32 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.77
+
+### Changed
+
+- **`CLAUDE.md` is cut to what every session acts on.** Owner's call,
+  2026-09-11. "Settled about H3" keeps three facts (Sol-Attn on by default,
+  the baseline graph, the probe canvas) and routes the other seven to
+  `docs/evidence.md`. The numeric-input and capture-broadly rules leave (their
+  check and `VISION.md` keep them), the checks bullet is one line, the
+  prompt-timing bullet points at `docs/prompting.md` 5.10, and "Reference
+  implementations" keeps the no-import rule and where to read the installed
+  kernel build while the `coderef/` search advice moves to
+  `docs/wiki/references.md`. The intro's `docs/rules_history.md` sentence goes;
+  the decisions page links it. Two code comments and one doc that called
+  those rules `CLAUDE.md`'s now name `VISION.md` or the check.
+- This commit also lands the `CLAUDE.md` edits described in 0.99.71, 0.99.72
+  and 0.99.74's companions: the tinkering-repo section, the probe line, the
+  closed-lanes pointer, the shared-checkout rule and the wiki routing.
+
+### Added
+
+- **`docs/prompting.md` 5.10**, dialogue duration and word budgeting, and the
+  matching guidance in the `h3-prompt` skill. Another session's work,
+  uncommitted since the morning of 2026-09-11, committed here at the owner's
+  word; the skill's commands run `python`, not `uv run` (0.99.74).
+
 ## 0.99.76
 
 ### Changed

@@ -7,8 +7,7 @@ what is currently on disk — some symlinks, some real clones — and this page 
 what each one is *for*: what it implements, what has actually been compared
 against it, and what it is not evidence of.
 
-**Written by a person. Not generated** — the generator that builds
-[`index.md`](index.md) never touches this file.
+**Written by a person.**
 
 **Revisions are an observation point, not a pin.** Every one below was read on
 the date in the header. A sister checkout moves under you; re-read before
@@ -19,6 +18,12 @@ itself.
 instance that earns it: requiring the clone and prepending it to `sys.path` is
 how a bench script made itself unrunnable on a box that had the wheel and no
 checkout. Use the clone for sources you cannot import; import the rest.
+
+**Searching it.** More than half of `coderef/` is symlinks, so use `find -L`
+and `grep -r --dereference-recursive`, or a search answers about a minority of
+it. Two references live in this repo instead: `bench/_sol_attn_reference.py`
+is the Sol-Attn reference for what can be imported, and
+`vendor/sol_attn_minimax.py` is a read-only reference node that is not loaded.
 
 ---
 
