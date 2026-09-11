@@ -64,8 +64,9 @@
   ],
   "not_established": [
     "that the four upstream failures are failures on upstream's CI, which builds with its own flags on its own hardware. What is established is that they fail here on both the stock wheel and a local build, and that our commits cannot be the cause.",
-    "that a 0.2.33 base renders the same as the 0.2.31+sol build every Sol number in this repo was measured on. The kernel gained token routing (inert at token_aug=0) and a rope-cache change (#162, a weak ref where a strong ref was, so the freqs tensor is no longer retained). Nothing here rendered."
+    "that a 0.2.33 base renders the same as the 0.2.31+sol build every Sol number in this repo was measured on. Between the two the kernel gained token routing (inert at token_aug=0). Nothing here rendered. [Corrected 2026-09-11; see correction_note.]"
   ],
+  "correction_note": "Corrected 2026-09-11. The second not_established entry also said the 0.2.33 base gained 'a rope-cache change (#162, a weak ref where a strong ref was, so the freqs tensor is no longer retained)'. It did not. #162 is e3d714b, on upstream main past v0.2.33 and in no tag: `git -C coderef/comfy-kitchen tag --contains e3d714b` prints nothing, and `git -C coderef/comfy-kitchen grep -i weakref v0.2.33 -- comfy_kitchen` finds nothing. So the build graded here (0.2.33+sol.3ff6a4b) never had #162, and neither does h3-build, which is v0.2.33 plus blk_cnt. The rest of the entry stands as written. docs/SOLATTN.md and docs/sol_upstream.md already placed PR 162 on main.",
   "render_verification": {
     "what": "the first render on the rebuilt kernel, with the route observer armed, so the node-to-kernel path is graded rather than assumed",
     "graph": "workflows/h3_text_to_video_api.json via bench/smoke_h3.py --length 49 --steps 16",

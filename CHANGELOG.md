@@ -4,6 +4,21 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.82
+
+### Fixed
+
+- **`bench/results/2026-09-08_kitchen_0233_blk_cnt_rebase.json` no longer says
+  the 0.2.33 base gained comfy-kitchen #162.** Its second `not_established`
+  entry listed "a rope-cache change (#162, a weak ref where a strong ref
+  was...)" among what the kernel gained between 0.2.31 and 0.2.33. #162 is
+  `e3d714b`, on upstream main past `v0.2.33` and in no tag, and `v0.2.33`
+  holds no `weakref` under `comfy_kitchen/`; so neither the build that record
+  graded nor today's `h3-build` has it. The entry now names only token
+  routing, and a new `correction_note` keeps the earlier claim and the two
+  commands that refute it. `docs/SOLATTN.md` and `docs/sol_upstream.md`
+  already placed PR 162 on main.
+
 ## 0.99.81
 
 ### Changed
