@@ -4,6 +4,22 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.73
+
+### Changed
+
+- **The owner's `start.sh` says to run `vendor/rebuild_kernel.sh` when the
+  launch finds the stock comfy-kitchen wheel.** 0.99.70 cut its kitchen block
+  to a bare version print, which also dropped the stock-wheel marker: the one
+  part that reminded anyone to rebuild after a new venv, a requirements
+  reinstall or a Manager repair, each of which puts the stock wheel back. The
+  marker is back as a suffix on that line. It warns and never builds, because
+  the build compiles CUDA against the venv's torch and refuses when ComfyUI
+  has moved its pin. `vendor/rebuild_kernel.sh`'s build-record comment, which
+  said `start.sh` prints only the version, now says it warns (`d4074a5`).
+  `start.sh` is not in this repo, so this entry is the pack's only record of
+  it.
+
 ## 0.99.72
 
 ### Changed
