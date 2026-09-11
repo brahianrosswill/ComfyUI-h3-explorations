@@ -168,7 +168,11 @@ echo "== upstream main past $NEWEST, untagged, not built by policy: $(git rev-li
 
 if [ "$CHECK_ONLY" = 1 ]; then
     WOULD="$PIN+sol.$(git rev-parse --short=7 HEAD)"
-    INSTALLED="$("$PY" -c 'import importlib.metadata as m; print(m.version("comfy_kitchen"))' 2>/dev/null || echo none)"
+    # -I (isolated): without it `-c` puts the current directory -- this source
+    # checkout -- first on sys.path, and its build-left comfy_kitchen.egg-info
+    # answered instead of the venv (2026-09-11: an empty venv read as the
+    # clone's stale 0.2.31 build).
+    INSTALLED="$("$PY" -I -c 'import importlib.metadata as m; print(m.version("comfy_kitchen"))' 2>/dev/null || echo none)"
     if [ "$INSTALLED" = "$WOULD" ]; then
         echo "== --check: current, and the venv already holds this build ($INSTALLED)"
     else

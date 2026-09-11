@@ -4,6 +4,27 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.68
+
+### Changed
+
+- **The kitchen fork is one checkout.** `coderef/comfy-kitchen` (the owner's
+  fork clone) is the only folder: it rests on `sol-blk-cnt-<pin>`, the branch
+  `vendor/rebuild_kernel.sh` builds, and PR 168's `sol-blk-cnt-pr` holds the
+  same commits on current upstream main. The two worktrees the build and the PR
+  lived in are gone, and the rebuild recipe switches branches instead of adding
+  worktrees.
+
+### Fixed
+
+- **`vendor/rebuild_kernel.sh --check` read the source checkout's metadata,
+  not the venv's.** Its installed-version query ran `python -c` inside the
+  checkout, where the build-left `comfy_kitchen.egg-info` answered first: an
+  empty venv read as the clone's stale 0.2.31 build. It now runs isolated
+  (`-I`). The earlier "the venv already holds this build" line was read the
+  same way; the venv did hold that build at the time, confirmed separately by
+  the launcher's own check, but `--check` had not measured it.
+
 ## 0.99.67
 
 ### Changed
