@@ -4,6 +4,25 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.76
+
+### Changed
+
+- **`docs/research/comfyui_h3_t2va_trace.md` cites comfy-kitchen source at
+  tag `v0.2.33`, not the installed wheel.** Owner's rule, 2026-09-11: nothing
+  points into the ComfyUI venv. Its six `comfy_kitchen` citations were paths
+  into the venv's site-packages, which fail `bench/check_doc_links.py`
+  whenever the venv is rebuilt and follow whatever wheel is installed. They
+  now go through the fork clone, `coderef/comfy-kitchen/comfy_kitchen/...`,
+  whose branch differs from the tag in none of the cited ranges. Re-checking
+  each range against `v0.2.33` moved two: the eager `int8_linear` is 971-1056
+  and the CUDA `int8_linear` 1865-2075 (cited as 971-1057 and 1854-2058). The
+  `int8.py` citation's op is `dequantize_int8_convrot_weight_dtype` at that
+  tag. The prose around the citations was not re-derived. The `.venv/`
+  mentions left in tracked files run the venv's python, name another
+  checkout's venv, or name the build record in dated records; none points
+  into the installed packages.
+
 ## 0.99.75
 
 ### Removed

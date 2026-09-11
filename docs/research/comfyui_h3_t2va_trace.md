@@ -27,9 +27,18 @@ runtime one; where this file touches those it points and stops.
 - *inference* — a conclusion, with the mechanism named so it can be refuted.
 
 Core paths are relative to the ComfyUI checkout (`comfy/...`, and
-`ComfyUI/nodes.py` where the basename is ambiguous). The
-`.venv/.../comfy_kitchen/...` citations are the installed wheel, written
-ComfyUI-relative so `bench/check_doc_links.py` can range-check them.
+`ComfyUI/nodes.py` where the basename is ambiguous). `comfy_kitchen` is
+cited as source at tag `v0.2.33`, ComfyUI's pin, through the fork clone
+(`coderef/comfy-kitchen/comfy_kitchen/...`). The clone's branch differs from
+the tag in none of the cited ranges, so `bench/check_doc_links.py`
+range-checks the same lines, and `git -C coderef/comfy-kitchen show
+v0.2.33:<path>` reads the tag itself. *Changed 2026-09-11:* this said the
+citations were the installed wheel, written as paths into the ComfyUI venv's
+site-packages. Those failed whenever the venv was rebuilt and followed
+whatever wheel was installed, and the wheel's revision was never recorded.
+Each range was re-checked against `v0.2.33` on 2026-09-11: the two
+`int8_linear` ranges and one op name moved; the prose around them was not
+re-derived.
 
 ---
 
@@ -209,7 +218,7 @@ Per quantized linear, three tensors. `blocks.0.attn.qkv_proj`:
 
 The format string says `tensorwise` and the scale is `[N, 1]`. **The name
 records the algorithm family, not the scale granularity**; the layout accepts
-either and switches on `scale.numel()` (`.venv/lib/python3.14/site-packages/comfy_kitchen/backends/eager/quantization.py:1005-1009`).
+either and switches on `scale.numel()` (`coderef/comfy-kitchen/comfy_kitchen/backends/eager/quantization.py:1005-1009`).
 There is no `input_scale` and no zero point — the scheme is symmetric and the
 activation scale is computed per row at run time.
 
@@ -385,7 +394,7 @@ itself.
 ### 1.7 What convrot is, and where each half lives
 
 A **regular Hadamard of order 256**, applied group-wise along the input
-dimension. `.venv/lib/python3.14/site-packages/comfy_kitchen/tensor/int8_utils.py:11-37` (*read*):
+dimension. `coderef/comfy-kitchen/comfy_kitchen/tensor/int8_utils.py:11-37` (*read*):
 
 ```python
     if size < 4 or (size & (size - 1)) != 0 or math.log(size, 4) % 1 != 0:
@@ -443,7 +452,7 @@ arm at `comfy/ops.py:1341-1355` that passes `dtype=self.weight.dtype` — making
 the cast still quantized. `torch.nn.functional.linear` then routes through
 `__torch_function__` to `comfy_kitchen`'s registered op.
 
-The arithmetic, `.venv/lib/python3.14/site-packages/comfy_kitchen/backends/eager/quantization.py:971-1057` (the
+The arithmetic, `coderef/comfy-kitchen/comfy_kitchen/backends/eager/quantization.py:971-1056` (the
 eager reference; the CUDA backend fuses the same steps):
 
 ```python
@@ -463,7 +472,7 @@ two roundings; the scale application runs in fp32 and there is exactly one cast
 to bf16 at the end. The activation rotation itself runs in bf16.
 
 On this box the real kernel is the CUDA backend
-(`.venv/lib/python3.14/site-packages/comfy_kitchen/backends/cuda/__init__.py:1854-2058`), which fuses the rotation,
+(`coderef/comfy-kitchen/comfy_kitchen/backends/cuda/__init__.py:1865-2075`), which fuses the rotation,
 the row-wise quantization and (where applicable) the SwiGLU into one kernel, then
 either a CUTLASS int8 GEMM with a fused fp32-dequant epilogue or a cuBLAS int8
 GEMM plus a separate dequant kernel. Both accumulate int32 and scale fp32.
@@ -682,7 +691,7 @@ With `_use_quantized = False` and `weight_only_quant` False,
 `weight.dtype` is BF16 (`orig_dtype`), `dtype` is `input.dtype` = fp32. They
 differ, so **every linear dequantizes its full weight to fp32 on every forward**,
 un-rotating the Hadamard as it goes
-(`.venv/lib/python3.14/site-packages/comfy_kitchen/tensor/int8.py:159-177` -> `dequantize_int8_convrot_weight`),
+(`coderef/comfy-kitchen/comfy_kitchen/tensor/int8.py:159-177` -> `dequantize_int8_convrot_weight_dtype`),
 and then runs an fp32 `F.linear`. There is no cache.
 
 The reader that found this confirmed it by executing the load and forward with
@@ -1665,7 +1674,7 @@ That is one of the release's two formats. The claim was wrong, it was used to
 
 `rms_rope_split_half_` fuses per-head RMSNorm and partial split-half rope into
 one in-place kernel writing back into the qkv buffer. The eager reference
-(`.venv/lib/python3.14/site-packages/comfy_kitchen/backends/eager/rope.py:67-92`) shows the order and the partial
+(`coderef/comfy-kitchen/comfy_kitchen/backends/eager/rope.py:67-92`) shows the order and the partial
 split exactly:
 
 ```python
