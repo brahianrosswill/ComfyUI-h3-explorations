@@ -1057,7 +1057,7 @@ rendered clip cannot A/B a numerical change.
 |---|---|
 | Core's reference-node contracts | [`bench/check_reference_contracts.py`](../bench/check_reference_contracts.py) |
 | Ordered plan against core plus intended differences | [`bench/check_reference_order.py`](../bench/check_reference_order.py) |
-| Typed runtime media and compiler contracts | [`bench/check_reference_runtime.py`](../bench/check_reference_runtime.py), red harness [`bench/red/show_red_reference_runtime.py`](../bench/red/show_red_reference_runtime.py) |
+| Typed runtime media and compiler contracts | [`bench/check_reference_runtime.py`](../bench/check_reference_runtime.py), red harness (removed 2026-09-11) |
 | Label/preflight visibility of typed chains | [`bench/check_typed_reference_consumers.py`](../bench/check_typed_reference_consumers.py) |
 
 All seven contracts in `MiniMaxH3ReferenceToVideo` are controlled. The ordered

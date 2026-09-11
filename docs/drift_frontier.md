@@ -434,7 +434,7 @@ released `docs/checks.md`:
 a check without a row is the mutation, and it is trivially constructible.
 
 **Done 2026-08-17, phase 3.** `bench/check_doc_inventory.py` plus
-`bench/red/show_red_check_doc_inventory.py::build` on the spine. Both directions
+a red harness (removed 2026-09-11) on the spine. Both directions
 asserted: every `bench/check_*.py` has a row, every `.py` a row names exists.
 
 **It caught itself on its first run** -- on disk, no row -- which is the shortest

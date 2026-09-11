@@ -487,7 +487,7 @@ The standalone file is not maintained as a second implementation.
 Rebuild to any staging directory with uv:
 
 ```bash
-uv run --active --no-sync python bench/build_h3_awq_standalone.py \
+<comfy-venv-python> bench/build_h3_awq_standalone.py \
   --output-dir /path/to/hf-model-repo
 ```
 

@@ -41,7 +41,7 @@ on a loaded model against the real pair (record
 graded here are the whole of the decision; `execute` only routes their
 inputs, and `docs/checks.md` records that as the gap.
 
-    uv run --active --no-sync python bench/check_pdd_sidecar_contract.py
+    <comfy-venv-python> bench/check_pdd_sidecar_contract.py
 """
 
 from __future__ import annotations

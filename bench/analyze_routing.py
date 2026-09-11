@@ -80,7 +80,7 @@ def load_eager():
     require the `coderef/comfy-kitchen-sol` clone on disk and prepend it to
     `sys.path` before importing, which had two costs and no benefit: it made the
     script unrunnable on a box that has the built wheel but not the source
-    checkout -- which is what kept `bench/red/show_red_analyze_routing.py`
+    checkout -- which is what kept the red harness (removed 2026-09-11)
     permanently skipped -- and prepending a source tree to `sys.path` shadows the
     installed package for the rest of the process, so anything reaching for the
     compiled CUDA op afterwards would have found the un-built copy.

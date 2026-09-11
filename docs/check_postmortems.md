@@ -17,7 +17,7 @@ Two things that used to be here have moved, because neither was an incident:
   contradicted the table in their own file, and the next full run supersedes them.
   Git history keeps them.
 - **the four controls whose input could not fail** —
-  [`bench/red/README.md`](../bench/red/README.md), beside the spine and fixture
+  the red-harness README (removed 2026-09-11; git history has it), beside the spine and fixture
   that exist because of them.
 
 ---
@@ -275,7 +275,7 @@ than no measurement at all.
 
 ## Controls whose input could not fail
 
-**Moved 2026-08-17 to [`bench/red/README.md`](../bench/red/README.md).** The four
+**Moved 2026-08-17 to the red-harness README (removed 2026-09-11; git history has it).** The four
 instances now sit beside the spine and the fixture that exist because of them,
 where somebody writing a harness will actually read them. They were not an
 incident, so this collection was the wrong home.

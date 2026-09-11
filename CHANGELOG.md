@@ -4,6 +4,31 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.75
+
+### Removed
+
+- **`bench/red/`**, the red harnesses and their shared spine, at the owner's
+  word. They served only the red-before-green rule retired in 0.99.71, and
+  nothing imported or ran them. The pointers in `docs/checks.md`,
+  `docs/comfyui_vendor_gaps.md`, `docs/check_postmortems.md`,
+  `docs/drift_frontier.md`, `docs/research/conditioning_nodes.md` and four
+  code comments now say the harness was removed; git history has the scripts.
+- **The `h3-experiment` skill**, at the owner's word. Its two steps nothing
+  else held (how an arm becomes a graph, and what to run before the card)
+  moved to `docs/comfy_notes.md` "Adding a probe or an arm", and the wiki's
+  roadmap row no longer names it.
+
+### Changed
+
+- **Every documented command runs the ComfyUI venv's python**
+  (`<comfy-venv-python>`) instead of `uv run --active --no-sync python`,
+  across the bench docstrings, the generator's header,
+  `docs/comfy_notes.md` and `docs/h3_awq_encoder.md`. The venv's own
+  interpreter is exactly what the server runs and involves no uv project
+  step, so a documented command cannot resolve or sync a different
+  environment.
+
 ## 0.99.74
 
 ### Fixed

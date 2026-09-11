@@ -47,9 +47,9 @@ Statuses in the inventory are derived: `current` (named by an `h3_config`
 
 Needs the loras folder on this box; exits 2, not 0, without it.
 
-    uv run --active --no-sync python bench/pdd_artifact_inventory.py --record   # new dated record, then regenerate
-    uv run --active --no-sync python bench/pdd_artifact_inventory.py            # regenerate from the latest record
-    uv run --active --no-sync python bench/pdd_artifact_inventory.py --check
+    <comfy-venv-python> bench/pdd_artifact_inventory.py --record   # new dated record, then regenerate
+    <comfy-venv-python> bench/pdd_artifact_inventory.py            # regenerate from the latest record
+    <comfy-venv-python> bench/pdd_artifact_inventory.py --check
 """
 
 from __future__ import annotations

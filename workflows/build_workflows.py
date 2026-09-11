@@ -20,7 +20,7 @@ variable so the fork cannot drift.
 
 Run it to regenerate:
 
-    uv run --active --no-sync python build_workflows.py
+    <comfy-venv-python> build_workflows.py
 
 It writes the JSON next to itself and validates every API graph against a
 live ComfyUI's /object_info (or a cached copy passed with --object-info).

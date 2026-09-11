@@ -24,7 +24,7 @@ before it and nearly the lowest inflation. "Which kind quantises worst" and
 **Stored-weight only.** int8_convrot is W8A8; the source records' caveats say
 so, and nothing here is a runtime cost. See `docs/open_experiments.md` #23.
 
-    uv run --active --no-sync python bench/analyze_pdd_unmerge_curve.py
+    <comfy-venv-python> bench/analyze_pdd_unmerge_curve.py
 """
 
 from __future__ import annotations

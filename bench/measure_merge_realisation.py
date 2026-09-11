@@ -57,7 +57,7 @@ Stored weights only, like everything in this lane. Nothing here says either
 arm is visible in a render, and `docs/open_experiments.md` #23 is the runtime
 question. CPU only, no server.
 
-    uv run --active --no-sync python bench/measure_merge_realisation.py \\
+    <comfy-venv-python> bench/measure_merge_realisation.py \\
         --base <int8 checkpoint> --lora <converted lora> --out <json>
 """
 

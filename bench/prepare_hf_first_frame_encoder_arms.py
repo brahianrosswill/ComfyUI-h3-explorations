@@ -8,7 +8,7 @@ differ only in their encoder loader and output prefix.
 
 Example (always run through uv from the repository root):
 
-  uv run --active --no-sync python bench/prepare_hf_first_frame_encoder_arms.py \
+  <comfy-venv-python> bench/prepare_hf_first_frame_encoder_arms.py \
       --history /tmp/h3_history.json --prompt-id PROMPT_ID \
       --workflow /path/to/hf-model-workspace/\
 comfyui_minimax_h3_awq_first_frame.json \

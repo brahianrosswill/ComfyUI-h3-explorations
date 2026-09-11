@@ -91,7 +91,7 @@ Claims, i.e. what breaks if a case is deleted:
 Needs CUDA and an installed comfy_kitchen whose `sol_attn` takes `blk_cnt`;
 exits 2 SKIP without either rather than passing on a weaker path.
 
-    uv run --active --no-sync python bench/check_sol_observe.py
+    <comfy-venv-python> bench/check_sol_observe.py
 """
 
 from __future__ import annotations

@@ -17,7 +17,7 @@ scheduler lands on it. Whether that LoRA belongs at that shift and that step
 count is `check_distill_settings.py`'s subject, graded there against the
 vendor's own table. Asserting it here too would be a second copy of one
 judgement, and the two would drift. The seam is pinned from the other side:
-`bench/red/show_red_distill_grid.py` carries a wrong shift and a wrong step
+the red harness (removed 2026-09-11) carries a wrong shift and a wrong step
 count as NEAR_MISS cases, so if this file ever starts grading them, they go red
 and somebody has to decide which check owns it.
 
@@ -276,7 +276,7 @@ def grade_arm(shift_video: float, shift_audio: float, scheduler: str,
               steps: int) -> list[str]:
     """Problems with one (shift, scheduler, steps) arm. Empty means on-grid.
 
-    A collector rather than a comparator: `bench/red/show_red_distill_grid.py`
+    A collector rather than a comparator: the red harness (removed 2026-09-11)
     drives this directly with synthetic arms, so the mutation reaches the same
     code a graph does. A harness that could only feed the reporter would pass a
     grader that returned its own baseline.

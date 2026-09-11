@@ -24,7 +24,7 @@ Needs CUDA and comfy-kitchen: the int8 path is where the fused helper lives,
 and a CPU stand-in would exercise a different branch than the one that ships.
 Exits 2 SKIP without them rather than passing on a weaker path.
 
-    uv run --active --no-sync python bench/check_quant_observe.py
+    <comfy-venv-python> bench/check_quant_observe.py
 """
 
 from __future__ import annotations

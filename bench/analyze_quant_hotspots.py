@@ -22,7 +22,7 @@ cancels -- its `quant_l2` is the attention kernel's own arithmetic. This file's
 numbers are the checkpoint. A claim about one is not a claim about the other,
 and that crossing was made and corrected on 2026-08-28.
 
-    uv run --active --no-sync python bench/analyze_quant_hotspots.py
+    <comfy-venv-python> bench/analyze_quant_hotspots.py
 """
 
 from __future__ import annotations

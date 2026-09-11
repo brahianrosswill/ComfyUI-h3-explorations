@@ -22,7 +22,7 @@ under `docs/` that no link from `CLAUDE.md` or this wiki reaches.
 |---|---|
 | [`VISION.md`](../../VISION.md) | the tenets behind every rule here. Read it first if you are new, and again before calling a rule ceremony |
 | [`docs/rules_history.md`](../../docs/rules_history.md) | `CLAUDE.md` as it stood before the 2026-09-03 cut, frozen: every dated instance behind every rule in it |
-| [`docs/roadmap.md`](../../docs/roadmap.md) | what we are trying to find out next and what would count as finding it. The `h3-experiment` skill routes here first |
+| [`docs/roadmap.md`](../../docs/roadmap.md) | what we are trying to find out next and what would count as finding it |
 | [`docs/evidence.md`](../../docs/evidence.md) | what is measured, what is retracted, what must not be relied on. Start here before stating a number |
 | [`docs/checks.md`](../../docs/checks.md) | every check, the standard it is held to, and the uncontrolled-requirement audit. Start here before changing behaviour or adding a check |
 | [`docs/comfyui_vendor_gaps.md`](../../docs/comfyui_vendor_gaps.md) | every known divergence from the release, with impact and what enforces it. A dated snapshot that defers to the owners it cites |

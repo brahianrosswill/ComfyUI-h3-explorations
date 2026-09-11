@@ -41,7 +41,7 @@ Claims, i.e. what breaks if a case is deleted:
 Needs CUDA and a comfy_kitchen whose `sol_attn_chunked` takes `blk_cnt`;
 exits 2 otherwise.
 
-    uv run --active --no-sync python bench/check_sol_chunked.py
+    <comfy-venv-python> bench/check_sol_chunked.py
 """
 
 from __future__ import annotations

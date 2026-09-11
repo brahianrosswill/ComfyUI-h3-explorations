@@ -35,7 +35,7 @@ it silently disarms them (CLAUDE.md, "the server process is the resource").
     (cd <comfy> && setsid nohup ./start.sh > <a log you can read> 2>&1 < /dev/null &)
 
 **`start.sh` must never reach `uv run`.** Until 2026-09-10 its last line fell
-back to `uv run --active python main.py` when `COMFY_PYTHON` was unset. That
+back to `<comfy-venv-python> main.py` when `COMFY_PYTHON` was unset. That
 day a restart by this recipe deleted `.venv` and recreated it empty (a fresh
 venv made by the `uv` that ComfyUI-Manager's requirements install inside the
 venv, first on PATH while it is active), so `main.py` could not import torch
@@ -145,6 +145,15 @@ so when the power limit is not stock.
    paths it walks `graph_paths(include_bench=True)`, so no directory is typed
    here; pass paths only to narrow it. It exits 2, not 0, when no server
    answered -- nothing validated is not nothing wrong.
+
+**Adding a probe or an arm.** Copy an existing probe row:
+`workflows/build_workflows.py::_probe_note` is the template and its docstring
+the contract. A setting no vendor row attests runs as a
+`bench/run_graph_arms.py --set` patch, not as a shipped row; that script's
+docstring says when. Before the card, run `bench/preflight_graph.py <graph>`
+on any new or hand-built graph and `bench/check_distill_settings.py` on any
+LoRA row, and give a new bench tool one throwaway run, read end to end,
+before any batch.
 
 ## Settings not to change without measuring
 

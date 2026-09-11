@@ -53,7 +53,7 @@ the MSE, sqrt(2) on RMS.** The arm below confirms that on real weights rather
 than on the argument, because an analytic factor that does not show up in the
 data means the model of the rounding is wrong.
 
-    uv run --active --no-sync python bench/analyze_weight_outliers.py \\
+    <comfy-venv-python> bench/analyze_weight_outliers.py \\
         --base <int8 checkpoint> --reference <release transformer dir> --out <json>
 """
 

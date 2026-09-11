@@ -67,7 +67,7 @@ Claims, i.e. what breaks if a case is deleted:
 
 Reads the shipped API graphs. No CUDA, no model, no ComfyUI import.
 
-    uv run --active --no-sync python bench/check_ref_prompt_labels.py
+    <comfy-venv-python> bench/check_ref_prompt_labels.py
 """
 
 from __future__ import annotations

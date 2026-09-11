@@ -126,7 +126,7 @@ def _drive(core, **kwargs):
 def contract4_holds():
     """(ok, detail) for: keyframe latents precede reference latents.
 
-    A callable rather than inline in main() so `bench/red/` can drive it with
+    A callable rather than inline in main() so the red harnesses (removed 2026-09-11) can drive it with
     the subject mutated. Marker VALUES, not counts -- a reversal has to be
     unambiguous, and two same-length lists in the wrong order are not.
     """

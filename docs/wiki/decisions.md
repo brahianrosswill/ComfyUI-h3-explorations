@@ -17,6 +17,14 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-11
 
+- **`bench/red/` removed** (owner). The red harnesses and their shared spine
+  served only the retired red-before-green rule, and nothing imported or ran
+  them; git history has them.
+- **The `h3-experiment` skill removed** (owner). Its two steps nothing else
+  held are in `docs/comfy_notes.md` "Adding a probe or an arm".
+- **Documented commands run the ComfyUI venv's python** (owner). They said
+  `uv run --active --no-sync python`; the venv's own interpreter is exactly
+  what the server runs and involves no uv project step.
 - **Run bench scripts with `python`, not `uv run`** (owner). `docs/eval_comparison.md`
   and the `h3-prompt` skill said `uv run python bench/...`; plain `uv run` in
   this repo builds a repo-local venv and, with `VIRTUAL_ENV` set, can recreate

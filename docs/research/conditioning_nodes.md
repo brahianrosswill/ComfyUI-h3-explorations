@@ -152,7 +152,7 @@ stub whose only supplied attributes are `concat_keys` and `model_config`, and
 3-tuple `MiniMaxH3ClipModel.encode_token_weights` returns. **The blocker was
 where to point the harness, not what it would cost.**
 
-Both are shown red in `bench/red/show_red_reference_contracts.py`, which
+Both are shown red in a red harness (removed 2026-09-11), which
 mutates the real functions in memory rather than on disk -- the install is
 shared with a running render server. Three mutations, each phrased in the
 contract's own terms: the concat order reversed, the `return_dict` merge
@@ -220,7 +220,7 @@ and ordered resolver had stopped changing under adversarial review:
   shipped hybrid default, while full `release` geometry remains opt-in.
 
 `bench/check_reference_runtime.py` controls the runtime boundary with stub
-VAEs and no CUDA; `bench/red/show_red_reference_runtime.py` makes ignored fps,
+VAEs and no CUDA; a red harness (removed 2026-09-11) makes ignored fps,
 skipped audio normalization, foreign metadata, reversed order, and a release
 policy that reuses the VAE frames for Qwen go red. A sixth mutation makes the
 `encoder` policy read the release snapshot; it goes red even though the two
@@ -271,7 +271,7 @@ handles them.
 
 The acceptance list above remains relevant: **since 2026-08-22 every item is
 guarded by an assertion** in `bench/check_reference_contracts.py`, with
-contracts 4 and 5 shown red in `bench/red/show_red_reference_contracts.py`.
+contracts 4 and 5 shown red in a red harness (removed 2026-09-11).
 This section said "not done" until the runtime existed; preserving that history
 matters because the controls, not implementation enthusiasm, were the blocker.
 

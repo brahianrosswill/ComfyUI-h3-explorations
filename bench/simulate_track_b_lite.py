@@ -317,7 +317,7 @@ def main():
     # Required, not defaulted to a home-directory path: this repo's captures
     # live outside the tree and the location differs per machine, so a baked-in
     # default is both a path leak and unusable anywhere else. `H3_CAPTURE` is
-    # the variable `bench/red/` already uses for the same purpose.
+    # the variable the red harnesses (removed 2026-09-11) used for the same purpose.
     parser.add_argument("--capture-dir", default=os.environ.get("H3_CAPTURE"),
                         help="capture directory; defaults to $H3_CAPTURE")
     parser.add_argument("--step", type=int, default=3)

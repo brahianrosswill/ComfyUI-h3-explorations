@@ -31,7 +31,7 @@ inflates `pct_above` for multi-shot scenes relative to single-take ones; with
 three cuts in 362 frames the effect is under 1% of frames and is ignored here,
 but a scene with many cuts would need them removed first.
 
-    uv run --active --no-sync python bench/measure_clip_delta.py <clip.mp4> ...
+    <comfy-venv-python> bench/measure_clip_delta.py <clip.mp4> ...
 """
 
 from __future__ import annotations
