@@ -15,13 +15,17 @@ own below the rule.
 
 **2026-09-11:**
 
-- The graphs are stale until the ComfyUI venv is rebuilt. `end_percent` moved
-  to 1.0 on every Sol graph in code (CHANGELOG 0.99.69), but the generator
-  imports ComfyUI and the venv is empty. After the rebuild: regenerate
-  (`docs/comfy_notes.md`, generating workflows) and restart ComfyUI, since
-  `sol_attn_h3.py`'s default changed too. Until then
-  `bench/check_attention_defaults.py` fails on `end_percent` against the old
-  graphs.
+- Graphs regenerated on the rebuilt venv and validated against a live server;
+  `bench/check_attention_defaults.py` passes, with `end_percent` 1.0 on every
+  Sol node except `h3_candidate_t2v_pdd8_sol_narrow`'s.
+- `bench/check_node_ids.py` fails on `MiniMaxH3SolAttn` since `f980aeb`
+  (2026-09-08) because it compares declaration order. The server's
+  `input_order` keeps the required inputs in the manifest's order and adds
+  `token_aug_blocks` as the only optional input after them. Fix the check to
+  compare required then optional, then record the append.
+- Sage runs `mode="auto"` per `workflows/h3_config.py::SAGE_NODE`, while
+  `docs/comfy_notes.md` "Settings not to change without measuring" says
+  `fp16 (most accurate)`. One of them is stale; the owner decides which.
 
 **2026-09-10 (upstream survey session):**
 

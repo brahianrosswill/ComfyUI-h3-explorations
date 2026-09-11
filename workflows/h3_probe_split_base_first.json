@@ -280,7 +280,7 @@
         "Node name for S&R": "MarkdownNote"
       },
       "widgets_values": [
-        "## What this node does that the UI does not show\n\n**`end_percent` is computed per step count by the generator, not by this\nnode.** The node turns a percent into a sigma when it is patched, which\nhappens before the step count exists. Edit `steps` by hand and this value goes\nstale, the wrong steps run sparse, and nothing at run time says so. Change\nsteps in `workflows/h3_config.py` and regenerate.\n\n**The window is a sigma band, so fewer steps means less of the run is\nsparse** -- most of it at 16 steps, about half at 4. The final step is always\ndense: it covers the largest jump in the schedule.\n\n**The packed conditioning rows always run dense** (`sink_conditioning`). They\nare a few hundred rows in a ~90k sequence and are the first thing a\nblock-sparse router drops; dropping them is what breaks generated audio.\n\n**Blocks 0-1 stay dense**, matching NVLabs' own H3 configs.\n\n**It composes onto the sage patch rather than replacing it**, which is why it\nmust sit after it. See the node-order note.\n"
+        "## What this node does that the UI does not show\n\n**Sol runs from `start_percent` through the last step.** `end_percent` is\n1.0, the default that sglang's Sol backend and ComfyUI's own sparse-attention\nnode both use. The steps before `start_percent` run on sage.\n\n**The window is a sigma band, not a step fraction.** The node turns a percent\ninto a sigma when it is patched, before the step count exists, so the same\n`start_percent` covers a different share of the steps at 16 steps than at 4.\n\n**The packed conditioning rows always run dense** (`sink_conditioning`). They\nare a few hundred rows in a ~90k sequence and are the first thing a\nblock-sparse router drops; dropping them is what breaks generated audio.\n\n**No block is forced dense** (`dense_blocks` is empty, as in ComfyUI's own\nnode; sglang's Sol backend keeps blocks 0-1 dense by default).\n\n**It composes onto the sage patch rather than replacing it**, which is why it\nmust sit after it. See the node-order note.\n"
       ],
       "title": "Sol-Attn: what runs that the widgets do not show"
     },
@@ -321,7 +321,7 @@
         "adaptive tau",
         1.0,
         0.2,
-        0.87,
+        1.0,
         12288,
         "exact_kv_and_rows",
         true,
@@ -331,7 +331,7 @@
         "",
         ""
       ],
-      "title": "Patch Sol-Attn (end_percent 0.87 - derived from the step count so the LAST step stays dense; default is 0.9)"
+      "title": "Patch Sol-Attn"
     },
     {
       "id": 10,
@@ -1038,7 +1038,7 @@
         "adaptive tau",
         1.0,
         0.2,
-        0.87,
+        1.0,
         12288,
         "exact_kv_and_rows",
         true,

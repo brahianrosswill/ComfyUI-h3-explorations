@@ -4,6 +4,16 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.83
+
+### Changed
+
+- **Graphs regenerated on the rebuilt venv**, so 0.99.69's `end_percent` 1.0
+  reaches every shipped Sol graph; only the narrow-window PDD8 candidate keeps
+  0.6. Validated against a live server whose served schema matches the code,
+  and `bench/check_attention_defaults.py` passes again. The smoke render at
+  49 frames ran Sol sparse and chained correctly.
+
 ## 0.99.82
 
 ### Fixed
