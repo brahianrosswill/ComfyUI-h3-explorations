@@ -267,6 +267,30 @@ anything marked GUIDE.
   and "no cap beyond the word budget", using the same five-second clip as the
   example. Neither guide says anything about turn counts. Do not enforce either.
 
+### 3.5 Landing on a keyframe: I2VA, L2VA, FL2VA
+
+All HOUSE, from an externally written writer prompt. The guides give the
+direction (base §1 and §3.3: converge from a plausible earlier state onto the
+frame) but not these.
+
+- **I2VA starts from the picture and moves forward.** `<Picture 1>` is the
+  exact frame at 0.00 s, not loose inspiration and not the final frame. Do not
+  return to the opening composition unless the brief asks for it.
+- **L2VA and FL2VA plan backward from the final frame.** Work out the earlier
+  state the action needs, then converge on the picture's subjects, pose,
+  expression, clothing, objects, lighting, focus and framing, and reach it only
+  at the exact end: not early, not held for time nobody asked for, and nothing
+  after it. Leave time for the last movements to settle; §5.6 has the
+  closed-mouth case.
+- **Describe the events, not the transition.** "The video transitions into the
+  final picture" gives the model nothing to render. Name the physical,
+  environmental or camera events that produce the final state, and invent no
+  transformation that ordinary action or camera movement already covers.
+- **Nothing crosses between endpoints unexplained.** A subject, object or
+  detail visibly absent from one endpoint does not appear in it; bring it in or
+  take it out through a visible event in between. FL2VA also does not repeat
+  either endpoint or drift back to the opening composition.
+
 ---
 
 ## 4. Camera motion: the closed vocabulary
@@ -320,6 +344,17 @@ Two more, house-level and useful: **H3 reframes by default**, so to hold a frame
 name the moves that do not happen as well as asking for a static shot; and
 **one primary change per beat**, because two changes collapse into whichever is
 easier to render. [HOUSE, third-party]
+
+Three more, from an externally written writer prompt [HOUSE]:
+
+- **One coherent camera path per shot.** Phases can follow one another inside a
+  continuous shot if you say how one becomes the next, but a camera cannot be
+  static while it tracks, pans, zooms, shakes or reframes.
+- **Unambiguous framing.** "Medium two-shot, framed from the waist up"; "full
+  two-shot, both subjects head to feet". Never combine "medium" and
+  "full-body".
+- **In `POV`, looking up, down or sideways is camera rotation, not a cut**, and
+  the shot shows only what the subject can see.
 
 ---
 
@@ -416,7 +451,7 @@ material and worth doing on every line: at the moment a line ends, describe the
 lips closing and the jaw ceasing to move, or the mouth keeps moving past the
 audio. [HOUSE, from a vendor example]
 
-Two companions, both HOUSE:
+Companions, all HOUSE:
 
 - Every on-screen character who does **not** speak gets an explicit "produces no
   vocal sound", or the model may voice them.
@@ -424,6 +459,8 @@ Two companions, both HOUSE:
   finish the dialogue early enough for the mouth to return to that expression
   before the endpoint. A closed-mouth expression cannot remain physically
   unchanged during speech.
+- **When speakers alternate, finish the first speaker's line and mouth movement
+  before the next begins.** [external writer prompt]
 
 ### 5.7 ref2va additions
 
@@ -533,27 +570,27 @@ toward the woman in the charcoal coat" — or by its subject label in ref2va. re
 - How reliably a model follows an addressing cue is **unmeasured** here; the
   guides show it once. Write it, and do not assume it lands. [OPEN]
 
-### 5.10 Dialogue duration, word budgeting, and dynamic scene timing
+### 5.10 Fit the dialogue to the shot, and the shots to the scene
 
-**Added 2026-09-11:** Automated generation easily falls into "cookie-cutter"
-patterns: repeating identical cut timestamps across different scenes (e.g.
-always cutting at `00:05.600`), forcing identical shot counts, or writing
-dialogue that does not fit the temporal window of the shot.
+**Too many words in a shot make the speaker rush through them**, an unnatural
+fast delivery; too few in a long shot leave dead air unless action fills it.
+The owner's observation on renders, 2026-09-11. [HOUSE, observed, not
+measured]
 
-- **Scene-driven shot cuts and counts**: Cut timestamps and the number of shots
-  must be dictated by the emotional beats, actions, and pacing of the specific
-  narrative. Never copy-paste fixed cut timestamps across scenes. The final cut
-  must leave at least 2.5s for the closing shot ($T_{\text{last}} \le \text{duration} - 2.5\text{s}$). [HOUSE]
-- **Natural speech cadence**: Spoken English delivers at approximately
-  **2.2 to 2.8 words per second**. [HOUSE]
-- **Action buffers**: Every speaking shot requires $0.6\text{s} - 1.2\text{s}$ of
-  physical blocking/action before speech begins and $0.6\text{s} - 0.8\text{s}$ of
-  explicit mouth/jaw closure (§5.6) after speech concludes. [HOUSE]
-- **Word budget formula**:
-  $\text{Word Budget} \approx (\text{Shot Duration} - \text{Buffers}) \times 2.5\text{ words/second}$.
-  Writing 20+ words into a 4-second shot forces the Audio VAE into unnatural,
-  slurred "auctioneer" delivery; writing 2 words in a 6-second shot without
-  diegetic action creates dead air and increases lip-drift entropy. [HOUSE]
+- **Budget from speaking time, not shot length.** Take off the action before
+  the line and the mouth closing after it (§5.6), then fit the words into what
+  is left. §3.4 carries the working budget and §15.4 why its shape is
+  unsettled. The rates in circulation sit between about two and 2.8 spoken
+  words per second and none is measured; an external writer prompt uses about
+  two per second of actual speaking time, and fewer for stylized or emotional
+  delivery, several speakers, or action during the line. When in doubt, cut
+  words. [HOUSE]
+- **Shorten generated dialogue until it fits; never pad it** with filler,
+  babble or vocal lead-ins outside `<d>`. [HOUSE, external writer prompt]
+- **Cuts and shot counts come from the scene's beats**, not from an earlier
+  prompt: copying one prompt's cut times or shot count into another is the
+  failure this section was written against. The last-cut margin is in §3.4.
+  [HOUSE]
 
 ## 6. On-screen text
 
@@ -957,12 +994,25 @@ Neither has been rendered, so nothing here says the budget improves output.
 
 All HOUSE, all worth having.
 
-- **Treat limiting words such as "only" as strict exclusions.** "room only"
-  transfers architecture, layout, surfaces, fixtures and furnishings, but not
-  people, actions, wardrobe, camera, lighting, style or audio. Same shape for
-  "clothes only", "face only", "body shape only", "camera only", "movement only",
-  "voice only", "style only". An explicit exclusion always blocks incidental
-  transfer.
+- **Treat limiting words such as "only" as strict exclusions.** An explicit
+  exclusion always blocks incidental transfer:
+
+  | phrase | transfers | not |
+  |---|---|---|
+  | "room only" | architecture, layout, surfaces, fixtures, furnishings | people, actions, wardrobe, camera, lighting, style, audio |
+  | "clothes only" | clothing design | identity, body, pose, environment, medium |
+  | "body shape only" | body proportions | face, hair, clothing, pose, style |
+  | "face only" | facial identity | body, clothing, pose, environment, medium |
+  | "camera only" | camera behaviour | subjects, setting, action, style, soundtrack |
+  | "movement only" | motion or choreography | identity, clothing, environment, camera, audio |
+  | "voice only" | voice qualities | words, music, ambience, other speakers |
+  | "style only" | visual treatment | source identity, objects, setting, composition, action |
+
+- **Bind each attribute to its source.** A subject can take different
+  attributes from different sources; say which comes from which, as in
+  "`<Subject 1>` is the woman whose identity and body shape come from
+  `<Picture 1>` and whose clothing design comes from `<Picture 2>`". Import
+  nothing unassigned. [external writer prompt]
 - **Wardrobe grammar.** Resolve a clothing instruction into one of four
   operations, then state the final visible outfit **once** and do not repeat a
   competing description later:
@@ -986,6 +1036,20 @@ All HOUSE, all worth having.
   verbatim; nothing on the other side decides whether to comply, and there is no
   negative prompt field. "Make it feel tense" conditions on the words "make it
   feel tense". "Her knuckles whiten on the railing" conditions on an image.
+- **A change of medium keeps the assigned design.** "Make it real" or "render
+  as live action" changes presentation, not identity: keep every attribute the
+  source is assigned (face, body shape, hair, clothing design, colours,
+  markings, proportions) and translate it into the target medium, dropping
+  source-medium artefacts such as illustration lines, paper texture, toy seams
+  or plastic surfaces unless asked. Such a conversion can still be
+  `fully_preserved`, because ref §4 defines that as the reference's *defined
+  role* surviving (§9.8). [HOUSE reading of a GUIDE term, external writer
+  prompt]
+- **The prompt is self-contained, in every mode.** The model receives only the
+  prompt and the wired media, so a phrase pointing anywhere else points at
+  nothing: "as described above", "as previously mentioned", "based on the
+  user's description", "the requested outfit", "same as before". Resolve each
+  into the content itself. [external writer prompt]
 
 ---
 
@@ -1824,6 +1888,12 @@ refs:  1 image (identity), 1 video with sound (camera motion), 1 audio (voice)
 
 Aspect ratio is a workflow setting, not a prompt fact; leave it out.
 
+**One system prompt can serve several modes** if it names the active mode,
+says "apply only the active mode", and keeps each mode's alignment line and
+layout beside it; the writer then emits only that mode's alignment format.
+That is how the external writer prompts handle I2VA and L2VA in one file.
+[HOUSE]
+
 ### 15.6 Third-party observations, held at arm's length
 
 None of these is measured here. They are recorded because they are actionable
@@ -1843,3 +1913,6 @@ this repo has neither confirmed nor refuted them. [3rd]
 - **Wardrobe drifts even when faces hold**, so name the garment in text as well
   as showing it in a reference.
 - **Quiet scenes come back genuinely quiet** and may need gain in post.
+- **Animation on twos.** At 24 fps, animation on twos targets about 12 unique
+  states per second; the external writer prompts state the exposure cadence as
+  a target rather than leaving it to the style word.

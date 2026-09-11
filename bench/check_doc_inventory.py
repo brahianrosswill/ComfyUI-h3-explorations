@@ -83,12 +83,12 @@ def index_section(md_text: str) -> list[str]:
             continue
         if re.match(r"^\|[\s:|-]+\|\s*$", line) or line.startswith("| check "):
             continue
-        # A leading pipe is not enough. The index has five columns, and prose that
+        # A leading pipe is not enough. The index has four columns (five until the `shown red` column went on 2026-09-11), and prose that
         # happens to begin with `|` would otherwise be read as a row with no `.py`
         # subject and reported as an error -- a false red, which this repo rates
         # worse than no check. Caught by this check's own harness (case G2) before
         # it ever ran on the real file.
-        if len([c for c in line.strip().strip("|").split("|")]) < 5:
+        if len([c for c in line.strip().strip("|").split("|")]) < 4:
             continue
         rows.append(line)
     return rows

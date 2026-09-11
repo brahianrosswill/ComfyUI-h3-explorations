@@ -247,7 +247,7 @@ def run_controls(q, k, orders, start, stop, tau, heads, pool, sink_kv, sink_q):
     #
     # Written after the first version of this control stayed green under a
     # deliberate mutation, on 2026-08-16. It was tautological, which is the
-    # defect `verify_adjacency` had and the reason `docs/checks.md` gap #6
+    # defect `verify_adjacency` had and the reason `docs/checks.md` gap #5
     # exists.
     g = torch.Generator().manual_seed(11)
     within = torch.arange(stop - start)

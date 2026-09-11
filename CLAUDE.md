@@ -93,7 +93,7 @@ Rules with no other home. The tenet behind each is in `VISION.md`.
   Every subagent prompt says the tree is shared and that the agent must not
   run git.
 - **Prompt timing, shot counts and dialogue length fit each scene, never a
-  template.** `docs/prompting.md` section 5.10 has the word budget.
+  template.** `docs/prompting.md` section 5.10.
 
 ## Reference implementations
 

@@ -23,9 +23,8 @@ structure per mode; section 10 has graded worked examples to copy the shape
 of. Fix the frame count before writing: a prompt is only correct at a
 duration, for the reason section 2 gives. Fit scene beats, shot counts, and cut
 timestamps dynamically to the narrative; never copy-paste fixed cut timestamps
-(e.g. `00:05.600`) across prompts. Budget dialogue words strictly to shot duration
-(2.2–2.8 words/sec minus physical pre-speech and post-speech buffers) so actors
-neither fast-talk nor sit in dead air. For character likeness in T2VA, introduce
+(e.g. `00:05.600`) across prompts. Fit dialogue to the shot's speaking time
+so actors neither rush nor sit in dead air (section 5.10). For character likeness in T2VA, introduce
 subjects as `[Name] (played by [Actor] in [Show])` once in Shot 1, keeping vocal
 timbre in narrative prose outside `<d>`.
 

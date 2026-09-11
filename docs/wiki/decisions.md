@@ -17,6 +17,13 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-11
 
+- **The `shown red` column is gone from `docs/checks.md`** (owner). It
+  recorded which checks had been shown failing under the retired
+  red-before-green rule; git history has the cells.
+- **`docs/prompting.md` 5.10 rewritten around the owner's point** (owner): too
+  many words in a shot make the speaker rush. It carried a second word-budget
+  formula beside §3.4's and blamed the rushed delivery on the Audio VAE; it now
+  budgets from speaking time, points at §3.4, and claims no mechanism.
 - **`CLAUDE.md` cut to what every session acts on** (owner). Seven "Settled
   about H3" facts, the numeric-input and capture-broadly rules, and the
   `coderef/` search advice moved to `docs/evidence.md`, `VISION.md` and

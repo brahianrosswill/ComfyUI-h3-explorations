@@ -4,6 +4,27 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.80
+
+### Changed
+
+- **`docs/prompting.md` 5.10 is rewritten around the owner's point**: too many
+  words in a shot make the speaker rush through them. It now budgets from
+  speaking time and points at §3.4's budget instead of carrying a second,
+  conflicting formula; the unmeasured "Audio VAE" and "lip-drift" explanations
+  and the LaTeX go. The pointers in `CLAUDE.md` and the `h3-prompt` skill
+  follow.
+- **The external writer prompts' craft sections are lifted into
+  `docs/prompting.md`**, each tagged with its source: landing on a keyframe
+  (new §3.5), camera path, framing and POV (§4), alternating speakers (§5.6),
+  the speaking-time budget (§5.10), the "only" table, attribute binding,
+  medium change and self-contained output (§9.11), one writer prompt for
+  several modes (§15.5) and animation on twos (§15.6).
+- **`docs/checks.md` loses its `shown red` column**, the last trace of the
+  retired red-before-green rule; git history has the cells. The Gaps list is
+  renumbered, `bench/analyze_routing.py`'s pointer into it follows, and
+  `bench/check_doc_inventory.py` now expects a four-column index.
+
 ## 0.99.79
 
 ### Changed
