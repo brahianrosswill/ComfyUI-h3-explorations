@@ -17,6 +17,9 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-11
 
+- **`docs/comfy_notes.md` said Sage runs `fp16 (most accurate)`, not `auto`.**
+  The config has shipped `auto` since `497b421` (2026-08-18), which scoped the
+  fp16 verdict to renders without Sol; the paragraph now says so.
 - **The `shown red` column is gone from `docs/checks.md`** (owner). It
   recorded which checks had been shown failing under the retired
   red-before-green rule; git history has the cells.

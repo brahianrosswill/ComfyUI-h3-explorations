@@ -23,9 +23,6 @@ own below the rule.
   `input_order` keeps the required inputs in the manifest's order and adds
   `token_aug_blocks` as the only optional input after them. Fix the check to
   compare required then optional, then record the append.
-- Sage runs `mode="auto"` per `workflows/h3_config.py::SAGE_NODE`, while
-  `docs/comfy_notes.md` "Settings not to change without measuring" says
-  `fp16 (most accurate)`. One of them is stale; the owner decides which.
 
 **2026-09-10 (upstream survey session):**
 

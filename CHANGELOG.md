@@ -4,6 +4,15 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.84
+
+### Fixed
+
+- **`docs/comfy_notes.md` no longer says Sage runs `fp16 (most accurate)`.**
+  `workflows/h3_config.py::SAGE_NODE` has shipped `auto` since `497b421`
+  (2026-08-18), which scoped the fp16 verdict to renders without Sol. The
+  paragraph now says what ships and why.
+
 ## 0.99.83
 
 ### Changed

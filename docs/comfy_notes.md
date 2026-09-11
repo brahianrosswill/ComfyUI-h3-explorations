@@ -157,11 +157,15 @@ before any batch.
 
 ## Settings not to change without measuring
 
-**Sage runs `mode="fp16 (most accurate)"`, not `auto`.** `auto` resolves to
-`fp8_cuda++`, the fastest kernel and the wrong end of this project's tradeoff.
-The decision rests on the owner's perceptual verdict on video at one seed, and
-on nothing else: every fp8-vs-fp16 accuracy ratio was withdrawn 2026-08-16 as
-untrusted. **Do not reintroduce a ratio to defend it** — see `docs/evidence.md`.
+**Sage runs `mode="auto"`, which resolves to `fp8_cuda++`**
+(`workflows/h3_config.py::SAGE_NODE`). `fp16 (most accurate)` shipped on
+2026-08-13 on the owner's perceptual verdict, rendered with Sol absent, and
+`497b421` returned to `auto` on 2026-08-18: with Sol on, sage runs only the
+steps outside Sol's window, so fp16 was paid for on every step and delivered on
+a minority of them. The six-arm comparison is
+`bench/results/2026-08-18_attention_defaults.json`. Every fp8-vs-fp16 accuracy
+ratio was withdrawn 2026-08-16 as untrusted. **Do not reintroduce a ratio to
+defend either mode** — see `docs/evidence.md`.
 Captured activations to measure it properly exist under `$H3_CAPTURE_ROOT/`, but
 not the `2026-08-15_dense_124f_1344x768` one this used to name -- that is gone.
 The 2026-08-17 reference-heavy pair is what is on disk.
