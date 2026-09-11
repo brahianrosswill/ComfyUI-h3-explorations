@@ -196,8 +196,10 @@ DECLARED: dict[tuple[str, str], tuple] = {
                 "what that arm varies. The shipped default 512 is a PRIOR "
                 "resting on one render at one seed -- docs/h3_references.md."),
     ("MiniMaxH3SolAttn", "end_percent"):
-        ("RESOLVED", "h3_config.sol_for_graph(pdd, steps); graded by "
-                     "bench/check_attention_defaults.py"),
+        ("ARM", "0.6 on the narrow-window PDD8 candidate (2026-09-05); 1.0, "
+                "the node default, everywhere else since 2026-09-11. Declared "
+                "per graph in bench/check_attention_defaults.py::DEVIATIONS, "
+                "which grades the deviation as real"),
     ("MiniMaxH3SolAttn", "start_percent"):
         ("ARM", "0.0 on the just-Sol candidate (Sol from the first step) and "
                 "0.3 on the narrow-window PDD8 candidate, both 2026-09-05; the "

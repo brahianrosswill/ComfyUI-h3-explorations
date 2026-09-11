@@ -29,6 +29,10 @@ module, so section 7's line numbers into `runtime/models/dits/minimax_h3.py`
 point at text that has moved. Section 14 cites files and symbols, which do
 not rot the same way.
 
+**Section 14.9 added 2026-09-11**, from a source read at `593c7a900d`: the
+Sol-Attn backend, which sglang has shipped since 2026-08-09 and which no
+earlier read of this file described.
+
 Citations are repo-relative paths with the line range the reader verified.
 Every claim is SOURCE (read at the cited lines) unless marked
 INFERENCE. Numbers are what the code says at that commit; the code moves,
@@ -1114,7 +1118,9 @@ refuses the ref2va layout outright. Both hang off
 
 ### 14.5 Attention policies (new; section 11 covers SubBlock)
 
-Four now exist for H3 beyond the dense backends, sage, and Sol.
+Four now exist for H3 beyond the dense backends, sage, and Sol. Sol itself
+is described in 14.9, added 2026-09-11; this section named it and did not
+read it.
 
 **Cube sparse attention**
 (`layers/attention/backends/cube_sparse_attn/{mask,backend}.py`; merged
@@ -1187,3 +1193,88 @@ internals, the FlashInfer SM120 operator, the body of the cube mask module
 past its docstrings, the cookbook's Ascend and AMD sections, and the
 consumer-card sections, which the diff shows unchanged since 2026-08-30 and
 which [`sglang_comparison.md`](sglang_comparison.md) already prices.
+
+### 14.9 The Sol-Attn backend, read 2026-09-11 at `593c7a900d`
+
+`coderef/sglang/python/sglang/multimodal_gen/runtime/layers/attention/backends/sol_attn.py`
+(a bare `:line` below means this file), added by `51470b376f` (#33702, 2026-08-09)
+and reworked by `63d783bbe0` (#34581, 2026-08-18), which added the Sage dense
+path; `28262c20df` (2026-09-02) is formatting only. It wraps NVLabs'
+`sol_attn` package, installed from Sana's `sol-engine` branch
+(`coderef/sglang/docs/docs/sglang-diffusion/attention_backends.mdx:75`), and
+the backend resolves only when that package imports, and raises otherwise
+(`_SolAttnBackendResolver`,
+`coderef/sglang/python/sglang/multimodal_gen/runtime/platforms/cuda.py:343`).
+
+**Opt-in.** Selected with `--attention-backend sol_attn`, or for the DiT
+alone with `--component-attention-backends ... transformer=sol_attn`. The
+default DiT backend stays `fa`
+(`coderef/sglang/docs/docs/sglang-diffusion/attention_backends.mdx:885`).
+
+**Configuration**, read by `_get_sol_attn_runtime_config` from
+`--attention-backend-config` (`:59-83`; the documented table at
+`coderef/sglang/docs/docs/sglang-diffusion/attention_backends.mdx:450-515`
+gives the same defaults):
+
+| key | default | where |
+|---|---|---|
+| `tau` | 1.0 | `:74` |
+| `thresh_type` | `diag` (the other mode is `exact`) | `:75` |
+| `kv_splits` | `auto`, resolved by `_resolve_kv_splits` (`:44-56`) | `:76` |
+| `sink_tokens` | 0 | `:77` |
+| `sink_start` | 0 | `:72` |
+| `dense_steps` | 10 | `:79` |
+| `dense_layers` | `"0,1"`, parsed as indices and ranges | `:80`, parser `:26-41` |
+| `dense_backend` | `fa`; `sage_attn` is the other, with `sage` and `sageattention` as aliases | `:62-71` |
+
+**When a call runs dense.** `_should_use_dense` (`:128-140`)
+returns true when the step index is below `dense_steps` or the module's layer
+index is in `dense_layers`. The step is the denoise loop's index, not a
+sigma: H3's loop passes `current_timestep=step` for `step in range(num_steps)`
+(`coderef/sglang/python/sglang/multimodal_gen/runtime/pipelines_core/stages/model_specific_stages/minimax_h3/denoise_loop.py:560,574-579`).
+So `dense_steps` is a count, the same at any step count or shift. There is no
+end gate: past `dense_steps`, every step through the last runs sparse. The
+dense path is FlashAttention varlen (`_dense_fa`, `:142-162`) or
+SageAttention per sequence (`_dense_sage`, `:164-202`).
+
+**The layer index is a name match.** `_parse_layer_idx` takes the first
+`blocks\.(\d+)` in the module prefix (`:124-126`). H3's DiT file names its
+blocks `blocks.<i>`
+(`coderef/sglang/python/sglang/multimodal_gen/runtime/models/dits/minimax_h3.py:1919`)
+and its token-refiner blocks `token_refiner.blocks.<i>` (the same file at
+lines 1298 and 1912), two of them
+(`coderef/sglang/python/sglang/multimodal_gen/configs/models/dits/minimax_h3.py:82`).
+The refiner's attention resolves its backend the same way the DiT's does;
+only the cube backend is sent back to FlashAttention for it (the DiT file at
+lines 831-840 and 1256-1262). So refiner block `i` is gated by the same
+`dense_layers` entry as DiT block `i`, and at the default `"0,1"` both
+refiner blocks run dense at every step. Read from source, not run; nothing in
+the backend file excludes the refiner or a short sequence on its own.
+
+**The sparse call** (`_run_sol_attn_thd`, `:204-235`) requires
+bf16 activations (`:216-217`) and head dim 128 (`:22`, checked when the impl
+is built), and passes `tau`, `thresh_type`, `kv_splits`, `sink_start` and
+`sink_tokens`, keeping only the arguments the installed package's signature
+accepts. `int8_qk=True` is added when the package has that parameter and the
+device is SM89 or newer; the comment beside it calls that the Wan2GP Ada
+port and says NVLabs' official API has no such argument (`:229-233`).
+
+**What it does not have.** No token routing: `token_aug` and `extra_tokens`
+appear nowhere in the file. No sink derived from H3's layout: `sink_start`
+and `sink_tokens` are fixed numbers from the config, and a grep of
+`multimodal_gen` for `sink_tokens` finds only the SANA-WM refiner and the
+causal KV cache, neither on this path. So by default no conditioning rows
+are held exact. No minimum sequence length.
+
+**The documented H3 recipe** puts the dense prefix on Sage and everything
+after it on Sol: `--attention-backend-config dense_backend=sage_attn,dense_steps=10`
+with `--component-attention-backends text_encoder=torch_sdpa,transformer=sol_attn`
+(`coderef/sglang/docs/cookbook/diffusion/MiniMax/MiniMax-H3.mdx:1116-1119`;
+the same example at
+`coderef/sglang/docs/docs/sglang-diffusion/attention_backends.mdx:868-885`,
+which calls both
+`sage_attn` and `sol_attn` approximate).
+
+Tests: `coderef/sglang/python/sglang/multimodal_gen/test/unit/test_sol_attn_backend.py`
+has four, for the layer-range parser, the dense-backend aliases, the
+early-step dense gate, and a sparse layer after it.

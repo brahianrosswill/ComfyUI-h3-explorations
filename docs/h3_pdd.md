@@ -446,7 +446,9 @@ What this does **not** reach: `sampler_name` -- and that gap is worse than
 build time so hand-editing steps leaves it stale. That was true of PDD graphs
 until they took `h3_config.SOL_PDD_CUDA` whole; their `end_percent` is now a
 constant 0.74 and a hand edit to `steps` leaves it correct. It is still true of
-every non-distilled arm.
+every non-distilled arm. **Since 2026-09-11 neither holds: `end_percent` is 1.0
+on every graph, adopting upstream, so a hand edit to `steps` leaves nothing
+stale.**
 
 #### The shift was a second place the schedule is decided, and the node is now GONE from the PDD graphs
 
@@ -635,7 +637,9 @@ Emitted sigmas at shift 12, where a schedule exists at all:
 - **`nfe` does NOT react.** It is an independent override and stays whatever it
   was. The two are allowed to disagree and that disagreement is `nfe`'s whole
   purpose; see its tooltip. Every shipped graph carries 0.
-- **Sol's `end_percent`** -- **and since 2026-08-29 it does NOT react on a PDD
+- **Sol's `end_percent`** -- **since 2026-09-11 this bullet is history:
+  `end_percent` is 1.0 on every graph, distilled or not, adopting upstream.**
+  **And since 2026-08-29 it did NOT react on a PDD
   graph, which is the opposite of what this bullet used to say.** PDD arms take
   `h3_config.SOL_PDD_CUDA` whole, at 0.74 for every step count, so the step
   table is not consulted for them and editing `steps` by hand leaves nothing

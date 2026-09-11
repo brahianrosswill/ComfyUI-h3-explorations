@@ -13,6 +13,16 @@ pointer goes; this list is stale the moment the roadmap disagrees with it.
 Items from the `mrpink` helper lane first; `evalman`'s render lane appends its
 own below the rule.
 
+**2026-09-11:**
+
+- The graphs are stale until the ComfyUI venv is rebuilt. `end_percent` moved
+  to 1.0 on every Sol graph in code (CHANGELOG 0.99.69), but the generator
+  imports ComfyUI and the venv is empty. After the rebuild: regenerate
+  (`docs/comfy_notes.md`, generating workflows) and restart ComfyUI, since
+  `sol_attn_h3.py`'s default changed too. Until then
+  `bench/check_attention_defaults.py` fails on `end_percent` against the old
+  graphs.
+
 **2026-09-10 (upstream survey session):**
 
 - Core vs ours Sol A/B, BUILT not rendered: `bench/sol_core_ab_arms.json`

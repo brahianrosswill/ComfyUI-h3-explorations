@@ -1,8 +1,10 @@
 # sglang's H3 serving path against ours
 
-last updated: 2026-09-11 (closing section "Fifth read" added; "Fourth read"
-added 2026-09-10; one subsection under "What they do that we do not" and the
-section "Third read" added 2026-09-04; everything else is the 2026-08-29 read)
+last updated: 2026-09-11 (subsection "Sol-Attn defaults: sglang against core's
+and ours" added under "What we do that they do not", and closing section
+"Fifth read" added; "Fourth read" added 2026-09-10; one subsection under "What
+they do that we do not" and the section "Third read" added 2026-09-04;
+everything else is the 2026-08-29 read)
 
 What the vendor-side serving implementation does that this install does not,
 what both do where ours may be the weaker version, and what looks like a gap
@@ -387,6 +389,42 @@ here to adopt. **Do not import their numbers.** Their PSNR column compares
 different samples by our own 2026-08-18 measurement, and their own quality
 section says as much; their seconds came off a host that page-caches the whole
 checkpoint, so the mechanism carries and the figures do not.
+
+### Sol-Attn defaults: sglang against core's and ours (2026-09-11)
+
+Read from source: sglang at `593c7a900d`
+([`sglang_h3_pipeline.md`](sglang_h3_pipeline.md) section 14.9 has the walk
+and the lines); core's `BlockSparseAttention` at ComfyUI `1d48d9cf`
+(`comfy_extras/nodes_sparse_attention.py:368-407` for the schema,
+`:310-318` for what an H3 block does outside the window). Ours is
+`workflows/h3_config.py::SOL_RECOMMENDED_CUDA`, and core's defaults are
+copied into `workflows/h3_config.py::SOL_CORE_DEFAULTS`.
+
+| knob | sglang `sol_attn` | core `BlockSparseAttention` | ours, before this change |
+|---|---|---|---|
+| on by default | no; the DiT default is `fa` and Sol is opt-in | only in a graph that adds the node | on in every shipped video graph, except the stems in `bench/check_attention_defaults.py::SOL_EXEMPT_STEMS` |
+| dense at the start | the first 10 steps (`dense_steps`), a count | the first fifth of the sigma schedule (`start_percent` 0.2) | same as core |
+| dense at the end | none: sparse through the last step | none at its default `end_percent` 1.0 | the last step, through `end_percent` 0.9, `SOL_END_PERCENT_BY_STEPS` for the distilled step counts, and `SOL_PDD_OVERRIDES` for PDD |
+| tau | 1.0 | 1.3 | 1.0 |
+| dense blocks | 0 and 1 (and, by the name match, both token-refiner blocks) | none | none |
+| sink | none by default (`sink_tokens` 0) | `exact_kv_and_rows` | `exact_kv_and_rows` |
+| token routing | none | `extra_tokens` 256 on every block | off |
+| outside the window | FlashAttention, or Sage in the documented recipe | the block's own attention, whatever the model already runs | Sage, which Sol chains onto |
+
+The start row agrees only on a fifty-step grid, where 10 steps is a fifth.
+At our sixteen-step base, sglang's count would keep 10 steps dense against
+the 4 that `start_percent` 0.2 keeps (the `start_percent` comment in
+`workflows/h3_config.py::SOL_RECOMMENDED_CUDA` has that arithmetic).
+
+**Decision, owner, 2026-09-11.** This is a tinkering repo: where sglang and
+ComfyUI's own node agree on a default and ours differs, ours takes theirs,
+without waiting on an eval of our own. The one knob where both agree against
+us is the end of the window, so ours moves to sparse through the last step,
+`end_percent` 1.0, for base, distilled and PDD graphs alike. It lands with the
+next graph rebuild, and `CHANGELOG.md` carries it. The other rows are not
+adopted: on tau, dense blocks, the sink and token routing, sglang and core
+disagree with each other, and on the start they agree only at a step count
+we do not run.
 
 ---
 

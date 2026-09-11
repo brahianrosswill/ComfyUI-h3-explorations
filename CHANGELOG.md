@@ -4,6 +4,44 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.69
+
+### Changed
+
+- **Sol runs through the last step on every graph: `end_percent` is 1.0.**
+  Owner's rule, 2026-09-11: this is a tinkering repo, and where sglang and
+  ComfyUI agree on a default that differs from ours, we take theirs. sglang's
+  `sol_attn` backend has no end cutoff and core's `BlockSparseAttention`
+  defaults `end_percent` to 1.0. Ours kept the last step dense: 0.9 on the
+  16-step graphs, `SOL_END_PERCENT_BY_STEPS` (`{4: 0.74, 6: 0.83, 8: 0.87}`)
+  on the distilled ones, and 0.74 on every PDD graph. `SOL_RECOMMENDED_CUDA`
+  and `SOL_CUDA_DEFAULTS` now carry 1.0; `SOL_END_PERCENT_BY_STEPS` and
+  `SOL_PDD_OVERRIDES` are empty (the names stay, because the resolver reads
+  them); `MiniMaxH3SolAttn`'s own default is 1.0. **The graph JSONs are not
+  rebuilt yet**: the generator imports ComfyUI and the ComfyUI venv is empty.
+  After the venv is rebuilt, regenerate and restart ComfyUI; until then
+  `bench/check_attention_defaults.py` fails on `end_percent` against the old
+  graphs.
+- The Sol help note the generator writes into every Sol graph no longer says
+  the final step is always dense, and no longer says blocks 0-1 stay dense
+  (`dense_blocks` was already empty).
+- `bench/check_pdd_sigmas.py` loses its `pdd end_percent keeps last step
+  dense` case, which asserted the property this change removes.
+  `bench/check_widget_deviations.py`'s `end_percent` row becomes an ARM row:
+  only the narrow-window PDD8 candidate carries its own window.
+- `docs/SOLATTN.md` gains an sglang column in its upstream knob table and
+  marks the dense-tail sections as history; `docs/h3_pdd.md`,
+  `docs/roadmap.md`, `docs/checks.md` and `docs/wiki/next_steps.md` say the
+  same where they described the old behaviour.
+- **sglang's own Sol-Attn backend is written up.** It existed since
+  2026-08-09 and our sglang docs recorded only that it existed.
+  `docs/research/sglang_h3_pipeline.md` section 14.9 walks its source (config
+  keys and defaults, the step-index dense gate, no end gate, no token routing,
+  no layout-derived sink, the documented Sage-then-Sol H3 recipe);
+  `docs/research/sglang_comparison.md` compares its defaults with core's and
+  ours and records the 2026-09-11 decision; `docs/sol_upstream.md` gains a
+  section and a sources row for it.
+
 ## 0.99.68
 
 ### Changed

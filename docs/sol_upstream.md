@@ -1,6 +1,7 @@
 # What upstream says: the paper, Sol-Engine, Sol-H3, and the other packs
 
-Last updated: 2026-09-11, when the comfy-kitchen snapshot moved forward, an
+Last updated: 2026-09-11, when sglang's own Sol-Attn backend was added, the
+comfy-kitchen snapshot moved forward, an
 open core PR against core's Sol node was read, and a third ComfyUI Sol pack
 was added from its README. Before that, 2026-09-10, when Sana's `sol-engine`
 branch was re-read at `757d902` (the Sol-H3, Sol-H3-Spark,
@@ -27,6 +28,7 @@ disagree about our configuration, they are right.
 | [`Efficient-Large-Model/H3-to-LTX-Latent-Adapter`](https://huggingface.co/Efficient-Large-Model/H3-to-LTX-Latent-Adapter) | the Hugging Face model card only | 2026-09-10 |
 | ComfyUI core's `BlockSparseAttention` | source in the ComfyUI checkout at `1f641fd9` | 2026-09-10 |
 | sglang's SubBlock router | source at `ffe98a4279` | 2026-09-10 |
+| sglang's Sol-Attn backend | source at `593c7a900d`, with its attention-backend doc and H3 cookbook page | 2026-09-11 |
 | two third-party ComfyUI packs | their READMEs only | 2026-08-16 |
 | xmarre's ComfyUI-Sol-H3 | its README and the body of its PR 9, via `gh` | 2026-09-11 |
 | Comfy-Org/ComfyUI PR 16239 (open) | its diff via `gh`: `nodes_sparse_attention.py` and two helpers in its new module | 2026-09-11 |
@@ -423,6 +425,40 @@ owns SubBlock. Two things in the source it does not yet record:
   added by `ffe98a4279` (2026-09-09) and not the default
   (`coderef/sglang/python/sglang/multimodal_gen/runtime/layers/attention/backends/subblock_sparse_attn.py:106`;
   the cutoff defaults and their stated sweep are at `:76-85` of the same file).
+
+---
+
+## sglang's own Sol-Attn backend, read 2026-09-11
+
+sglang has had a `sol_attn` DiT attention backend since `51470b376f` (#33702,
+2026-08-09). It wraps NVLabs' `sol_attn` package from Sana's `sol-engine`
+branch and is opt-in: sglang's default DiT backend is `fa`.
+[`docs/research/sglang_h3_pipeline.md`](research/sglang_h3_pipeline.md)
+section 14.9 walks the source with line citations, and
+[`docs/research/sglang_comparison.md`](research/sglang_comparison.md) sets it
+beside core's node and ours.
+
+- **Defaults**
+  (`coderef/sglang/python/sglang/multimodal_gen/runtime/layers/attention/backends/sol_attn.py:59-83`):
+  tau 1.0, `thresh_type` `diag`, `kv_splits` `auto`, `sink_tokens` 0,
+  `sink_start` 0, `dense_steps` 10, `dense_layers` `"0,1"`, dense backend
+  `fa` or `sage_attn`.
+- **Step policy.** Dense for the first `dense_steps` step indices, sparse
+  from there through the last step, with no end gate (`:128-140` of the same
+  file).
+  Tau, threshold, dense prefix and dense layers take the shape of the
+  per-hardware cells' policy in `docs/SOLATTN.md`'s "Upstream H3 policies
+  beside ours"; the sink does not.
+- **Sink.** A fixed `sink_start`/`sink_tokens` range from the config.
+  Nothing in sglang's H3 pipeline derives it from the packed layout, so by
+  default no conditioning rows are exact.
+- **Absent:** token routing, and a minimum sequence length.
+- **INT8 QK** is passed only when the installed package accepts `int8_qk`
+  and the device is SM89 or newer; the comment beside it says NVLabs'
+  official API has no such argument (`:229-233` of the same file).
+- **The documented H3 recipe** is `dense_backend=sage_attn,dense_steps=10`,
+  with the text encoder on `torch_sdpa`
+  (`coderef/sglang/docs/cookbook/diffusion/MiniMax/MiniMax-H3.mdx:1116-1119`).
 
 ---
 

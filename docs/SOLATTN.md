@@ -404,7 +404,7 @@ owns both spellings; regenerate.
 | `keep_percent` NEW | 10.0 | Only under `top-k (SLA)`. Percent of key blocks each query block keeps exactly, a fixed density everywhere rather than one that varies per head and block; sinks and the diagonal still ride on top. **This is not a hard top-k router** — read the row below the table before treating the two as arms of one comparison. |
 | `tau` | 1.0 | Only under `adaptive tau`. *Corrected 2026-09-10:* this cell said 1.3, the node default before the 2026-08-20 change; the node's `define_schema` is the authority. Routing threshold in sigmas of the proxy row. A key block is exact when its mean score over the query block clears `tau * sqrt(var)`. Higher is sparser. Upstream densities: 1.0 keeps ~16% exact, 1.5 ~7%, 2.0 ~2.7%. |
 | `start_percent` | 0.2 | Dense before this point. **Never measured** — see the step table below, it is badly non-linear. |
-| `end_percent` | 0.9 | Dense after this point. Also never measured. |
+| `end_percent` | 1.0 | Dense after this point. **1.0 since 2026-09-11**, adopting upstream: sglang's `sol_attn` backend has no end cutoff and core's `BlockSparseAttention` defaults to 1.0, so Sol runs through the last step. It was 0.9, lowered per step count so the last step stayed dense (`h3_config.SOL_END_PERCENT_BY_STEPS`, now empty). Never measured at either value. |
 | `min_tokens` | 12288 | Shorter sequences fall through to whatever override is already installed — on every graph here that is **sage**, not dense torch, so this gate chooses Sol against a kernel about 2.7x ahead of torch flash rather than against a naive one. `SOL_RECOMMENDED_CUDA` **adopted 12288 on 2026-08-27**, having pinned 4096 since the CUDA migration; `SOL_CUDA_DEFAULTS` already recorded that upstream puts the crossover near 12k and that 4096 "engages Sol-Attn in the regime where it costs time", and the sage baseline only moves that crossover up. **Neither value has been measured here, and the change alters nothing this repo renders** — DiT calls are 31k-128k tokens, token-refiner calls ~311 rows, so both select identically. It closes one reachable gap: at ~22 frames, S ~ 7,194, 4096 ran Sol at a length nothing has shown it wins. **Corrected 2026-08-27:** this row previously argued both values were no-ops from S = 7,194 being "already above 4096" — 7,194 is below 12288, so they disagreed there, and the no-op claim needs the length qualifier. |
 | `sink_conditioning` | `exact_kv_and_rows` | Keeps the target audio's queries exact. **NOT the dominant knob at reference load** — that was v1 arithmetic; under the v2 node the swing is ~0.5 points, not 23. See the reference section. **`exact_kv_and_all_rows` added 2026-09-04**, not the default and no graph ships it: every conditioning query row dense, references included. The kernel takes one dense-query range, so "text and audio dense, references sparse" is not expressible when reference rows sit between them; this is the range that covers both. On t2v the extra cost over the default is the text rows alone; on ref2v with a video reference it is the reference's rows, priced by the recomputed sink-share table. The modes are `sol_attn_h3.py::SINK_CONDITIONING_MODES`; `_sink_blocks` refuses any other string. Chosen by a patch at render time; the first probe run with it on is how it earns or loses its place (`docs/roadmap.md`, forward plan 2026-09-04, step 3). |
 | `morton` | False | Z-order the video tokens so each 64-token block is a compact 3D neighbourhood. Neutral for dense attention **in exact arithmetic** -- not bit-identical, measured. **Under Sol it is not a free toggle: block membership feeds `kcvar`, so turning it on moves the routing threshold and the routed density at a fixed `tau`.** Direction not derivable, unmeasured. `Canonical: docs/morton.md` |
@@ -432,6 +432,10 @@ ratio between the two selections at one shape means anything, and neither
 absolute figure does.
 
 ### Two shipped configs, not one: PDD arms have their own
+
+**Superseded 2026-09-11: the two configs are the same again.** `end_percent`
+is 1.0 in both, `SOL_END_PERCENT_BY_STEPS` and `SOL_PDD_OVERRIDES` are empty,
+and the rest of this section is the history of why they differed.
 
 **Since 2026-08-29, which config a graph carries depends on whether it loads a
 PDD LoRA.** `h3_config.sol_for_graph(pdd, steps)` is the single resolver, and
@@ -507,6 +511,9 @@ intervention by compute: it takes a whole sparse step dense (50 blocks) against
 `h3_text_to_video_pdd_manual_sigmas` runs its own partition and is neither.
 
 ##### `end_percent`: there is a rule, and 0.74 is the conservative side of it
+
+*Moot since 2026-09-11: PDD graphs run Sol through the last step like every
+other graph. Kept as the record of what the dense tail was for.*
 
 At shift 12, `percent_to_sigma(0.75)` is **0.8 exactly** — and 0.8 is index 24
 of PDD's 32-point grid, which is where the **final block of the 4-evaluation
@@ -1411,7 +1418,7 @@ exactly the "simple's 6" recorded when `beta57` was dropped for putting 10 steps
 dense instead. Independent path to the same number.
 
 The shape that matters: **0.2 → 0.3 costs one step out of 16.** Not linear.
-`end_percent` 0.9 → 1.0 buys exactly one step.
+`end_percent` 0.9 → 1.0 buys exactly one step (shipped since 2026-09-11).
 
 This is also why the scheduler is pinned to `simple`: a different scheduler puts
 a different number of steps inside the same percent band, so a scheduler A/B
@@ -2110,22 +2117,29 @@ first, and a perceptual claim needs a blind distribution under
 
 ### Upstream H3 policies beside ours
 
-Every upstream cell is cited in `docs/sol_upstream.md`. Our column is a
-pointer: the values live in `workflows/h3_config.py::SOL_RECOMMENDED_CUDA`,
-and the end of the sigma window per step count in
-`workflows/h3_config.py::SOL_END_PERCENT_BY_STEPS`.
+Every upstream cell is cited in `docs/sol_upstream.md`; the sglang column is
+read from its `sol_attn` backend on 2026-09-11 and walked in
+`docs/research/sglang_h3_pipeline.md`. Our column is a pointer: the values
+live in `workflows/h3_config.py::SOL_RECOMMENDED_CUDA`.
 
-| knob | Sol-Engine per-hardware cells | Sol-H3, T2V / Ref2VA | Spark Ref2VA draft (opt-in) | core `BlockSparseAttention` | ours |
-|---|---|---|---|---|---|
-| tau | 1.0 | 1.0 / 1.0 | none, 1.0, 1.25, 1.5 by step | its `define_schema` | `SOL_RECOMMENDED_CUDA` |
-| threshold | `exact` on A100/H100, `diag` elsewhere | `diag` | `diag` | kitchen's, which is `diag` | kitchen's, `diag` |
-| dense at the start | first 10 of 50 steps | first forward / none | step 0 | `start_percent` | `start_percent` |
-| dense at the end | none | none | none | none at its default `end_percent` | the last step, via `SOL_END_PERCENT_BY_STEPS` |
-| dense layers | first two | two / none | layer 0 | `dense_blocks`, empty | `dense_blocks`, empty |
-| sink | prefix KV exact, prefix query rows dense | same / text and audio exact both ways, references sparse | text and audio exact both ways, references sparse, by permutation | `exact_kv_and_rows` | `sink_conditioning` |
-| token routing | absent | absent | absent | on for every block | `token_aug_blocks`, off |
-| token order | native | native | segment permutation | native | `morton`, off |
-| cache | FirstBlockCache or TeaCache | none | none | none | none shipped |
+| knob | Sol-Engine per-hardware cells | Sol-H3, T2V / Ref2VA | Spark Ref2VA draft (opt-in) | sglang `sol_attn` (opt-in) | core `BlockSparseAttention` | ours |
+|---|---|---|---|---|---|---|
+| tau | 1.0 | 1.0 / 1.0 | none, 1.0, 1.25, 1.5 by step | 1.0 | its `define_schema` | `SOL_RECOMMENDED_CUDA` |
+| threshold | `exact` on A100/H100, `diag` elsewhere | `diag` | `diag` | `diag` | kitchen's, which is `diag` | kitchen's, `diag` |
+| dense at the start | first 10 of 50 steps | first forward / none | step 0 | first `dense_steps` (10), a step count | `start_percent` | `start_percent` |
+| dense at the end | none | none | none | none | none at its default `end_percent` | none since 2026-09-11 (`end_percent` 1.0); the last step before that |
+| dense layers | first two | two / none | layer 0 | `dense_layers`, 0 and 1 | `dense_blocks`, empty | `dense_blocks`, empty |
+| sink | prefix KV exact, prefix query rows dense | same / text and audio exact both ways, references sparse | text and audio exact both ways, references sparse, by permutation | none by default (`sink_tokens` 0, a manual count) | `exact_kv_and_rows` | `sink_conditioning` |
+| token routing | absent | absent | absent | absent | on for every block | `token_aug_blocks`, off |
+| token order | native | native | segment permutation | native | native | `morton`, off |
+| cache | FirstBlockCache or TeaCache | none | none | none in the backend | none | none shipped |
+
+**The end of the window is the one knob where sglang and core agree against
+what we shipped**, so it was adopted on 2026-09-11 under the owner's rule that
+this repo takes upstream's default when those two agree
+(`docs/research/sglang_comparison.md`, the 2026-09-11 defaults section). The
+start agrees only at 50 steps, because sglang counts steps and core uses a
+fraction; every other row has the two disagreeing with each other.
 
 Two corrections, carried over from `docs/sol_upstream.md`, which held a
 version of this table until 2026-09-10:

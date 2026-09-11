@@ -2431,21 +2431,20 @@ machinery is what is doing the work.
 _NOTE_SOL_NODE = """\
 ## What this node does that the UI does not show
 
-**`end_percent` is computed per step count by the generator, not by this
-node.** The node turns a percent into a sigma when it is patched, which
-happens before the step count exists. Edit `steps` by hand and this value goes
-stale, the wrong steps run sparse, and nothing at run time says so. Change
-steps in `workflows/h3_config.py` and regenerate.
+**Sol runs from `start_percent` through the last step.** `end_percent` is
+1.0, the default that sglang's Sol backend and ComfyUI's own sparse-attention
+node both use. The steps before `start_percent` run on sage.
 
-**The window is a sigma band, so fewer steps means less of the run is
-sparse** -- most of it at 16 steps, about half at 4. The final step is always
-dense: it covers the largest jump in the schedule.
+**The window is a sigma band, not a step fraction.** The node turns a percent
+into a sigma when it is patched, before the step count exists, so the same
+`start_percent` covers a different share of the steps at 16 steps than at 4.
 
 **The packed conditioning rows always run dense** (`sink_conditioning`). They
 are a few hundred rows in a ~90k sequence and are the first thing a
 block-sparse router drops; dropping them is what breaks generated audio.
 
-**Blocks 0-1 stay dense**, matching NVLabs' own H3 configs.
+**No block is forced dense** (`dense_blocks` is empty, as in ComfyUI's own
+node; sglang's Sol backend keeps blocks 0-1 dense by default).
 
 **It composes onto the sage patch rather than replacing it**, which is why it
 must sit after it. See the node-order note.
@@ -5104,20 +5103,12 @@ def build_ui(task: str, *, sage: bool = True, prompt: str | None = None,
                          # was unconnected under the old name too.
                          inputs=[_in("model", "MODEL")],
                          outputs=[_out("MODEL", "MODEL")],
-                         # Titled with the derived value when there is one, for
-                         # the same reason MiniMaxH3SigmaShift is titled with
-                         # its shifts: `end_percent` is populated from the
-                         # graph's STEP COUNT, and a node showing "Patch
-                         # Sol-Attn" and a bare 0.87 does not prompt anyone to
-                         # ask why it is not 0.9 -- or warn them that editing
-                         # `steps` by hand leaves it stale, which nothing at
-                         # run time will say. See
-                         # h3_config.SOL_END_PERCENT_BY_STEPS.
-                         #
-                         # A PDD arm gets a DIFFERENT title, because its
-                         # values do not come from the step count at all --
-                         # h3_config.SOL_PDD_CUDA is taken whole, so editing
-                         # `steps` on one of those leaves nothing stale.
+                         # Titled with `end_percent` when it differs from the
+                         # base recipe. Since 2026-09-11 nothing shipped does
+                         # (1.0 everywhere, the step table and the PDD
+                         # override both empty), so every shipped graph gets
+                         # the plain title; `_sol_title` keeps its branches
+                         # for an arm that sets its own window.
                          title=_sol_title(sol, sol_enabled, pdd=pdd))
         if not sol_enabled:
             g._node(sol_node)["mode"] = 4
@@ -7080,7 +7071,8 @@ def main():
         # reference, and the step count. Two differences are NOT free variables
         # and must not be normalised away: PDD requires `euler` (a fused head is
         # the block's mean velocity and one Euler step integrates exactly that),
-        # and Sol's `end_percent` is step-aware and derived.
+        # and Sol's `end_percent` was step-aware and derived until
+        # 2026-09-11 (1.0 on every graph since).
         #
         # The reference is a runway photograph, deliberately far from the role
         # it is being asked to fill. That is the owner's choice and it makes the

@@ -415,12 +415,11 @@ def main() -> int:
         # that computes its own expectation grades itself (CLAUDE.md, prefer
         # a control the check compares against).
         #
-        #   step count   the window is a sigma band, so which steps fall
-        #                inside it depends on the count, and the band has to
-        #                move with it or the dense tail disappears
-        #                (h3_config.SOL_END_PERCENT_BY_STEPS). A graph at 8
-        #                steps carrying 0.9 -- the state every PDD arm
-        #                shipped in until 2026-08-26 -- is still caught.
+        #   step count   the window used to move with the count so the last
+        #                step stayed dense (h3_config.SOL_END_PERCENT_BY_STEPS).
+        #                Empty since 2026-09-11, so every count expects
+        #                SOL_RECOMMENDED_CUDA's 1.0; the lookup stays in the
+        #                resolver.
         #   PDD          a distilled arm takes h3_config.SOL_PDD_CUDA whole,
         #                owner decision 2026-08-29, at every step count.
         #                Decided by `loads_pdd`, the same MECHANISM the

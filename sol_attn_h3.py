@@ -1229,13 +1229,15 @@ class MiniMaxH3SolAttn(io.ComfyNode):
                                        "0.2. Never measured here at any value, and "
                                        "it costs a flat quarter of Sol's opportunity "
                                        "at every step count."),
-                io.Float.Input("end_percent", default=0.9, min=0.0, max=1.0, step=0.01,
-                               tooltip="Run dense after this point. This is a SIGMA "
-                                       "band, not a step fraction, so which steps "
-                                       "land inside it depends on the step count. "
-                                       "The shipped graphs lower it per step count "
-                                       "so the LAST step stays dense; a graph whose "
-                                       "steps you edit by hand will not."),
+                io.Float.Input("end_percent", default=1.0, min=0.0, max=1.0, step=0.01,
+                               tooltip="Run dense after this point. 1.0, the "
+                                       "default since 2026-09-11, keeps Sol on "
+                                       "through the last step, as sglang's Sol "
+                                       "backend and ComfyUI's own sparse-attention "
+                                       "node do. This is a SIGMA band, not a step "
+                                       "fraction, so a lower value covers a "
+                                       "different share of steps at different "
+                                       "step counts."),
                 io.String.Input("token_aug_blocks", optional=True, default="",
                                 tooltip=(
                                     "Recovers detail that Sol's speed-up smooths "

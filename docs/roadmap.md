@@ -519,7 +519,7 @@ All in `workflows/h3_config.py`, all single switches, all regenerate with
 |---|---|---|---|
 | `CANVAS_TIER` | `full` | full / near / fast / draft | 1.00 / 0.91 / 0.73 / 0.58 attention |
 | length | 362 | 17n+5 grid | linear in tokens |
-| `SOL_RECOMMENDED_CUDA` / `SOL_PDD_CUDA` / `SOL_CUDA_DEFAULTS` | Sol **on** in every video graph since 2026-08-14; `tau` 1.0 from 2026-08-20 by owner decision. **Two shipped configs since 2026-08-29** -- PDD arms take `SOL_PDD_CUDA` (wider dense tail, more dense blocks), everything else `SOL_RECOMMENDED_CUDA`, resolved by `h3_config.sol_for_graph` | tau, window, sinks, dense blocks | see `docs/SOLATTN.md`; 1.3 returns only if it shows no difference from 1.0 on the distilled LoRAs while buying meaningful speed. The PDD split is an owner reading of rendered arms, four knobs moved together, so nothing in it attributes an effect to one knob -- a blind distribution per knob is what would |
+| `SOL_RECOMMENDED_CUDA` / `SOL_PDD_CUDA` / `SOL_CUDA_DEFAULTS` | Sol **on** in every video graph since 2026-08-14; `tau` 1.0 from 2026-08-20 by owner decision. **Two shipped configs from 2026-08-29, one again since 2026-09-11**, when `end_percent` moved to 1.0 on every graph, adopting upstream (sglang's `sol_attn` and core's `BlockSparseAttention` agree); `h3_config.sol_for_graph` is still the resolver | tau, window, sinks, dense blocks | see `docs/SOLATTN.md`; 1.3 returns only if it shows no difference from 1.0 on the distilled LoRAs while buying meaningful speed. The PDD split is an owner reading of rendered arms, four knobs moved together, so nothing in it attributes an effect to one knob -- a blind distribution per knob is what would |
 | `TURBO_LORA` / `TURBO_768P_*` / `TURBO_SLA_*` | none shipped by default; probe graphs | the lightx2v rows `bench/check_distill_settings.py` attests | 4-8 steps against 16 |
 | `CACHE_NODE` | probe graphs only, **not canonical** (owner decision 2026-08-20) | EasyCache threshold/window | 1.56-1.74x on deterministic samplers at 16 steps; a 16-step lever with nothing to skip at 4 |
 
@@ -527,7 +527,7 @@ All in `workflows/h3_config.py`, all single switches, all regenerate with
 calculable answer waiting.** `docs/SOLATTN.md`, "What would replace the
 eyeballing, knob by knob", carries the derivations and the three things that
 would settle them, cheapest first: (1) `end_percent` 0.74 against 0.87 at 8
-evaluations, a single-axis test of whether Sol's dense region is pinned to the
+evaluations (moot since 2026-09-11, when every graph moved to 1.0), a single-axis test of whether Sol's dense region is pinned to the
 sigma path or to the schedule -- the recipe already bets on the first; (2)
 `bench/analyze_sol_error.py` at tau 1.0 over the surviving fl2va capture, which
 ranks blocks by Sol's own error on the partition the t2v PDD arms run and needs

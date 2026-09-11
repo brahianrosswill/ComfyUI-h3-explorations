@@ -527,6 +527,15 @@ SOL_BASELINE_124F = dict(
 #                     and upstream reports it drops attention's peak below the
 #                     FFN's. Left off only because it is a separate question
 #                     from the migration. Cheap win when someone measures it.
+#: **RETIRED 2026-09-11: empty, so no step count gets a dense last step.**
+#: The owner's rule is to take upstream's default where sglang and ComfyUI
+#: agree, and both run Sol through the last step: sglang's `sol_attn` backend
+#: has no end cutoff and core's `BlockSparseAttention` defaults `end_percent`
+#: to 1.0 (`docs/research/sglang_comparison.md`, the 2026-09-11 defaults
+#: section). `SOL_RECOMMENDED_CUDA` carries 1.0 now. The name stays because
+#: `sol_for_graph` reads it; the history below is why it held
+#: `{4: 0.74, 6: 0.83, 8: 0.87}` from 2026-08-26 until then.
+#:
 #: `end_percent` per sampler step count, so the FINAL step runs dense.
 #:
 #: **This one is ours, not the vendor's, and it is a fix for something that
@@ -578,7 +587,7 @@ SOL_BASELINE_124F = dict(
 #: changing `steps` by hand leaves `end_percent` stale, and nothing at run time
 #: will say so. `bench/check_attention_defaults.py` catches it for shipped
 #: graphs; a hand-edited one is on the person editing it.
-SOL_END_PERCENT_BY_STEPS = {4: 0.74, 6: 0.83, 8: 0.87}
+SOL_END_PERCENT_BY_STEPS = {}  # retired 2026-09-11; was {4: 0.74, 6: 0.83, 8: 0.87}
 
 #: VSA's key-block keep fraction, as a percent. The published sparsity is 0.90,
 #: so 10 here, and the T8 pack independently ships the same value.
@@ -643,7 +652,13 @@ SOL_RECOMMENDED_CUDA = dict(
     # sets global composition, which argues a routing error there propagates
     # into everything after. The speed half is one bench patch; the quality half
     # is a numerical knob and needs `docs/eval_comparison.md` section 3.
-    start_percent=0.2, end_percent=0.9,
+    start_percent=0.2,
+    # 1.0 since 2026-09-11, adopting upstream: sglang's `sol_attn` backend has
+    # no end cutoff and core's `BlockSparseAttention` defaults to 1.0. It was
+    # 0.9, which kept the last step dense at 16 steps; SOL_END_PERCENT_BY_STEPS
+    # records why that tail existed. Sol now runs through the last step, and
+    # sage still takes the steps before `start_percent`.
+    end_percent=1.0,
     # 4096 against the node's own 12288. Both are no-ops **at the lengths this
     # repo renders** -- every DiT call is at the full packed length, 31k-128k
     # tokens, far above either threshold, and every token-refiner call is ~311
@@ -781,9 +796,11 @@ SOL_RECOMMENDED_CUDA = dict(
 )
 
 
-# The Sol config for a PDD arm. It differs from the base recipe only in the
-# trajectory window. `dense_blocks` is inherited empty; any protected-block
-# list is an explicit experiment, not a PDD default.
+# The Sol config for a PDD arm. **Since 2026-09-11 it is the base recipe
+# unchanged**: its one override, the narrower `end_percent` described below,
+# went with the dense last step (see SOL_END_PERCENT_BY_STEPS). The notes
+# below are the history of that override. `dense_blocks` is inherited empty;
+# any protected-block list is an explicit experiment, not a PDD default.
 #
 #   end_percent   0.74 at EVERY PDD step count, against the step-count
 #                 derivation in SOL_END_PERCENT_BY_STEPS, which gives 0.87 at
@@ -825,9 +842,7 @@ SOL_RECOMMENDED_CUDA = dict(
 # that temporarily installed `0-2,32` did not establish that result either, so
 # both configurations inherit the empty default while the instrumentation lane
 # gathers the missing all-block evidence.
-SOL_PDD_OVERRIDES = dict(
-    end_percent=0.74,
-)
+SOL_PDD_OVERRIDES = dict()  # retired 2026-09-11; was end_percent=0.74
 
 SOL_PDD_CUDA = dict(SOL_RECOMMENDED_CUDA, **SOL_PDD_OVERRIDES)
 
@@ -843,9 +858,9 @@ def sol_for_graph(pdd, steps):
     `pdd` -- the graph loads a Parallel Decoding Distillation LoRA -- takes
     SOL_PDD_CUDA whole, at every step count, so `steps` is ignored on that
     branch. Everything else takes SOL_RECOMMENDED_CUDA with `end_percent`
-    lowered per SOL_END_PERCENT_BY_STEPS, which is untouched at counts the
-    table does not name (16 and 20 already put their last step below the
-    band).
+    lowered per SOL_END_PERCENT_BY_STEPS. Since 2026-09-11 both the table and
+    SOL_PDD_OVERRIDES are empty, so every graph gets SOL_RECOMMENDED_CUDA as
+    it is; the branches stay so a future per-kind knob has one place to go.
     """
     if pdd:
         return dict(SOL_PDD_CUDA)
@@ -881,7 +896,7 @@ def sol_for_graph(pdd, steps):
 # pinned knob the node has never heard of.
 SOL_CUDA_DEFAULTS = dict(
     selection="adaptive tau", tau=1.0,
-    start_percent=0.2, end_percent=0.9, min_tokens=12288,
+    start_percent=0.2, end_percent=1.0, min_tokens=12288,
     sink_conditioning="exact_kv_and_rows", morton=False,
     morton_curve="3d", pooled_tail=True,
     verbose=False, dense_blocks="",
