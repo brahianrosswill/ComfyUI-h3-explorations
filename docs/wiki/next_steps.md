@@ -43,6 +43,16 @@ own below the rule.
   sample divergence; and every row's code is "server started 15:55, node code
   `8870f8e`", because the rows stamp the repo HEAD at render time, not the
   code the server loaded.
+- Run rows need a code stamp from the server. The rows
+  `bench/run_graph_arms.py` writes carry `substrate.git_commit` and
+  `git_dirty`, read from the working tree when each row is written, so a
+  commit during a batch relabels every later row. In
+  `bench/results/2026-09-10_sol_core_ab_arms.jsonl` the stamp moves from
+  `3e553f6` to `311cffa` mid-batch, while the server ran `8870f8e`
+  throughout. Done when rows also carry the serving process's start time,
+  or the commit at its start. Wrong premise if the owner rules that no
+  commit is made during a batch. Until then, verdict write-ups state the
+  server's start time and loaded code by hand.
 - The Base16 capture passed its `keep_until` on 2026-09-10 and the recycler
   lists it recyclable; deleting it is the owner's call.
 - `bench/check_dit_prefix_attention.py` is indexed as CPU-only but cannot run
