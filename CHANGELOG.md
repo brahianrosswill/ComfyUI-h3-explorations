@@ -4,6 +4,14 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.99.86
+
+### Added
+
+- **`bench/convert_t2va_to_ref2va.py` converts a t2va prompt into a ref2va prompt**, allowing
+  for t2va prompts to be more easily converted into ref2va. Note this is simplistic and may need
+  closer examination in the future.
+
 ## 0.99.85
 
 ### Fixed
