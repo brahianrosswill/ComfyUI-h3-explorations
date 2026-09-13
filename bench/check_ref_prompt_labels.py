@@ -341,19 +341,30 @@ def main():
         bad, compared = [], 0
         for path in graph_paths(WORKFLOWS, "*_api.json"):
             doc = json.loads(path.read_text(encoding="utf-8"))
-            for node in doc.values():
-                if not isinstance(node, dict):
-                    continue
-                got = (node.get("inputs") or {}).get("prompt")
-                if not isinstance(got, str):
-                    continue
+            # A windowed graph (`freeze_shots`) declares a LIST, one prompt
+            # per window in node-id order; every other graph declares one
+            # string that every conditioner must carry.
+            declared = expected.get(path.name)
+            per_window = list(declared) if isinstance(declared, list) else None
+            conditioners = sorted(
+                ((int(nid), node) for nid, node in doc.items()
+                 if isinstance(node, dict)
+                 and isinstance((node.get("inputs") or {}).get("prompt"), str)),
+                key=lambda kv: kv[0])
+            if per_window is not None and len(conditioners) != len(per_window):
+                bad.append(f"{path.name}: entry declares {len(per_window)} window "
+                           f"prompt(s) but the graph carries {len(conditioners)} "
+                           f"conditioner(s)")
+                continue
+            for index, (_nid, node) in enumerate(conditioners):
+                got = node["inputs"]["prompt"]
                 if path.name not in expected:
                     bad.append(f"{path.name}: no GRAPHS entry generates this "
                                f"graph, so nothing declares its prompt")
                     continue
                 compared += 1
-                if got != expected[path.name]:
-                    want = expected[path.name]
+                want = per_window[index] if per_window is not None else declared
+                if got != want:
                     where = next((i for i, (a, b) in enumerate(
                         zip(got, want)) if a != b), min(len(got), len(want)))
                     bad.append(

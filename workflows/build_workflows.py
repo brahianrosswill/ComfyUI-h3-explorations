@@ -2155,7 +2155,10 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
                               "audio": ["48", 0], "sampler": ["7", 0], "sigmas": _sig,
                               "prompt": prompt, "width": cv["width"], "height": cv["height"],
                               "window_frames": length, "context_frames": freeze_context,
-                              "max_seconds": freeze_song_seconds, "seed": seed,
+                              # `extent` is a DynamicCombo (2026-09-13): dotted
+                              # member in the API form, as `size_policy` is.
+                              "extent": "first_seconds", "extent.seconds": freeze_song_seconds,
+                              "seed": seed,
                               "audio_mask": freeze_mask, "level": "clip_guard",
                               "filename_prefix": out_prefix or "Video/h3_song", "crf": 19,
                               "prompt_mode": freeze_song_mode, "window_mode": "uniform"}}
@@ -4432,8 +4435,8 @@ first everywhere, `random` draws one per window from the seed. A block may
 start with `frames: N` to set that window's length (141, 192, 243, 294 or
 345).
 
-**`max_seconds`** caps the plan; the shipped value is a quick look. Set it to
-0 for the whole track. The seed advances by one per window.
+**`extent`** is the whole track, or its first N seconds; the shipped graph
+takes the quick look. The seed advances by one per window.
 
 **Cost.** Attention is quadratic in a window's packed sequence
 (`bench/preflight_graph.py` prices one), so shorter windows are cheaper per
@@ -5804,7 +5807,8 @@ def build_ui(task: str, *, sage: bool = True, prompt: str | None = None,
                      widgets=[prompt, cv["width"], cv["height"], length, freeze_context,
                               # no control widget: the node's seed input declares none, and
                               # the node advances the seed by one per window itself
-                              freeze_song_seconds, seed, freeze_mask, "clip_guard",
+                              # `extent`: the selection, then its own widget.
+                              "first_seconds", freeze_song_seconds, seed, freeze_mask, "clip_guard",
                               out_prefix or "Video/h3_song", 19, freeze_song_mode, "uniform"],
                      inputs=[_in("model", "MODEL"), _in("clip", "CLIP"), _in("vae", "VAE"),
                              _in("audio_vae", "VAE"), _in("audio", "AUDIO"),
@@ -8746,14 +8750,21 @@ def main():
         # moves this with it instead of leaving it quietly wrong.
         import inspect as _inspect
         _p = _inspect.signature(build_api).parameters
+        # A `freeze_shots` graph carries one conditioner PER WINDOW, each
+        # with its own bank prompt, so its entry maps to a LIST in window
+        # order; the entry's own `prompt` is not rendered there. The consumer
+        # compares each conditioner to its window (node ids ascend with the
+        # window index, `100 + 10 * i`).
         print(json.dumps({
             fname.removesuffix(".json") + "_api.json":
-                resolve_default_prompt(
+                ([_bank_prompt(pid) for _frames, pid in extra["freeze_shots"]]
+                 if extra.get("freeze_shots") else
+                 resolve_default_prompt(
                     task, prompt,
                     length=graph_length(extra),
                     last_frame=extra.get("last_frame", _p["last_frame"].default),
                     first_frame=extra.get("first_frame",
-                                          _p["first_frame"].default))
+                                          _p["first_frame"].default)))
             for fname, _label, task, prompt, extra, _note in GRAPHS}))
         return 0
 

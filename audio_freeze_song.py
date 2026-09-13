@@ -13,8 +13,8 @@ the full track at the end. Nothing here holds more than one window of frames.
 previous window frozen at their head, so each adds `window - context` frames.
 The last window is the smallest length on both clocks (141, 192, 243, 294,
 345 frames) that reaches the end of the track; if the track runs out inside
-it, the freeze pads silence and the report says how much. `max_seconds` caps
-the plan for a quick look.
+it, the freeze pads silence and the report says how much. `extent` is the
+whole track, or its first N seconds for a quick look.
 
 **The prompt.** One block is used for every window (`uniform`). Several
 blocks separated by a line of `---` are used in order with the last one
@@ -69,7 +69,7 @@ def plan_windows(total_frames: int, window_frames: int, context_frames: int, rng
     """
     if window_frames not in CHAIN_LENGTHS:
         raise ValueError(f"window_frames {window_frames} is not on both clocks; use one of {CHAIN_LENGTHS}")
-    if context_frames and (context_frames % 17 != 5 or (context_frames * 5) % 3 != 0 or context_frames >= window_frames):
+    if context_frames % 17 != 5 or (context_frames * 5) % 3 != 0 or context_frames >= window_frames:
         raise ValueError(f"context_frames {context_frames} must be 39, 90 or 141 and shorter than the window")
     if total_frames <= 0:
         raise ValueError("the track is empty")
@@ -159,10 +159,23 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                 io.Int.Input("height", default=768, min=32, max=16384, step=32),
                 io.Int.Input("window_frames", default=345, min=141, max=345, step=51,
                              tooltip="Frames per window, on both clocks: 141, 192, 243, 294 or 345."),
-                io.Int.Input("context_frames", default=39, min=0, max=141, step=51,
+                io.Int.Input("context_frames", default=39, min=39, max=141, step=51,
                              tooltip="Frames of the previous window frozen at the head of the next: 39, 90 or 141."),
-                io.Float.Input("max_seconds", default=0.0, min=0.0, max=36000.0, step=0.5,
-                               tooltip="Cover only this much of the track (0 = all of it), for a quick look."),
+                # A DynamicCombo, not a Float whose 0 meant "the whole track":
+                # the owner's rule (2026-09-13) is that a number never means a
+                # mode. Selection first, then the option's own widget.
+                io.DynamicCombo.Input(
+                    "extent",
+                    options=[
+                        io.DynamicCombo.Option("whole", []),
+                        io.DynamicCombo.Option("first_seconds", [
+                            io.Float.Input("seconds", default=30.0, min=0.5, max=36000.0, step=0.5,
+                                           tooltip="Cover only the first N seconds of the track."),
+                        ]),
+                    ],
+                    tooltip=("How much of the track to cover. whole: every window the plan needs "
+                             "to reach the end. first_seconds: only the first N seconds, for a "
+                             "quick look at the seams before committing to the whole song.")),
                 io.Int.Input("seed", default=0, min=0, max=0xffffffffffffffff),
                 io.Float.Input("audio_mask", default=0.0, min=0.0, max=1.0, step=0.01),
                 io.Combo.Input("level", options=["clip_guard", "peak", "none"], default="clip_guard"),
@@ -187,14 +200,22 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
 
     @classmethod
     def execute(cls, model, clip, vae, audio_vae, audio, sampler, sigmas, prompt, width, height,
-                window_frames, context_frames, max_seconds, seed, audio_mask, level,
+                window_frames, context_frames, extent, seed, audio_mask, level,
                 filename_prefix, crf, prompt_mode="cycle", window_mode="uniform") -> io.NodeOutput:
         import folder_paths
+        # A DynamicCombo arrives as one nested dict (the selection under its own
+        # id, the option's inputs beside it) or, from an API prompt that sets
+        # only the selection, as a bare string.
+        choice = extent if isinstance(extent, str) else extent["extent"]
+        if choice not in ("whole", "first_seconds"):
+            raise ValueError(f"unknown extent {choice!r}")
+        max_seconds = (float(extent["seconds"]) if choice == "first_seconds" and not isinstance(extent, str)
+                       else (30.0 if choice == "first_seconds" else None))
         waveform, rate, _ = _stereo(audio)
         vae_rate, hop = audio_grid(audio_vae)
         seconds = waveform.shape[-1] / rate
-        if max_seconds > 0:
-            seconds = min(seconds, float(max_seconds))
+        if max_seconds is not None:
+            seconds = min(seconds, max_seconds)
         total_frames = int(math.ceil(seconds * FPS))
         rng = random.Random(int(seed))
         plan = plan_windows(total_frames, int(window_frames), int(context_frames),

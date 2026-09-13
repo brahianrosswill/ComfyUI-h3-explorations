@@ -33,6 +33,22 @@ artifact.
 
 ### Changed
 
+- **No zero sentinels on the audio-freeze nodes** (owner rule, 2026-09-13: a
+  number never means a mode). `MiniMaxH3FreezeAudioWindow.context_frames` is
+  39 or more (step 51, the runs on both clocks) and the first window of a
+  chain freezes nothing because `previous` is unwired, not because the widget
+  reads 0 (`audio_freeze.py::no_context_geometry`). `MiniMaxH3AudioFreezeSong`
+  replaces `max_seconds` (0 meant the whole track) with a DynamicCombo
+  `extent`: `whole`, or `first_seconds` carrying the cap; its `context_frames`
+  takes the same floor and step. The song graph is regenerated; widget
+  positions after `extent` moved on that one node, one day old.
+- **A windowed graph declares one prompt per window.** `build_workflows.py
+  --dump-prompts` emits a list for a `freeze_shots` entry and
+  `bench/check_ref_prompt_labels.py` compares each conditioner to its window
+  in node-id order; the shots graph had read as drift because its entry could
+  declare only one prompt. Four rows added to `bench/check_widget_deviations.py`
+  for the window splice (`ImageFromBatch`) and the song graph's `extent` and
+  `prompt_mode`.
 - **`workflows/prompts.py::CONDITIONERS` knows `MiniMaxH3ReferenceConditioning`.**
   `describe`, which `bench/run_graph_arms.py` and the capture manifest use to
   record what a graph rendered, keyed on the base conditioner alone, so every

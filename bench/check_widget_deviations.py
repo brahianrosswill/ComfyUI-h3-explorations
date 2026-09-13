@@ -141,6 +141,27 @@ IDENTITY = {
 #: one, and 76 graphs at the default went red. The KIND claim is graded, not
 #: trusted, and it caught its author four times in one sitting.
 DECLARED: dict[tuple[str, str], tuple] = {
+    ("ImageFromBatch", "batch_index"):
+        ("ARM", "the window splice on the audio-freeze chains: each window's "
+                "decode drops its frozen context frames (the generator's "
+                "`freeze_context`, wired to MiniMaxH3FreezeAudioWindow."
+                "context_frames on the same graph) so the join carries new "
+                "frames only. docs/h3_audio_freeze.md section 4 step 6."),
+    ("ImageFromBatch", "length"):
+        ("ARM", "the window's frames minus its frozen context, the companion "
+                "of batch_index above; both derive from the same two generator "
+                "knobs per window."),
+    ("MiniMaxH3AudioFreezeSong", "extent"):
+        ("ARM", "'first_seconds' on the shipped song graph, a quick look at "
+                "the seams; the node default 'whole' plans every window to the "
+                "end of the track. Generator knob `freeze_song_seconds`."),
+    ("MiniMaxH3AudioFreezeSong", "extent.seconds"):
+        ("ARM", "the quick look's length on the shipped song graph, "
+                "`freeze_song_seconds` in the generator."),
+    ("MiniMaxH3AudioFreezeSong", "prompt_mode"):
+        ("ARM", "'uniform' on the shipped song graph (one prompt for every "
+                "window) against the node default 'cycle'; generator knob "
+                "`freeze_song_mode`."),
     ("BasicScheduler", "steps"):
         ("ARM", "the arm's evaluation count; graded against the LoRA it loads "
                 "by bench/check_distill_settings.py"),

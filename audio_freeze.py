@@ -374,11 +374,10 @@ def window_geometry(latent_t: int, context_frames: int) -> dict:
     """
     frames = pixel_frames(latent_t)
     c = int(context_frames)
-    if c < 0:
-        raise ValueError("context_frames must be non-negative")
-    if c == 0:
-        return {"frames": frames, "context_frames": 0, "context_steps": 0,
-                "stride_frames": frames, "stride_seconds": frames / FPS}
+    if c < 39:
+        raise ValueError(
+            f"context_frames {c} is below the smallest run on both clocks (39). A window "
+            "with no previous window takes no context: leave `previous` unwired.")
     if c % 17 != 5:
         raise ValueError(f"context_frames {c} is not a video run (17k + 5): 39, 56, 73, ...")
     if (c * 5) % 3 != 0:
@@ -398,6 +397,19 @@ def window_geometry(latent_t: int, context_frames: int) -> dict:
             "39 + 51k frames, so 141, 192, 243, 294 or 345 (5.9 s to 14.4 s in 2.1 s steps)")
     return {"frames": frames, "context_frames": c, "context_steps": steps,
             "stride_frames": stride, "stride_seconds": stride / FPS}
+
+
+def no_context_geometry(latent_t: int) -> dict:
+    """The first window of a chain: nothing frozen, the whole window strides.
+
+    Reached by NOT wiring `previous`, never by a widget value: a context of
+    zero frames is not a run on either clock, and the owner's rule
+    (2026-09-13) is that a number never means a mode. `context_frames` and
+    `context_steps` are 0 here because that is literally how many are frozen.
+    """
+    frames = pixel_frames(latent_t)
+    return {"frames": frames, "context_frames": 0, "context_steps": 0,
+            "stride_frames": frames, "stride_seconds": frames / FPS}
 
 
 class MiniMaxH3FreezeAudioWindow(io.ComfyNode):
@@ -424,10 +436,11 @@ class MiniMaxH3FreezeAudioWindow(io.ComfyNode):
                 io.Float.Input("start_seconds", default=0.0, min=0.0, max=36000.0, step=0.025,
                                tooltip=("Where in the track this window starts; snaps to the audio latent grid. "
                                         "0 for the first window; wire the previous window's next_start_seconds after that.")),
-                io.Int.Input("context_frames", default=39, min=0, max=999,
+                io.Int.Input("context_frames", default=39, min=39, max=999, step=51,
                              tooltip=("Frames of the previous window kept as frozen context at the head of "
-                                      "this one. Must be a video run that lands on the audio grid: 39, 90, 141 "
-                                      "(39 + 51k). 0 disables context. Applied only when previous is connected.")),
+                                      "this one: a video run that lands on the audio grid, 39, 90, 141 "
+                                      "(39 + 51k). Read only when previous is connected; the first window "
+                                      "of a chain has no previous and freezes nothing.")),
                 io.Latent.Input("previous", optional=True,
                                 tooltip=("The previous window's SAMPLED latent (the sampler's output). Windows may "
                                          "differ in length, one shot each, but each must land on both clocks: "
@@ -457,11 +470,13 @@ class MiniMaxH3FreezeAudioWindow(io.ComfyNode):
         video, target_audio = _av_streams(latent["samples"])
         latent_t = int(video.shape[2])
         audio_t = int(target_audio.shape[-1])
-        has_context = previous is not None and int(context_frames) > 0
+        has_context = previous is not None
         # This window's own geometry decides what the NEXT window may copy
         # from it (the phase rule); what THIS window copies is checked against
-        # the previous window's length below.
-        geo = window_geometry(latent_t, context_frames if has_context else 0)
+        # the previous window's length below. A first window (no previous)
+        # freezes nothing; the widget still names what the NEXT window keeps.
+        geo = (window_geometry(latent_t, context_frames) if has_context
+               else no_context_geometry(latent_t))
         start_seconds = float(start_seconds)
 
         waveform, rate, fixes = _stereo(audio)
@@ -526,7 +541,7 @@ class MiniMaxH3FreezeAudioWindow(io.ComfyNode):
 
         trim = int(geo["context_frames"]) if has_context else 0
         # what the next window starts at if it keeps context_frames of this one
-        next_geo = window_geometry(latent_t, int(context_frames)) if int(context_frames) > 0 else geo
+        next_geo = window_geometry(latent_t, int(context_frames))
         next_start = start_seconds + next_geo["stride_seconds"]
         report = (
             f"window from {start_seconds:.3f}s: {geo['frames']} frames, context {geo['context_frames']} frames "
