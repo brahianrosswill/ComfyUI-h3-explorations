@@ -15,22 +15,31 @@ own below the rule.
 
 **2026-09-13:**
 
-- **Reference-view ablation, second edition, queued.** `bench/refview2_arms.json`:
-  five ref2va scene graphs (`h3_config.REFVIEW2_SCENES`,
-  `workflows/h3_probe_refview2_*.json`) built at `MiniMaxH3AppendRefImage`'s
-  new defaults (vendor parity: 2048 short edge, upscale on, one copy for both
-  the video VAE and Qwen3-VL), six arms per scene as widget patches
-  (`parity`, `up_q512`, `noup_shared`, `noup_q512`, `noup_q1024`,
-  `noup_q2048`). Render through `bench/run_graph_arms.py`, judge blind and
-  matched-seed (`docs/eval_comparison.md`), record in `bench/results/`.
-  What it settles: the `qwen_view` default (if a `q512` arm beats `parity`
-  across scenes, the 2026-08-27 separate view was right and returns; if not,
-  `shared` stands) and the `allow_upscale` default (if `noup_shared` matches
-  `parity` on identity, the upscale buys rows and nothing else). Nothing is
-  claimed until then. The old three-arm Gate 6 family
-  (`h3_probe_refview_{a_source,b_qwen2048,c_parity}`,
+- **Reference-view ablation, second edition: rendered, awaiting the owner's
+  blind verdicts.** `bench/refview2_arms.json`: five ref2va scene graphs
+  (`h3_config.REFVIEW2_SCENES`, `workflows/h3_probe_refview2_*.json`) built
+  at `MiniMaxH3AppendRefImage`'s new defaults (vendor parity: 2048 short
+  edge, upscale on, one copy for both the video VAE and Qwen3-VL). Four arms
+  per scene after the owner cut the middle tier mid-run (`parity`,
+  `noup_shared`, `noup_q512`, `noup_q2048`); one seed, by the owner's call.
+  Rows: `bench/results/2026-09-13_refview2_arms.jsonl`, no failures. The
+  blind session is built: `Video/blind/refview2_2026-09-13/` on the output
+  share, every render as a neutral single plus fifteen stacked pairs (parity
+  against each other arm per scene), `score.html` beside them, key sealed
+  under `internal/blind_keys/`. What it settles: the `qwen_view` default
+  (if `noup_q512` beats `parity` across scenes, the 2026-08-27 separate view
+  was right and returns; if not, `shared` stands) and the `allow_upscale`
+  default (if `noup_shared` matches `parity` on identity, the upscale buys
+  rows and nothing else). One seed is one sample per pair; the reading is
+  across the five scenes. Nothing is claimed until scored. The old three-arm
+  Gate 6 family (`h3_probe_refview_{a_source,b_qwen2048,c_parity}`,
   `bench/gate6_refview_arms.json`) was never rendered and is deleted; the
   owner's decisions of the day are in [`decisions.md`](decisions.md).
+- **One render owed on the audio-freeze lane**: `untold_loose_pdd8` at a
+  second seed, to learn whether loose mask with neither transcript nor guide
+  rows drops the mouth every time or did once (the step 2 verdict file,
+  entry dated 2026-09-13). Queue it once the sage-fork session's GPU
+  measurements are done.
 - Before queueing a reference render, wire `MiniMaxH3ReferenceReport` or run
   `bench/preflight_graph.py`: both price what each reader sees.
 
