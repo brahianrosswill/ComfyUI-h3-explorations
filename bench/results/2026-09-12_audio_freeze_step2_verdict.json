@@ -1,85 +1,99 @@
 {
-  "date": "2026-09-12",
-  "what": "the owner's free-text verdicts on the audio-freeze step 2 arms (docs/h3_audio_freeze.md section 4 step 2), as given, in order. Arms and seeds: bench/audio_freeze_step2_arms.json; rows: bench/results/2026-09-12_audio_freeze_step2_arms.jsonl.",
-  "how_judged": "the owner watched the clip in the output share while the batch was still rendering; not blind, not a matched-pair comparison yet. The free twin (dancer_free) had rendered but had not been watched at the time of the first verdict.",
-  "verdicts": [
-    {
-      "arm": "dancer_frozen",
-      "clip": "Video/h3_t2v_audio_freeze_dancer_frozen_00001-audio.mp4",
-      "owner": "h3_t2v_audio_freeze_dancer_frozen_00001-audio.mp4 is definitely moving to the beat",
-      "when": "2026-09-12, during the batch, before dancer_loose finished"
-    },
-    {
-      "arm": "dancer_frozen",
-      "clip": "Video/h3_t2v_audio_freeze_dancer_frozen_00001-audio.mp4",
-      "owner": "Its too zoomed out on the face so its blurry (common problem in these models when zoomed out far) so prompt should compensate",
-      "when": "2026-09-12, same viewing; acted on: prompt_bank/t2va_studio_dancer_close.txt reframes the scene at medium shot then close-up"
-    },
-    {
-      "arm": "dancer_loose",
-      "clip": "Video/h3_t2v_audio_freeze_dancer_loose_00001-audio.mp4",
-      "owner": "h3_t2v_audio_freeze_dancer_loose_00001-audio is pretty awesome too",
-      "when": "2026-09-12, after the free and loose arms were sent; the free twin's verdict not yet given"
-    },
-    {
-      "arm": "dancer_loose vs dancer_frozen",
-      "clip": "Video/h3_t2v_audio_freeze_dancer_loose_00001-audio.mp4 against Video/h3_t2v_audio_freeze_dancer_frozen_00001-audio.mp4",
-      "owner": "h3_t2v_audio_freeze_dancer_loose_00001-audio is actually a lot better ... but could be seed",
-      "when": "2026-09-12, after watching both",
-      "reading": "same seed (1101) on both arms, but the mask value changes every step's trajectory, so one pair is two samples and cannot attribute the difference to the mask (CLAUDE.md). Next: frozen against loose at a second seed on t2va_studio_dancer_close; queued behind the PDD arms"
-    },
-    {
-      "arm": "dancer scene, the mechanism",
-      "clip": "the frozen and loose dancer arms together",
-      "owner": "but either way it works",
-      "when": "2026-09-12, after the loose-vs-frozen comparison",
-      "reading": "the owner's verdict on step 2's question for the dancer scene: the picture follows a frozen track, at mask 0.0 and at 0.25. Which mask value is better is the open seed question above; that it works is not"
-    },
-    {
-      "arm": "voice_frozen",
-      "clip": "Video/h3_t2v_audio_freeze_voice_frozen_00001-audio.mp4",
-      "owner": "i checked quickly - lip sync looks good in h3_t2v_audio_freeze_voice_frozen_00001-audio",
-      "when": "2026-09-12, during the batch, before voice_untold rendered; a quick look, the free twin not yet compared",
-      "reading": "step 2's second question, lip sync against a frozen spoken clip, read as good on a quick look. Both scenes now have an owner verdict that the mechanism works"
-    },
-    {
-      "arm": "voice_frozen / voice_untold",
-      "clip": "the frozen voice arms",
-      "owner": "the timing matched the audio clip but she barely moved. Only when the audio stopped did she turn. Maybe it's a prompting thing",
-      "when": "2026-09-12, after the free and untold arms were sent",
-      "reading": "two findings. (1) The mouth's timing followed the clip; the transcript in the prompt carried no timing, so the sync is the audio's. (2) Stillness during the line: the prompt describes no action during the speech and a static camera, the clip is a dry synthetic voice with no room, and single-face close-ups are this corpus's lowest-motion content (docs/research/pdd/audio_under_pdd.md). Next: t2va_none_of_this_is_real_moving, the same scene with action inside the line"
-    },
-    {
-      "arm": "voice_untold",
-      "clip": "Video/h3_t2v_audio_freeze_voice_untold_00001-audio.mp4",
-      "owner": "The untold one works too. Not nearly as seamless as the t2v and somewhat unnatural but maybe that's to be expected or there's a better way. Ideally we don't need to prompt for this especially for music video ideas",
-      "when": "2026-09-12",
-      "reading": "idea 4 answered in direction: the audio alone drives the mouth; the transcript adds polish. The lane's target for music video is no transcript, so the next arms give the model more of the track without words: the loose mask on the untold prompt, and guide audio (core's MiniMaxH3AddGuide anchoring the same clip as conditioning rows) on top of the freeze, each on the PDD8 chain"
-    },
-    {
-      "arm": "voice arms, reading",
-      "clip": "all three voice arms",
-      "owner": "Her hair blows in all of them though so it's totally possible it's just a lack of any action or speaking style or using her body or head and such for facial expressions and physical expressions which could just mean prompt shows her speaking static and lip sync working at least. Now we need to see if motion in both the subject and then the camera and then both can keep it working and show natural expressions while keeping lip sync intact. Likely prompting and letting the audio be thought of like a strong second prompt that will guide it or be guided by it.",
-      "when": "2026-09-12",
-      "reading": "the next arms, same clip and seed on the PDD8 chain: t2va_none_of_this_is_real_moving_subject (subject moves, camera static), _moving_camera (camera arcs, delivery still), _moving (both). bench/audio_freeze_seam_and_moving_arms.json"
-    },
-    {
-      "arm": "dancer_frozen_pdd8, voice_frozen_pdd8, dancer_close_frozen_s2, dancer_close_loose_s2",
-      "clip": "the four clips sent after batch A (bench/results/2026-09-12_audio_freeze_pdd_arms.jsonl, ..._mask_seed2_arms.jsonl)",
-      "owner": "Yeah they all look and sound great. Last speaking clip from above has her moving her head in the middle to end",
-      "when": "2026-09-12",
-      "reading": "PDD8 keeps the coupling on both scenes: it is the lane's iteration chain from here (plan step 3 closed). Both second-seed dancer arms read good, so the seed-1 loose-over-frozen gap reads as the seed; hard freeze stays the default, the loose mask a knob. The PDD8 voice arm moved her head mid-line on the still prompt"
-    },
-    {
-      "arm": "dancer_close_frozen_s2, dancer_close_loose_s2",
-      "clip": "the second-seed pair on t2va_studio_dancer_close",
-      "owner": "Both dancer clips are great. I love them.",
-      "when": "2026-09-12",
-      "reading": "the reframed prompt at a second seed: both arms land. The framing fix holds (face sharp at medium shot and close-up) and the mask value does not separate them"
-    }
-  ],
-  "caveats": [
-    "one arm, one seed, one scene, judged alone: a sample, not a result (docs/eval_comparison.md)",
-    "the throwaway first render (covered-market prompt under the same drum track, 2026-09-12_audio_freeze_first_run.jsonl) drew the opposite reading from the owner: 'not entirely sure it changed anything in the video'. The prompt there described dialogue and a market, not music; the dancer prompt describes a dancer to a beat. Whether the difference is the prompt, the scene or the seed is the pair question"
-  ]
+ "date": "2026-09-12",
+ "what": "the owner's free-text verdicts on the audio-freeze step 2 arms (docs/h3_audio_freeze.md section 4 step 2), as given, in order. Arms and seeds: bench/audio_freeze_step2_arms.json; rows: bench/results/2026-09-12_audio_freeze_step2_arms.jsonl.",
+ "how_judged": "the owner watched the clip in the output share while the batch was still rendering; not blind, not a matched-pair comparison yet. The free twin (dancer_free) had rendered but had not been watched at the time of the first verdict.",
+ "verdicts": [
+  {
+   "arm": "dancer_frozen",
+   "clip": "Video/h3_t2v_audio_freeze_dancer_frozen_00001-audio.mp4",
+   "owner": "h3_t2v_audio_freeze_dancer_frozen_00001-audio.mp4 is definitely moving to the beat",
+   "when": "2026-09-12, during the batch, before dancer_loose finished"
+  },
+  {
+   "arm": "dancer_frozen",
+   "clip": "Video/h3_t2v_audio_freeze_dancer_frozen_00001-audio.mp4",
+   "owner": "Its too zoomed out on the face so its blurry (common problem in these models when zoomed out far) so prompt should compensate",
+   "when": "2026-09-12, same viewing; acted on: prompt_bank/t2va_studio_dancer_close.txt reframes the scene at medium shot then close-up"
+  },
+  {
+   "arm": "dancer_loose",
+   "clip": "Video/h3_t2v_audio_freeze_dancer_loose_00001-audio.mp4",
+   "owner": "h3_t2v_audio_freeze_dancer_loose_00001-audio is pretty awesome too",
+   "when": "2026-09-12, after the free and loose arms were sent; the free twin's verdict not yet given"
+  },
+  {
+   "arm": "dancer_loose vs dancer_frozen",
+   "clip": "Video/h3_t2v_audio_freeze_dancer_loose_00001-audio.mp4 against Video/h3_t2v_audio_freeze_dancer_frozen_00001-audio.mp4",
+   "owner": "h3_t2v_audio_freeze_dancer_loose_00001-audio is actually a lot better ... but could be seed",
+   "when": "2026-09-12, after watching both",
+   "reading": "same seed (1101) on both arms, but the mask value changes every step's trajectory, so one pair is two samples and cannot attribute the difference to the mask (CLAUDE.md). Next: frozen against loose at a second seed on t2va_studio_dancer_close; queued behind the PDD arms"
+  },
+  {
+   "arm": "dancer scene, the mechanism",
+   "clip": "the frozen and loose dancer arms together",
+   "owner": "but either way it works",
+   "when": "2026-09-12, after the loose-vs-frozen comparison",
+   "reading": "the owner's verdict on step 2's question for the dancer scene: the picture follows a frozen track, at mask 0.0 and at 0.25. Which mask value is better is the open seed question above; that it works is not"
+  },
+  {
+   "arm": "voice_frozen",
+   "clip": "Video/h3_t2v_audio_freeze_voice_frozen_00001-audio.mp4",
+   "owner": "i checked quickly - lip sync looks good in h3_t2v_audio_freeze_voice_frozen_00001-audio",
+   "when": "2026-09-12, during the batch, before voice_untold rendered; a quick look, the free twin not yet compared",
+   "reading": "step 2's second question, lip sync against a frozen spoken clip, read as good on a quick look. Both scenes now have an owner verdict that the mechanism works"
+  },
+  {
+   "arm": "voice_frozen / voice_untold",
+   "clip": "the frozen voice arms",
+   "owner": "the timing matched the audio clip but she barely moved. Only when the audio stopped did she turn. Maybe it's a prompting thing",
+   "when": "2026-09-12, after the free and untold arms were sent",
+   "reading": "two findings. (1) The mouth's timing followed the clip; the transcript in the prompt carried no timing, so the sync is the audio's. (2) Stillness during the line: the prompt describes no action during the speech and a static camera, the clip is a dry synthetic voice with no room, and single-face close-ups are this corpus's lowest-motion content (docs/research/pdd/audio_under_pdd.md). Next: t2va_none_of_this_is_real_moving, the same scene with action inside the line"
+  },
+  {
+   "arm": "voice_untold",
+   "clip": "Video/h3_t2v_audio_freeze_voice_untold_00001-audio.mp4",
+   "owner": "The untold one works too. Not nearly as seamless as the t2v and somewhat unnatural but maybe that's to be expected or there's a better way. Ideally we don't need to prompt for this especially for music video ideas",
+   "when": "2026-09-12",
+   "reading": "idea 4 answered in direction: the audio alone drives the mouth; the transcript adds polish. The lane's target for music video is no transcript, so the next arms give the model more of the track without words: the loose mask on the untold prompt, and guide audio (core's MiniMaxH3AddGuide anchoring the same clip as conditioning rows) on top of the freeze, each on the PDD8 chain"
+  },
+  {
+   "arm": "voice arms, reading",
+   "clip": "all three voice arms",
+   "owner": "Her hair blows in all of them though so it's totally possible it's just a lack of any action or speaking style or using her body or head and such for facial expressions and physical expressions which could just mean prompt shows her speaking static and lip sync working at least. Now we need to see if motion in both the subject and then the camera and then both can keep it working and show natural expressions while keeping lip sync intact. Likely prompting and letting the audio be thought of like a strong second prompt that will guide it or be guided by it.",
+   "when": "2026-09-12",
+   "reading": "the next arms, same clip and seed on the PDD8 chain: t2va_none_of_this_is_real_moving_subject (subject moves, camera static), _moving_camera (camera arcs, delivery still), _moving (both). bench/audio_freeze_seam_and_moving_arms.json"
+  },
+  {
+   "arm": "dancer_frozen_pdd8, voice_frozen_pdd8, dancer_close_frozen_s2, dancer_close_loose_s2",
+   "clip": "the four clips sent after batch A (bench/results/2026-09-12_audio_freeze_pdd_arms.jsonl, ..._mask_seed2_arms.jsonl)",
+   "owner": "Yeah they all look and sound great. Last speaking clip from above has her moving her head in the middle to end",
+   "when": "2026-09-12",
+   "reading": "PDD8 keeps the coupling on both scenes: it is the lane's iteration chain from here (plan step 3 closed). Both second-seed dancer arms read good, so the seed-1 loose-over-frozen gap reads as the seed; hard freeze stays the default, the loose mask a knob. The PDD8 voice arm moved her head mid-line on the still prompt"
+  },
+  {
+   "arm": "dancer_close_frozen_s2, dancer_close_loose_s2",
+   "clip": "the second-seed pair on t2va_studio_dancer_close",
+   "owner": "Both dancer clips are great. I love them.",
+   "when": "2026-09-12",
+   "reading": "the reframed prompt at a second seed: both arms land. The framing fix holds (face sharp at medium shot and close-up) and the mask value does not separate them"
+  },
+  {
+   "arm": "dancer_close_frozen_s2, dancer_close_loose_s2 (re-watched)",
+   "clip": "Video/h3_t2v_audio_freeze_dancer_close_frozen_s2_00001-audio.mp4 against Video/h3_t2v_audio_freeze_dancer_close_loose_s2_00001-audio.mp4",
+   "owner": "Both are pretty awesome. i like h3_t2v_audio_freeze_dancer_close_loose_s2_00001-audio better but i dont know why... just seems better slightly.",
+   "when": "2026-09-13, re-watched while adjudicating the prompt (docs/prompt_audit.md, the dancer rows)",
+   "reading": "a slight, unexplained preference for the loose mask at the second seed, the same direction as the first seed's pair. Two seeds, same direction, no stated reason: enough to keep loose in the running, not enough to pick a mask value. The prompt verdict is keep."
+  },
+  {
+   "arm": "2windows_seam_dancer_close",
+   "clip": "Video/h3_t2v_audio_freeze_2windows_seam_dancer_close_00001-audio.mp4",
+   "owner": "h3_t2v_audio_freeze_2windows_seam_dancer_close_00001-audio is even better",
+   "when": "2026-09-13, after the second-seed pair above",
+   "reading": "the loop's first seam, two windows joined at 39 frames: the owner rates the joined clip above either single window, so the join reads and the seam does not show at this length. Not blind, one seed; the seam-and-moving arms (bench/audio_freeze_seam_and_moving_arms.json) are the next look."
+  }
+ ],
+ "caveats": [
+  "one arm, one seed, one scene, judged alone: a sample, not a result (docs/eval_comparison.md)",
+  "the throwaway first render (covered-market prompt under the same drum track, 2026-09-12_audio_freeze_first_run.jsonl) drew the opposite reading from the owner: 'not entirely sure it changed anything in the video'. The prompt there described dialogue and a market, not music; the dancer prompt describes a dancer to a beat. Whether the difference is the prompt, the scene or the seed is the pair question"
+ ]
 }

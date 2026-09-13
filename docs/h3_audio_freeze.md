@@ -201,7 +201,7 @@ prompt id and seed. One line per clip into
 
 | clip (under `Video/`) | what it asks | rows |
 |---|---|---|
-| `h3_t2v_audio_freeze_2windows_seam_dancer_close_00001-audio.mp4` | the loop's first seam: two windows joined at 39 frames, about 12.75 s in. Does the join read? | `2026-09-12_audio_freeze_seam_and_moving_arms.jsonl` |
+| `h3_t2v_audio_freeze_2windows_seam_dancer_close_00001-audio.mp4` | the loop's first seam: two windows joined at 39 frames, about 12.75 s in. Does the join read? **Owner, 2026-09-13: "even better" than either single window; the join reads.** Recorded in the step 2 verdict file | `2026-09-12_audio_freeze_seam_and_moving_arms.jsonl` |
 | `h3_candidate_t2v_pdd8_baked_audio_freeze_voice_moving_subject_pdd8_00001-audio.mp4` | subject moves during the line, camera held: lip sync intact, natural? | same |
 | `..._voice_moving_camera_pdd8_00001-audio.mp4` | camera arcs, delivery still | same |
 | `..._voice_moving_both_pdd8_00001-audio.mp4` | both | same |
