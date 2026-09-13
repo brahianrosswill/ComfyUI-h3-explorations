@@ -42,6 +42,14 @@ artifact.
   `extent`: `whole`, or `first_seconds` carrying the cap; its `context_frames`
   takes the same floor and step. The song graph is regenerated; widget
   positions after `extent` moved on that one node, one day old.
+- **The song node's first window passed 0 to the window node** and raised on
+  the first run after the zero mode was removed (owner's render, the same
+  evening). `MiniMaxH3AudioFreezeSong` now passes the real `context_frames`
+  for every window and the window node freezes nothing when `previous` is
+  None. `bench/check_audio_freeze.py` lost its "context 0 gives a full
+  stride" case and gained the first-window call through the window node's
+  `execute`, which is the call the song node makes; the check had not been
+  run after the node edit, which is how the regression shipped.
 - **A windowed graph declares one prompt per window.** `build_workflows.py
   --dump-prompts` emits a list for a `freeze_shots` entry and
   `bench/check_ref_prompt_labels.py` compares each conditioner to its window

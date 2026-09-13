@@ -249,8 +249,12 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                                                      canvas="explicit")
             cond_out = getattr(cond_out, "args", cond_out)
             cond, latent = cond_out[0], cond_out[1]
+            # Always the real value: the window node freezes nothing when
+            # `previous` is None and keeps the widget for what the NEXT window
+            # takes. Passing 0 for the first window was the zero-as-mode this
+            # session removed, and it raised on the first run after (2026-09-13).
             win = MiniMaxH3FreezeAudioWindow.execute(
-                latent, audio_vae, audio, start, int(context_frames) if prev is not None else 0,
+                latent, audio_vae, audio, start, int(context_frames),
                 previous=prev, audio_mask=audio_mask, level=level, track_latent=track_latent)
             win = getattr(win, "args", win)
             wlatent, _clip_audio, _span, trim, next_start, wreport, _new_audio = win

@@ -180,14 +180,32 @@ def check_window_geometry(problems):
             _fail(problems, f"context {bad} was accepted")
         except ValueError:
             pass
-    if af.window_geometry(102, 0)["stride_frames"] != 345:
-        _fail(problems, "context 0 did not give a full-window stride")
+    # No zero mode (owner rule 2026-09-13): 0 is refused by the geometry, and
+    # a first window gets its full-window stride from `no_context_geometry`,
+    # reached by leaving `previous` unwired, never by a widget value.
+    try:
+        af.window_geometry(102, 0)
+        _fail(problems, "context 0 was accepted; a number must not mean a mode")
+    except ValueError:
+        pass
+    if af.no_context_geometry(102)["stride_frames"] != 345:
+        _fail(problems, "a first window did not get a full-window stride")
     # window 1 copies the previous tail into the head and freezes it
     video = torch.randn(1, 24, 102, 48, 84)
     audio = torch.randn(1, 32, 2, 575)
     fresh = {"samples": comfy.nested_tensor.NestedTensor((torch.zeros_like(video), torch.zeros_like(audio)))}
     prev = {"samples": comfy.nested_tensor.NestedTensor((video, audio))}
     song = {"waveform": torch.randn(1, 2, 44100 * 40), "sample_rate": 44100}
+    # The first window of a chain: no previous, the widget at its real value.
+    # This is the call the song node makes for window 0; until 2026-09-13 it
+    # passed 0 here and the first run after the zero mode was removed raised.
+    first = getattr(af.MiniMaxH3FreezeAudioWindow.execute(
+        fresh, FakeAudioVAE(), song, 0.0, 39, previous=None), "args", None)
+    if first[3] != 0 or abs(first[4] - 306 / 24) > 1e-9:
+        _fail(problems, f"a first window trimmed {first[3]} or set next_start {first[4]}; expected 0 and the 39-context stride")
+    fvm, _fam = first[0]["noise_mask"].unbind()
+    if fvm.min() != 1.0:
+        _fail(problems, "a first window froze video rows with nothing to copy from")
     out = af.MiniMaxH3FreezeAudioWindow.execute(fresh, FakeAudioVAE(), song, 306 / 24, 39, previous=prev)
     args = getattr(out, "args", out)
     lat, _clip, span, trim, next_start, _rep, new_audio = args
