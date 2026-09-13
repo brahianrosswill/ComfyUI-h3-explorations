@@ -8,6 +8,15 @@ artifact.
 
 ### Added
 
+- **`workflows/h3_text_to_video_audio_freeze_song_pdd8.json`**: a whole song
+  on the PDD8 baked chain at the best-supported settings (owner's ask,
+  2026-09-13 evening): 345-frame windows, 39-frame context, the whole track
+  (`extent` whole, which the generator now expresses with
+  `freeze_song_seconds=None`), the loose mask, PDD8 at its own eight
+  evaluations, prompt blocks drawn per window from the seed. Ships one bank
+  prompt; the note says how to paste several blocks. Two deviation rows
+  declare its mask and prompt mode; the node-id manifest records the song
+  node's reordered inputs from the `extent` change.
 - **`MiniMaxH3ReferenceReport`** (`reference_report.py`): what an ordered
   reference list costs before anything is encoded. Takes the references, the
   clip, the prompt, the canvas and the two policies, and returns a picture
