@@ -15,7 +15,6 @@ from .keyframe_canvas import MiniMaxH3KeyframeCanvas
 from .marker_arms import MiniMaxH3MarkerArm
 from .conditioning import MiniMaxH3Conditioning
 from .exact_blocks import MiniMaxH3ExactBlocks
-from .h3_awq_encoder import MiniMaxH3AWQEncoderLoader
 from .h3_encoder_loader import MiniMaxH3EncoderLoader
 from .pdd_lora import MiniMaxH3PDDLoRA
 from .audio_carry_probe import MiniMaxH3AudioCarryProbe
@@ -39,6 +38,7 @@ from .reference_conditioning import (
     MiniMaxH3AppendRefVideo,
     MiniMaxH3ReferenceConditioning,
 )
+from .reference_report import MiniMaxH3ReferenceReport
 from . import h3_capture
 
 from .attention import (
@@ -265,7 +265,10 @@ class H3ExplorationsExtension(ComfyExtension):
                 MiniMaxH3ReferenceVideoFit,
                 MiniMaxH3AppendRefImage, MiniMaxH3AppendRefVideo,
                 MiniMaxH3AppendRefAudio, MiniMaxH3ReferenceConditioning,
-                MiniMaxH3AWQEncoderLoader, MiniMaxH3EncoderLoader,
+                # `MiniMaxH3AWQEncoderLoader` sat here until 2026-09-13; the
+                # AWQ lane is closed and the node is gone. Removal, unlike
+                # insertion, moves nothing that follows.
+                MiniMaxH3EncoderLoader,
                 MiniMaxH3MarkerArm,
                 MiniMaxH3PDDLoRA, MiniMaxH3AudioCarryProbe,
                 MiniMaxH3ExactBlocks, MiniMaxH3SolAttn, MiniMaxH3SolChunked,
@@ -273,7 +276,8 @@ class H3ExplorationsExtension(ComfyExtension):
                 MiniMaxH3QuantObserve,
                 MiniMaxH3FreezeAudio, MiniMaxH3FreezeAudioWindow,
                 MiniMaxH3EncodeTrack, MiniMaxH3JoinWindows,
-                MiniMaxH3AudioAttentionGain, MiniMaxH3AudioFreezeSong]
+                MiniMaxH3AudioAttentionGain, MiniMaxH3AudioFreezeSong,
+                MiniMaxH3ReferenceReport]
 
 
 async def comfy_entrypoint() -> H3ExplorationsExtension:

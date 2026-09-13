@@ -50,7 +50,6 @@ comfy.cli_args.args.cpu = True
 import comfy.utils  # noqa: E402
 
 loader = importlib.import_module(f"{REPO.name}.h3_encoder_loader")
-geometry = importlib.import_module(f"{REPO.name}.reference_geometry")
 vendor_config = importlib.import_module(f"{REPO.name}.vendor_config")
 
 ENCODERS_DIR = COMFY / "models" / "text_encoders"
@@ -121,7 +120,13 @@ def _with_incomplete_checkpoint(mutate):
 def contract_is_derived_from_comfy_not_declared():
     """Every contract value is read out of ComfyUI, and agrees with the release."""
     contract = loader.native_encoder_contract()
-    assert set(contract) == set(geometry.ENCODER_CONTRACT_KEYS), sorted(contract)
+    # The keys the readers consume: `bench/preflight_graph.py` prices the
+    # still and video Qwen views off the bounds and geometry, and
+    # `reference_report.py` names the source. Listed here because there is
+    # no longer a shared constant (the geometry module's left with the AWQ
+    # adapter on 2026-09-13); a key the loader drops goes red in the reader.
+    assert set(contract) == {"source", "image_bounds", "image_geometry",
+                             "video_bounds", "video_geometry"}, sorted(contract)
     assert contract["source"] == loader.CONTRACT_SOURCE
 
     from comfy.text_encoders import minimax
@@ -167,18 +172,23 @@ def every_core_loadable_encoder_passes_every_guard():
     started = time.monotonic()
     for path in population:
         clip = loader.load_guarded_clip(str(path), None)
+        model = loader.require_h3(clip, path.name)
         # **A native CLIP must NOT claim a processor contract**, and this is the
         # assertion that keeps it that way. See `install_native_contract`: the
-        # contract's `video_bounds` are applied clip-wide, core's budget is
-        # per-block, and stamping core's number into a clip-wide field would
-        # make `video_policy=encoder` live with the wrong semantics.
-        assert geometry.encoder_contract_from_clip(clip) is None, (
-            f"{path.name}: a native CLIP stamped a contract; that makes "
-            "video_policy=encoder live with clip-wide semantics core does not have")
-        # So the reference path stays exactly what core does, unchanged.
-        assert geometry.effective_policy("encoder", None) == "comfy"
-        assert geometry.effective_policy("comfy", None) == "comfy"
-        del clip
+        # contract's `video_bounds` would be applied clip-wide where core's
+        # budget is per-block, so stamping core's number into a clip-wide
+        # field would misdescribe core. The policy that read the stamp is
+        # gone (2026-09-13); the attribute staying absent is what keeps a
+        # reader from bringing it back by accident.
+        assert not hasattr(model, "_h3_encoder_contract"), (
+            f"{path.name}: a native CLIP stamped a contract; nothing reads it "
+            "and core's per-block budget is not the clip-wide field it would fill")
+        # What IS recorded is the still bound, for `reference_report.py`, and
+        # it must be the same derivation `native_encoder_contract` returns.
+        assert model._h3_image_bounds == loader.native_encoder_contract()["image_bounds"], (
+            f"{path.name}: _h3_image_bounds {model._h3_image_bounds!r} is not "
+            "what native_encoder_contract derives")
+        del clip, model
     names = ", ".join(path.name.replace("qwen3vl_32b_minimax_h3_", "") for path in population)
     return f"{len(population)} encoders ({names}) in {time.monotonic() - started:.1f}s"
 
@@ -188,23 +198,36 @@ def stamping_a_native_contract_would_shrink_reference_video():
 
     `install_native_contract` withdrew the contract stamp on the strength of
     this. If a future change makes core's video budget clip-wide, or makes the
-    node apply contract bounds per block, these two stop disagreeing and the
+    node apply a clip-wide budget per block, these two stop disagreeing and the
     decision should be revisited rather than inherited.
+
+    Reframed 2026-09-13, when the `encoder` video policy that applied a
+    stamped contract clip-wide was deleted with the AWQ lane. The harm is
+    still expressible: `release` is the one clip-wide budget the compiler
+    has left, and it reads its bounds through `video_pixel_bounds`, so the
+    case substitutes core's per-block number for the release's and drives
+    the same `smart_resize` path. That is exactly "core's number in a
+    clip-wide field", which is what stamping would have made live.
     """
     conditioning = importlib.import_module(f"{REPO.name}.reference_conditioning")
     contract = loader.native_encoder_contract()
+    release_bounds = conditioning.video_pixel_bounds
+    conditioning.video_pixel_bounds = lambda: contract["video_bounds"]
     shrunk = []
-    for width, height in ((960, 544), (1344, 768)):
-        for sampled in (31, 62):
-            got = conditioning._configured_qwen_video_size(
-                sampled, width, height, "encoder", contract)
-            if got != (width, height):
-                shrunk.append((f"{width}x{height}", sampled, f"{got[0]}x{got[1]}"))
+    try:
+        for width, height in ((960, 544), (1344, 768)):
+            for sampled in (31, 62):
+                got = conditioning._configured_qwen_video_size(
+                    sampled, width, height, "release")
+                if got != (width, height):
+                    shrunk.append((f"{width}x{height}", sampled, f"{got[0]}x{got[1]}"))
+    finally:
+        conditioning.video_pixel_bounds = release_bounds
     assert shrunk, (
-        "a stamped native contract no longer shrinks reference video. Either "
-        "core's video budget became clip-wide or the node stopped applying "
-        "contract bounds clip-wide; re-read install_native_contract's reasoning "
-        "before trusting either.")
+        "core's per-block budget applied clip-wide no longer shrinks reference "
+        "video. Either core's video budget became clip-wide or the compiler "
+        "stopped applying a configured budget clip-wide; re-read "
+        "install_native_contract's reasoning before trusting either.")
     return f"{len(shrunk)} of 4 cases shrink, e.g. {shrunk[0][0]}@{shrunk[0][1]} -> {shrunk[0][2]}"
 
 

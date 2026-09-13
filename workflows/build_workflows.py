@@ -86,7 +86,7 @@ _OUR_NODES = {
 # 2026-09-03 (owner): one source of truth for prompt text.
 from prompts import text as _bank_prompt  # noqa: E402
 from h3_config import (  # noqa: E402
-    ENCODER_V2, ENCODER_INT8, CORE_LOADED_ENCODERS, IMAGE_VAE, IMAGE_EDIT_BUDGET,
+    ENCODER_INT8, CORE_LOADED_ENCODERS, IMAGE_VAE, IMAGE_EDIT_BUDGET,
     ASPECTS, CANVAS, FPS, LENGTH, LONG_LENGTH, MODELS,
     SAMPLING, SAGE_NODE, SEED, SIGMA_SHIFT, SOL_RECOMMENDED_CUDA,
     SOL_CORE_NODE, SOL_CORE_DEFAULTS,
@@ -105,7 +105,7 @@ from h3_config import (  # noqa: E402
     CAPTURE_REF_IMAGES,
     TURBO_PACK_LORA, TURBO_PACK_STEPS, TURBO_PACK_STRENGTH,
     TURBO_PACK_SCHEDULER, TURBO_PACK_LOW_VRAM, TURBO_PACK_RUNG_STEPS,
-    DIALOGUE_REF_IMAGES,
+    DIALOGUE_REF_IMAGES, REFVIEW2_SCENES,
     PDD_MANUAL_EVALS,
     PDD_MANUAL_SIGMAS,
     sol_for_graph,
@@ -1128,6 +1128,21 @@ def _resolution_widgets(width, height, length):
             "length": length}
 
 
+def _require_core_encoder(name: str) -> str:
+    """Refuse an encoder file no loader in this pack can open.
+
+    `h3_config.CORE_LOADED_ENCODERS` is the set core's `CLIPLoader` (and so
+    `MiniMaxH3EncoderLoader`) loads. Anything else appears in core's menu by
+    filesystem discovery and fails at load; the adapter that once opened
+    compressed-tensors artifacts was deleted with its lane on 2026-09-13.
+    """
+    if name not in CORE_LOADED_ENCODERS:
+        raise SystemExit(
+            f"{name!r} is not a ComfyUI-native H3 encoder "
+            f"(h3_config.CORE_LOADED_ENCODERS); no loader in this pack opens it")
+    return name
+
+
 def _ref_short_edge():
     """ComfyUI's reference short edge, read rather than repeated.
 
@@ -1320,17 +1335,21 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
               steps: int | None = None, shift: dict | None = None,
               sampler_name: str | None = None, scheduler_name: str | None = None,
               head_chunks: int | None = None,
-              # Owner decision 2026-08-28: default flipped True -> False so
-              # it agrees with the node's own `allow_upscale`, which was
-              # already False. On the shipped reference pair upscaling
-              # turns 1,032 DiT rows into 7,360, attended every step, for a
-              # benefit this repo has never measured -- and it diverges
-              # from the vendor on a knob where we otherwise match.
-              ref_upscale: bool = False,
+              # Owner decision 2026-09-13: True, the node's own default and
+              # what sglang, diffusers and DiffSynth do (every still to the
+              # 2048 short edge, one copy for both towers). It was flipped
+              # False on 2026-08-28 for cost; the cost is now shown by
+              # `MiniMaxH3ReferenceReport` before a render rather than
+              # avoided by default. `REF_VIDEO_BUDGET` still turns it off on
+              # the video-bearing arms, for memory.
+              ref_upscale: bool = True,
               manual_sigmas: str | None = None,
-              ref_video_policy: str = "encoder",
+              ref_video_policy: str = "comfy",
               ref_image_policy: str = "comfy",
-              ref_qwen_short_edge: int = REF_QWEN_SHORT_EDGE,
+              # 0 is `qwen_view = shared`: one copy for both towers, the node
+              # default and the serving implementations' behaviour (owner,
+              # 2026-09-13). A size selects `separate` at that short edge.
+              ref_qwen_short_edge: int = 0,
               ref_video: bool = False, ref_video_audio: bool = True,
               ref_images_on: bool = True, ref_image_count: int = 2,
               ref_images: tuple[str, ...] | None = None,
@@ -1443,25 +1462,15 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
         "1": {"class_type": "UNETLoader",
               "inputs": {"unet_name": unet or MODELS["unet_ref2va" if ref else "unet_fl2va"],
                          "weight_dtype": "default"}},
-        # The file decides the loader (h3_config.CORE_LOADED_ENCODERS). A
-        # ComfyUI-native artifact goes through `MiniMaxH3EncoderLoader`, which
-        # is core's own load plus the two checks core does not do -- the
-        # checkpoint must exactly populate the model, and the tokenizer must
-        # realise the released special-token ids. It stamps no processor
-        # contract, so preprocessing is bit-for-bit what plain `CLIPLoader`
-        # gives (`h3_encoder_loader.install_native_contract` has the
-        # measurement that decision rests on). A compressed-tensors W4A16
-        # artifact still needs the AWQ adapter, which core cannot open at all.
-        # **Resolve the name BEFORE branching on it.** This tested `clip` and
-        # then wrote `clip or MODELS["clip"]`, so every graph passing no clip
-        # took the adapter branch whatever the default encoder was -- invisible
-        # while that default was always a W4A16 artifact, and 66 broken graphs
-        # the moment it became a ComfyUI-native one on 2026-08-27.
-        "2": ({"class_type": "MiniMaxH3EncoderLoader",
-               "inputs": {"encoder_name": _encoder}}
-              if _encoder in CORE_LOADED_ENCODERS else
-              {"class_type": "MiniMaxH3AWQEncoderLoader",
-               "inputs": {"encoder_name": _encoder, "device": "default"}}),
+        # Every encoder goes through `MiniMaxH3EncoderLoader`: core's own
+        # load plus the two checks core does not do -- the checkpoint must
+        # exactly populate the model, and the tokenizer must realise the
+        # released special-token ids. Preprocessing is bit-for-bit what plain
+        # `CLIPLoader` gives. The AWQ adapter branch that used to sit here
+        # went with its lane on 2026-09-13; `_require_core_encoder` is what
+        # refuses a file core cannot open, since no loader here opens it now.
+        "2": {"class_type": "MiniMaxH3EncoderLoader",
+              "inputs": {"encoder_name": _require_core_encoder(_encoder)}},
         # The image VAE ONLY on the single-frame path. See h3_config: same
         # frozen encoder, decoder retrained for one temporal latent, and its
         # own README says it regresses multi-frame reconstruction -- so this
@@ -1638,7 +1647,7 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
             # unreachable-input state the combo removes.
             #
             # The SELECTION is always written, which preserves what the old
-            # comment here defended: the two shared-view arms (refview a/c)
+            # comment here defended: any shared-view arm
             # must state their choice rather than inherit a node default that
             # can move underneath them and silently retune a comparison.
             if ref_qwen_short_edge:
@@ -2771,28 +2780,32 @@ Rows go as the SQUARE of `short_edge`. 2048 is the released checkpoint's own
 
 ### The defaults, and what moving each one does
 
-- **`size_policy = max`, `short_edge = 2048`** -- the vendor's rule. `match`
+The defaults are vendor parity since 2026-09-13 (owner decision,
+`docs/wiki/decisions.md`): what sglang, diffusers and DiffSynth do with a
+still, which is one prepared copy at a 2048 short edge for both towers.
+
+- **`size_policy = max`, `dit_short_edge = 2048`** -- the vendor's rule. `match`
   sizes from the target canvas area instead, is off-vendor, and never enlarges.
-- **`allow_upscale`** -- off matches ComfyUI (shrink only); on matches all three
-  serving implementations (upscale unconditionally). It only ever matters for a
-  source *below* `short_edge`. Upscaling adds rows, not detail, so whether it
-  helps an already-small source is unmeasured.
-- **`qwen_short_edge = 512`** -- gives the text encoder its own view so the DiT
-  keeps every reference row while the prompt keeps its share of the text
-  segment. **Do not set 0 on the shipped encoder**: two 2048 references then
-  cost 9,408 tokens ahead of a ~1,000-token prompt. 512 is a reasoned default
-  resting on one observation, not a measured optimum.
+- **`allow_upscale = True`** -- matches the three serving implementations
+  (upscale unconditionally); off matches core ComfyUI (shrink only). It only
+  ever matters for a source *below* `dit_short_edge`. Upscaling adds rows,
+  not detail, so whether it helps an already-small source is unmeasured;
+  `h3_probe_reference_upscale` and the `refview2` ablation are the arms.
+- **`qwen_view = shared`** -- the text encoder reads the same copy the video
+  model gets. `separate` gives it its own copy at `qwen_short_edge`; from
+  2026-08-27 to 2026-09-13 the shipped default was `separate` at 512, on one
+  observation (CHANGELOG 0.82.0). The `refview2` ablation is what tests it.
 
-Whether this knob does anything depends on which encoder is loaded -- it is
-exactly inert under a v1 snapshot and live under what ships. Preflight says on
-the line when a view was clamped and by whose bounds; read it there rather than
-assuming.
+`MiniMaxH3ReferenceReport` prices every copy of every reference and the
+prompt's share of the text segment before a render; wire it beside the
+conditioner rather than reasoning from this page.
 
-`image_policy` on the conditioner is a separate decision: it selects WHOSE
-still-image ceiling applies once the reference has been prepared. `comfy`
-leaves it to whatever processor the loaded CLIP carries, which is the default
-and what these graphs have always done. `encoder` and `release` pre-apply the
-selected policy's own bounds so the VAE and Qwen stay on one size.
+`image_policy` on the conditioner is a separate decision: whose still-image
+bounds are pre-applied once the reference has been prepared. `comfy` leaves
+it to the loaded encoder's own processor, which is the default and what these
+graphs have always done; `release` pre-applies the release's declared bounds
+so the VAE and Qwen stay on one size. On the shipped encoder the two coincide
+at every legal short edge.
 """
 
 
@@ -5105,17 +5118,18 @@ def build_ui(task: str, *, sage: bool = True, prompt: str | None = None,
              steps: int | None = None, shift: dict | None = None,
              sampler_name: str | None = None, scheduler_name: str | None = None,
              head_chunks: int | None = None,
-              # Owner decision 2026-08-28: default flipped True -> False so
-              # it agrees with the node's own `allow_upscale`, which was
-              # already False. On the shipped reference pair upscaling
-              # turns 1,032 DiT rows into 7,360, attended every step, for a
-              # benefit this repo has never measured -- and it diverges
-              # from the vendor on a knob where we otherwise match.
-              ref_upscale: bool = False,
+              # Owner decision 2026-09-13: True, the node's own default and
+              # what sglang, diffusers and DiffSynth do (every still to the
+              # 2048 short edge, one copy for both towers). It was flipped
+              # False on 2026-08-28 for cost; the cost is now shown by
+              # `MiniMaxH3ReferenceReport` before a render rather than
+              # avoided by default. `REF_VIDEO_BUDGET` still turns it off on
+              # the video-bearing arms, for memory.
+              ref_upscale: bool = True,
               manual_sigmas: str | None = None,
-             ref_video_policy: str = "encoder",
+             ref_video_policy: str = "comfy",
              ref_image_policy: str = "comfy",
-             ref_qwen_short_edge: int = REF_QWEN_SHORT_EDGE,
+             ref_qwen_short_edge: int = 0,
              ref_video: bool = False, ref_video_audio: bool = True,
              ref_images_on: bool = True, ref_image_count: int = 2,
              ref_images: tuple[str, ...] | None = None,
@@ -5187,21 +5201,13 @@ def build_ui(task: str, *, sage: bool = True, prompt: str | None = None,
                       widgets=[unet or MODELS["unet_ref2va" if ref else "unet_fl2va"],
                                "default"],
                       outputs=[_out("MODEL", "MODEL")])
-    clip = clip or MODELS["clip"]        # resolve before branching; see the API form
-    if clip in CORE_LOADED_ENCODERS:
-        clip = g.add(
-            "MiniMaxH3EncoderLoader", (-1500, 140), size=(560, 110),
-            widgets=[clip],
-            outputs=[_out("CLIP", "CLIP")],
-            title="Load H3 encoder (core's load, plus the checks core omits)",
-        )
-    else:
-        clip = g.add(
-            "MiniMaxH3AWQEncoderLoader", (-1500, 140), size=(560, 110),
-            widgets=[clip, "default"],
-            outputs=[_out("CLIP", "CLIP")],
-            title="Load custom H3 W4A16 encoder (repo adapter)",
-        )
+    clip = _require_core_encoder(clip or MODELS["clip"])
+    clip = g.add(
+        "MiniMaxH3EncoderLoader", (-1500, 140), size=(560, 110),
+        widgets=[clip],
+        outputs=[_out("CLIP", "CLIP")],
+        title="Load H3 encoder (core's load, plus the checks core omits)",
+    )
     # Single-frame swaps the decoder, and the node TITLE carries the warning:
     # it is the only thing visible when someone copies this node into a video
     # graph, which is the mistake worth making hard to make.
@@ -7242,55 +7248,35 @@ def main():
               out_prefix="Video/h3_probe_capture_ref3_fl2va"),
          "the capture twin on fl2va with no LoRA; the missing block-49 control"),
 
-        # Gate 6, the reference-view ablation: three ref2va arms from one base
-        # graph (the capture request, three stills spanning 0.78-4.23 MP at
-        # the vendor row), differing only in how each still reaches its two
-        # consumers. `docs/h3_conditioning_end_to_end.md` section 1b is why the
-        # VAE view and the Qwen view need not share a geometry;
-        # `docs/h3_references.md` prices the two stages. The encoder is the
-        # ComfyUI-native INT8 ConvRot file BY NAME (`ENCODER_INT8`), the
-        # encoder of record since the four-encoder holdout table of
-        # 2026-08-25; the W4 artifacts (`MODELS["clip"]`, `ENCODER_V2`) swap in
-        # at the combo without a graph edit for the small-host variant. The
-        # native file takes the 2048 Qwen view directly (core's own sizing),
-        # where the v1 artifact clamps. `video_policy=release` is set with no video reference wired,
-        # so a video row patched in through `run_graph_arms --set` inherits the
-        # release sizing rather than a policy nobody chose. Sol on, as in every
-        # shipped video graph. `bench/gate6_refview_arms.json` is the manifest
-        # `run_graph_arms.py --manifest` consumes for matched-seed pairs.
+        # The reference-view ablation, second edition (2026-09-13). One
+        # ref2va graph per scene in `h3_config.REFVIEW2_SCENES`, built at
+        # the node defaults -- vendor parity: every still to the 2048 short
+        # edge, upscale on, one copy for both towers -- and the arms are
+        # widget patches in `bench/refview2_arms.json`, applied by
+        # `run_graph_arms.py --manifest`, so five graphs carry thirty arms.
+        # Shipped defaults otherwise: Sol on, sage on, the base step count,
+        # no PDD. `docs/h3_references.md` is why the two copies of a still
+        # need not share a geometry and what each arm asks.
         *[
-            (f"h3_probe_refview_{tag}.json", f"r2v-refview-{tag}", "r2v",
-             _ref_prompt(images=("character", "garment", "environment")),
-             dict(**{**REF_VIDEO_BUDGET, "ref_upscale": upscale},
-                  ref_images=CAPTURE_REF_IMAGES, clip=ENCODER_INT8,
-                  ref_video_policy="release",
-                  ref_qwen_short_edge=qwen,
-                  out_prefix=f"Video/h3_probe_refview_{tag}",
-                  variant_note=note),
-             what)
-            for tag, upscale, qwen, what, note in (
-                ("a_source", False, 0,
-                 "arm A: every still at source size for both consumers, no upscale",
-                 "Reference-view ablation, arm A. Stage one leaves each still at "
-                 "its source size (allow_upscale off) and one view feeds both the "
-                 "video VAE and Qwen3-VL. The no-upscale baseline the other two "
-                 "arms are judged against, blind, as a distribution of seeds."),
-                ("b_qwen2048", False, _ref_short_edge(),
-                 "arm B: the Qwen view alone scaled to the vendor short edge; the VAE keeps the source",
-                 "Reference-view ablation, arm B. The VAE view is arm A's; the "
-                 "Qwen view alone is rescaled so its shorter side reaches the "
-                 "vendor short edge (`qwen_short_edge`, one Lanczos resample). "
-                 "Answers whether the encoder wants the upscale when the VAE "
-                 "does not pay for it. Under the v1 snapshot the encoder's own "
-                 "bounds clamp this view back; the v2 artifact admits it."),
-                ("c_parity", True, 0,
-                 "arm C: full vendor parity, both consumers at the upscaled view where the canvas allows",
-                 "Reference-view ablation, arm C. allow_upscale on: stage one "
-                 "scales each still toward the vendor short edge as the canvas "
-                 "allows and the same view feeds the VAE and Qwen3-VL, which is "
-                 "the release pipeline's geometry and the reference-latent rows "
-                 "it costs. Priced by preflight; judged against A and B blind."),
-            )
+            (f"h3_probe_refview2_{tag}.json", f"r2v-refview2-{tag}", "r2v",
+             _bank_prompt(prompt_id),
+             dict(length=LONG_LENGTH, ref_image_count=len(stills),
+                  ref_images=stills,
+                  out_prefix=f"Video/h3_probe_refview2_{tag}",
+                  variant_note=_probe_note(
+                      "which copy of a still each tower should see",
+                      "h3_image_ref_plus_text_to_video_dialogue.json",
+                      "built at the node defaults; the arms are the patches "
+                      "in bench/refview2_arms.json (upscale off, a separate "
+                      "encoder copy at 512 / 1024 / 2048).",
+                      "identity of every referenced subject across cuts, and "
+                      "which mouth each line comes out of, blind, over seeds.",
+                      "each scene carries a different still count and "
+                      "aspect, so the arms are read per scene before they "
+                      "are read together.",
+                      held="same prompt, same stills, same canvas")),
+             f"reference-view ablation scene: {prompt_id}")
+            for tag, prompt_id, stills in REFVIEW2_SCENES
         ],
 
         # Reference pathway ablation, 2026-09-03. ComfyUI PR 16065 (core
@@ -8198,29 +8184,30 @@ def main():
               variant_note=_NOTE_TURBO_PACK_SPLIT),
          "base establishes the references, the distill finishes the clip"),
 
-        # INVERTED 2026-08-28 with the default. This probe asked "does
-        # upscaling buy anything" by turning it OFF against an upscaling
-        # default; the default is now off, so the arm that asks the same
-        # question is the one that turns it ON. Re-pointed rather than deleted,
-        # because the question is still open and this is the graph that asks it.
+        # INVERTED TWICE with the default. 2026-08-28 the default went off
+        # and this arm turned upscaling on; 2026-09-13 the default went back
+        # on (vendor parity) and this arm is the one that turns it OFF.
+        # Re-pointed rather than deleted, because the question is still open
+        # and this is the graph that asks it; `bench/refview2_arms.json` is
+        # the ablation that answers it across scenes.
         ("h3_probe_reference_upscale.json", "r2v-upscale", "r2v", _ref_prompt(images=True),
-         dict(ref_upscale=True, out_prefix="Video/h3_probe_ref_upscale",
+         dict(ref_upscale=False, out_prefix="Video/h3_probe_ref_upscale",
               variant_note=_probe_note(
                   "does upscaling a small reference buy anything",
                   "h3_image_ref_plus_text_to_video.json",
-                  "`allow_upscale` is ON on both Append Picture nodes, so "
-                  "references are enlarged to the released pipeline's 2048 "
-                  "short edge instead of arriving at their own size.",
+                  "`allow_upscale` is OFF on both Append Picture nodes, so "
+                  "references arrive at their own size instead of being "
+                  "enlarged to the released pipeline's 2048 short edge.",
                   "Preflight's `references` line and percentage, then the "
                   "identity of the referenced subjects in the output. This arm "
-                  "spends the extra vision tokens; the shipped default no "
-                  "longer does.",
-                  "More tokens here, and a longer sequence, for detail that may "
-                  "not exist in the source. Upscaling adds tokens, not detail, "
-                  "and nobody has measured whether the checkpoint uses them on "
-                  "an already-small source -- which is why this arm is kept "
-                  "rather than the question being closed by the default flip.")),
-         "same references, WITH the reference pipeline's upscale"),
+                  "saves the rows the shipped default now spends.",
+                  "Fewer rows here, and a shorter sequence, at the risk of "
+                  "less identity detail reaching the video model. Upscaling "
+                  "adds rows, not detail, and nobody has measured whether the "
+                  "checkpoint uses them on an already-small source -- which is "
+                  "why this arm is kept rather than the question being closed "
+                  "by the default flip.")),
+         "same references, WITHOUT the reference pipeline's upscale"),
 
         # ---- FastVideo VSA, and its dense control ------------------------
         #

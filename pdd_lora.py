@@ -1525,8 +1525,8 @@ def shipped_pdd_loras() -> tuple[str, ...]:
     Read, never copied -- `h3_config.PDD_FL2VA_LORA` / `PDD_REF2VA_LORA` are
     the same strings the graphs wire, and a second copy of a filename here
     would drift from them the first time one moved. Loaded from its path
-    rather than imported, which is `h3_awq_encoder.shipped_encoder_name`'s
-    reasoning and adds nothing to `sys.path`.
+    rather than imported, so nothing joins `sys.path` and no second module
+    named `h3_config` can shadow the one the graphs are built from.
 
     The standalone distribution carries this module with no `workflows/`
     beside it. There, `bench/build_sidecar_node.py` writes the same two names

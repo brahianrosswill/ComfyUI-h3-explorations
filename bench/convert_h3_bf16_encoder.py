@@ -24,12 +24,14 @@ qwen3vl branch that does NOT apply `state_dict_prefix_replace`.  A checkpoint
 left in HF naming (`model.language_model.`, `model.visual.`) therefore matches
 the *earlier* `model.visual.deepstack_merger_list.0.norm.weight` test first and
 is misdetected as QWEN3VL_8B, which then fails on a width mismatch.  That is
-the 2026-08-23 escape recorded in `h3_awq_encoder.py::load_h3_awq_encoder`.
+the 2026-08-23 escape, first hit by the W4A16 adapter (`h3_awq_encoder.py`,
+deleted with its lane on 2026-09-13).
 
-This is the bf16 counterpart of `h3_awq_encoder.adapt_compressed_state_dict`,
-which does the same selection and rename for the W4A16 lane.  The drop rule is
-deliberately shared with it via `_drop_source_key`, so the two lanes cannot
-disagree about what H3 consumes.
+The selection and rename here were shared with that adapter's
+`adapt_compressed_state_dict` through one `_drop_source_key`, so the two
+lanes could not disagree about what H3 consumes.  With the W4A16 lane closed
+this file is the rule's only home, inlined below; `H3_LAYERS` is inherited
+from the release's 50-layer truncation (`comfy/text_encoders/minimax.py`).
 
 No tensor is decoded: dtype and bytes are copied verbatim from the source, so
 this is a subset-and-rename of the container and the surviving weights are
@@ -50,7 +52,24 @@ COMFY = REPO.parents[1]
 sys.path.insert(0, str(COMFY))
 sys.path.insert(0, str(REPO))
 
-from h3_awq_encoder import H3_LAYERS, _drop_source_key  # noqa: E402
+#: Decoder layers H3 consumes. Inherited: the release's 50-layer truncation,
+#: `comfy/text_encoders/minimax.py` docstring, hardcoded again in
+#: `comfy/text_encoders/llama.py::Qwen3VL_32BConfig`.
+H3_LAYERS = 50
+
+_LAYER = re.compile(r"^model\.language_model\.layers\.(\d+)\.")
+
+
+def _drop_source_key(name: str, depth: int) -> bool:
+    """Whether a source tensor is one native ComfyUI never instantiates.
+
+    Decoder layers at or past `depth`, the `lm_head`, and the final norm --
+    the three things the docstring above says core hardcodes away.
+    """
+    match = _LAYER.match(name)
+    if match and int(match.group(1)) >= depth:
+        return True
+    return name.startswith("lm_head.") or name.startswith("model.language_model.norm.")
 
 # Matches the `minimax_h3_te` key the shipped Comfy-Org INT8 artifact carries.
 METADATA = {

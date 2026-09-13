@@ -8,11 +8,18 @@ Qwen presentation and the DiT payload.
 
 Still images retain their per-record ``match``/``max`` policy. Reference video
 preparation is selected once at the compiler boundary: ``comfy`` keeps core's
-no-upscale/shared-frame behaviour, ``encoder`` keeps that VAE behaviour while
-using the selected encoder artifact's snapshotted Qwen processor settings, and
-``release`` both puts the VAE view on the release canvas and uses the release
-processor settings. The two release stages are one policy because enabling the
-upscale alone overshoots Qwen's long-clip budget.
+no-upscale/shared-frame behaviour, and ``release`` both puts the VAE view on
+the release canvas and uses the release processor settings. The two release
+stages are one policy because enabling the upscale alone overshoots Qwen's
+long-clip budget. A third policy, ``encoder``, read a contract stamped by the
+AWQ adapter; that lane closed and the policy went with it on 2026-09-13
+(`docs/wiki/decisions.md`).
+
+**Every still is read twice.** The video VAE encodes one copy into reference
+latent rows the DiT attends on every sampling step; Qwen3-VL reads a copy as
+vision tokens placed in the text segment ahead of the prompt. `size_policy`
+sizes the first, `qwen_view` the second, and `MiniMaxH3ReferenceReport`
+(`reference_report.py`) prices both before anything is encoded.
 
 This is local release-parity handling. It does not change native ComfyUI's
 ``MiniMaxH3ReferenceToVideo`` node or close either upstream gap.
@@ -29,7 +36,7 @@ from typing import Any
 
 import node_helpers
 import torch
-from comfy_api.latest import io
+from comfy_api.latest import io, ui
 from comfy_extras.nodes_minimax_h3 import (
     CANVAS_MULTIPLE,
     FPS,
@@ -46,8 +53,6 @@ from .reference_order import AudioRef, ImageRef, VideoRef, assign_labels
 from .reference_geometry import (
     IMAGE_POLICIES,
     SIZE_POLICIES,
-    effective_policy,
-    encoder_contract_from_clip,
     fit_reference_image,
     latent_rows,
     qwen_image_settings,
@@ -64,7 +69,7 @@ logger = logging.getLogger(__name__)
 
 H3References = io.Custom("MINIMAX_H3_REFERENCES")
 VHSVideoInfo = io.Custom("VHS_VIDEOINFO")
-VIDEO_POLICIES = ("comfy", "release", "encoder")
+VIDEO_POLICIES = ("comfy", "release")
 
 
 @dataclass(frozen=True)
@@ -82,10 +87,11 @@ class RuntimeImageReference:
     short_edge: int = REF_IMAGE_SHORT_EDGE
     allow_upscale: bool = False
     # A separate view for the encoder. 0 means Qwen sees the VAE view, which
-    # is every graph built before this field existed. N scales the SOURCE so
-    # its shorter side reaches N, for the conditioner alone; the VAE view is
-    # unchanged. `docs/h3_conditioning_end_to_end.md` section 1b is why the
-    # two branches need not share a geometry.
+    # is what every serving implementation does and the node default since
+    # 2026-09-13. N scales the SOURCE so its shorter side reaches N, for the
+    # conditioner alone; the VAE view is unchanged.
+    # `docs/h3_conditioning_end_to_end.md` section 1b is why the two branches
+    # need not share a geometry.
     qwen_short_edge: int = 0
 
 
@@ -286,45 +292,32 @@ def _prepare_reference_video(frames, loaded_fps: float, frame_count: int):
     return frames[:n]
 
 
-def _qwen_image_settings(
-    image_policy: str, contract: dict | None = None,
-) -> tuple[tuple[int, int], dict]:
+def _qwen_image_settings(image_policy: str) -> tuple[tuple[int, int], dict]:
     """Delegate to `reference_geometry`, which the static readers share."""
-    return qwen_image_settings(image_policy, contract)
+    return qwen_image_settings(image_policy)
 
 
 def _configured_qwen_image_size(
-    width: int, height: int, image_policy: str, contract: dict | None = None,
+    width: int, height: int, image_policy: str,
 ) -> tuple[int, int]:
     """Delegate to `reference_geometry`, which the static readers share."""
-    return qwen_image_size(width, height, image_policy, contract)
+    return qwen_image_size(width, height, image_policy)
 
 
-def _qwen_video_settings(
-    video_policy: str, contract: dict | None = None,
-) -> tuple[tuple[int, int], dict]:
+def _qwen_video_settings(video_policy: str) -> tuple[tuple[int, int], dict]:
     """Return the settings owned by the selected Qwen preprocessing policy.
 
-    `encoder` is the loaded encoder's declaration, handed in as the contract
-    `encoder_contract_from_clip` read off the CLIP. It is not a module
-    default: until 2026-08-25 this read the current W4 artifact's snapshot
-    whichever CLIP was loaded, so a stock-loader graph on `encoder` ran a
-    processor no loaded encoder declared.
+    Only `release` has one: the release's own video processor declaration,
+    read through `vendor_config`. `comfy` runs core's per-pair processor
+    inside the encoder and pre-applies nothing here.
     """
     if video_policy == "release":
         return video_pixel_bounds(), video_patch_geometry()
-    if video_policy == "encoder":
-        if contract is None:
-            raise ValueError(
-                "the encoder video policy needs the loaded encoder's contract; "
-                "with none, resolve the policy through effective_policy first")
-        return tuple(contract["video_bounds"]), dict(contract["video_geometry"])
     raise ValueError(f"no configured Qwen processor for policy {video_policy!r}")
 
 
 def _configured_qwen_video_size(
     sampled_count: int, width: int, height: int, video_policy: str,
-    contract: dict | None = None,
 ) -> tuple[int, int]:
     """Return a configured processor's Qwen view as ``(width, height)``.
 
@@ -339,7 +332,7 @@ def _configured_qwen_video_size(
     """
     from transformers.models.qwen3_vl.video_processing_qwen3_vl import smart_resize
 
-    (min_pixels, max_pixels), geometry = _qwen_video_settings(video_policy, contract)
+    (min_pixels, max_pixels), geometry = _qwen_video_settings(video_policy)
     # `smart_resize` needs a full temporal patch, not merely one frame: it
     # raises `t:1 must be larger than temporal_factor:2` from inside
     # transformers, which names neither the reference nor the policy. The bound
@@ -383,17 +376,7 @@ def _release_qwen_video_size(
     )
 
 
-def _encoder_qwen_video_size(
-    sampled_count: int, width: int, height: int, contract: dict,
-) -> tuple[int, int]:
-    """Size with the LOADED encoder's declared settings."""
-    return _configured_qwen_video_size(
-        sampled_count, width, height, video_policy="encoder", contract=contract,
-    )
-
-
-def _configured_qwen_video_frames(frames, video_policy: str,
-                                  contract: dict | None = None):
+def _configured_qwen_video_frames(frames, video_policy: str):
     """Resize one raw sampled clip with the policy's bicubic processor.
 
     Only the sampled Qwen view reaches this function. The full-rate frames for
@@ -402,7 +385,7 @@ def _configured_qwen_video_frames(frames, video_policy: str,
     """
     sampled_count, height, width = _image_shape(frames, "sampled Qwen video")
     target_w, target_h = _configured_qwen_video_size(
-        sampled_count, width, height, video_policy, contract
+        sampled_count, width, height, video_policy
     )
     if (target_w, target_h) == (width, height):
         return frames
@@ -410,7 +393,7 @@ def _configured_qwen_video_frames(frames, video_policy: str,
     # The processor's resize method is the pixel authority as well as
     # `smart_resize` being the geometry authority: it preserves the release's
     # bicubic kernel instead of substituting Comfy's bilinear video-block path.
-    processor = _qwen_video_processor(video_policy, contract)
+    processor = _qwen_video_processor(video_policy)
     # The released serving path decodes media into uint8 and the HF processor
     # resizes those pixels before its 1/255 rescale. Comfy IMAGE values arrive
     # as floats in [0, 1], so temporarily restore that uint8 boundary; running
@@ -445,20 +428,9 @@ def _release_qwen_video_frames(frames):
     return _configured_qwen_video_frames(frames, video_policy="release")
 
 
-def _encoder_qwen_video_frames(frames, contract: dict):
-    """Resize with the LOADED encoder's declared processor configuration."""
-    return _configured_qwen_video_frames(frames, video_policy="encoder",
-                                         contract=contract)
-
-
-def _qwen_video_processor(video_policy: str, contract: dict | None = None):
-    """A configured processor, built once per distinct configuration.
-
-    Cached on the configuration it is built from rather than on the policy
-    name, because `encoder` names whichever contract the loaded CLIP carries
-    and two loaders in one session can carry two.
-    """
-    (min_pixels, max_pixels), geometry = _qwen_video_settings(video_policy, contract)
+def _qwen_video_processor(video_policy: str):
+    """A configured processor, built once per distinct configuration."""
+    (min_pixels, max_pixels), geometry = _qwen_video_settings(video_policy)
     frozen = tuple(sorted(
         (key, tuple(value) if isinstance(value, list) else value)
         for key, value in geometry.items()
@@ -533,17 +505,17 @@ def qwen_view_size(source_w: int, source_h: int, qwen_short_edge: int) -> tuple[
 
 
 def _reference_views(image, source_w, source_h, role_w, role_h, record,
-                     image_policy, contract):
+                     image_policy):
     """Return `(vae_view, qwen_view, info)` for one still reference.
 
-    With `qwen_short_edge == 0` this is today's path byte for byte: one
-    tensor, sized at stage one and, under `encoder` or `release`, pre-clamped
-    to the stage-two bounds so both towers encode one size.
+    With `qwen_short_edge == 0` one tensor is sized at stage one and, under
+    `release`, pre-clamped to the stage-two bounds so both towers encode one
+    size. This is what every serving implementation does.
 
     With `qwen_short_edge == N` the two branches part: the VAE encodes the
     stage-one tensor unclamped, and the encoder is shown a second view of the
     source at an N short edge, with the stage-two bounds pre-applied to that
-    view alone under `encoder` / `release`. Section 1b of
+    view alone under `release`. Section 1b of
     `docs/h3_conditioning_end_to_end.md` is why nothing indexes a Qwen token
     against a latent patch, so this breaks no contract; what it changes is a
     quality question the blind comparison owns.
@@ -553,7 +525,7 @@ def _reference_views(image, source_w, source_h, role_w, role_h, record,
         target_w, target_h = role_w, role_h
         if image_policy != "comfy":
             target_w, target_h = _configured_qwen_image_size(
-                role_w, role_h, image_policy, contract)
+                role_w, role_h, image_policy)
         shared = _view_or_source(image, source_w, source_h, target_w, target_h)
         info.update(vae=(target_w, target_h), qwen=(target_w, target_h))
         return shared, shared, info
@@ -562,7 +534,7 @@ def _reference_views(image, source_w, source_h, role_w, role_h, record,
     qwen_w, qwen_h = qwen_view_size(source_w, source_h, record.qwen_short_edge)
     if image_policy != "comfy":
         qwen_w, qwen_h = _configured_qwen_image_size(
-            qwen_w, qwen_h, image_policy, contract)
+            qwen_w, qwen_h, image_policy)
     qwen_view = _view_or_source(image, source_w, source_h, qwen_w, qwen_h)
     info.update(vae=(role_w, role_h), qwen=(qwen_w, qwen_h))
     return vae_view, qwen_view, info
@@ -570,7 +542,7 @@ def _reference_views(image, source_w, source_h, role_w, role_h, record,
 
 def _compile_reference_records(
     records, vae, audio_vae, width, height, frame_count,
-    video_policy="encoder", image_policy="comfy", contract=None,
+    video_policy="comfy", image_policy="comfy",
 ):
     """Compile one ordered record list into Qwen items and DiT blocks.
 
@@ -583,12 +555,6 @@ def _compile_reference_records(
     audio VAE keeps its `<Audio>` label and becomes a silent `video` block.
     `bench/check_reference_runtime.py::encoder_only_references_skip_the_dit_rows`
     holds the two nodes to the same three cells.
-
-    `contract` is what the loaded encoder declares
-    (`encoder_contract_from_clip`), or `None` for a CLIP that declares
-    nothing. `encoder` resolves against it here, once, for both stages, and
-    the substitution is logged: a native CLIP under `encoder` runs the native
-    path, which is the truth of what it was handed, not a fallback.
     """
     if video_policy not in VIDEO_POLICIES:
         raise ValueError(
@@ -600,14 +566,6 @@ def _compile_reference_records(
             f"unknown reference image policy {image_policy!r}; "
             f"expected one of {IMAGE_POLICIES}"
         )
-    requested = (video_policy, image_policy)
-    video_policy = effective_policy(video_policy, contract)
-    image_policy = effective_policy(image_policy, contract)
-    if (video_policy, image_policy) != requested:
-        logger.info(
-            "[h3] encoder policy resolved to native ComfyUI preprocessing: the "
-            "loaded CLIP declares no processor contract (requested "
-            "video_policy=%s, image_policy=%s)", *requested)
     ref_items = []
     ref_blocks = []
     duration = frame_count / FPS
@@ -633,7 +591,7 @@ def _compile_reference_records(
             # the stage-one tensor and only the encoder's view is shaped.
             vae_view, qwen_view, views = _reference_views(
                 image, source_w, source_h, role_w, role_h, record,
-                image_policy, contract)
+                image_policy)
             target_w, target_h = views["vae"]
             if not views["separate"] and (target_w, target_h) != (role_w, role_h):
                 logger.info(
@@ -690,7 +648,7 @@ def _compile_reference_records(
             )
             _, source_h, source_w = _image_shape(frames, f"reference video {index + 1}")
             canvas_w, canvas_h = adapt_canvas(source_w, source_h)
-            if (video_policy in ("comfy", "encoder")
+            if (video_policy == "comfy"
                     and source_w * source_h < canvas_w * canvas_h):
                 # Core never upscales a reference video.
                 canvas_w = max(
@@ -717,8 +675,6 @@ def _compile_reference_records(
             qwen_frames = frames[sample_indices]
             if video_policy == "release":
                 qwen_frames = _release_qwen_video_frames(qwen_frames)
-            elif video_policy == "encoder":
-                qwen_frames = _encoder_qwen_video_frames(qwen_frames, contract)
             ref_items.append({
                 "type": "video",
                 "data": qwen_frames,
@@ -787,137 +743,123 @@ class MiniMaxH3AppendRefImage(io.ComfyNode):
             display_name="Append MiniMax H3 Image Reference",
             category="MiniMaxH3/references",
             description=(
-                "Append one image to an ordered H3 reference list. Its list "
-                "position, not its socket group, determines presentation order."
+                "Append one still to an ordered H3 reference list. Its list "
+                "position, not its socket, decides its <Picture N> label.\n\n"
+                "Every still is read twice. The VIDEO MODEL encodes a copy "
+                "through the video VAE into reference rows attended on every "
+                "sampling step; size_policy sizes that copy. The TEXT ENCODER "
+                "(Qwen3-VL) reads a copy as vision tokens placed in the text "
+                "segment ahead of your prompt; qwen_view sizes that one. "
+                "Wire the chain into MiniMax H3 Reference Report to see both "
+                "copies and what they cost before you queue."
             ),
             inputs=[
                 io.Image.Input("image"),
                 H3References.Input("references", optional=True),
-                # A DynamicCombo, not four flat widgets. `short_edge` and
-                # `allow_upscale` are read ONLY under `max`, and as flat
-                # widgets they stayed visible and editable under `match` while
-                # doing nothing -- discoverable only from a log line after the
-                # render was queued. Nesting them under the branch that reads
-                # them makes that state unreachable rather than warned about.
-                # `MiniMaxH3Resolution` established this pattern here.
-                #
-                # This reshuffles saved-graph widget positions and that is
-                # deliberate: owner decision 2026-08-27, compatibility with
-                # externally saved graphs traded for a node that cannot
-                # mislead.
+                # A DynamicCombo, not four flat widgets: `dit_short_edge` and
+                # `allow_upscale` are read ONLY under `max`, and nesting them
+                # under the branch that reads them makes the inert state
+                # unreachable rather than warned about (owner, 2026-08-27).
                 io.DynamicCombo.Input(
                     "size_policy",
                     options=[
-                        io.DynamicCombo.Option("match", []),
                         io.DynamicCombo.Option("max", [
                             io.Int.Input(
-                                # Renamed from `short_edge` 2026-08-28. It sits
-                                # beside `qwen_short_edge` and the pair decides
-                                # two DIFFERENT views -- this one the video
-                                # VAE's, and therefore the DiT reference rows;
-                                # the other the text encoder's. Reading one for
-                                # the other has now cost two separate sessions,
-                                # so the names say which tower each feeds.
+                                # `dit_short_edge`, not `short_edge`: it sits
+                                # beside `qwen_short_edge` and the pair size two
+                                # DIFFERENT copies, this one the video model's.
                                 "dit_short_edge", default=REF_IMAGE_SHORT_EDGE,
                                 min=CANVAS_MULTIPLE, max=4096, step=32,
                                 tooltip=(
-                                    "Resize the image so its SHORTER side is "
-                                    "this many pixels, rounded to 32.\n\n"
-                                    "This is a maximum, not a target. An image "
-                                    "already smaller than this is left as-is, "
-                                    "so raising the value does nothing for it. "
-                                    "Turn on allow_upscale to enlarge as well "
-                                    "as shrink.\n\n"
-                                    "Cost grows with the square of this value. "
-                                    "A 4096x2304 image gives 448 reference "
-                                    "tokens at 512 and 7296 at 2048. Those "
-                                    "tokens are attended on every sampling "
-                                    "step.\n\n"
-                                    "2048 is the value the model was released "
-                                    "with. Use it unless you are trading "
-                                    "reference detail for speed."
+                                    "Shorter side, in pixels, of the VIDEO "
+                                    "MODEL's copy, rounded to 32.\n\n"
+                                    "With allow_upscale on this is a target: "
+                                    "every still reaches it. With allow_upscale "
+                                    "off it is a ceiling: a source already "
+                                    "smaller passes through untouched and this "
+                                    "value does nothing for it.\n\n"
+                                    "DiT reference rows grow with the square of "
+                                    "this value and are attended on every "
+                                    "sampling step. The default is the release "
+                                    "pipeline's own constant "
+                                    "(comfy_extras REF_IMAGE_SHORT_EDGE)."
                                 ),
                             ),
                             io.Boolean.Input(
-                                "allow_upscale", default=False,
+                                "allow_upscale", default=True,
                                 tooltip=(
-                                    "Let the resize enlarge a small image, not "
-                                    "just shrink a large one.\n\n"
-                                    "Off: an image smaller than short_edge "
-                                    "passes through untouched. This matches "
-                                    "ComfyUI's built-in behaviour.\n\n"
-                                    "On: every image is scaled to short_edge. "
-                                    "This matches the reference pipelines. A "
-                                    "1280x720 image becomes 3648x2048, going "
-                                    "from 880 to 7296 tokens.\n\n"
-                                    "Upscaling adds tokens, not detail, and "
-                                    "costs time on every step. Whether it "
-                                    "improves a small reference has not been "
-                                    "tested."
+                                    "Enlarge a still whose shorter side is "
+                                    "below dit_short_edge, as well as shrinking "
+                                    "a larger one.\n\n"
+                                    "On (default): every still reaches "
+                                    "dit_short_edge. This is what sglang, "
+                                    "diffusers and DiffSynth do.\n\n"
+                                    "Off: shrink only, which is core ComfyUI's "
+                                    "behaviour. Cheaper for a small source, by "
+                                    "the square of the scale it skips.\n\n"
+                                    "Upscaling adds rows, not detail the source "
+                                    "lacked. Whether it improves identity is "
+                                    "what the reference-view ablation measures "
+                                    "(docs/h3_references.md)."
                                 ),
                             ),
                         ]),
+                        io.DynamicCombo.Option("match", []),
                     ],
                     tooltip=(
-                        "How this image is resized before the model sees it."
-                        "\n\n"
-                        "max: limit the shorter side to short_edge. This is "
-                        "what the model was released with, and what these "
-                        "workflows use.\n\n"
-                        "match: limit the image to the output video's pixel "
-                        "area instead. Smaller than max on a wide canvas, and "
-                        "it never enlarges. short_edge and allow_upscale do "
-                        "not apply."
+                        "How the VIDEO MODEL's copy is sized. This decides the "
+                        "DiT reference rows paid on every sampling step.\n\n"
+                        "max (default): scale so the shorter side is "
+                        "dit_short_edge, rounded to 32. The output canvas is "
+                        "ignored. This is the release pipeline's rule.\n\n"
+                        "match: cap the still at the output canvas's pixel "
+                        "area. Never enlarges. dit_short_edge and "
+                        "allow_upscale do not apply."
                     ),
                 ),
-                # A DynamicCombo since 2026-08-31, and it was an Int whose
-                # 0 meant "no separate view at all". That is the falsy-sentinel
-                # shape CLAUDE.md names: a number that quietly selects a mode,
-                # so the person setting it had to know 0 was not a size. Same
-                # trade `size_policy` took above and for the same reason --
-                # saved-graph widget positions move, and a node that cannot
-                # mislead is worth it. The unreachable-input argument applies
-                # doubly here, because the old 0 ALSO made the size box inert
-                # while leaving it on screen.
+                # A DynamicCombo since 2026-08-31; it was an Int whose 0 meant
+                # "no separate view", a number quietly selecting a mode.
+                # `shared` first since 2026-09-13, so the default is what every
+                # serving implementation does and what an API prompt that omits
+                # the input gets.
                 io.DynamicCombo.Input(
                     "qwen_view",
                     options=[
+                        io.DynamicCombo.Option("shared", []),
                         io.DynamicCombo.Option("separate", [
                             io.Int.Input(
                                 "qwen_short_edge",
                                 default=REF_QWEN_SHORT_EDGE,
                                 min=CANVAS_MULTIPLE, max=4096, step=32,
                                 tooltip=(
-                                    "Shorter side, in pixels, of the copy the "
-                                    "TEXT ENCODER reads. The video model still "
-                                    "gets the full-size image sized by "
-                                    "size_policy above.\n\n"
-                                    "512 is a sensible default, not a tuned "
-                                    "one: it rests on a single render at one "
-                                    "seed. Cite it as a default, never as "
-                                    "measured."
+                                    "Shorter side, in pixels, of the TEXT "
+                                    "ENCODER's copy, rounded to 32. Scaled from "
+                                    "the source in both directions: below the "
+                                    "source it shrinks, above it enlarges.\n\n"
+                                    "Vision tokens grow with the square of this "
+                                    "value. The pre-filled value is a starting "
+                                    "point, not a measured optimum "
+                                    "(h3_rules.REF_QWEN_SHORT_EDGE)."
                                 ),
                             ),
                         ]),
-                        io.DynamicCombo.Option("shared", []),
                     ],
                     tooltip=(
-                        "Whether the text encoder reads its own smaller copy "
-                        "of this image, or the same one the video model "
-                        "gets.\n\n"
-                        "The image is used twice: the video model encodes it "
-                        "as reference frames, and the text encoder reads it "
-                        "alongside your prompt. Those are separate costs.\n\n"
-                        "separate -- the text encoder gets its own copy at "
-                        "the size you set. This is what you usually want: the "
-                        "encoder's copy competes with your prompt, because "
-                        "both share one budget, and two full-size references "
-                        "can leave the prompt under 10% of it, which weakens "
-                        "how closely the model follows what you wrote.\n\n"
-                        "shared -- the text encoder gets the SAME image as "
-                        "the video model, sized by size_policy above. A "
-                        "deliberate choice for when both should see identical "
-                        "input, not an 'off' switch."
+                        "How the TEXT ENCODER's copy is sized. Its vision "
+                        "tokens sit in the text segment ahead of your prompt, "
+                        "and their hidden states ride the DiT's text segment "
+                        "on every step.\n\n"
+                        "shared (default): the same copy the video model gets, "
+                        "sized by size_policy. One prepared image feeds both, "
+                        "which is what every serving implementation does.\n\n"
+                        "separate: the encoder gets its own copy scaled to "
+                        "qwen_short_edge from the source, while the video "
+                        "model keeps the size_policy copy. Use it to change "
+                        "what the encoder sees without changing DiT rows: a "
+                        "smaller copy leaves the prompt a larger share of what "
+                        "the encoder reads, a larger one gives the encoder "
+                        "more detail. Neither direction is measured yet; the "
+                        "reference-view ablation is the arm that would."
                     ),
                 ),
             ],
@@ -925,25 +867,16 @@ class MiniMaxH3AppendRefImage(io.ComfyNode):
         )
 
     @classmethod
-    # `qwen_short_edge` defaults to the SCHEMA's value, not 0. ComfyUI does not
-    # inject a schema default for an input an API prompt omits, so a bare
-    # signature default is what that path actually gets -- and 0 is the one
-    # value CLAUDE.md says must not reach the shipped encoder, because it
-    # leaves the reference view unclamped in the TEXT segment where it competes
-    # with the prompt rather than merely lengthening the sequence. So the UI
-    # path rendered at 512 and an API prompt omitting the key rendered
-    # unclamped, silently. Corrected 2026-08-31; every shipped API graph sets
-    # the key explicitly, so no shipped render moves. 0 stays LEGAL when asked
-    # for on purpose -- six graph arms do -- it just is not the default.
     # `qwen_view` before `references` because it is REQUIRED in the schema
     # and `references` is optional; a signature default on a required input
-    # is the split this node just spent a commit fixing on the other knob.
+    # is a UI-versus-API split (2026-08-31). `None` is what an API prompt
+    # omitting a DynamicCombo yields; it takes the schema's FIRST option, so
+    # the schema order above is the default and there is no second copy of it.
     def execute(cls, image, size_policy, qwen_view, references=None):
         # A DynamicCombo arrives as ONE nested dict: the selected key under the
         # input's own id, and the chosen option's inputs alongside it. NOT as
         # flattened kwargs. `MiniMaxH3Resolution.execute` carries the scar from
-        # getting this wrong -- every selection fell through to one branch, and
-        # its test agreed with the bug because the test invented the caller.
+        # getting this wrong.
         policy = (size_policy if isinstance(size_policy, str)
                   else size_policy["size_policy"])
         if policy not in SIZE_POLICIES:
@@ -951,8 +884,11 @@ class MiniMaxH3AppendRefImage(io.ComfyNode):
         if policy == "max" and not isinstance(size_policy, str):
             short_edge = int(size_policy["dit_short_edge"])
             allow_upscale = bool(size_policy["allow_upscale"])
+        elif policy == "max":
+            # The bare selection: the schema's own defaults.
+            short_edge, allow_upscale = REF_IMAGE_SHORT_EDGE, True
         else:
-            # `match` reads neither, and they are no longer reachable under it.
+            # `match` reads neither, and they are not reachable under it.
             short_edge, allow_upscale = REF_IMAGE_SHORT_EDGE, False
         size_policy = policy
         count, source_h, source_w = _image_shape(image, "image")
@@ -974,19 +910,13 @@ class MiniMaxH3AppendRefImage(io.ComfyNode):
         if short_edge < CANVAS_MULTIPLE:
             raise ValueError(
                 f"short_edge must be at least {CANVAS_MULTIPLE}, got {short_edge}")
-        # Same nested-dict unpacking as `size_policy` above. `None` is what an
-        # API prompt omitting the input yields; it takes the schema's first
-        # option, which is `separate` at REF_QWEN_SHORT_EDGE -- so omission and
-        # the UI agree, which is the defect this input carried until
-        # 2026-08-31 in the other direction.
         view = (qwen_view if isinstance(qwen_view, str)
                 else qwen_view["qwen_view"])
         if view not in ("separate", "shared"):
             raise ValueError(f"unknown qwen_view {view!r}")
         if view == "shared":
             # 0 remains the INTERNAL representation of "one shared view" on
-            # `RuntimeImageReference`, where it is a derived value rather than
-            # something anyone types. The widget no longer offers it.
+            # `RuntimeImageReference`, a derived value nobody types.
             qwen_short_edge = 0
         elif isinstance(qwen_view, str):
             qwen_short_edge = REF_QWEN_SHORT_EDGE
@@ -1074,7 +1004,9 @@ class MiniMaxH3ReferenceConditioning(io.ComfyNode):
             description=(
                 "Compile an ordered MINIMAX_H3_REFERENCES list into the Qwen "
                 "presentation and DiT reference payload. Use an H3 reference "
-                "checkpoint; this node does not infer checkpoint task identity."
+                "checkpoint; this node does not infer checkpoint task identity. "
+                "The node's preview shows what each reference cost once it "
+                "has run; MiniMax H3 Reference Report shows it beforehand."
             ),
             inputs=[
                 io.Clip.Input("clip"),
@@ -1106,39 +1038,39 @@ class MiniMaxH3ReferenceConditioning(io.ComfyNode):
                 io.Int.Input("length", default=124, min=5, max=3600, step=17),
                 io.Combo.Input(
                     "video_policy", options=list(VIDEO_POLICIES),
-                    default="encoder", optional=True,
+                    default="comfy", optional=True,
                     tooltip=(
-                        "Reference VIDEO preparation only. encoder (default) "
-                        "keeps ComfyUI's cheaper no-upscale VAE view but runs "
-                        "the raw 2 fps Qwen samples through the encoder's "
-                        "duration-aware config. comfy is native ComfyUI "
-                        "preprocessing. release is a full local parity policy: "
-                        "it upscales the VAE view to the release canvas AND "
-                        "runs the raw 2 fps Qwen samples through the release's "
-                        "duration-aware processor. The two stages are atomic "
-                        "because upscale alone overshoots long-clip Qwen rows. "
-                        "This does not modify or fix native ComfyUI."
+                        "Reference VIDEO preparation only.\n\n"
+                        "comfy (default): core ComfyUI's behaviour. The video "
+                        "model's copy is never enlarged, and the text encoder "
+                        "reads the 2 fps samples through core's per-pair "
+                        "processor.\n\n"
+                        "release: the release pipeline's rule. The video "
+                        "model's copy is scaled to the release canvas AND the "
+                        "2 fps samples go through the release's duration-aware "
+                        "processor. The two stages are one policy because the "
+                        "upscale alone overshoots the encoder's long-clip "
+                        "budget.\n\n"
+                        "Neither changes native ComfyUI nodes."
                     ),
                 ),
-                # APPENDED for the same reason video_policy was.
                 io.Combo.Input(
                     "image_policy", options=list(IMAGE_POLICIES),
                     default="comfy", optional=True,
                     tooltip=(
-                        "Reference STILL preparation only, and the sibling of "
-                        "video_policy. comfy (default) changes nothing: the "
-                        "still is handed to the text encoder exactly as core "
-                        "hands it, and whatever processor that CLIP carries "
-                        "resizes it afterwards -- for Qwen alone, after the VAE "
-                        "has already encoded the larger tensor. encoder and "
-                        "release instead pre-apply the selected policy's own "
-                        "ceiling AND floor here, so the VAE encodes the tensor "
-                        "Qwen wanted and both towers stay on one size. They "
-                        "differ by a large factor: the current encoder "
-                        "artifact declares a far smaller still budget than the "
-                        "release does, so 'encoder' can shrink a reference "
-                        "hard where 'release' leaves it alone. Pick the one "
-                        "matching the checkpoint you loaded."
+                        "Reference STILL preparation, after each still's own "
+                        "size_policy.\n\n"
+                        "comfy (default): the still reaches the text encoder "
+                        "exactly as core hands it, and the encoder's own "
+                        "processor resizes it afterwards if its bounds bind, "
+                        "after the VAE has already encoded.\n\n"
+                        "release: pre-apply the release's declared pixel floor "
+                        "and ceiling before the VAE, so both readers encode "
+                        "one size.\n\n"
+                        "On the shipped encoder the two produce the same "
+                        "geometry at every legal short edge; release differs "
+                        "only for a still under the release's floor. The "
+                        "Reference Report shows which bounds moved a copy."
                     ),
                 ),
             ],
@@ -1151,7 +1083,7 @@ class MiniMaxH3ReferenceConditioning(io.ComfyNode):
     @classmethod
     def execute(
         cls, clip, references, prompt, width=1344,
-        height=768, length=124, video_policy="encoder",
+        height=768, length=124, video_policy="comfy",
         image_policy="comfy", vae=None, audio_vae=None,
     ):
         records = _reference_tuple(references)
@@ -1165,14 +1097,9 @@ class MiniMaxH3ReferenceConditioning(io.ComfyNode):
                 "condition on a pad token in core and are refused here"
             )
         latent, frame_count = _empty_av_latent(width, height, length)
-        # What `encoder` means is read off the CLIP this node was handed, not
-        # off a module: the loader stamps its artifact's declaration, and a
-        # CLIP without one is the native path.
-        contract = encoder_contract_from_clip(clip)
         ref_items, ref_blocks = _compile_reference_records(
             records, vae, audio_vae, width, height, frame_count,
             video_policy=video_policy, image_policy=image_policy,
-            contract=contract,
         )
         tokens = clip.tokenize(prompt, minimax_ref_items=ref_items)
         conditioning = clip.encode_from_tokens_scheduled(tokens)
@@ -1189,11 +1116,22 @@ class MiniMaxH3ReferenceConditioning(io.ComfyNode):
         logger.info(
             "[h3] ordered reference conditioning: %dx%d, %d frames, %d "
             "record(s), presentation=%s, DiT reference block(s)=%d%s, "
-            "video_policy=%s, image_policy=%s, encoder contract=%s",
+            "video_policy=%s, image_policy=%s",
             width, height, frame_count, len(records), labels,
             len(ref_blocks),
             "" if ref_blocks else " (encoder only: no VAE wired)",
             video_policy, image_policy,
-            contract["source"] if contract else "none (native)",
         )
-        return io.NodeOutput(conditioning, latent)
+        # The same pricing the report node shows beforehand, on the node
+        # itself once it has run. Geometry only; a failure here must never
+        # fail the render, so it is logged and the preview is skipped.
+        preview = None
+        try:
+            from .reference_report import format_report, price_references
+            preview = format_report(price_references(
+                records, width, height, length, image_policy=image_policy,
+                video_policy=video_policy, clip=clip, prompt=prompt))
+        except Exception as exc:  # pragma: no cover - reporting must not gate
+            logger.warning("[h3] reference report skipped: %s", exc)
+        return io.NodeOutput(conditioning, latent,
+                             ui=ui.PreviewText(preview) if preview else None)

@@ -125,7 +125,7 @@
       ],
       "frame_rate": 24.0,
       "loop_count": 0,
-      "filename_prefix": "Video/h3_probe_refview_a_source",
+      "filename_prefix": "Video/h3_probe_refview2_stairwell_circus",
       "format": "video/h264-mp4",
       "pix_fmt": "yuv420p",
       "crf": 19,
@@ -138,8 +138,8 @@
   "27": {
     "class_type": "MiniMaxH3Resolution",
     "inputs": {
-      "shape": "standard",
-      "shape.standard_resolution": "1024x768  4/3  768 tok/frame  0.58x",
+      "shape": "wide",
+      "shape.wide_resolution": "1344x768  7/4  1008 tok/frame  1.00x",
       "length": 345
     }
   },
@@ -159,10 +159,10 @@
         0
       ],
       "references": [
-        "52",
+        "51",
         0
       ],
-      "prompt": "subject_definitions:\n<Subject 1> is the main character in <Picture 1>, whose face, hair, and clothing are carried into the target video.\n<Subject 2> is the garment shown in <Picture 2>, which <Subject 1> wears in the target video.\n<Subject 3> is the environment in <Picture 3>, which provides the setting for the target video.\n\nsummary:\n[reference generation] The target video places <Subject 1> inside <Subject 3> for a single continuous shot.\n\nretention_analysis:\n<Subject 1> (appears in [Shot 1]): fully_preserved - face, hair, and clothing are retained.\n<Subject 2> (appears in [Shot 1]): attribute_transfer - the garment from <Picture 2> is placed on <Subject 1>.\n<Subject 3> (appears in [Shot 1]): fully_preserved - the visual setting is retained.\n\ndetailed_description:\nThe target video is in a cinematic live-action style.\n[Shot 1] A medium shot establishes <Subject 3>, then <Subject 1> enters from the left wearing <Subject 2> and stops at the center of the frame. The camera trucks right with small amplitude at slow speed.\n\noverall_soundscape:\nNatural ambient atmosphere continues throughout the shot.\n\nnon_diegetic_music:\nN/A",
+      "prompt": "subject_definitions:\n<Subject 1> is the tall purple rabbit character shown in <Picture 1>, preserving his design exactly: lilac-purple fur, very long upright ears, narrow yellow eyes with black slits, a wide grin of flat yellow teeth, a pink and red striped one-piece with yellow buttons and yellow gloves, and a long lanky frame. The checkered floor and colourful castle of <Picture 1> are not present in the target video.\n<Subject 2> is the small jester character shown in <Picture 2>, preserving her design exactly: a white face with round pink cheek marks and wide dark eyes, a red and blue jester's hat with two bells, a red and blue harlequin bodysuit with yellow buttons, thin stick-like limbs, one red glove and one blue glove, and a nervous, wide-eyed expression. The striped tent hall of <Picture 2> is not present in the target video.\n\nsummary:\n[reference generation] In three shots on a concrete stairwell landing, <Subject 2> and <Subject 1> trade eight short clipped lines with almost no gap between them, about a plan that has moved.\n\nretention_analysis:\n<Subject 1> (appears in [Shot 1] and [Shot 3]): fully_preserved - retain the purple fur, long upright ears, yellow slit eyes, flat yellow teeth, striped one-piece and yellow gloves in every frame he appears in.\n<Subject 2> (appears in [Shot 1] and [Shot 2]): fully_preserved - retain the white face, pink cheek marks, red and blue jester's hat with bells, harlequin bodysuit, stick-like limbs and mismatched gloves in every frame she appears in.\n\ndetailed_description:\nStylised 3D animation in the glossy rendered look of <Picture 1> and <Picture 2>, 16:9, with clean plastic-like surfaces, saturated colour on the characters and a muted, realistic stairwell around them. The stairwell is poured concrete with painted cinderblock walls in a flat institutional green, a steel handrail running down out of frame, and a scuffed landing floor, lit hard from above by a single caged bulb so both faces carry a bright top edge and a deep shadow beneath. The camera is handheld with small continuous drift from the operator's breathing, never a deliberate move. Each speaker's mouth moves only on their own line and is closed and still while the other speaks. No other characters, no readable text, no signage, no music.\n\n[Shot 1] A medium two-shot frames <Subject 2>, the small jester in the red and blue harlequin bodysuit and belled hat, looking up at <Subject 1>, the tall purple rabbit in the pink and red striped one-piece, whose long ears nearly brush the caged bulb, the two of them a little closer than is comfortable on the stairwell landing. <Subject 2>, with a small, tight, high voice (S1), says: <d>[English] You said tomorrow.</d> <Subject 1>, with a lazy, drawling tenor (S2), answers immediately: <d>[English] It moved.</d> She says at once: <d>[English] To when?</d> He answers at once: <d>[English] Tonight.</d> Her dark eyes widen, she does not step back, and the camera shakes slightly with the operator's breathing while the bulb hums overhead.\n\n[Shot 2] At 00:06.000, the camera cuts to a close-up of <Subject 2> against the painted cinderblock, the bulb throwing a hard edge down one white cheek and leaving the other in shadow, the two bells on her hat catching the light. She (S1) says: <d>[English] Who else knows?</d> Off screen he (S2) answers immediately: <d>[English] Nobody.</d> She says at once: <d>[English] Keep it that way.</d> She holds his eyeline a moment longer than the line needs, then looks past the camera and down toward the stairs below, the bells swinging once.\n\n[Shot 3] At 00:11.000, the camera cuts to a close-up of <Subject 1>, the same hard overhead light picking out the purple fur along his ears and the flat yellow teeth of his grin, rain noise faint through a window well behind him and a wet grey rectangle of light on the wall past his shoulder. He (S2) says: <d>[English] Understood.</d> He looks down, tugs one yellow glove tighter with the other hand, and holds still with his mouth closed until the final frame.\n\noverall_soundscape:\nClose handheld room tone in a hard concrete stairwell with a long reflective tail on every consonant, a faint electrical hum from the caged bulb overhead, and the small metallic ring of the jester's bells on each turn of her head.\n\nnon_diegetic_music:\nN/A\n",
       "width": [
         "27",
         0
@@ -175,26 +175,20 @@
         "27",
         2
       ],
-      "video_policy": "release",
+      "video_policy": "comfy",
       "image_policy": "comfy"
     }
   },
   "15": {
     "class_type": "LoadImage",
     "inputs": {
-      "image": "h3_refs/subject_performer_stage_662x1177.png"
+      "image": "Digital_Circus_Jax-12.jpg"
     }
   },
   "16": {
     "class_type": "LoadImage",
     "inputs": {
-      "image": "h3_refs/product_soccer_jersey_1600x1600.png"
-    }
-  },
-  "34": {
-    "class_type": "LoadImage",
-    "inputs": {
-      "image": "h3_refs/scene_loft_couch_duo_2752x1536.png"
+      "image": "Digital_Circus_Pomni-108.jpg"
     }
   },
   "50": {
@@ -206,7 +200,7 @@
       ],
       "size_policy": "max",
       "size_policy.dit_short_edge": 2048,
-      "size_policy.allow_upscale": false,
+      "size_policy.allow_upscale": true,
       "qwen_view": "shared"
     }
   },
@@ -223,24 +217,7 @@
         0
       ],
       "size_policy.dit_short_edge": 2048,
-      "size_policy.allow_upscale": false,
-      "qwen_view": "shared"
-    }
-  },
-  "52": {
-    "class_type": "MiniMaxH3AppendRefImage",
-    "inputs": {
-      "image": [
-        "34",
-        0
-      ],
-      "size_policy": "max",
-      "references": [
-        "51",
-        0
-      ],
-      "size_policy.dit_short_edge": 2048,
-      "size_policy.allow_upscale": false,
+      "size_policy.allow_upscale": true,
       "qwen_view": "shared"
     }
   },

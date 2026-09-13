@@ -20,114 +20,22 @@ from dataclasses import dataclass as _dataclass
 from pathlib import Path
 
 
-#: **NOT SHIPPED. `MODELS["clip"]` is `ENCODER_INT8`.** A W4 artifact kept for
-#: the small-host variant and for the arms that measure encoders; no shipped
-#: graph loads it. This docstring opened with "the shipped text encoder ... v2
-#: since 2026-08-27" until 2026-08-28, which was true for hours and then was
-#: not. **The observable is `MODELS["clip"]`; do not restate ship state here.**
-#: Named by the name `h3_awq_encoder.py`'s snapshot registry recognizes,
-#: replacing
-#: `qwen3vl_32b_minimax_h3_w4a16_awq.safetensors`. v2 declares the release's
-#: own still-image budget, 65536..16777216 px, where v1's snapshot declared
-#: 200704..301056. Under v1 every reference reached the conditioner reduced to
-#: roughly 290 merged tokens whatever it was prepared at, which is why
-#: `MiniMaxH3AppendRefImage.qwen_short_edge` could not do anything; under v2 a
-#: 2048 short edge arrives intact, and so does a 512 one. The knob is
-#: bidirectional -- `qwen_view_size` has no `min(1.0, ...)` -- and 2026-08-27
-#: showed the DOWNWARD direction is the one that matters here: reference tokens
-#: sit in the text segment ahead of the prompt, so two upscaled references left
-#: a ~1,000-token prompt at 9.5% of its own segment and a two-speaker scene
-#: rendered with the dialogue attributed to the wrong subject. That is a cost
-#: as well as a capability --
-#: an unclamped Qwen view costs `(w/32)*(h/32)` tokens, the same arithmetic as
-#: the DiT reference rows, and both segments sit inside Sol-Attn's exact sink.
+#: The ComfyUI-native INT8 ConvRot encoder, shipped on every graph since
+#: 2026-08-27 (late) by owner decision. On the 13-row holdout it sits about
+#: fifteen times closer to the BF16 release at layer 50 than either W4A16
+#: AWQ artifact it replaced
+#: (`bench/results/2026-08-25_four_encoders_holdout_layer50.json`).
 #:
-#: **Name the artifact here; never symlink one file into another's name.** The
-#: loader recognizes an artifact by its embedded `config.json`, but the static
-#: readers (`bench/preflight_graph.py`) resolve by filename through
-#: `h3_awq_encoder.ARTIFACT_SNAPSHOTS`. A symlink splits the two. Measured
-#: 2026-08-27, pointing the v1 name at the v2 file: runtime resolved the v2
-#: snapshot and its release bounds, while the static reader resolved the v1
-#: bounds and preflight priced a clamp that would not happen. The v1 name is a
-#: known key in that registry, so the lookup returned a confident wrong answer
-#: rather than the "no contract" an unknown name would have produced.
-ENCODER_V2 = "qwen3vl_32b_minimax_h3_w4a16_awq_v2-comfy.safetensors"
-
-#: **NOT SHIPPED either. `MODELS["clip"]` is `ENCODER_INT8`.** This said
-#: "shipped again since 2026-08-27" and was overtaken the same day by
-#: `4ff3f0b`. Its snapshot resolves to `None` in `h3_awq_encoder.ARTIFACT_SNAPSHOTS`,
-#: which is that module's own config -- the 200,704..301,056 px still budget.
+#: It loads through `MiniMaxH3EncoderLoader`, which is core's own `CLIPLoader`
+#: plus two guards (`h3_encoder_loader.py`). Preprocessing is core's: the
+#: still-image bounds are `process_qwen2vl_images`' own defaults, read out of
+#: core by `h3_encoder_loader.native_encoder_contract`, never typed here.
 #:
-#: What sent it back is not a weights result. On the Gate 5 holdout v2's median
-#: relative L2 against BF16 is a wash or slightly worse: noup 0.3667 against
-#: 0.3594, up2048 0.3326 against 0.3122, t2va 0.0611 against 0.0671
-#: (`bench/results/2026-08-25_v2_holdout_layer50.json`; at up2048 the MEANS
-#: disagree in sign with the medians, annotated beside the Gate 5 table in
-#: `canonical/2026-08-25_v2_launch_record.md`). Everything v2 bought was its
-#: snapshot -- it reads as a quant generation and was doing a preprocessing job.
-#:
-#: And that snapshot is what broke a render. v2 declares the release's own
-#: 65,536..16,777,216 px, so 2048-short-edge references stopped clamping and
-#: reached the conditioner at 9,408 tokens against a ~1,000-token prompt --
-#: the prompt fell to 9.5% of its own segment where v1's bounds had left it
-#: near 63%. A two-speaker scene at that default attributed the dialogue to the
-#: wrong subject, and the speaker binding lives in exactly those prompt tokens.
-#:
-#: **The mechanism is priced, not proven.** One render, one seed, and the
-#: arithmetic is consistent with it. The arm that would settle it holds the
-#: WEIGHTS fixed and varies the snapshot -- v2 weights under v1 bounds via
-#: `h3_awq_encoder.install_source_processors(image_bounds=...)`, which exists
-#: for exactly that and is not reachable from a graph. Until it runs, going
-#: back is the cheap way to stop paying for an unproven mechanism, not a
-#: verdict on v2.
-ENCODER_V1 = "qwen3vl_32b_minimax_h3_w4a16_awq_v1-comfy.safetensors"
-
-# Checkpoint names are the ones their owning loader actually offers. The text
-# encoder is the canonical custom W4A16 AWQ build. Core CLIPLoader also lists it,
-# but that is filesystem discovery, not format support: the file uses
-# compressed-tensors' full Hugging Face namespace and metadata, while native
-# H3 expects Comfy's 50-layer namespace and quant metadata. This repo's
-# `MiniMaxH3AWQEncoderLoader` performs that adaptation in memory and dispatches
-# the weights through comfy-kitchen. Architecture and tokenizer are native
-# ComfyUI; format recognition/repacking and config-driven preprocessing are
-# explicitly local handling. The graph must name a concrete file; the custom
-# loader itself is not filename-bound and validates any selected file by its
-# metadata and complete adapted tensor inventory.
-#: The ComfyUI-native INT8 ConvRot encoder, the encoder of record for the
-#: Gate 6 reference-view arms and the marker arms since 2026-08-25: on the
-#: 13-row holdout it sits about fifteen times closer to the BF16 release at
-#: layer 50 than either W4A16 artifact (`bench/results/2026-08-25_four_encoders_holdout_layer50.json`).
-#: That comparison was taken against v1 and the v2 candidate as they stood on
-#: that date; it is the reason to keep measuring this encoder, not a reason the
-#: shipped graphs cannot move. **They load `MODELS["clip"]`, which is THIS
-#: file** -- the sentence here used to say v2, contradicting the line below it
-#: in the same comment block, and `git blame` shows one commit wrote both.
-#:
-#: **SHIPPED ON EVERY GRAPH SINCE 2026-08-27 (late), by owner decision**,
-#: replacing the W4A16 AWQ builds. The fidelity case is the table above; what
-#: changed is the judgement that a stack already carrying pruning, int8
-#: quantisation and a third-party PDD LoRA should not also carry the least
-#: faithful encoder on the box.
-#:
-#: **It loads through core's `CLIPLoader`, which stamps no
-#: `_h3_encoder_contract`.** So `reference_geometry.encoder_contract_from_clip`
-#: returns `None`, `effective_policy` resolves `encoder` to `comfy`, and the
-#: AWQ adapter's `preprocess_embed` -- what applied a snapshot's declared still
-#: bounds -- is not installed. The operative ceiling becomes core's own
-#: `process_qwen2vl_images` defaults, 3,136..12,845,056 px, 43x wider than v1's
-#: 200,704..301,056.
-#:
-#: **That would have re-run 2026-08-27 morning's failure, and
-#: `REF_QWEN_SHORT_EDGE` is why it does not.** Measured on the shipped
-#: reference pair at `qwen_short_edge` 512: 522 merged tokens under v1's
-#: bounds, 592 under core's. The knob was inert under v1 and is load-bearing
-#: here -- the case its own note argued when it was kept rather than deleted.
-#: **Do not set it back to 0 on this encoder**: unclamped, those two references
-#: cost 9,408 tokens inside the prompt's own segment.
-#:
-#: `bench/preflight_graph.py` reports "no contract" for this file rather than
-#: guessing one, which is the designed behaviour for a name its registry does
-#: not know.
+#: The W4A16 AWQ artifacts (`..._w4a16_awq.safetensors`, `..._v2-comfy`) and
+#: the adapter that loaded them (`h3_awq_encoder.py`, `MiniMaxH3AWQEncoderLoader`)
+#: were deleted on 2026-09-13 with the lane they served
+#: (`docs/roadmap.md` "Closed lanes", `docs/wiki/decisions.md`). Their records
+#: under `bench/results/` and `docs/research/` stand as history.
 ENCODER_INT8 = "qwen3vl_32b_minimax_h3_int8_convrot.safetensors"
 
 MODELS = dict(
@@ -197,11 +105,10 @@ MODELS = dict(
 )
 
 
-#: Encoder files core's own `CLIPLoader` (type `minimax`) loads; everything
-#: else named as a graph's encoder goes through the repo's
-#: `MiniMaxH3AWQEncoderLoader`, which refuses a file that is not a W4A16
-#: compressed-tensors artifact. The generator picks the loader node from
-#: this set, so a graph never names a file its loader cannot open.
+#: Encoder files core's own `CLIPLoader` (type `minimax`) loads, and therefore
+#: the only files `MiniMaxH3EncoderLoader` (core's load plus guards) can open.
+#: The generator refuses any other encoder name, so a graph never names a
+#: file its loader cannot open.
 CORE_LOADED_ENCODERS = frozenset({
     ENCODER_INT8,
     "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
@@ -1791,68 +1698,25 @@ SPLIT_AT = 2
 # 4:3 rather than the 1344x768 the rest of the repo defaults to -- a real
 # change in what these arms look like, taken deliberately so the reference
 # stays full length. `ref_upscale=False` leaves reference images at their
-# native size instead of taking them to 2048 on the short edge.
+# native size instead of taking them to 2048 on the short edge; it is an
+# ARM setting here, against the node default (upscale on since 2026-09-13),
+# because these arms exist to carry a long reference video on a 24 GB card.
 #
 # Spread into every video-bearing reference arm so the three numbers have one
 # home. Editing them here moves all eight arms together, which is the point.
-#: The encoder-only view every shipped reference graph gives Qwen3-VL, in
-#: `MiniMaxH3AppendRefImage.qwen_short_edge`. 512 since 2026-08-27; 0 (one
-#: view, whatever the VAE got) before.
+#: The size pre-filled under `MiniMaxH3AppendRefImage.qwen_view = separate`,
+#: the text encoder's own copy of a still. Read from `h3_rules`, never
+#: retyped: the NODE's pre-filled value and the generator's must be one number.
 #:
-#: **SUPERSEDED 2026-08-28: this paragraph describes an encoder the graphs no
-#: longer load.** It was true between `72e97c3` (v1 on every graph) and
-#: `4ff3f0b` (ship INT8 ConvRot), both 2026-08-27 -- a window of hours. Today
-#: `MODELS["clip"]` is `ENCODER_INT8`, which loads through core `CLIPLoader`
-#: with no contract stamped, so core's own 3,136..12,845,056 px bounds apply
-#: and this knob is **LOAD-BEARING, not inert** -- the `ENCODER_INT8` note near
-#: the top of this file is the current statement and explains why 0 would cost
-#: two references 9,408 tokens inside the prompt's own segment. Keep the v1
-#: paragraph below: it is why the knob was kept when it looked useless, and it
-#: is the regime anyone loading a v1 snapshot is still in.
-#:
-#: **The v1 regime, for when it applies.** Those graphs ran the v1 conditioner,
-#: whose still bounds are a 1.5x window
-#: (200704..301056), so `smart_resize` lands every non-square reference on the
-#: identical view whatever it was prepared at: 512, 1024 and 2048 all reach
-#: the encoder as 264 merged tokens at 16:9, and only square moves at all.
-#: Measured across four aspects in
-#: `bench/results/2026-08-27_qwen_view_under_snapshot.json`. Not "close to
-#: inert" -- exactly inert for every aspect these graphs use.
-#:
-#: It stays rather than coming out because it re-arms. Under v2's bounds the
-#: same knob spans 448 to 7,296 merged tokens over that range, so it is a live
-#: lever again the moment anyone moves `MODELS["clip"]`. Deleting it would
-#: leave nothing here to warn them -- the same reason
-#: `bench/check_attention_defaults.py` derives its single-frame exempt class
-#: instead of deleting it.
-#:
-#: **Why it exists, and it is a PRIOR rather than a measurement.** Reference
-#: tokens land in the TEXT segment ahead of the prompt, so they compete with it
-#: rather than merely costing sequence length. Under v2 on 2026-08-27 two
-#: 2048-short-edge references cost 9,408 tokens there against a ~1,000-token
-#: prompt, leaving the prompt 9.5% of its own segment; 512 put it back to 63%
-#: while the DiT kept all 9,408 of its reference rows. Priced with
-#: `bench/preflight_graph.py`, which could not see this until 26a0dbe -- it
-#: costed the segment from the DiT rows. 63% is v1's ratio, and v1's ratio was
-#: an accident of that snapshot's bounds rather than a number anyone chose.
-#:
-#: The observation behind it is ONE render: a two-speaker scene at the old
-#: default attributed the dialogue to the wrong subject, and the binding lives
-#: in the prompt tokens whose share had collapsed. One seed, and the arm that
-#: would have moved this number never ran -- the queue was stopped when the
-#: graphs went back to v1. That arm would not have settled it anyway: v2-at-0
-#: differs from v1 in BOTH weights and bounds, so it could not separate "the
-#: proportion was the problem" from "v2's weights are worse and shrinking the
-#: view happens to help". The pair that isolates it holds the weights fixed --
-#: v2 under v1's bounds against v2 under its own, via
-#: `h3_awq_encoder.install_source_processors(image_bounds=...)` -- needs no
-#: render, and belongs to the encoder lane.
-#: Read from `h3_rules`, never retyped. The NODE's default and this must be
-#: the same number -- a graph that omits the input takes the node's, and a
-#: generator that disagreed would produce graphs whose behaviour changed
-#: depending on whether the key happened to be written. `h3_rules` imports no
-#: ComfyUI, so this works from a bare `sys.path` with only `workflows/` on it,
-#: which is how every bench script loads this file.
+#: **Not the default view since 2026-09-13.** The node and every generated
+#: graph default to `shared`: one prepared copy feeds both the video VAE and
+#: Qwen3-VL, which is what sglang, diffusers and DiffSynth do (owner decision,
+#: `docs/wiki/decisions.md`). `separate` at this size was the shipped default
+#: from 2026-08-27 to 2026-09-13 on the strength of one render whose dialogue
+#: bound to the wrong speaker when two 2048 references sat ahead of the
+#: prompt; that observation is recorded in the CHANGELOG under 0.82.0 and was
+#: never re-measured. The reference-view ablation
+#: (`bench/refview2_arms.json`) is the arm that tests it.
 #: --- Paths. One resolver, because counting `..` by hand has cost real time. ---
 #:
 #: The bug this closes, twice over. `bench/grade_pdd_partitions.py` resolved its
@@ -1992,6 +1856,28 @@ REF_VIDEO_BUDGET = dict(length=REF_VIDEO_LENGTH, **REF_VIDEO_CANVAS,
 #: a 100% crop on a face. `1-man.png` is already the repo's reference still.
 DIALOGUE_REF_IMAGES = ("1-man.png", "5-woman.png")
 
+#: The reference-view ablation of 2026-09-13 (`bench/refview2_arms.json`):
+#: five scenes, each a ref2va bank prompt and the stills it carries, in
+#: append order. Owner-chosen stills from the shared input directory. Every
+#: scene graph is built at the node defaults (vendor parity: 2048 short
+#: edge, upscale on, one copy for both towers) and the manifest's patches
+#: are the arms. The old three-arm Gate 6 family
+#: (`h3_probe_refview_{a_source,b_qwen2048,c_parity}`) was priced on
+#: 2026-08-25, never rendered, and replaced by this.
+REFVIEW2_SCENES = (
+    # (graph stem suffix, prompt id, stills in <Picture N> order)
+    ("stairwell_backstage", "ref2va_stairwell_dialogue_backstage",
+     ("20260315_193704.jpeg",)),
+    ("stairwell_circus", "ref2va_stairwell_dialogue_circus",
+     ("Digital_Circus_Jax-12.jpg", "Digital_Circus_Pomni-108.jpg")),
+    ("diner", "ref2va_diner_breakup_refs",
+     ("20260315_193704.jpeg", "20260511_123213_37d2ec75.jpeg",
+      "20260505_112742_563ba791.jpeg")),
+    ("porter", "ref2va_night_porter_refs", ("20260310_153551.png",)),
+    ("dancer", "ref2va_studio_dancer_close_refs",
+     ("20260504_152156_5b0e8151.jpeg",)),
+)
+
 CAPTURE_REF_IMAGES = (
     "h3_refs/subject_performer_stage_662x1177.png",
     "h3_refs/product_soccer_jersey_1600x1600.png",
@@ -2110,7 +1996,7 @@ MAX_LINK_HOPS = 16
 #: COMPUTED and OPAQUE are not merged, because their fixes are opposite and
 #: because merging them means answering "no static reader can know this" about
 #: a node nobody has described yet. That is the shape of the confident wrong
-#: answer `ENCODER_V2`'s note describes: a known key returning the wrong
+#: answer a deleted encoder registry once gave: a known key returning the wrong
 #: contract reads as authoritative, where "no contract" sends you to look.
 RESOLVED = "resolved"
 COMPUTED = "computed"

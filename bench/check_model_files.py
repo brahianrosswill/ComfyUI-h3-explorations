@@ -79,7 +79,7 @@ from pathlib import Path
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parents[0] / "workflows"))
 
-from h3_config import CORE_LOADED_ENCODERS, ENCODER_V1, MODELS, IMAGE_VAE, graph_paths  # noqa: E402
+from h3_config import CORE_LOADED_ENCODERS, MODELS, IMAGE_VAE, graph_paths  # noqa: E402
 
 WORKFLOWS = _HERE.parents[0] / "workflows"
 DEFAULT_URL = "http://127.0.0.1:8188"
@@ -95,7 +95,13 @@ CONSTANT_CLASS = {
     "clip": None,
     "video_vae": "VAELoader", "audio_vae": "VAELoader",
 }
-AWQ_LOADER = "MiniMaxH3AWQEncoderLoader"
+#: Every loader that can name an H3 text encoder. The AWQ adapter's loader
+#: sat in this set until 2026-09-13; with it gone, an encoder file that core
+#: cannot load has no loader at all, which is what `grade_format_owner` says.
+ENCODER_LOADERS = ("CLIPLoader", "MiniMaxH3EncoderLoader")
+#: A name no loader in this pack can open: the v1 W4A16 AWQ artifact, whose
+#: adapter was deleted. Used only as a control that must go red.
+NO_LOADER_CONTROL = "qwen3vl_32b_minimax_h3_w4a16_awq_v1-comfy.safetensors"
 
 
 def object_info(base: str) -> dict:
@@ -170,31 +176,22 @@ def grade_format_owner(items) -> list[str]:
     read `MODELS["clip"]` and demanded the adapter for whatever that named,
     which was correct only while the shipped encoder was always a W4A16
     artifact. When it became the ComfyUI-native INT8 build on 2026-08-27 the
-    check inverted: it declared a native file "compressed-tensors AWQ" and
-    demanded the adapter that cannot open it. Same defect as the generator's
-    loader choice the same evening, and the same rule -- branch on the
-    observable, which here is membership of `CORE_LOADED_ENCODERS`.
+    check inverted. Same rule since: branch on the observable, which here is
+    membership of `CORE_LOADED_ENCODERS`. Core's `CLIPLoader` lists every
+    `.safetensors` under `text_encoders/`, so a compressed-tensors artifact
+    appears in its menu and fails only at load; since the AWQ adapter's
+    deletion (2026-09-13) nothing in this pack can open such a file.
     """
     bad = []
-    # Encoder loaders only. A VAELoader naming a VAE is not this rule's
-    # business, and scoping by CORE_LOADED_ENCODERS membership alone made every
-    # non-encoder file look like an adapter artifact.
-    encoder_loaders = {"CLIPLoader", AWQ_LOADER}
     for where, cls, name in items:
-        if cls not in encoder_loaders:
+        if cls not in ENCODER_LOADERS:
             continue
-        native = name in CORE_LOADED_ENCODERS
-        if native and cls == AWQ_LOADER:
+        if name not in CORE_LOADED_ENCODERS:
             bad.append(
-                f"{where}: {name!r} is a ComfyUI-native encoder and must use "
-                f"CLIPLoader, not {AWQ_LOADER}, which opens only "
-                "compressed-tensors W4A16 artifacts."
-            )
-        elif not native and cls != AWQ_LOADER:
-            bad.append(
-                f"{where}: {name!r} is compressed-tensors AWQ and must use "
-                f"{AWQ_LOADER}, not {cls}. Core menu discovery is not format "
-                "support."
+                f"{where}: {name!r} is not a ComfyUI-native H3 encoder "
+                f"(h3_config.CORE_LOADED_ENCODERS); {cls} lists it because "
+                "core's menu discovery is not format support, and no loader "
+                "in this pack opens it."
             )
     return bad
 
@@ -215,8 +212,7 @@ def main() -> int:
             items.append((f"{p.relative_to(WORKFLOWS.parent)}#{nid}", cls, name))
     for key, cls in CONSTANT_CLASS.items():
         if key in MODELS:
-            resolved = cls or ("CLIPLoader" if MODELS[key] in CORE_LOADED_ENCODERS
-                               else AWQ_LOADER)
+            resolved = cls or "MiniMaxH3EncoderLoader"
             items.append((f"h3_config.MODELS[{key!r}]", resolved, MODELS[key]))
     items.append(("h3_config.IMAGE_VAE", "VAELoader", IMAGE_VAE))
 
@@ -238,11 +234,11 @@ def main() -> int:
     controls.append(("control:empty", not items))
     controls.insert(2, ("control:bothforms",
                         seen == {"legacy_only.safetensors", "v3_only.safetensors"}))
-    # Must name an artifact the adapter really owns. Using MODELS["clip"]
-    # stopped firing the moment the shipped encoder became native --
-    # the control was asserting a pairing that is now correct.
-    core_awq = [("control", "CLIPLoader", ENCODER_V1)]
-    controls.insert(3, ("control:format-owner", bool(grade_format_owner(core_awq))))
+    # Must name a file no loader here opens. Using MODELS["clip"] stopped
+    # firing the moment the shipped encoder became native -- the control was
+    # asserting a pairing that is now correct.
+    no_loader = [("control", "CLIPLoader", NO_LOADER_CONTROL)]
+    controls.insert(3, ("control:format-owner", bool(grade_format_owner(no_loader))))
 
     ok = True
     verdict = {"control:missing": ("went red as it must", "did NOT fire"),

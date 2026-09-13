@@ -222,9 +222,10 @@ def main() -> int:
     for label, dtype in (("comfy-float32-params", torch.float32),
                          ("comfy-bfloat16-params", torch.bfloat16)):
         # float32 patches into both ComfyUI arms, because that is what the
-        # deployed path does: `h3_awq_encoder.py::install_source_processors`
-        # hands `preprocess_embed` a float32 tensor regardless of how the
-        # weights are stored. Casting the input here instead would measure a
+        # deployed path does: core's `preprocess_embed`
+        # (`comfy/text_encoders/qwen3vl.py`) casts the patches to float32
+        # before the vision tower regardless of how the weights are stored.
+        # Casting the input here instead would measure a
         # configuration nothing runs and would hide the position-embedding
         # effect behind a much larger one.
         model = comfy_tower(state, config.text_config.hidden_size, dtype, args.device)

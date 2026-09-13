@@ -83,7 +83,7 @@ def main():
         # alone, so all three are legitimately absent and the values beside
         # them are the defaults, not readings.
         assert policies == {"ref_images.ref_image_0": {
-            "size_policy": "max", "allow_upscale": False, "short_edge": 2048,
+            "size_policy": "max", "allow_upscale": True, "short_edge": 2048,
             "qwen_short_edge": 0,
             "linked": [],
             # `qwen_view` joined the list on 2026-08-31 when the flat

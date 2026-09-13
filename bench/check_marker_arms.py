@@ -55,7 +55,18 @@ import comfy.cli_args  # noqa: E402
 comfy.cli_args.args.cpu = True
 
 CORPUS = REPO / "bench" / "marker_corpus" / "compiled.json"
-ARTIFACT = COMFY / "models" / "text_encoders" / "qwen3vl_32b_minimax_h3_w4a16_awq.safetensors"
+#: The shipped encoder, `h3_config.ENCODER_INT8`, read from the config rather
+#: than retyped; the W4 AWQ artifact this named until 2026-09-13 left with its
+#: lane. Loaded by path so nothing joins `sys.path`.
+def _shipped_encoder() -> Path:
+    spec = importlib.util.spec_from_file_location(
+        "_h3_config_encoder", REPO / "workflows" / "h3_config.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return COMFY / "models" / "text_encoders" / module.ENCODER_INT8
+
+
+ARTIFACT = _shipped_encoder()
 # Narrow, so the fixture is megabytes. The HEIGHT is real: the marker ids are
 # absolute positions in the vocabulary and a short table cannot address them.
 FIXTURE_WIDTH = 8
@@ -382,9 +393,11 @@ def embed_key_is_the_real_one(path: Path):
     """The constant the fixture is built around, re-read from the artifact.
 
     Without this the fixture proves only that this module agrees with itself.
+    Loaded through the guarded loader the shipped graphs use, on the CPU;
+    the encoder is mmap-backed, so this costs seconds once warm.
     """
-    module = _module("h3_awq_encoder", REPO / "h3_awq_encoder.py")
-    clip = module._load_clip(str(path), [], device="cpu")
+    module = _module("h3_encoder_loader", REPO / "h3_encoder_loader.py")
+    clip = module.load_guarded_clip(str(path), None)
     state = clip.patcher.model.state_dict()
     assert M.EMBED_KEY in state, (
         f"{M.EMBED_KEY} is not in the real encoder; the fixture is built "
@@ -441,7 +454,7 @@ def main() -> int:
         ("arms do not share a record", different_transforms_do_not_share_a_record),
         ("provenance three states", provenance_records_three_states),
     ]
-    raw = os.environ.get("H3_AWQ_ENCODER")
+    raw = os.environ.get("H3_ENCODER_PATH")
     artifact = Path(os.path.expanduser(raw)) if raw else ARTIFACT
     if artifact.exists():
         cases.append(("real embedding key", lambda: embed_key_is_the_real_one(artifact)))

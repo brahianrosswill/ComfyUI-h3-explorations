@@ -10,30 +10,50 @@ is the one attention will run at rather than an estimate. Four things it
 reports that nothing else can:
 
 **Whether you are inside the trained family.** Core's conditioning nodes take
-width and height as plain ints and never call `adapt_canvas`, so the 768 short
-edge and the 768x1344 area cap constrain nothing you type. 1024x1024 is legal,
-32-divisible, renders, costs more per frame than 16:9, and is outside the
-family the checkpoint was trained on. Nothing else says so.
+width and height as plain ints and never call `adapt_canvas` on the target
+canvas (`comfy_extras/nodes_minimax_h3.py` calls it only to size reference
+videos), so `BASE_SHORT_EDGE` and `MAX_PIXELS` there constrain nothing you
+type. 1024x1024 is legal, 32-divisible, renders, costs more per frame than
+16:9, and is outside the family the checkpoint was trained on. Nothing else
+says so.
 
 **What the segments cost relative to each other.** Reference tokens ride every
-sampling step exactly as video tokens do, so "my references are 36% of the
-sequence" is the number that decides whether to resize them.
+sampling step exactly as video tokens do, so the share of the sequence the
+references take is the number that decides whether to resize them. The
+reference rows are whatever the append chain compiled into `minimax_refs`
+(`latent_h`, `latent_w`, `ref_audio_t` per block), so a change to reference
+sizing policy shows up here without this file knowing the policy.
 
 **What a different aspect ratio would cost.** A tradeoff you cannot act on is
 not a tradeoff. The alternatives are computed at the same length and
 conditioning, so the comparison is honest.
 
-**Where the int32 thresholds sit for the layout H3 actually uses.** q, k and v
-are views of one fused buffer with `stride_seq = 3*heads*head_dim = 21504`, so
-the Triton quant kernels' int32 offset crosses near 99,864 tokens, not the
-299,593 a contiguous layout would give. KJNodes' Token Counter computes the
-contiguous figure and so stays silent through the range that matters. That
-crossing is fixed in every sage build able to run this repo's attention node,
-because `build_kernel` refuses any sageattention without `sageattn_consume`
-and the int64 fix precedes it. The next ceiling is the `csrc/fused` uint32
-wrap near 199,728, which no H3 length reaches on its own -- about 660 frames
-against a 362 maximum. Both numbers are stated so an absent warning is not
-mistaken for clearance.
+**Where sage's integer-offset ceilings sit for the layout H3 actually uses.**
+H3 builds q, k and v as three views of one fused projection
+(`comfy/ldm/minimax/model.py`, `qkv_proj(x).split`), so each view carries
+`stride_seq = 3*heads*head_dim` (`_FUSED_STRIDE` below), not the contiguous
+`heads*head_dim` that KJNodes' `MiniMaxH3TokenCounter` warns from; that
+warning stays silent through the range that matters. Two of the sage fork's
+quantizers address the caller's tensors through that stride, and both run on
+this box: on sm89 `sageattn_consume` takes the fp8 CUDA path with
+`qk_quant_gran` left at the kernel's `per_thread` default
+(`sageattention/core.py`), so q and k are quantized by the Triton kernels in
+`sageattention/triton/quant_per_thread.py`, whose int32 offsets cross at
+`_INT32_FUSED` and which carry the fork's `USE_I64` fix, and v is quantized
+by `sageattention/quant.py::per_channel_fp8` through the CUDA kernels in
+`csrc/fused/fused.cu`, whose uint32 strides wrap at `_CSRC_FUSED` and are NOT
+fixed. The fork's `CHANGELOG.md` records both, as "int32 element-offset
+overflow in the INT8 quant kernels" under v0.7.0 and "The CUDA quant kernels
+form global offsets in uint32" under known issues. The int32 fix reaches every
+user of this pack's sage node because `attention.py::build_kernel` refuses a
+sageattention without `sageattn_consume`, which arrived in that same v0.7.0.
+Length alone does not reach the uint32 wrap (the changelog entry gives the
+frame equivalent; `h3_rules.MAX_LENGTH` is the ceiling) but references can,
+so the report prints the headroom rather than asserting clearance, and both
+boundaries are stated so an absent warning is not mistaken for one. These are
+the `MiniMaxH3SageAttention` kernels' limits: with Sol-Attn wired as well,
+Sol's dense calls chain to the sage override (`sol_attn_h3.py`, `dense()`),
+and a graph with no sage node never runs them.
 """
 
 from __future__ import annotations
@@ -49,11 +69,18 @@ except ImportError:  # pragma: no cover
 
 logger = logging.getLogger(__name__)
 
-# stride_seq for a fused qkv view at H3's 56 heads x 128 head_dim, and the
-# contiguous figure for contrast. See the module docstring.
+# Inherited: heads and head_dim are `num_attention_heads=56,
+# attention_head_dim=128` in `comfy/ldm/minimax/model.py`, and the fused
+# stride follows from `qkv_proj(x).split(...)` there handing attention three
+# views of one buffer. Reasoned: the two ceilings are the first row whose
+# element offset no longer fits the offset type the kernel forms it in, int32
+# for the Triton q/k quantizers and uint32 for the CUDA v quantizer (module
+# docstring). The sage fork's CHANGELOG.md states the same two figures under
+# its own derivation; this file computes rather than copies them.
 _FUSED_STRIDE = 3 * 56 * 128
 _CONTIGUOUS_STRIDE = 56 * 128
 _INT32_FUSED = 2**31 // _FUSED_STRIDE
+_INT32_CONTIGUOUS = 2**31 // _CONTIGUOUS_STRIDE
 _CSRC_FUSED = 2**32 // _FUSED_STRIDE
 
 _ALTERNATIVES = ("1:1", "4:3", "3:2", "16:9", "9:16")
@@ -75,9 +102,10 @@ class MiniMaxH3Preflight(io.ComfyNode):
                 "Reports what this render will cost before you queue it: "
                 "sequence length broken down by segment, whether the "
                 "resolution is inside the trained family, what other aspect "
-                "ratios would cost at the same length, and where the int32 "
-                "limits sit for H3's fused layout. Pass-through; it changes "
-                "nothing. Wire it between conditioning and the sampler."
+                "ratios would cost at the same length, and where the sage "
+                "fork's quantizer ceilings sit for H3's fused qkv layout. "
+                "Pass-through; it changes nothing. Wire it between "
+                "conditioning and the sampler."
             ),
             inputs=[
                 io.Conditioning.Input("conditioning"),
@@ -138,20 +166,22 @@ class MiniMaxH3Preflight(io.ComfyNode):
 
         tokens_per_frame = (width // 32) * (height // 32)
         in_family = adapt_canvas(width, height) == (width, height)
-        # `minimax_frame_count` is set ONLY on the keyframe path -- core
-        # writes it inside `if keyframes:` and MiniMaxH3ReferenceToVideo never
-        # writes it at all. Sourcing the duration line from it alone meant the
-        # line vanished on 7 of the 8 shipped graphs, including every ref
-        # graph, which is exactly where the frame ceiling matters most.
-        # `latent_t` is already in hand, so derive it when the key is absent
-        # rather than printing nothing and letting absence read as "fine".
+        # No node writes `minimax_frame_count` today: core's
+        # `nodes_minimax_h3.py` sets only `minimax_keyframes` and
+        # `minimax_refs`, and this pack's conditioning nodes set the same two
+        # (grep either tree for the key; this file is its only reader). An
+        # earlier core did write it on the keyframe path alone, and sourcing
+        # the duration line from it made the line vanish on every graph
+        # without keyframes, which is exactly where the frame ceiling matters
+        # most. So the key is honoured if something supplies it and `latent_t`,
+        # already in hand, is the source otherwise, rather than printing
+        # nothing and letting absence read as "fine".
         frames = None
         for _cond, cd in conditioning:
             if cd.get("minimax_frame_count"):
                 frames = cd["minimax_frame_count"]
                 break
-        derived = frames is None
-        if derived and latent_t:
+        if frames is None and latent_t:
             # inverse of video_latent_t: latent_t = ((n - 5) // 17) * 5 + 2,
             # with one temporal step meaning one frame rather than five. That
             # case is reachable only on a stack that accepts one frame; on a
@@ -164,7 +194,11 @@ class MiniMaxH3Preflight(io.ComfyNode):
             frames = (1 if latent_t == 1 else
                       ((latent_t - 2) // 5) * 17 + 5 if latent_t > 2 else 5)
 
-        label = {"text": "text", "cond": "keyframes", "ref_img": "references",
+        # Every kind `PackedLayout` emits (`comfy/ldm/minimax/model.py`, the
+        # "kinds:" comment beside `self.segments`). An unlisted kind still
+        # prints, under its raw name.
+        label = {"text": "text", "cond": "keyframes",
+                 "cond_audio": "keyframe audio", "ref_img": "references",
                  "ref_audio": "audio refs", "audio": "audio", "video": "video"}
         lines = [
             f"{width}x{height}  "
@@ -172,11 +206,10 @@ class MiniMaxH3Preflight(io.ComfyNode):
             f"  {tokens_per_frame} video tokens/frame",
         ]
         if frames:
-            lines.append(f"{describe_length(frames)}  {latent_t} latent frames"
-                         + ("  (derived from the latent)" if derived else ""))
+            lines.append(f"{describe_length(frames)}  {latent_t} latent frames")
         lines.append(f"sequence length {total:,}")
         for kind, n in sorted(by_kind.items(), key=lambda kv: -kv[1]):
-            lines.append(f"  {label.get(kind, kind):<12}{n:>8,}  "
+            lines.append(f"  {label.get(kind, kind):<15}{n:>8,}  "
                          f"{_bar(n / total)}  {100 * n / total:5.1f}%")
 
         # Alternatives at the same length and conditioning: only the video
@@ -193,27 +226,32 @@ class MiniMaxH3Preflight(io.ComfyNode):
             lines.append(f"  {name:<6}{cw}x{ch:<6}{alt:>9,}  "
                          f"{(alt - total) / total:+6.0%}{mark}")
 
+        # These lines describe the sage fork's quantizers (module docstring)
+        # and mean nothing on a graph without `MiniMaxH3SageAttention`.
         if total >= _CSRC_FUSED:
-            lines.append(f"int32: {total:,} is past the csrc/fused uint32 wrap "
-                         f"at {_CSRC_FUSED:,}. This one is NOT fixed.")
+            lines.append(f"sage: {total:,} is past the csrc/fused uint32 wrap "
+                         f"at {_CSRC_FUSED:,} (the CUDA v quantizer). This "
+                         f"one is NOT fixed.")
         elif total >= _INT32_FUSED:
             # "unreachable at any length" was true of LENGTH alone and false
             # once references are in play, which is exactly when this line is
-            # read. 345 frames plus three reference videos already reaches
-            # 201,246 -- core permits 3 videos, and 362 is longer still -- so
-            # the old wording reassured the user about a ceiling they can
-            # actually hit. Report the headroom instead of asserting there is
-            # enough.
+            # read: core's reference node accepts up to three reference
+            # videos (`ref_video_` in `nodes_minimax_h3.py`), and a full-length
+            # clip plus three of them crosses the wrap. So the old wording
+            # reassured the user about a ceiling they can actually hit.
+            # Report the headroom instead of asserting there is enough.
             head = _CSRC_FUSED - total
             lines.append(
-                f"int32: past the fused crossing at {_INT32_FUSED:,}, which "
-                f"every sage build that can run this node has fixed. Next "
-                f"ceiling {_CSRC_FUSED:,} is NOT fixed and is "
-                f"{head:,} away ({100 * total / _CSRC_FUSED:.0f}% of it). "
-                f"Length alone cannot reach it; references can.")
+                f"sage: past the fused int32 crossing at {_INT32_FUSED:,} "
+                f"(Triton q/k quantizers), fixed in every fork build that "
+                f"has sageattn_consume. Next ceiling {_CSRC_FUSED:,} (CUDA v "
+                f"quantizer) is NOT fixed and is {head:,} away "
+                f"({100 * total / _CSRC_FUSED:.0f}% of it). Length alone "
+                f"cannot reach it; references can.")
         else:
-            lines.append(f"int32: under the fused crossing at {_INT32_FUSED:,} "
-                         f"(a contiguous layout would say {_CONTIGUOUS_STRIDE and 2**31 // _CONTIGUOUS_STRIDE:,}).")
+            lines.append(f"sage: under the fused int32 crossing at "
+                         f"{_INT32_FUSED:,} (a contiguous layout would say "
+                         f"{_INT32_CONTIGUOUS:,}).")
 
         report = "\n".join(lines)
         logger.info("[h3] preflight %s", report.replace("\n", " | "))

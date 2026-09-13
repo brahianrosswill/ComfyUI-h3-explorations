@@ -175,7 +175,7 @@
         "27",
         2
       ],
-      "video_policy": "encoder",
+      "video_policy": "comfy",
       "image_policy": "comfy"
     }
   },
@@ -200,9 +200,8 @@
       ],
       "size_policy": "max",
       "size_policy.dit_short_edge": 2048,
-      "size_policy.allow_upscale": true,
-      "qwen_view": "separate",
-      "qwen_view.qwen_short_edge": 512
+      "size_policy.allow_upscale": false,
+      "qwen_view": "shared"
     }
   },
   "51": {
@@ -218,9 +217,8 @@
         0
       ],
       "size_policy.dit_short_edge": 2048,
-      "size_policy.allow_upscale": true,
-      "qwen_view": "separate",
-      "qwen_view.qwen_short_edge": 512
+      "size_policy.allow_upscale": false,
+      "qwen_view": "shared"
     }
   },
   "19": {

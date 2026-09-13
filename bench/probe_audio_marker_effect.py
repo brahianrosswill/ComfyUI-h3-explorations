@@ -33,7 +33,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO.parent.parent))          # ComfyUI
-sys.path.insert(0, str(REPO))                        # this pack, for h3_awq_encoder
+sys.path.insert(0, str(REPO))                        # this pack, for h3_encoder_loader
 sys.path.insert(0, str(REPO / "workflows"))
 
 PROMPT = (
@@ -90,18 +90,17 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--encoder", required=True, help="filename under models/text_encoders")
     ap.add_argument("--out", required=True)
-    ap.add_argument("--device", default="default")
     args = ap.parse_args(argv)
 
     import torch  # noqa: F401
     import folder_paths
-    import h3_awq_encoder as H
+    import h3_encoder_loader as H
 
+    # The guarded loader the shipped graphs use: core's own load plus its
+    # inventory and token guards, on core's default device. It stamps no
+    # contract; the record names the file instead.
     path = folder_paths.get_full_path_or_raise("text_encoders", args.encoder)
-    clip = H._load_clip(path, folder_paths.get_folder_paths("embeddings"),
-                        device=args.device)
-    contract = getattr(
-        clip.cond_stage_model.qwen3vl_32b.transformer, "_h3_encoder_contract", None)
+    clip = H.load_guarded_clip(path, folder_paths.get_folder_paths("embeddings"))
 
     img_a, img_b, aud = _image(0), _image(3), _audio()
     arms = {
@@ -118,7 +117,6 @@ def main(argv=None) -> int:
         "purpose": "absolute health of H3 layer-50 output with and without an "
                    "audio reference; escalates rather than clears",
         "encoder": args.encoder,
-        "encoder_contract": contract,
         "prompt_sha256": __import__("hashlib").sha256(PROMPT.encode()).hexdigest(),
         "arms": {},
     }

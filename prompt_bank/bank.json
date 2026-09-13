@@ -951,6 +951,46 @@
       "donor": null,
       "brief": "One shot, eight seconds: the dancer's face and shoulders to the pulse, a slow push-in; the third window of the chain",
       "tests": "a single-shot close-up window chained after the floor window; head snaps on the downbeats, lips closed, face sharp"
+    },
+    {
+      "id": "ref2va_stairwell_dialogue_backstage",
+      "mode": "ref2va",
+      "frames": 345,
+      "donor": "h3_probe_refview2_stairwell_backstage_api",
+      "brief": "The stairwell dialogue with both speakers carried from ONE picture (a backstage selfie pair): two subjects, one <Picture 1>.",
+      "tests": "reference-view ablation scene (bench/refview2_arms.json): identity carry per copy of the still, blind over seeds"
+    },
+    {
+      "id": "ref2va_stairwell_dialogue_circus",
+      "mode": "ref2va",
+      "frames": 345,
+      "donor": "h3_probe_refview2_stairwell_circus_api",
+      "brief": "The stairwell dialogue as stylised 3D animation, the two speakers carried from two animated-character stills; a medium and identity carry at once.",
+      "tests": "reference-view ablation scene (bench/refview2_arms.json): identity carry per copy of the still, blind over seeds"
+    },
+    {
+      "id": "ref2va_diner_breakup_refs",
+      "mode": "ref2va",
+      "frames": 345,
+      "donor": "h3_probe_refview2_diner_api",
+      "brief": "The diner breakup with both speakers and the room carried from three pictures; the room's black-and-white still is re-lit in neon.",
+      "tests": "reference-view ablation scene (bench/refview2_arms.json): identity carry per copy of the still, blind over seeds"
+    },
+    {
+      "id": "ref2va_night_porter_refs",
+      "mode": "ref2va",
+      "frames": 345,
+      "donor": "h3_probe_refview2_porter_api",
+      "brief": "The night porter carried from one picture of a dog-headed man; one sung line, two shots.",
+      "tests": "reference-view ablation scene (bench/refview2_arms.json): identity carry per copy of the still, blind over seeds"
+    },
+    {
+      "id": "ref2va_studio_dancer_close_refs",
+      "mode": "ref2va",
+      "frames": 345,
+      "donor": "h3_probe_refview2_dancer_api",
+      "brief": "The studio dancer close carried from one picture; no vocal sound, two shots cut on the beat.",
+      "tests": "reference-view ablation scene (bench/refview2_arms.json): identity carry per copy of the still, blind over seeds"
     }
   ]
 }

@@ -125,7 +125,7 @@
       ],
       "frame_rate": 24.0,
       "loop_count": 0,
-      "filename_prefix": "Video/h3_probe_refview_c_parity",
+      "filename_prefix": "Video/h3_probe_refview2_stairwell_backstage",
       "format": "video/h264-mp4",
       "pix_fmt": "yuv420p",
       "crf": 19,
@@ -138,8 +138,8 @@
   "27": {
     "class_type": "MiniMaxH3Resolution",
     "inputs": {
-      "shape": "standard",
-      "shape.standard_resolution": "1024x768  4/3  768 tok/frame  0.58x",
+      "shape": "wide",
+      "shape.wide_resolution": "1344x768  7/4  1008 tok/frame  1.00x",
       "length": 345
     }
   },
@@ -159,10 +159,10 @@
         0
       ],
       "references": [
-        "52",
+        "50",
         0
       ],
-      "prompt": "subject_definitions:\n<Subject 1> is the main character in <Picture 1>, whose face, hair, and clothing are carried into the target video.\n<Subject 2> is the garment shown in <Picture 2>, which <Subject 1> wears in the target video.\n<Subject 3> is the environment in <Picture 3>, which provides the setting for the target video.\n\nsummary:\n[reference generation] The target video places <Subject 1> inside <Subject 3> for a single continuous shot.\n\nretention_analysis:\n<Subject 1> (appears in [Shot 1]): fully_preserved - face, hair, and clothing are retained.\n<Subject 2> (appears in [Shot 1]): attribute_transfer - the garment from <Picture 2> is placed on <Subject 1>.\n<Subject 3> (appears in [Shot 1]): fully_preserved - the visual setting is retained.\n\ndetailed_description:\nThe target video is in a cinematic live-action style.\n[Shot 1] A medium shot establishes <Subject 3>, then <Subject 1> enters from the left wearing <Subject 2> and stops at the center of the frame. The camera trucks right with small amplitude at slow speed.\n\noverall_soundscape:\nNatural ambient atmosphere continues throughout the shot.\n\nnon_diegetic_music:\nN/A",
+      "prompt": "subject_definitions:\n<Subject 1> is the young woman with pink hair piled loosely on top of her head shown in <Picture 1>, preserving her facial identity, the pink hair, fair skin and small features. The lace top and open olive hooded jacket of <Picture 1> are replaced by a charcoal wool coat with the collar turned up in the target video. The dressing room, the camera in her hand and the man beside her in <Picture 1> are not present as such in the target video.\n<Subject 2> is the young man with round black-framed glasses shown in <Picture 1>, preserving his facial identity, short dark wavy hair and pale skin. The grey hooded sweatshirt and crew lanyard of <Picture 1> are replaced by a navy jacket with a strap across the shoulder in the target video. The dressing room of <Picture 1> is not present in the target video.\n\nsummary:\n[reference generation] In three shots on a concrete stairwell landing, <Subject 1> and <Subject 2> trade eight short clipped lines with almost no gap between them, about a plan that has moved.\n\nretention_analysis:\n<Subject 1> (appears in [Shot 1] and [Shot 2]): fully_preserved - retain the same face, pink hair piled on top of her head and small features in every frame she appears in; only the wardrobe changes.\n<Subject 2> (appears in [Shot 1] and [Shot 3]): fully_preserved - retain the same face, round black-framed glasses and short dark wavy hair in every frame he appears in; only the wardrobe changes.\n\ndetailed_description:\nPhotorealistic live-action, 16:9, handheld on 35mm with visible grain, shallow depth of field, lit hard and from above by a single caged bulb on the stairwell ceiling so both faces carry a bright top edge and a deep shadow under the brow and jaw. The stairwell is poured concrete with painted cinderblock walls in a flat institutional green, a steel handrail running down out of frame, and a scuffed landing floor. The camera stays handheld throughout with small continuous drift from the operator's breathing, never a deliberate move. Each speaker's lips move only on their own line and are closed and still while the other speaks. Neither smiles at any point. No other people, no readable text, no signage, no costume changes, no music.\n\n[Shot 1] A medium two-shot frames <Subject 1>, the young woman with pink hair piled on top of her head, in a charcoal wool coat with the collar turned up, facing <Subject 2>, the young man with round black-framed glasses and short dark wavy hair, in a navy jacket, on the stairwell landing, the two of them a little closer than is comfortable. <Subject 1>, with a low measured voice (S1), says: <d>[English] You said tomorrow.</d> <Subject 2>, with a lower gravelled voice (S2), answers immediately: <d>[English] It moved.</d> She says at once: <d>[English] To when?</d> He answers at once: <d>[English] Tonight.</d> Her jaw tightens, she does not step back, and the camera shakes slightly with the operator's breathing while the bulb hums overhead.\n\n[Shot 2] At 00:06.000, the camera cuts to a close-up of <Subject 1> against the painted cinderblock, the bulb throwing a hard edge down one cheek and leaving the other in shadow, the pink hair lit at the crown. She (S1) says: <d>[English] Who else knows?</d> Off screen he (S2) answers immediately: <d>[English] Nobody.</d> She says at once: <d>[English] Keep it that way.</d> She holds his eyeline a moment longer than the line needs, then looks past the camera and down toward the stairs below, her breath just visible.\n\n[Shot 3] At 00:11.000, the camera cuts to a close-up of <Subject 2>, the same hard overhead light catching the rims of his glasses and the edge of his jaw, rain noise faint through a window well behind him and a wet grey rectangle of light on the wall past his shoulder. He (S2) says: <d>[English] Understood.</d> He looks down, adjusts the strap on his shoulder with one hand, exhales once, and holds still with his lips closed until the final frame.\n\noverall_soundscape:\nClose handheld room tone in a hard concrete stairwell with a long reflective tail on every consonant and a faint electrical hum from the caged bulb overhead.\n\nnon_diegetic_music:\nN/A\n",
       "width": [
         "27",
         0
@@ -175,26 +175,14 @@
         "27",
         2
       ],
-      "video_policy": "release",
+      "video_policy": "comfy",
       "image_policy": "comfy"
     }
   },
   "15": {
     "class_type": "LoadImage",
     "inputs": {
-      "image": "h3_refs/subject_performer_stage_662x1177.png"
-    }
-  },
-  "16": {
-    "class_type": "LoadImage",
-    "inputs": {
-      "image": "h3_refs/product_soccer_jersey_1600x1600.png"
-    }
-  },
-  "34": {
-    "class_type": "LoadImage",
-    "inputs": {
-      "image": "h3_refs/scene_loft_couch_duo_2752x1536.png"
+      "image": "20260315_193704.jpeg"
     }
   },
   "50": {
@@ -205,40 +193,6 @@
         0
       ],
       "size_policy": "max",
-      "size_policy.dit_short_edge": 2048,
-      "size_policy.allow_upscale": true,
-      "qwen_view": "shared"
-    }
-  },
-  "51": {
-    "class_type": "MiniMaxH3AppendRefImage",
-    "inputs": {
-      "image": [
-        "16",
-        0
-      ],
-      "size_policy": "max",
-      "references": [
-        "50",
-        0
-      ],
-      "size_policy.dit_short_edge": 2048,
-      "size_policy.allow_upscale": true,
-      "qwen_view": "shared"
-    }
-  },
-  "52": {
-    "class_type": "MiniMaxH3AppendRefImage",
-    "inputs": {
-      "image": [
-        "34",
-        0
-      ],
-      "size_policy": "max",
-      "references": [
-        "51",
-        0
-      ],
       "size_policy.dit_short_edge": 2048,
       "size_policy.allow_upscale": true,
       "qwen_view": "shared"

@@ -146,18 +146,6 @@ DECLARED: dict[tuple[str, str], tuple] = {
                 "by bench/check_distill_settings.py"),
     ("MiniMaxH3Resolution", "length"):
         ("ARM", "the arm's frame count; h3_config.LENGTH / LONG_LENGTH"),
-    ("MiniMaxH3AppendRefImage", "size_policy"):
-        ("HOUSE", "'max' matches the vendor -- it caps the short edge and "
-                  "applies no area cap, where the node default 'match' sizes to "
-                  "the generation's pixel area and is several times smaller on a "
-                  "landscape canvas. docs/h3_references.md is the authority. "
-                  "Load-bearing in 42 graphs and enforced by nothing until this "
-                  "check.", "max"),
-    ("MiniMaxH3AppendRefImage", "qwen_view"):
-        ("ARM", "'shared' on the A and C arms of the reference-view ablation "
-                "(h3_probe_refview_*), which exist to render the state "
-                "docs/h3_references.md warns about. Deliberate on those two "
-                "graphs and nowhere else."),
     ("MiniMaxH3Resolution", "shape"):
         ("ARM", "the arm's aspect: 'wide' on 41, 'standard' on 27, and one "
                 "each of tall/ultrawide/square/custom. The node's first option "
@@ -186,15 +174,11 @@ DECLARED: dict[tuple[str, str], tuple] = {
     ("MiniMaxH3Resolution", "shape.height"):
         ("ARM", "544 on the turbo home-canvas probe; h3_config.TURBO_HOME_CANVAS"),
     ("MiniMaxH3AppendRefImage", "size_policy.allow_upscale"):
-        ("ARM", "True only on the two probes that exist to price upscaling "
-                "(h3_probe_reference_upscale, h3_probe_refview_c_parity). It "
-                "was flipped OFF everywhere else on 2026-08-28 after an audit "
-                "found it costing ~6,300 extra reference rows per step for a "
-                "benefit this repo has never measured."),
-    ("MiniMaxH3AppendRefImage", "qwen_view.qwen_short_edge"):
-        ("ARM", "2048 on the B arm of the reference-view ablation, which is "
-                "what that arm varies. The shipped default 512 is a PRIOR "
-                "resting on one render at one seed -- docs/h3_references.md."),
+        ("ARM", "False on h3_probe_reference_upscale, the probe that exists "
+                "to price the vendor's upscale by turning it off, and on the "
+                "video-bearing reference arms through h3_config.REF_VIDEO_BUDGET, "
+                "which keep a long reference video inside 24 GB. The node "
+                "default is True since 2026-09-13 (vendor parity)."),
     ("MiniMaxH3SolAttn", "end_percent"):
         ("ARM", "0.6 on the narrow-window PDD8 candidate (2026-09-05); 1.0, "
                 "the node default, everywhere else since 2026-09-11. Declared "
@@ -254,13 +238,14 @@ DECLARED: dict[tuple[str, str], tuple] = {
                   "graphs carry this input at the node default, and a HOUSE "
                   "row grades every carrier."),
     ("MiniMaxH3ReferenceConditioning", "video_policy"):
-        ("ARM", "'release' on four graphs -- h3_probe_release_video_policy and "
-                "the three refview probes -- against 'encoder' on 43. "
-                "docs/h3_references.md: 'release' handles the vendor's own "
-                "video sizing locally AND enables the coupled Qwen stage, "
-                "while 'encoder' keeps native-compatible VAE sizing, which is "
-                "why generated graphs use it. The probes are the arms that "
-                "vary it."),
+        ("ARM", "'release' on the probe graphs -- h3_probe_release_video_policy "
+                "and the refview probes -- against the node default 'comfy' "
+                "everywhere else. docs/h3_references.md: 'release' handles "
+                "the vendor's own video sizing locally AND enables the coupled "
+                "Qwen stage, while 'comfy' is what core does and pre-applies "
+                "nothing, which is why generated graphs leave it. The probes "
+                "are the arms that vary it. (The third value, 'encoder', left "
+                "with the AWQ lane on 2026-09-13.)"),
     ("LoraLoaderModelOnly", "strength_model"):
         ("ARM", "1.0 on eight graphs and h3_config.TURBO_OWNER_STRENGTH 0.75 "
                 "on five -- the owner's turbo recipe. Classified HOUSE first; "

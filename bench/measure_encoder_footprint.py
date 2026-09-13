@@ -174,7 +174,7 @@ def main() -> int:
                              "the ComfyUI install's text_encoders beside this repo")
     parser.add_argument("--encoder", action="append", default=None,
                         help="file name to measure; repeatable. Defaults to the "
-                             "encoders h3_config names plus the W4A16 pair")
+                             "encoders h3_config names plus the bf16 reference")
     parser.add_argument("--budget-gib", type=float, default=None,
                         help="optional: report each H3 path against this budget")
     parser.add_argument("--out", default=None, help="write the report here")
@@ -196,7 +196,7 @@ def main() -> int:
 
         names = [BF16_REFERENCE, h3_config.ENCODER_INT8,
                  *sorted(h3_config.CORE_LOADED_ENCODERS - {h3_config.ENCODER_INT8}),
-                 h3_config.MODELS["clip"], h3_config.ENCODER_V2]
+                 h3_config.MODELS["clip"]]
 
     rows, missing = [], []
     for name in dict.fromkeys(names):

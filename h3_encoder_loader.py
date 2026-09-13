@@ -23,10 +23,10 @@ The three things it adds, and what each is for:
    release's own declaration, rather than against an artifact snapshot.
 
 3. **The CLIP has to say what preprocessing it will get.** A core-loaded CLIP
-   declares nothing, so `reference_geometry.effective_policy` downgrades
-   `image_policy=encoder` to `comfy` and the reference nodes price a reference
-   against a ceiling nobody named. This stamps a contract describing what
-   core's own path will actually do, read out of core by introspection.
+   declares nothing. This records what core's own path will actually do,
+   read out of core by introspection, as `_h3_image_bounds` on the
+   transformer; `reference_report.py` reads it to say which ceiling applies
+   to the text encoder's copy of a still.
 
 **A trap this makes visible rather than fixes.** Under core, `video_policy`
 `release` fits a video reference to the release's 25,165,824-pixel ceiling and
@@ -62,9 +62,9 @@ def _repo(name: str):
 
     `nodes.py` loads this file as part of a package, while the bench tools put
     the repo directory itself on `sys.path` and import its modules top-level
-    (`bench/preflight_graph.py` does exactly that for `h3_awq_encoder`).
-    Supporting both is what lets the static reader derive the same contract the
-    loader stamps, from one implementation rather than two.
+    (`bench/preflight_graph.py` does exactly that for this module).
+    Supporting both is what lets the static reader derive the same bounds the
+    loader records, from one implementation rather than two.
     """
     if __package__:
         try:
@@ -74,9 +74,23 @@ def _repo(name: str):
     return importlib.import_module(name)
 
 
-def expected_special_token_ids(declared):
-    """`h3_awq_encoder`'s id arithmetic, re-exported so callers need one import."""
-    return _repo("h3_awq_encoder").expected_special_token_ids(declared)
+def expected_special_token_ids(declared) -> dict:
+    """The ids the 20 declared special tokens must resolve to.
+
+    Two runs: thirteen from 151644, then the seven H3 markers from 151669.
+    Asserted against the RELEASE's declaration (`vendor_config/`), which is
+    what the DiT was trained against. Lived in the AWQ adapter until that
+    module was deleted on 2026-09-13; the rule is unchanged.
+    """
+    declared = list(declared)
+    if len(declared) != 20:
+        raise ValueError(f"declares {len(declared)} special tokens, expected 20")
+    if len(set(declared)) != len(declared):
+        raise ValueError("declares duplicate special tokens")
+    return {
+        **{token: 151644 + index for index, token in enumerate(declared[:13])},
+        **{token: 151669 + index for index, token in enumerate(declared[13:])},
+    }
 
 
 #: What the stamped contract calls itself. `snapshot_contract` uses the
@@ -115,10 +129,9 @@ def _signature_defaults(function, names: tuple[str, ...]) -> dict:
 def native_encoder_contract() -> dict:
     """What core's own H3 preprocessing will do, read out of core.
 
-    Shaped like `h3_awq_encoder.snapshot_contract` because
-    `reference_geometry.encoder_contract_from_clip` reads them through the same
-    keys. Unlike that one this describes a CODE PATH rather than an artifact,
-    which is why every value is introspected and none is typed here.
+    Describes a CODE PATH rather than an artifact, which is why every value
+    is introspected and none is typed here. `bench/preflight_graph.py` and
+    `reference_report.py` read the bounds from it.
     """
     from comfy.text_encoders import minimax
     from comfy.text_encoders.qwen_vl import process_qwen2vl_images
@@ -226,8 +239,7 @@ def validate_tokenizer(clip) -> None:
     The declaration is the release's own `tokenizer_config.json` under
     `vendor_config/`, not an artifact snapshot: this loader serves files that
     carry no configs of their own, and the release is what the DiT was trained
-    against either way. The id arithmetic is shared with `h3_awq_encoder`
-    rather than restated -- one rule, two declaration sources.
+    against either way.
     """
     vendor_config = _repo("vendor_config")
 

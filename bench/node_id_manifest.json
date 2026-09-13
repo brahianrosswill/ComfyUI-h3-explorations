@@ -1,14 +1,4 @@
 {
-  "MiniMaxH3AWQEncoderLoader": {
-    "inputs": [
-      "encoder_name",
-      "device"
-    ],
-    "node_id": "MiniMaxH3AWQEncoderLoader",
-    "outputs": [
-      "Output"
-    ]
-  },
   "MiniMaxH3AppendRefAudio": {
     "inputs": [
       "audio",
@@ -324,6 +314,23 @@
     "outputs": [
       "image",
       "latent_rows"
+    ]
+  },
+  "MiniMaxH3ReferenceReport": {
+    "inputs": [
+      "references",
+      "clip",
+      "prompt",
+      "width",
+      "height",
+      "length",
+      "image_policy",
+      "video_policy"
+    ],
+    "node_id": "MiniMaxH3ReferenceReport",
+    "outputs": [
+      "report_image",
+      "report_text"
     ]
   },
   "MiniMaxH3ReferenceVideoFit": {

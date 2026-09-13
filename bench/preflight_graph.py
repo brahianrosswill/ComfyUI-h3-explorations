@@ -28,7 +28,8 @@ the render and none of it was decided.
 Two surfaces already exist and neither closes this:
 
   MiniMaxH3Resolution  computes `video_tokens` and three siblings, and those
-                       outputs are wired to NOTHING in all 40 shipped graphs.
+                       outputs are wired to NOTHING in any graph
+                       `h3_config.graph_paths()` returns.
                        It also only knows canvas x length -- it cannot see
                        references, which is where the cost actually is.
   MiniMaxH3Preflight   counts the real packed layout including references, but
@@ -54,12 +55,15 @@ rule that text lands 75-160 rows above the reference segment
 (`docs/h3_references.md`), because computing them properly needs the vision
 encoder.
 
-**Peak VRAM is deliberately NOT predicted.** Two datapoints on this box:
-78,019 tokens peaked at 21,938 MiB, and 124k tokens peaked at 17,840 MiB --
-more tokens, lower peak. `h3_config.py` records why: process peak tracks
-ComfyUI's dynamic allocator against free memory, not what the model holds. A
+**Peak VRAM is deliberately NOT predicted.** Peak is not a function of token
+count: a longer sequence has peaked lower than a shorter one on this box, and
+one graph has OOMed once and succeeded once on the same card depending on
+what was resident before it. `h3_config.py` records why (process peak tracks
+ComfyUI's dynamic allocator against free memory, not what the model holds),
+and `bench/results/2026-08-28_pdd_ref2va_memory_marginality.json` is the
+dated record, including its note on the anchors this report prints. A
 formula here would be wrong in both directions, so the report prints the
-recorded datapoints and lets you judge.
+recorded anchors and lets you judge.
 """
 
 from __future__ import annotations
@@ -355,8 +359,12 @@ def _reference_media(inputs: dict, graph: dict):
                 absent.append(name)
                 return default
 
-            size_policy = _value("size_policy", "match")
-            allow_upscale = _value("allow_upscale", False, group="size_policy")
+            # The defaults are the node's own since 2026-09-13 (`max`, the
+            # release short edge, upscale on, one shared view); a reader
+            # that defaulted to core's shrink-only sizing priced an omitted
+            # input at a quarter of the rows it gets.
+            size_policy = _value("size_policy", "max")
+            allow_upscale = _value("allow_upscale", True, group="size_policy")
             # Renamed on the node 2026-08-28; the internal dict key below
             # stays `short_edge` because it is preflight's own, and the
             # retired fit node further down still has an input of that
@@ -693,32 +701,19 @@ def _qwen_grid_from(n_raw: int, w: int, h: int, cfg: dict):
     return g, g[1] * g[2] // merge
 
 
-def _contract_qwen_grid(n_raw: int, w: int, h: int, contract: dict):
-    """The loaded encoder's Qwen video grid, from its stamped contract.
-
-    Same executed processor as `_release_qwen_grid`, configured from the
-    contract rather than the release file, so a v2 directory carrying the
-    release bounds and the v1 snapshot carrying its own both price at what
-    they declare. Returns None when it cannot be computed; the caller says so.
-    """
-    try:
-        lo, hi = contract["video_bounds"]
-        cfg = {"size": {"shortest_edge": lo, "longest_edge": hi},
-               **contract["video_geometry"]}
-        return _qwen_grid_from(n_raw, w, h, cfg)
-    except Exception:
-        return None
-
-
 def _encoder_contract_for(ins: dict, graph: dict):
-    """Resolve the conditioner's `encoder` policy from the node feeding `clip`.
+    """The bounds the loaded encoder's own processor will apply, off the graph.
 
-    Static counterpart of `reference_geometry.encoder_contract_from_clip`: the
-    preflight sees a graph, not a loaded CLIP, so it walks the `clip` link to
-    the loader node and asks the adapter what that artifact declares. Core's
-    `CLIPLoader` declares nothing, and so does a name the adapter does not
-    know; both come back `None` with the reason, and the caller prices
-    `encoder` as the native path it will actually run.
+    The preflight sees a graph, not a loaded CLIP, so it walks the `clip`
+    link to the loader node. The guarded `MiniMaxH3EncoderLoader` records
+    what CORE's own preprocessing will do (`native_encoder_contract`, read
+    out of core by introspection), and the pricer uses those bounds for the
+    still and video Qwen views. Core's `CLIPLoader` declares nothing and
+    comes back `None` with the reason; the pricer then reads the same core
+    defaults from source (`_comfy_image_bounds`), so the two paths price
+    alike and differ only in what they can say about where the bounds came
+    from. The AWQ adapter's loader, which declared an artifact's own
+    contract, was deleted with its lane on 2026-09-13.
     """
     link = ins.get("clip")
     if not (isinstance(link, list) and link and str(link[0]) in graph):
@@ -726,27 +721,13 @@ def _encoder_contract_for(ins: dict, graph: dict):
     src = graph[str(link[0])]
     kind = src.get("class_type")
     if kind == "MiniMaxH3EncoderLoader":
-        # The guarded loader stamps what CORE's own preprocessing will do, so
-        # the static answer is that same derivation rather than an artifact's
-        # declaration -- and it must not stay "native, unresolved" here while
-        # the runtime has a contract, or the preflight prices a different
-        # encoder than the render uses.
+        # The static answer is the loader's own derivation, not a restatement
+        # of it -- so the preflight prices the same encoder the render uses.
         _core_minimax_cpu()
         import h3_encoder_loader
         contract = h3_encoder_loader.native_encoder_contract()
         return contract, f"encoder contract from ComfyUI's own H3 path ({contract['source']})"
-    if kind != "MiniMaxH3AWQEncoderLoader":
-        return None, f"{kind} declares no processor contract; encoder = native"
-    name = src.get("inputs", {}).get("encoder_name")
-    if not isinstance(name, str):
-        return None, ("MiniMaxH3AWQEncoderLoader.encoder_name is linked, not a "
-                      "literal; encoder contract unresolved")
-    _core_minimax_cpu()
-    import h3_awq_encoder
-    contract = h3_awq_encoder.encoder_contract_from_artifact(name)
-    if contract is None:
-        return None, f"{name!r} is not an artifact this adapter knows; encoder = native"
-    return contract, f"encoder contract from {name!r} ({contract['source']})"
+    return None, f"{kind} declares no processor contract; core's defaults apply"
 
 
 def _comfy_pair_grid(w: int, h: int, max_pixels: int = 12845056):
@@ -811,23 +792,24 @@ def reference_video_report(
         padded = raw + (raw % 2)
         blocks = padded // 2
 
-        c_grid, c_per = _comfy_pair_grid(*comfy_vae)
-        hyb_grid, hyb_per = _comfy_pair_grid(*rel_vae)
+        # Core's per-pair budget, read off the guarded loader's contract when
+        # the graph wires one (the same introspection the runtime records)
+        # and off this file's literal otherwise. Both are core's number; the
+        # contract is the one that tracks core.
+        pair_kwargs = ({"max_pixels": contract["video_bounds"][1]}
+                       if contract and contract.get("video_bounds") else {})
+        c_grid, c_per = _comfy_pair_grid(*comfy_vae, **pair_kwargs)
+        hyb_grid, hyb_per = _comfy_pair_grid(*rel_vae, **pair_kwargs)
         rel = _release_qwen_grid(raw, *rel_vae)
-        enc = (_contract_qwen_grid(raw, *comfy_vae, contract)
-               if video_policy == "encoder" and contract else None)
 
         out.append(f"  {label}: {name}")
         out.append(f"      source                {w}x{h}")
         comfy_active = video_policy in ("comfy", "native-comfy")
         active_kind = ("native core" if video_policy == "native-comfy"
                        else "local typed policy")
-        # The encoder policy keeps the no-upscale VAE view and runs the
-        # contract's processor on it, so its VAE line is comfy's.
-        vae_comfy_active = comfy_active or video_policy == "encoder"
         out.append(f"      VAE-prepared, comfy   {comfy_vae[0]}x{comfy_vae[1]}"
                    f"{'   (gap 6: not upscaled)' if comfy_vae != rel_vae else ''}"
-                   f"{'   <- ACTIVE (' + active_kind + ')' if vae_comfy_active else ''}")
+                   f"{'   <- ACTIVE (' + active_kind + ')' if comfy_active else ''}")
         out.append(f"      VAE-prepared, release {rel_vae[0]}x{rel_vae[1]}"
                    f"{'   <- ACTIVE (local typed policy)' if video_policy == 'release' else ''}")
         out.append(f"      sampled at 2 fps      {raw} raw -> {padded} emitted "
@@ -844,17 +826,6 @@ def reference_video_report(
             out.append(f"      Qwen, release         {g[2] * 16}x{g[1] * 16}  "
                        f"{per * g[0]:>7,} rows"
                        f"{'   <- ACTIVE (local typed policy)' if video_policy == 'release' else ''}")
-        if video_policy == "encoder":
-            if enc is None:
-                out.append(f"      Qwen, encoder         NOT CALCULATED -- "
-                           f"{'no encoder contract resolved from the graph' if not contract else 'the contract processor could not be run'}; "
-                           f"the encoder policy on this graph runs the native "
-                           f"per-pair path above unless a loader declares one")
-            else:
-                g, per = enc
-                out.append(f"      Qwen, encoder         {g[2] * 16}x{g[1] * 16}  "
-                           f"{per * g[0]:>7,} rows   <- ACTIVE (local typed "
-                           f"policy; contract {(contract or {}).get('source')})")
         out.append(f"      Qwen, gap-6 only      {hyb_grid[0]}x{hyb_grid[1]}  "
                    f"{hyb_per * blocks:>7,} rows   <- upscale WITHOUT the "
                    f"clip-wide budget")
@@ -1327,18 +1298,14 @@ def price(node: dict, graph: dict) -> list[str]:
     w, h = ins.get("width"), ins.get("height")
     length = ins.get("length")
     lines = []
-    # `encoder` means whatever the loaded encoder declares, and the graph
-    # says which encoder that is. Resolved once here and used for both the
-    # still and the video stage, the way the conditioner does at runtime.
+    # The bounds the loaded encoder's own processor applies to the Qwen
+    # views, and the graph says which loader that is. Resolved once here and
+    # used for both the still and the video stage. Printed only when a
+    # loader declares them, so a core `CLIPLoader` graph reads as before.
     contract, contract_note = (_encoder_contract_for(ins, graph)
                                if typed_references else (None, None))
-    requested_image_policy = image_policy
-    if image_policy == "encoder" and contract is None:
-        image_policy = "comfy"
-    if typed_references and contract_note and (
-            requested_image_policy == "encoder"
-            or ins.get("video_policy") == "encoder"):
-        lines.append(f"  encoder policy: {contract_note}")
+    if contract is not None:
+        lines.append(f"  qwen views priced under the {contract_note}")
     # An input that is LINKED carries a list, not a literal, and the link is
     # what executes. Follow it to the source node rather than guessing which
     # node feeds it: assuming MiniMaxH3Resolution AND assuming its `wide` shape
@@ -1485,19 +1452,20 @@ def price(node: dict, graph: dict) -> list[str]:
         qwen_edge = (policy or {}).get("qwen_short_edge") or 0
         qwen_w, qwen_h = (tw, th)
         # Stage two. With no Qwen view of its own, the conditioner applies the
-        # selected still policy BEFORE the VAE, so under `encoder` or
-        # `release` the geometry the DiT gets is not the role size. Omitting
-        # this over-priced an `encoder` graph by more than 10x, on the tool
-        # whose job is to price the sequence. With a Qwen view the VAE keeps
-        # the role size and stage two shapes the Qwen view only.
+        # selected still policy BEFORE the VAE, so under `release` the
+        # geometry the DiT gets is not the role size. Omitting this
+        # over-priced a stage-two graph by more than 10x (under the since
+        # closed `encoder` policy), on the tool whose job is to price the
+        # sequence. With a Qwen view the VAE keeps the role size and stage
+        # two shapes the Qwen view only.
         if qwen_edge:
             qwen_w, qwen_h = _qwen_view_size(iw, ih, qwen_edge)
         if image_policy != "comfy":
             try:
                 if qwen_edge:
-                    qwen_w, qwen_h = qwen_image_size(qwen_w, qwen_h, image_policy, contract)
+                    qwen_w, qwen_h = qwen_image_size(qwen_w, qwen_h, image_policy)
                 else:
-                    tw, th = qwen_image_size(tw, th, image_policy, contract)
+                    tw, th = qwen_image_size(tw, th, image_policy)
                     qwen_w, qwen_h = tw, th
             except Exception as exc:
                 lines.append(f"  {key}: could not apply image_policy="
@@ -1571,10 +1539,6 @@ def price(node: dict, graph: dict) -> list[str]:
     video_policy = (ins.get("video_policy", "comfy") if typed_references
                     else "native-comfy")
     if isinstance(video_policy, list):
-        video_policy = "comfy"
-    if video_policy == "encoder" and contract is None:
-        # The same substitution the conditioner makes: a CLIP that declares
-        # nothing runs the native per-pair path under `encoder`.
         video_policy = "comfy"
     lines.extend(reference_video_report(
         media_ins, graph, length, video_policy=video_policy,
@@ -1856,30 +1820,38 @@ def _qwen_view_size(source_w: int, source_h: int, qwen_short_edge: int):
 
 
 def _qwen_tokens(w: int, h: int, contract):
-    """`(w, h, merged_tokens, owner)` after the stage-two bounds, or None.
+    """`(w, h, merged_tokens, owner)` after the encoder's own bounds, or None.
 
-    Under a stamped contract that is the loaded encoder's declaration; with
-    none, Comfy's shared helper defaults, which is what a native CLIP applies.
-    Executed through the shared `qwen_image_size` (the processor's own
-    `smart_resize`), not modelled. Under the current W4 artifact's snapshot
-    this is where a large Qwen view collapses back to about 265 tokens,
-    which is the loud caveat on the `qwen_short_edge` knob.
+    The encoder's processor applies its bounds to whatever it is handed, for
+    every `image_policy`. Under a contract the graph's loader declares
+    (`_encoder_contract_for`) those are its `image_bounds` and
+    `image_geometry`; with none, Comfy's shared helper defaults read from
+    source, which is what a core-loaded CLIP applies. Executed through the
+    processor's own `smart_resize` -- the same call `reference_geometry
+    .qwen_image_size` makes for the `release` policy -- not modelled. A
+    contract whose ceiling is under the Qwen view is where a large view
+    collapses back, which is the loud caveat on the `qwen_short_edge` knob;
+    `check_reference_runtime.py::preflight_prices_the_two_views` drives it
+    with a synthetic narrow contract, since no shipped encoder declares one.
     """
     _core_minimax_cpu()
-    from reference_geometry import qwen_image_size
     if contract is not None:
         effective, owner = contract, f"encoder contract ({contract['source']})"
     else:
         bounds = _comfy_image_bounds()
         if bounds is None:
             return None
-        sys.path.insert(0, str(_REPO))
-        import vendor_config
         effective = {"image_bounds": bounds,
                      "image_geometry": vendor_config.patch_geometry()}
         owner = "native ComfyUI"
     try:
-        pw, ph = qwen_image_size(w, h, "encoder", effective)
+        from transformers.models.qwen2_vl.image_processing_qwen2_vl import smart_resize
+        (min_pixels, max_pixels) = effective["image_bounds"]
+        geometry = effective["image_geometry"]
+        factor = int(geometry["patch_size"]) * int(geometry["merge_size"])
+        ph, pw = smart_resize(height=h, width=w, factor=factor,
+                              min_pixels=min_pixels, max_pixels=max_pixels)
+        pw, ph = int(pw), int(ph)
     except Exception:
         return None
     return pw, ph, (pw // 32) * (ph // 32), owner
@@ -1895,8 +1867,8 @@ def _vision_bound_warnings(key, tw, th):
 
     **Only meaningful under `image_policy='comfy'`.** The two warnings below
     describe what happens when the conditioner hands the still on untouched and
-    lets whatever processor the CLIP carries resize it. Under `release` or
-    `encoder` the conditioner has already applied that policy's own floor and
+    lets whatever processor the CLIP carries resize it. Under `release`
+    the conditioner has already applied that policy's own floor and
     ceiling before the VAE, so both sentences would be false and the caller
     does not ask.
     """

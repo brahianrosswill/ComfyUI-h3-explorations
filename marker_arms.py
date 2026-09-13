@@ -9,8 +9,9 @@ Two rules shape everything here.
 
 **The arm attaches to a CLONE, never to the loaded model.** `CLIP.clone()`
 clones the patcher and shares `cond_stage_model` and the tokenizer by
-reference, and `h3_awq_encoder` installs `cached_patcher_init` so ComfyUI can
-hand the same loaded CLIP to a later prompt. An in-place row assignment or a
+reference, and `h3_encoder_loader.load_guarded_clip` installs
+`cached_patcher_init` so ComfyUI can hand the same loaded CLIP to a later
+prompt. An in-place row assignment or a
 mutated tokenizer would therefore be inherited by every later render that
 reuses the model. A patch on a cloned patcher, and a freshly built tokenizer,
 cannot be.

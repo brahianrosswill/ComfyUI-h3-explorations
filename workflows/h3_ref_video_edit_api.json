@@ -175,7 +175,7 @@
         "27",
         2
       ],
-      "video_policy": "encoder",
+      "video_policy": "comfy",
       "image_policy": "comfy"
     }
   },
