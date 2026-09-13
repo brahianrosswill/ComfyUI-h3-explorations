@@ -51,6 +51,17 @@ own below the rule.
   early and late cells, not a flip. The 2026-09-03 base-16 capture that
   served the fork's grading is retention-extended to 2026-09-20 and is due
   for `bench/recycle_captures.py` after that; the owner's call.
+  **The served sage build** since the 17:16 restart is the fork's tag
+  `served/2026-09-13` (commit 1408254; the process started on the 071b186
+  tree, comments apart), with `sageattention.quant.ELEMENT_OFFSET_BITS`
+  64. Nothing on the H3 path changed numerically: the fork's table has the
+  new kernels bit-equal to the previous build at every shape this card
+  renders. **Owner principle, same day**: the default at every layer is the
+  measured best and the chain is checked end to end, kernel build to node
+  default to generated graph. Not yet done for the kernel layer: the sage
+  build is not in `bench/run_graph_arms.py`'s `substrate`, and no check
+  asserts the served build equals the tagged one. Done when a row carries
+  the fork commit or tag and a check reads it off the installed module.
 - **Rendered, awaiting the owner's verdict**: `untold_loose_pdd8` at a
   second seed (2203), `Video/h3_candidate_t2v_pdd8_baked_audio_freeze_untold_loose_pdd8_00002-audio.mp4`,
   row in `bench/results/2026-09-13_audio_freeze_untold_seed2.jsonl`. The
