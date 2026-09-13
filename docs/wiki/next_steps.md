@@ -35,6 +35,22 @@ own below the rule.
   Gate 6 family (`h3_probe_refview_{a_source,b_qwen2048,c_parity}`,
   `bench/gate6_refview_arms.json`) was never rendered and is deleted; the
   owner's decisions of the day are in [`decisions.md`](decisions.md).
+- **From the sage-fork session, 2026-09-13** (its CHANGELOG decision-log
+  entry "sm89 q/k quantization: per-thread Triton stays; per-warp CUDA
+  measured slower end to end -- 2026-09-13"): the fused CUDA quantizers now
+  form 64-bit offsets, bit-identical to the old build at every H3 length
+  tried and free; per-thread q/k stays on this card because per-warp is
+  slower for the whole call and grades worse on two captured cells; the
+  quantization pass is a small fraction of the attention call at every
+  length, so no fusion there can move a render. **One item for this repo:**
+  on the late cell (block 49, step 15) `smooth_k=True` improved both fp8++
+  and fp16 by several percent where the fork's 2026-08-05 early-cell run
+  found it inert. `attention.py` passes `smooth_k=False`, and the consume
+  path's memory saving depends on it (the comment beside it), so this is a
+  graded trade to run on captures (`bench/grade_sage_on_capture.py`) across
+  early and late cells, not a flip. The 2026-09-03 base-16 capture that
+  served the fork's grading is retention-extended to 2026-09-20 and is due
+  for `bench/recycle_captures.py` after that; the owner's call.
 - **One render owed on the audio-freeze lane**: `untold_loose_pdd8` at a
   second seed, to learn whether loose mask with neither transcript nor guide
   rows drops the mouth every time or did once (the step 2 verdict file,
