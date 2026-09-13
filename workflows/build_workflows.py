@@ -1411,7 +1411,7 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
               # decoders and muxer: windows planned from the track. The
               # shipped graph caps the plan at `freeze_song_seconds` so a
               # first run is a quick look; 0 covers the whole track.
-              freeze_song: bool = False, freeze_song_seconds: float = 30.0,
+              freeze_song: bool = False, freeze_song_seconds: float | None = 30.0,
               freeze_song_mode: str = "cycle",
               out_prefix: str | None = None, **canvas) -> dict:
     """API-format graph, submittable as {"prompt": <this>} to POST /prompt.
@@ -2157,7 +2157,9 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
                               "window_frames": length, "context_frames": freeze_context,
                               # `extent` is a DynamicCombo (2026-09-13): dotted
                               # member in the API form, as `size_policy` is.
-                              "extent": "first_seconds", "extent.seconds": freeze_song_seconds,
+                              # `freeze_song_seconds=None` is the whole track.
+                              **({"extent": "first_seconds", "extent.seconds": freeze_song_seconds}
+                                 if freeze_song_seconds is not None else {"extent": "whole"}),
                               "seed": seed,
                               "audio_mask": freeze_mask, "level": "clip_guard",
                               "filename_prefix": out_prefix or "Video/h3_song", "crf": 19,
@@ -5163,7 +5165,7 @@ def build_ui(task: str, *, sage: bool = True, prompt: str | None = None,
              freeze_guide: bool = False,
              freeze_shots: tuple[tuple[int, str], ...] | None = None,
              freeze_gain: bool = False,
-             freeze_song: bool = False, freeze_song_seconds: float = 30.0,
+             freeze_song: bool = False, freeze_song_seconds: float | None = 30.0,
              freeze_song_mode: str = "cycle",
              **canvas) -> dict:
     ref = task == "r2v"
@@ -5807,8 +5809,11 @@ def build_ui(task: str, *, sage: bool = True, prompt: str | None = None,
                      widgets=[prompt, cv["width"], cv["height"], length, freeze_context,
                               # no control widget: the node's seed input declares none, and
                               # the node advances the seed by one per window itself
-                              # `extent`: the selection, then its own widget.
-                              "first_seconds", freeze_song_seconds, seed, freeze_mask, "clip_guard",
+                              # `extent`: the selection, then its own widget,
+                              # which exists only under `first_seconds`.
+                              *(["first_seconds", freeze_song_seconds]
+                                if freeze_song_seconds is not None else ["whole"]),
+                              seed, freeze_mask, "clip_guard",
                               out_prefix or "Video/h3_song", 19, freeze_song_mode, "uniform"],
                      inputs=[_in("model", "MODEL"), _in("clip", "CLIP"), _in("vae", "VAE"),
                              _in("audio_vae", "VAE"), _in("audio", "AUDIO"),
@@ -6871,6 +6876,36 @@ def main():
               freeze_context=39, out_prefix="Video/h3_t2v_audio_freeze_song",
               length=LONG_LENGTH),
          "a whole track from one node: windows planned from the song, one prompt throughout"),
+        # The whole-track graph on the PDD8 baked chain, at the settings the
+        # evidence supports for a full song (owner's ask, 2026-09-13 evening):
+        # 345-frame windows with a 39-frame context (the only context judged:
+        # the seam read better than either single window), the whole track,
+        # the loose mask (read slightly better than frozen on the dancer at
+        # two seeds; music, no speech), PDD8 at its own eight evaluations
+        # (five forced an envelope tiling nothing has judged), prompt blocks
+        # drawn per window from the seed so more than one shot recurs across
+        # a long song. Ships one bank prompt; paste your own blocks separated
+        # by a `---` line, with an optional leading `frames: N` per block.
+        ("h3_text_to_video_audio_freeze_song_pdd8.json", "t2v-audio-freeze-song-pdd8", "t2v",
+         _bank_prompt("t2va_studio_dancer_close"),
+         dict(pdd=True, sampler_name="euler",
+              unet=MODELS["unet_fl2va_pdd8_baked"],
+              lora=(PDD_FL2VA_STRIPPED_LORA, PDD_STRENGTH), steps=PDD_STEPS,
+              freeze_song=True, freeze_song_seconds=None, freeze_song_mode="random",
+              freeze_mask=0.25, freeze_context=39, length=LONG_LENGTH,
+              out_prefix="Video/h3_t2v_audio_freeze_song_pdd8",
+              variant_note=_NOTE_SONG + (
+                  "\n\n**This graph: a whole song on PDD8.** `extent` is the "
+                  "whole track; windows are 345 frames with a 39-frame context; "
+                  "`audio_mask` 0.25 (the loose mask, which read slightly better "
+                  "than frozen on the dancer at two seeds, "
+                  "`bench/results/2026-09-12_audio_freeze_step2_verdict.json`); "
+                  "`prompt_mode` random, so with several blocks each window "
+                  "draws one from the seed and every shot recurs. The sampler "
+                  "runs the PDD8 schedule at its own eight evaluations on the "
+                  "baked checkpoint. Context 90 and random window lengths are "
+                  "untested; this is the best-supported start, not a verdict.")),
+         "a whole song on PDD8: 345-frame windows, 39 context, loose mask, blocks drawn per window"),
         # The same shot in every window: only the audio slice and the carried
         # tail differ between windows, so the picture goes where the track
         # takes it (owner, 2026-09-12 evening).

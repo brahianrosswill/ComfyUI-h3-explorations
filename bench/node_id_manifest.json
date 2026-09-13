@@ -72,7 +72,7 @@
       "height",
       "window_frames",
       "context_frames",
-      "max_seconds",
+      "extent",
       "seed",
       "audio_mask",
       "level",
