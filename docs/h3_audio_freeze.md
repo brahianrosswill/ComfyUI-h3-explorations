@@ -205,7 +205,7 @@ prompt id and seed. One line per clip into
 | `h3_candidate_t2v_pdd8_baked_audio_freeze_voice_moving_subject_pdd8_00001-audio.mp4` | subject moves during the line, camera held: lip sync intact, natural? **Owner, 2026-09-13: good.** | same |
 | `..._voice_moving_camera_pdd8_00001-audio.mp4` | camera arcs, delivery still. **Owner, 2026-09-13: good.** | same |
 | `..._voice_moving_both_pdd8_00001-audio.mp4` | both. **Owner, 2026-09-13: good.** | same |
-| `h3_candidate_t2v_pdd8_baked_audio_freeze_untold_loose_pdd8_00001-audio.mp4` | no transcript, loose mask: more natural than the untold base arm? **Owner, 2026-09-13: the one failure. Lip sync holds for about two seconds, then she stops talking while the audio continues.** | `2026-09-12_audio_freeze_untold_arms.jsonl` |
+| `h3_candidate_t2v_pdd8_baked_audio_freeze_untold_loose_pdd8_00001-audio.mp4` | no transcript, loose mask: more natural than the untold base arm? **Owner, 2026-09-13: the one failure. Lip sync holds for about two seconds, then she stops talking while the audio continues. Not the loose mask, which the dancer arms clear: the missing transcript, which the guide arm made up for.** | `2026-09-12_audio_freeze_untold_arms.jsonl` |
 | `h3_candidate_t2v_pdd8_baked_audio_freeze_guide_untold_guide_pdd8_00001-audio.mp4` | no transcript, the clip also as guide rows **Owner, 2026-09-13: good.** | same |
 | `..._guide_untold_guide_loose_pdd8_00001-audio.mp4` | both. **Owner, 2026-09-13: good.** | same |
 

@@ -103,7 +103,7 @@
    "clip": "Video/h3_candidate_t2v_pdd8_baked_audio_freeze_untold_loose_pdd8_00001-audio.mp4",
    "owner": "it starts lip sync good and then at 2s in, she stops talking",
    "when": "2026-09-13",
-   "reading": "the one failure: no transcript plus the loose mask, on PDD8. The mouth follows the clip for about two seconds and then stops while the audio continues. The guide variant of the same untold clip (guide_untold_guide_loose) read as good, so the guide rows are what kept the mouth on the clip here; the question for the next run is whether the loose mask alone drops the coupling after the first window of steps or whether this is one seed."
+   "reading": "the one failure: no transcript plus the loose mask, on PDD8. The mouth follows the clip for about two seconds and then stops while the audio continues. The owner's correction, same day: the loose mask is not the suspect, because the loose dancer arms are good at two seeds; the dancer only has to follow the beat with her body, while speech has to hold the mouth to the clip word by word. What this arm lacked was the transcript, and the guide variant of the same untold clip (guide_untold_guide_loose) read as good, so the guide rows supplied what the missing transcript did not. Next: untold + loose at a second seed to rule out one seed, and untold + frozen to see whether the tight mask alone holds the mouth without a transcript."
   },
   {
    "arm": "song_smoke",
