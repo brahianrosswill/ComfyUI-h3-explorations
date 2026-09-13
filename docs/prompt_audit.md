@@ -122,6 +122,17 @@ ablation's verdicts will be the owner's, blind over seeds, in `bench/results/`.
 | `ref2va_stairwell_dialogue_circus` | ref2va | **keep** | the same dialogue as stylised 3D animation from two animated-character stills, medium and identity carried at once; inside the band |
 | `ref2va_studio_dancer_close_refs` | ref2va | **keep** | the studio dancer close from one picture, no vocal sound, two shots cut on the beat; inside the band; the scene whose face the owner has already judged on the t2va version |
 
+### Verdicts added 2026-09-13, the dancer prompts of the audio-freeze lane
+
+Three t2va prompts written on 2026-09-12 for the shot-per-window chain
+(`docs/h3_audio_freeze.md` section 4 step 6). Only the first has rendered.
+
+| scene | mode | verdict | why |
+|---|---|---|---|
+| `t2va_studio_dancer_close` | t2va | **keep** | the owner's verdict on the two single-window renders on the share (`h3_t2v_audio_freeze_dancer_close_frozen_s2_00001` and `..._loose_s2_00001`, 2026-09-12): "both are pretty awesome"; the loose one read slightly better without a stated reason, which is the freeze lane's data point, not this prompt's |
+| `t2va_dancer_shot_floor` | t2va | **keep** (text only) | one eight-second shot of the feet on the sprung floor, the chain's second window; grades clean; unrendered, so the render verdict is pending the shots graph |
+| `t2va_dancer_shot_face` | t2va | **keep** (text only) | one eight-second close-up with a slow push-in, the chain's third window and the repeat graph's shot; grades clean; unrendered, so the render verdict is pending |
+
 ### Misalignments: one closed, one withdrawn, one open
 
 `prompting.md` §14.3 is the long form and owns all three.
