@@ -62,27 +62,23 @@ MIN_DURATION = 5.0
 MAX_LENGTH = 362
 MAX_DURATION = MAX_LENGTH / FPS  # 15.083s
 
-#: Default shorter side, in pixels, of the copy of a reference image handed to
-#: the TEXT ENCODER -- `MiniMaxH3AppendRefImage.qwen_short_edge`.
+#: Shorter side, in pixels, pre-filled when `MiniMaxH3AppendRefImage.qwen_view`
+#: is set to `separate`: the copy of a still handed to the TEXT ENCODER alone.
 #:
-#: A reference is read twice, by the video model and by the text encoder, and
-#: only the text encoder's copy competes with the prompt for room. Left at the
-#: size the video model gets, two references can take enough of that shared
-#: budget that the prompt holds under a tenth of it, which weakens prompt
-#: adherence while the video model gains nothing.
+#: A still is read twice, by the video model and by the text encoder, and only
+#: the text encoder's copy sits in the text segment ahead of the prompt. The
+#: node's default is `shared` (one prepared copy feeds both, what sglang,
+#: diffusers and DiffSynth do; owner decision 2026-09-13,
+#: `docs/wiki/decisions.md`), so this value is read only when someone picks
+#: `separate`. It was the shipped default from 2026-08-27 to 2026-09-13 on one
+#: observation (CHANGELOG 0.82.0); the reference-view ablation
+#: (`bench/refview2_arms.json`, arm `noup_q512`) is what tests it.
 #:
-#: Owned HERE rather than in `workflows/h3_config.py` because the node default
-#: and the generator have to agree and the node cannot import that file. This
-#: module needs no ComfyUI on the path, which is what lets both sides read one
-#: value instead of keeping two in step by hand.
+#: Owned HERE rather than in `workflows/h3_config.py` because the node and the
+#: generator have to agree and the node cannot import that file. This module
+#: needs no ComfyUI on the path, which is what lets both sides read one value.
 #:
-#: **A reasoned default, not a tuned one, and moving it here did not change
-#: that.** This became the node's default so that a freshly dragged node and
-#: the shipped graphs agree; agreement between them is not evidence about the
-#: value. It still rests on a single render at one seed, and the arm that would
-#: settle it holds the encoder weights fixed and varies only its pixel bounds,
-#: which needs no render at all. Do not cite this constant, or the fact that it
-#: is the default, as a measured result.
+#: Reasoned, not measured. Do not cite it as a result.
 REF_QWEN_SHORT_EDGE = 512
 
 # diffusers' hard-coded `max_duration`. Kept, and kept SEPARATE, for the one

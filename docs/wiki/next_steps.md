@@ -51,11 +51,52 @@ own below the rule.
   early and late cells, not a flip. The 2026-09-03 base-16 capture that
   served the fork's grading is retention-extended to 2026-09-20 and is due
   for `bench/recycle_captures.py` after that; the owner's call.
-- **One render owed on the audio-freeze lane**: `untold_loose_pdd8` at a
-  second seed, to learn whether loose mask with neither transcript nor guide
-  rows drops the mouth every time or did once (the step 2 verdict file,
-  entry dated 2026-09-13). Queue it once the sage-fork session's GPU
-  measurements are done.
+- **Rendered, awaiting the owner's verdict**: `untold_loose_pdd8` at a
+  second seed (2203), `Video/h3_candidate_t2v_pdd8_baked_audio_freeze_untold_loose_pdd8_00002-audio.mp4`,
+  row in `bench/results/2026-09-13_audio_freeze_untold_seed2.jsonl`. The
+  first seed lost lip sync after about two seconds; this one says whether
+  loose mask with neither transcript nor guide rows fails every time or did
+  once. One line into the step 2 verdict file closes it.
+- **What changed on 2026-09-13, and where each is recorded** (the day's
+  session log is `internal/log/log_2026-09-13.md`; the decisions are in
+  [`decisions.md`](decisions.md); the changelog is 0.100.0):
+  - *Node defaults.* `MiniMaxH3AppendRefImage`: `size_policy=max`,
+    `dit_short_edge=2048`, `allow_upscale=True`, `qwen_view=shared` (vendor
+    parity). `MiniMaxH3ReferenceConditioning`: `video_policy` and
+    `image_policy` offer `comfy` (default) and `release`; `encoder` removed.
+    `MiniMaxH3FreezeAudioWindow.context_frames` min 39 step 51, no zero
+    mode; `MiniMaxH3AudioFreezeSong.max_seconds` replaced by the combo
+    `extent`. Observables: each node's `define_schema`, served by
+    `/object_info`; `bench/check_workflow_schema.py` green against it.
+  - *New node.* `MiniMaxH3ReferenceReport` (`reference_report.py`).
+  - *Rules and config.* `h3_rules.REF_QWEN_SHORT_EDGE` is now only the
+    value under `separate`; `h3_config.REFVIEW2_SCENES` added;
+    `ENCODER_V1`/`ENCODER_V2` removed; `REF_VIDEO_BUDGET` still turns
+    upscale off on the video-bearing reference arms.
+  - *Generator.* `ref_upscale` default True, `ref_video_policy` default
+    `comfy`, `ref_qwen_short_edge` default 0 (shared); the AWQ loader branch
+    gone; `--dump-prompts` emits a per-window list for `freeze_shots`
+    graphs; the refview2 family replaces the Gate 6 family;
+    `h3_probe_reference_upscale` now turns upscale OFF. Every graph
+    regenerated and validated against the live server.
+  - *Deleted.* `h3_awq_encoder.py`, `MiniMaxH3AWQEncoderLoader`, `config/`,
+    `docs/h3_awq_encoder.md`, seven AWQ-only bench tools, the three Gate 6
+    graphs and their manifest.
+  - *Owner rule.* A numeric widget never means a mode by being 0
+    (`bench/check_literal_widgets.py` enforces it; green).
+  - *Learned.* The two sage quantizer ceilings and which path this card runs
+    (`docs/h3_input_impacts.md`); the vendor's reference sizing is one 2048
+    copy for both towers (`docs/research/sglang_h3_pipeline.md`); reference
+    rows cannot be pre-encoded per step because attention is unmasked
+    (`comfy/ldm/minimax/model.py`); PR Comfy-Org/ComfyUI#16187 changes VAE
+    numerics only, not reference cost or geometry; on the audio-freeze lane
+    the words are not required to hold a mouth to a frozen clip (the step 2
+    verdict file, entries dated 2026-09-13); the prompt describer had
+    recorded no prompt id for reference graphs (`workflows/prompts.py`).
+  - *Good.* Every check touched is green; the ablation rendered with no
+    failures including the three-still parity arm on this card; the report
+    node's numbers match the static pricer's
+    (`bench/results/2026-09-13_reference_settings_three_stills.json`).
 - Before queueing a reference render, wire `MiniMaxH3ReferenceReport` or run
   `bench/preflight_graph.py`: both price what each reader sees.
 
