@@ -33,6 +33,18 @@ artifact.
 
 ### Changed
 
+- **`workflows/prompts.py::CONDITIONERS` knows `MiniMaxH3ReferenceConditioning`.**
+  `describe`, which `bench/run_graph_arms.py` and the capture manifest use to
+  record what a graph rendered, keyed on the base conditioner alone, so every
+  reference-graph row carried no prompt id or hash. Found by the session-log
+  drafter reading the refview2 rows; the rows written before the fix carry
+  `rendered.prompt_id` null and the top-level `prompt_id` (the server's) is
+  the handle for them.
+- **`preflight.py` reads the installed sage build's offset width.** The CUDA
+  v-quantizer ceiling was reported as "NOT fixed" unconditionally; the fork
+  widened those kernels to 64-bit offsets (v0.7.17) and publishes the width as
+  `sageattention.quant.ELEMENT_OFFSET_BITS`. The node now reads it (absent
+  means 32) and reports the wrap only on a build that still has it.
 - **`MiniMaxH3AppendRefImage` defaults are vendor parity** (owner):
   `size_policy=max`, `dit_short_edge=2048`, `allow_upscale=True`,
   `qwen_view=shared`, which is what sglang, diffusers and DiffSynth do: one

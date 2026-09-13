@@ -47,7 +47,8 @@ MANIFEST = BANK / "bank.json"
 
 # Node class -> the input carrying the prompt text, for `describe`. The
 # catalogue keys on the same set (`bench/build_prompt_catalogue.py::CONDITIONERS`).
-CONDITIONERS = {"MiniMaxH3Conditioning": "prompt"}
+CONDITIONERS = {"MiniMaxH3Conditioning": "prompt",
+                "MiniMaxH3ReferenceConditioning": "prompt"}
 
 
 def text(prompt_id: str) -> str:

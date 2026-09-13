@@ -41,10 +41,15 @@ this box: on sm89 `sageattn_consume` takes the fp8 CUDA path with
 `sageattention/triton/quant_per_thread.py`, whose int32 offsets cross at
 `_INT32_FUSED` and which carry the fork's `USE_I64` fix, and v is quantized
 by `sageattention/quant.py::per_channel_fp8` through the CUDA kernels in
-`csrc/fused/fused.cu`, whose uint32 strides wrap at `_CSRC_FUSED` and are NOT
-fixed. The fork's `CHANGELOG.md` records both, as "int32 element-offset
-overflow in the INT8 quant kernels" under v0.7.0 and "The CUDA quant kernels
-form global offsets in uint32" under known issues. The int32 fix reaches every
+`csrc/fused/fused.cu`, whose strides wrap at `_CSRC_FUSED` on builds that form
+offsets in uint32. Since fork v0.7.17 those kernels form 64-bit offsets and
+the installed width is published as `sageattention.quant.ELEMENT_OFFSET_BITS`
+(64 on the new build; 32, or absent, on anything older), which is what
+`_csrc_offset_bits` reads: the CUDA ceiling is reported only when the
+installed build still has it. The fork's `CHANGELOG.md` records both, as
+"int32 element-offset overflow in the INT8 quant kernels" under v0.7.0 and
+"The CUDA quant kernels form global offsets in uint32" under known issues,
+and its `docs/consumer_surface.md` item 5 names the attribute. The int32 fix reaches every
 user of this pack's sage node because `attention.py::build_kernel` refuses a
 sageattention without `sageattn_consume`, which arrived in that same v0.7.0.
 Length alone does not reach the uint32 wrap (the changelog entry gives the
@@ -82,6 +87,23 @@ _CONTIGUOUS_STRIDE = 56 * 128
 _INT32_FUSED = 2**31 // _FUSED_STRIDE
 _INT32_CONTIGUOUS = 2**31 // _CONTIGUOUS_STRIDE
 _CSRC_FUSED = 2**32 // _FUSED_STRIDE
+
+
+def _csrc_offset_bits() -> int:
+    """The offset width the installed sage build's CUDA quantizers form.
+
+    Read from `sageattention.quant.ELEMENT_OFFSET_BITS`, stamped by the fork
+    from v0.7.17. Absent means an older build, which formed uint32 offsets,
+    so the answer is 32. Never typed from a version number: the attribute is
+    the observable and a stale `.so` in a rebuilt venv is exactly the case
+    where the version would lie.
+    """
+    try:
+        from sageattention import quant
+    except Exception:  # pragma: no cover - no sage installed
+        return 32
+    bits = getattr(quant, "ELEMENT_OFFSET_BITS", 32)
+    return int(bits) if isinstance(bits, int) else 32
 
 _ALTERNATIVES = ("1:1", "4:3", "3:2", "16:9", "9:16")
 
@@ -228,10 +250,19 @@ class MiniMaxH3Preflight(io.ComfyNode):
 
         # These lines describe the sage fork's quantizers (module docstring)
         # and mean nothing on a graph without `MiniMaxH3SageAttention`.
-        if total >= _CSRC_FUSED:
+        csrc_bits = _csrc_offset_bits()
+        if csrc_bits >= 64 and total >= _INT32_FUSED:
+            lines.append(
+                f"sage: past the fused int32 crossing at {_INT32_FUSED:,} "
+                f"(Triton q/k quantizers), fixed in every fork build that "
+                f"has sageattn_consume. The installed build forms "
+                f"{csrc_bits}-bit offsets in the CUDA v quantizer, so the "
+                f"uint32 wrap at {_CSRC_FUSED:,} does not apply to it.")
+        elif total >= _CSRC_FUSED:
             lines.append(f"sage: {total:,} is past the csrc/fused uint32 wrap "
-                         f"at {_CSRC_FUSED:,} (the CUDA v quantizer). This "
-                         f"one is NOT fixed.")
+                         f"at {_CSRC_FUSED:,} (the CUDA v quantizer). The "
+                         f"installed build forms {csrc_bits}-bit offsets, so "
+                         f"this one is NOT fixed there; fork v0.7.17 widens it.")
         elif total >= _INT32_FUSED:
             # "unreachable at any length" was true of LENGTH alone and false
             # once references are in play, which is exactly when this line is
@@ -245,9 +276,10 @@ class MiniMaxH3Preflight(io.ComfyNode):
                 f"sage: past the fused int32 crossing at {_INT32_FUSED:,} "
                 f"(Triton q/k quantizers), fixed in every fork build that "
                 f"has sageattn_consume. Next ceiling {_CSRC_FUSED:,} (CUDA v "
-                f"quantizer) is NOT fixed and is {head:,} away "
+                f"quantizer) is NOT fixed on the installed build "
+                f"({csrc_bits}-bit offsets) and is {head:,} away "
                 f"({100 * total / _CSRC_FUSED:.0f}% of it). Length alone "
-                f"cannot reach it; references can.")
+                f"cannot reach it; references can. Fork v0.7.17 widens it.")
         else:
             lines.append(f"sage: under the fused int32 crossing at "
                          f"{_INT32_FUSED:,} (a contiguous layout would say "
