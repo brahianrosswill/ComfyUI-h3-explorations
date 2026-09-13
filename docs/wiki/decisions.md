@@ -69,8 +69,8 @@ Older history lives elsewhere and is not copied here:
   (`h3_config.REFVIEW2_SCENES`, `workflows/h3_probe_refview2_*.json`) built
   at the node defaults, with six arms per scene as widget patches in
   `bench/refview2_arms.json`. Unrendered; nothing is claimed.
-- **`docs/h3_input_impacts.md` pointed at `preflight.py:28`** for the
-  99,864-row crossing; the line moved, and the docstring is the pointer now.
+- **`docs/h3_input_impacts.md` pointed at `preflight.py:28`** for the int32
+  crossing; the line moved, and `preflight.py::_INT32_FUSED` is the pointer now.
   The same section gains the second ceiling, the CUDA v-side `uint32` wrap in
   the sage fork's `csrc/fused/fused.cu`, from the fork's own CHANGELOG.
 

@@ -41,8 +41,10 @@ and [`h3_pdd.md`](h3_pdd.md) owns the converter and node contract.
 
 ## 1. The node surface
 
-Nineteen nodes are registered. They fall into three classes, and the class is
-the useful fact: **load-bearing** means a shipped render is wrong or absent
+The registered nodes are what this pack's extension class returns, recorded in
+`bench/node_id_manifest.json` by `bench/check_node_ids.py`; this page does not
+restate the count. They fall into three classes, and the class is the useful
+fact: **load-bearing** means a shipped render is wrong or absent
 without it, **convenience** means the graph could be wired by hand instead, and
 **instrumentation** means it exists to catch or record something.
 

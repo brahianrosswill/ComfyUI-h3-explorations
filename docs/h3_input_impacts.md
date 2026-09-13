@@ -322,14 +322,14 @@ alignment.
 ### There is no 100,000-token budget
 
 This gets asked, and the number is real but it is neither a limit nor the
-model's. 99,864 is where a signed int32 byte offset overflows inside the Triton
-quantization kernels, given H3's fused qkv stride of `3 x 56 x 128 = 21504`.
-The docstring of `preflight.py` states it, and states that the crossing is
-already handled in every sage build able to run this repo's attention node.
-Every shipped graph is already past it. The next ceiling is a `uint32` wrap
-near 199,729 rows, roughly 660 frames, against a 362 maximum. It is the second
-of two quantizer ceilings, not a second copy of the first (verified in the
-fork's code 2026-09-13): on this card `sageattn_consume` quantizes q and k
+model's. It is where a signed int32 byte offset overflows inside the Triton
+quantization kernels, given H3's fused qkv stride; `preflight.py` derives it
+as `_INT32_FUSED` from `_FUSED_STRIDE`, and its docstring states that the
+crossing is already handled in every sage build able to run this repo's
+attention node. Every shipped graph is already past it. The next ceiling is a
+`uint32` wrap, `preflight.py::_CSRC_FUSED`, about twice the longest legal
+sequence (`h3_rules.MAX_LENGTH`). It is the second of two quantizer ceilings,
+not a second copy of the first (verified in the fork's code 2026-09-13): on this card `sageattn_consume` quantizes q and k
 through the fork's Triton `quant_per_thread.py`, where the int32 crossing was
 fixed in the fork's v0.7.0, and v through the CUDA kernels in
 `csrc/fused/fused.cu`, whose strides are `uint32_t` and form the global offset

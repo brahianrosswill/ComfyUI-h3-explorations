@@ -8,7 +8,7 @@ the loader, the reference policies and the append node's defaults corrected
 used to describe a path where the encoder was the compressed-tensors W4 AWQ
 artifact loaded by `MiniMaxH3AWQEncoderLoader`, which stamps a processor
 contract on the CLIP. **The shipped graphs no longer load that artifact.** On
-that date all 159 encoder-loader nodes across `workflows/` were core's
+that date every encoder-loader node across `workflows/` was core's
 `CLIPLoader` naming `qwen3vl_32b_minimax_h3_int8_convrot.safetensors`
 (*measured*, over `h3_config.graph_paths`), and a core-loaded CLIP stamps
 nothing. The consequence runs through this whole file and is stated once here:

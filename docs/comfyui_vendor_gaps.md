@@ -3,8 +3,8 @@
 last updated: 2026-09-13 (the `encoder` policy and the AWQ adapter marked removed, see the correction below; 2026-09-10 recorded two core commits under "Settled"; row 17 added 2026-09-04; everything else is the 2026-08-29 snapshot)
 
 **Corrected 2026-08-29: this file described the compressed-tensors W4 AWQ
-artifact as the shipped encoder, and it is not.** All 159 encoder-loader nodes
-in `workflows/` are core's `CLIPLoader` naming
+artifact as the shipped encoder, and it is not.** Every encoder-loader node
+in `workflows/` is core's `CLIPLoader` naming
 `qwen3vl_32b_minimax_h3_int8_convrot.safetensors` (*measured*). Two things
 follow, and they change several rows below:
 

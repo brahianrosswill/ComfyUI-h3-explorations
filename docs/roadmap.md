@@ -231,8 +231,8 @@ Operationally: how much time Sol, Sage and PDD can take out of an H3 render
 before the result visibly degrades, per scene, measured from the TRUE
 baseline, with the owner's blind judgment as the top-level measure and the
 numeric proxies reported beside it so we learn which proxies predict it.
-The plan below replaces the 2026-08-24 one, whose encoder lane closed on
-2026-08-27.
+The plan below replaced the 2026-08-24 one, whose encoder lane closed on
+2026-08-27; that section was removed from this page on 2026-09-13.
 
 **What 2026-09-03 established** (records under `bench/results/` with that
 date prefix; `docs/research/2026-09-03_sol_exact_pquant_and_base_capture.md`
@@ -356,78 +356,6 @@ withdrawn, and that is the precedent this sentence exists to break.
 **What would count as finding it:** a setting that survives step 6 on more
 than one scene and seed, with its cost measured in a clean process, and
 its record naming the prompt, seed, canvas, length and build.
-
-## Current forward plan — 2026-08-24
-
-**Parallel encoder lane, accepted 2026-08-24:** the next model artifact is a
-new native-H3-calibrated W4A16 AWQ candidate for multimodal conditioning. The
-immediate work is the exact calibration-seam proof, a bounded RTX 4090
-feasibility pilot, and an independently reviewed launch package. The deployed
-artifact remains unchanged, and no full quantization launch or special-token
-training is authorized by the roadmap alone. The detailed decisions, gates,
-roles, and stop conditions are owned by
-[`qwen3-vl-special-tokens-post-training/canonical/active_plan.md`](research/qwen3-vl-special-tokens-post-training/canonical/active_plan.md).
-
-The typed-reference migration is complete. Base-guide alignment is exact, the
-ordered resolver admits explicit VHS sources and traces branched audio, all 38
-shipped reference API graphs now compile append chains, and both runtime and
-static-consumer controls are green. The all-media smoke rendered 1024x768 at
-39 frames and 10 steps in 84.51 seconds, with the server logging the expected
-five presentation labels and 21,283 packed rows.
-
-Completed this slice:
-
-1. Repointed every generated reference workflow from native core's parallel
-   sockets to this repo's typed append/compiler nodes, preserving the legacy
-   presentation order, `force_rate=24`, and existing sizing policy.
-2. Removed explicit reference-audio trims from those workflows. The local
-   typed compiler now derives the cap from aligned frame count and normalizes
-   mono; native ComfyUI remains unchanged, so these are locally handled gaps,
-   not native fixes.
-3. Passed prompt, guide, ordering, typed-consumer, bounds, preflight, live API,
-   and UI-schema checks for the migrated population. The eight full-schema red
-   rows were 768p Turbo LoRA filenames absent on this install; resolved
-   2026-08-23 by moving the 768p arm to v1.1, the file that is present.
-4. Fixed VHS `LazyAudioMap` compatibility found by the first all-media smoke,
-   then completed the rerun. The native tokenizer already had all twenty tokens,
-   so this repo's compatibility shim logged a no-op.
-
-The next policy slice is also complete:
-
-5. `MiniMaxH3ReferenceConditioning.video_policy=release` is one opt-in switch
-   for both release-video stages: the full-rate VAE view is put on the release
-   canvas, while the raw 2 fps Qwen samples go through the release's
-   duration-aware video processor. Generated graphs now use `encoder`: the
-   loaded encoder's snapshotted Qwen stage (bound to the CLIP's stamped
-   contract since 2026-08-25) with Comfy-compatible no-upscale VAE sizing. The two snapshots agree today but remain separate
-   authorities and are tested by deliberate disagreement.
-   `comfy` remains the native preprocessing control.
-6. Added `h3_probe_release_video_policy` against the otherwise-matched
-   `h3_ref_video_audio` graph. Preflight marks which VAE and Qwen rows are
-   active and labels the release path as a local typed policy, not a native
-   fix.
-7. The 39-frame live acceptance rendered in 92.73 seconds. The server logged
-   the 960x544 source becoming a 1344x768 VAE reference, four raw Qwen samples,
-   23,892 packed rows, Sage routing, and Sol sparse execution. The CPU control
-   separately pins the long-duration 31-versus-32-sample boundary; its red
-   mutations collapse Qwen back onto the VAE frames and substitute release
-   settings for encoder settings.
-
-Next, in order:
-
-1. GPU experiments: the FL2VA base-versus-turbo pair,
-   the singing-removed speaker-attribution scene, and `ncu` profiling all need
-   the card alone.
-
-Completed 2026-08-24: ComfyUI commit `924743af` or newer is now the marker
-tokenization contract. The local fallback was removed from both conditioners
-and from generated API workflows. Inert schema/node tombstones remain solely
-to keep saved UI graphs loadable.
-
-The historical lists below remain evidence of how priorities arrived; this
-block is the current authority when they conflict.
-
----
 
 ## The left rail: constraints
 
