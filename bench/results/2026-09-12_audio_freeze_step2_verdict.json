@@ -90,6 +90,27 @@
    "owner": "h3_t2v_audio_freeze_2windows_seam_dancer_close_00001-audio is even better",
    "when": "2026-09-13, after the second-seed pair above",
    "reading": "the loop's first seam, two windows joined at 39 frames: the owner rates the joined clip above either single window, so the join reads and the seam does not show at this length. Not blind, one seed; the seam-and-moving arms (bench/audio_freeze_seam_and_moving_arms.json) are the next look."
+  },
+  {
+   "arm": "voice_moving_subject_pdd8, voice_moving_camera_pdd8, voice_moving_both_pdd8, guide_untold_guide_pdd8, guide_untold_guide_loose_pdd8",
+   "clip": "the audio-freeze dialogue clips on the share (bench/audio_freeze_seam_and_moving_arms.json, bench/results/2026-09-12_audio_freeze_untold_arms.jsonl)",
+   "owner": "so far all the audio freeze dialogue ones look good except h3_candidate_t2v_pdd8_baked_audio_freeze_untold_loose_pdd8_00001-audio",
+   "when": "2026-09-13",
+   "reading": "the three moving arms and both guide arms read as good: lip sync holds while the subject moves, while the camera arcs, and with both; the guide rows carry an untold clip. Not blind, one seed each."
+  },
+  {
+   "arm": "untold_loose_pdd8",
+   "clip": "Video/h3_candidate_t2v_pdd8_baked_audio_freeze_untold_loose_pdd8_00001-audio.mp4",
+   "owner": "it starts lip sync good and then at 2s in, she stops talking",
+   "when": "2026-09-13",
+   "reading": "the one failure: no transcript plus the loose mask, on PDD8. The mouth follows the clip for about two seconds and then stops while the audio continues. The guide variant of the same untold clip (guide_untold_guide_loose) read as good, so the guide rows are what kept the mouth on the clip here; the question for the next run is whether the loose mask alone drops the coupling after the first window of steps or whether this is one seed."
+  },
+  {
+   "arm": "song_smoke",
+   "clip": "Video/h3_song_smoke_song_smoke_00001.mp4 (and its _w00 window)",
+   "owner": "h3_song_smoke_song_smoke_00001 is good too",
+   "when": "2026-09-13",
+   "reading": "the whole-track node's first run lands: windows planned from the track, rendered and joined inside the node."
   }
  ],
  "caveats": [
