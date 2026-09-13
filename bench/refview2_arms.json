@@ -1,55 +1,36 @@
 {
- "what": "Reference-view ablation, second edition (2026-09-13). Five ref2va scenes (h3_config.REFVIEW2_SCENES), each built at the node defaults, which are vendor parity: every still to a 2048 short edge, upscale on, one copy for both the video VAE and Qwen3-VL. Six arms per scene, as widget patches on the append nodes (ids 50..): parity (as built); up_q512 (upscale on, the encoder reads its own 512 copy; the 2026-08-27..09-13 shipped default plus upscale); noup_shared (core ComfyUI's behaviour: shrink only, one copy); noup_q512 (the 2026-08-27..09-13 shipped default); noup_q1024; noup_q2048 (the video model at source size, the encoder at the vendor short edge).",
+ "what": "Reference-view ablation, second edition (2026-09-13). Five ref2va scenes (h3_config.REFVIEW2_SCENES), each built at the node defaults, which are vendor parity: every still to a 2048 short edge, upscale on, one copy for both the video VAE and Qwen3-VL. Four arms per scene, as widget patches on the append nodes (ids 50..): parity (as built); up_q512 (upscale on, the encoder reads its own 512 copy; the 2026-08-27..09-13 shipped default plus upscale); noup_shared (core ComfyUI's behaviour: shrink only, one copy); noup_q512 (the 2026-08-27..09-13 shipped default); noup_q1024; noup_q2048 (the video model at source size, the encoder at the vendor short edge). Owner decision 2026-09-13 during the run: focus on the arms known to be meaningful. up_q512 and noup_q1024 were dropped; their first-seed rows for the four scenes rendered before the cut stay in bench/results/2026-09-13_refview2_arms.jsonl.",
  "generated_by": "workflows/build_workflows.py (the h3_probe_refview2_* family); regenerate there, never edit the graphs",
  "arms": {
   "stairwell_backstage_parity": "workflows/h3_probe_refview2_stairwell_backstage_api.json",
-  "stairwell_backstage_up_q512": "workflows/h3_probe_refview2_stairwell_backstage_api.json",
   "stairwell_backstage_noup_shared": "workflows/h3_probe_refview2_stairwell_backstage_api.json",
   "stairwell_backstage_noup_q512": "workflows/h3_probe_refview2_stairwell_backstage_api.json",
-  "stairwell_backstage_noup_q1024": "workflows/h3_probe_refview2_stairwell_backstage_api.json",
   "stairwell_backstage_noup_q2048": "workflows/h3_probe_refview2_stairwell_backstage_api.json",
   "stairwell_circus_parity": "workflows/h3_probe_refview2_stairwell_circus_api.json",
-  "stairwell_circus_up_q512": "workflows/h3_probe_refview2_stairwell_circus_api.json",
   "stairwell_circus_noup_shared": "workflows/h3_probe_refview2_stairwell_circus_api.json",
   "stairwell_circus_noup_q512": "workflows/h3_probe_refview2_stairwell_circus_api.json",
-  "stairwell_circus_noup_q1024": "workflows/h3_probe_refview2_stairwell_circus_api.json",
   "stairwell_circus_noup_q2048": "workflows/h3_probe_refview2_stairwell_circus_api.json",
   "diner_parity": "workflows/h3_probe_refview2_diner_api.json",
-  "diner_up_q512": "workflows/h3_probe_refview2_diner_api.json",
   "diner_noup_shared": "workflows/h3_probe_refview2_diner_api.json",
   "diner_noup_q512": "workflows/h3_probe_refview2_diner_api.json",
-  "diner_noup_q1024": "workflows/h3_probe_refview2_diner_api.json",
   "diner_noup_q2048": "workflows/h3_probe_refview2_diner_api.json",
   "porter_parity": "workflows/h3_probe_refview2_porter_api.json",
-  "porter_up_q512": "workflows/h3_probe_refview2_porter_api.json",
   "porter_noup_shared": "workflows/h3_probe_refview2_porter_api.json",
   "porter_noup_q512": "workflows/h3_probe_refview2_porter_api.json",
-  "porter_noup_q1024": "workflows/h3_probe_refview2_porter_api.json",
   "porter_noup_q2048": "workflows/h3_probe_refview2_porter_api.json",
   "dancer_parity": "workflows/h3_probe_refview2_dancer_api.json",
-  "dancer_up_q512": "workflows/h3_probe_refview2_dancer_api.json",
   "dancer_noup_shared": "workflows/h3_probe_refview2_dancer_api.json",
   "dancer_noup_q512": "workflows/h3_probe_refview2_dancer_api.json",
-  "dancer_noup_q1024": "workflows/h3_probe_refview2_dancer_api.json",
   "dancer_noup_q2048": "workflows/h3_probe_refview2_dancer_api.json"
  },
  "patches": [
-  "stairwell_backstage_up_q512:50.qwen_view=separate",
-  "stairwell_backstage_up_q512:50.qwen_view.qwen_short_edge=512",
   "stairwell_backstage_noup_shared:50.size_policy.allow_upscale=false",
   "stairwell_backstage_noup_q512:50.size_policy.allow_upscale=false",
   "stairwell_backstage_noup_q512:50.qwen_view=separate",
   "stairwell_backstage_noup_q512:50.qwen_view.qwen_short_edge=512",
-  "stairwell_backstage_noup_q1024:50.size_policy.allow_upscale=false",
-  "stairwell_backstage_noup_q1024:50.qwen_view=separate",
-  "stairwell_backstage_noup_q1024:50.qwen_view.qwen_short_edge=1024",
   "stairwell_backstage_noup_q2048:50.size_policy.allow_upscale=false",
   "stairwell_backstage_noup_q2048:50.qwen_view=separate",
   "stairwell_backstage_noup_q2048:50.qwen_view.qwen_short_edge=2048",
-  "stairwell_circus_up_q512:50.qwen_view=separate",
-  "stairwell_circus_up_q512:50.qwen_view.qwen_short_edge=512",
-  "stairwell_circus_up_q512:51.qwen_view=separate",
-  "stairwell_circus_up_q512:51.qwen_view.qwen_short_edge=512",
   "stairwell_circus_noup_shared:50.size_policy.allow_upscale=false",
   "stairwell_circus_noup_shared:51.size_policy.allow_upscale=false",
   "stairwell_circus_noup_q512:50.size_policy.allow_upscale=false",
@@ -58,24 +39,12 @@
   "stairwell_circus_noup_q512:51.size_policy.allow_upscale=false",
   "stairwell_circus_noup_q512:51.qwen_view=separate",
   "stairwell_circus_noup_q512:51.qwen_view.qwen_short_edge=512",
-  "stairwell_circus_noup_q1024:50.size_policy.allow_upscale=false",
-  "stairwell_circus_noup_q1024:50.qwen_view=separate",
-  "stairwell_circus_noup_q1024:50.qwen_view.qwen_short_edge=1024",
-  "stairwell_circus_noup_q1024:51.size_policy.allow_upscale=false",
-  "stairwell_circus_noup_q1024:51.qwen_view=separate",
-  "stairwell_circus_noup_q1024:51.qwen_view.qwen_short_edge=1024",
   "stairwell_circus_noup_q2048:50.size_policy.allow_upscale=false",
   "stairwell_circus_noup_q2048:50.qwen_view=separate",
   "stairwell_circus_noup_q2048:50.qwen_view.qwen_short_edge=2048",
   "stairwell_circus_noup_q2048:51.size_policy.allow_upscale=false",
   "stairwell_circus_noup_q2048:51.qwen_view=separate",
   "stairwell_circus_noup_q2048:51.qwen_view.qwen_short_edge=2048",
-  "diner_up_q512:50.qwen_view=separate",
-  "diner_up_q512:50.qwen_view.qwen_short_edge=512",
-  "diner_up_q512:51.qwen_view=separate",
-  "diner_up_q512:51.qwen_view.qwen_short_edge=512",
-  "diner_up_q512:52.qwen_view=separate",
-  "diner_up_q512:52.qwen_view.qwen_short_edge=512",
   "diner_noup_shared:50.size_policy.allow_upscale=false",
   "diner_noup_shared:51.size_policy.allow_upscale=false",
   "diner_noup_shared:52.size_policy.allow_upscale=false",
@@ -88,15 +57,6 @@
   "diner_noup_q512:52.size_policy.allow_upscale=false",
   "diner_noup_q512:52.qwen_view=separate",
   "diner_noup_q512:52.qwen_view.qwen_short_edge=512",
-  "diner_noup_q1024:50.size_policy.allow_upscale=false",
-  "diner_noup_q1024:50.qwen_view=separate",
-  "diner_noup_q1024:50.qwen_view.qwen_short_edge=1024",
-  "diner_noup_q1024:51.size_policy.allow_upscale=false",
-  "diner_noup_q1024:51.qwen_view=separate",
-  "diner_noup_q1024:51.qwen_view.qwen_short_edge=1024",
-  "diner_noup_q1024:52.size_policy.allow_upscale=false",
-  "diner_noup_q1024:52.qwen_view=separate",
-  "diner_noup_q1024:52.qwen_view.qwen_short_edge=1024",
   "diner_noup_q2048:50.size_policy.allow_upscale=false",
   "diner_noup_q2048:50.qwen_view=separate",
   "diner_noup_q2048:50.qwen_view.qwen_short_edge=2048",
@@ -106,43 +66,23 @@
   "diner_noup_q2048:52.size_policy.allow_upscale=false",
   "diner_noup_q2048:52.qwen_view=separate",
   "diner_noup_q2048:52.qwen_view.qwen_short_edge=2048",
-  "porter_up_q512:50.qwen_view=separate",
-  "porter_up_q512:50.qwen_view.qwen_short_edge=512",
   "porter_noup_shared:50.size_policy.allow_upscale=false",
   "porter_noup_q512:50.size_policy.allow_upscale=false",
   "porter_noup_q512:50.qwen_view=separate",
   "porter_noup_q512:50.qwen_view.qwen_short_edge=512",
-  "porter_noup_q1024:50.size_policy.allow_upscale=false",
-  "porter_noup_q1024:50.qwen_view=separate",
-  "porter_noup_q1024:50.qwen_view.qwen_short_edge=1024",
   "porter_noup_q2048:50.size_policy.allow_upscale=false",
   "porter_noup_q2048:50.qwen_view=separate",
   "porter_noup_q2048:50.qwen_view.qwen_short_edge=2048",
-  "dancer_up_q512:50.qwen_view=separate",
-  "dancer_up_q512:50.qwen_view.qwen_short_edge=512",
   "dancer_noup_shared:50.size_policy.allow_upscale=false",
   "dancer_noup_q512:50.size_policy.allow_upscale=false",
   "dancer_noup_q512:50.qwen_view=separate",
   "dancer_noup_q512:50.qwen_view.qwen_short_edge=512",
-  "dancer_noup_q1024:50.size_policy.allow_upscale=false",
-  "dancer_noup_q1024:50.qwen_view=separate",
-  "dancer_noup_q1024:50.qwen_view.qwen_short_edge=1024",
   "dancer_noup_q2048:50.size_policy.allow_upscale=false",
   "dancer_noup_q2048:50.qwen_view=separate",
   "dancer_noup_q2048:50.qwen_view.qwen_short_edge=2048"
  ],
  "arm_meaning": {
   "parity": "as built",
-  "up_q512": [
-   [
-    "qwen_view",
-    "separate"
-   ],
-   [
-    "qwen_view.qwen_short_edge",
-    "512"
-   ]
-  ],
   "noup_shared": [
    [
     "size_policy.allow_upscale",
@@ -163,20 +103,6 @@
     "512"
    ]
   ],
-  "noup_q1024": [
-   [
-    "size_policy.allow_upscale",
-    "false"
-   ],
-   [
-    "qwen_view",
-    "separate"
-   ],
-   [
-    "qwen_view.qwen_short_edge",
-    "1024"
-   ]
-  ],
   "noup_q2048": [
    [
     "size_policy.allow_upscale",
@@ -192,6 +118,6 @@
    ]
   ]
  },
- "how_to_run": "python bench/run_graph_arms.py --manifest bench/refview2_arms.json --seed <base> --runs <K> --warmup stairwell_backstage_parity --out bench/results/<date>_refview2_arms.jsonl; then bench/blind_batch.py on that JSONL with --pairs per scene, e.g. --pairs diner_parity,diner_noup_q512. Price first: python bench/preflight_graph.py workflows/h3_probe_refview2_*_api.json, and MiniMaxH3ReferenceReport on the graph in the UI.",
+ "how_to_run": "python bench/run_graph_arms.py --manifest bench/refview2_arms.json --seed <base> --runs <K> --out bench/results/<date>_refview2_arms.jsonl; then bench/blind_batch.py on that JSONL with --pairs per scene, e.g. --pairs diner_parity,diner_noup_q512. Price first: python bench/preflight_graph.py workflows/h3_probe_refview2_*_api.json, and MiniMaxH3ReferenceReport on the graph in the UI.",
  "judging": "docs/eval_comparison.md: blind, matched seeds, free-text verdicts per pair, aggregate before unblinding."
 }
