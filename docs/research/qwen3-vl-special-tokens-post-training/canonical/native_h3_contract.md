@@ -95,7 +95,7 @@ Do not use one phrase such as “the H3 image/video processor” for all of thes
    node exposes it as `video_policy="encoder"`. A CLIP that declares nothing,
    core's `CLIPLoader` included, resolves `encoder` to the native path; the
    substitution is made once and logged. Until 2026-08-25 the policy read the
-   current W4 artifact's snapshot whichever CLIP was loaded; enforced by `bench/check_reference_runtime.py::encoder_policy_binds_to_the_loaded_clip` and its red mutations M7/M8.
+   current W4 artifact's snapshot whichever CLIP was loaded; enforced by the `encoder_policy_binds_to_the_loaded_clip` case that `bench/check_reference_runtime.py` carried until 2026-09-13, removed with the `encoder` policy and its red mutations M7/M8.
 
 The current release and encoder video configurations may agree today. Their
 ownership remains separate so future divergence cannot silently change a

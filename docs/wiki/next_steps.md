@@ -13,6 +13,27 @@ pointer goes; this list is stale the moment the roadmap disagrees with it.
 Items from the `mrpink` helper lane first; `evalman`'s render lane appends its
 own below the rule.
 
+**2026-09-13:**
+
+- **Reference-view ablation, second edition, queued.** `bench/refview2_arms.json`:
+  five ref2va scene graphs (`h3_config.REFVIEW2_SCENES`,
+  `workflows/h3_probe_refview2_*.json`) built at `MiniMaxH3AppendRefImage`'s
+  new defaults (vendor parity: 2048 short edge, upscale on, one copy for both
+  the video VAE and Qwen3-VL), six arms per scene as widget patches
+  (`parity`, `up_q512`, `noup_shared`, `noup_q512`, `noup_q1024`,
+  `noup_q2048`). Render through `bench/run_graph_arms.py`, judge blind and
+  matched-seed (`docs/eval_comparison.md`), record in `bench/results/`.
+  What it settles: the `qwen_view` default (if a `q512` arm beats `parity`
+  across scenes, the 2026-08-27 separate view was right and returns; if not,
+  `shared` stands) and the `allow_upscale` default (if `noup_shared` matches
+  `parity` on identity, the upscale buys rows and nothing else). Nothing is
+  claimed until then. The old three-arm Gate 6 family
+  (`h3_probe_refview_{a_source,b_qwen2048,c_parity}`,
+  `bench/gate6_refview_arms.json`) was never rendered and is deleted; the
+  owner's decisions of the day are in [`decisions.md`](decisions.md).
+- Before queueing a reference render, wire `MiniMaxH3ReferenceReport` or run
+  `bench/preflight_graph.py`: both price what each reader sees.
+
 **2026-09-12:**
 
 - Audio-freeze lane: [`../h3_audio_freeze.md`](../h3_audio_freeze.md)

@@ -1,6 +1,6 @@
 # Where our custom nodes differ from every other H3 implementation
 
-last updated: 2026-09-10 (one §5.4 sentence and one §6 row added; everything else is the 2026-08-28 pass)
+last updated: 2026-09-13 (the AWQ loader rows, the `encoder` policy and §4.1's reference-view row corrected after the owner's decisions of that day, `docs/wiki/decisions.md`; 2026-09-10 added one §5.4 sentence and one §6 row; everything else is the 2026-08-28 pass)
 
 The companion to [`comfyui_vendor_gaps.md`](comfyui_vendor_gaps.md). That file
 asks how native ComfyUI differs from the MiniMax release. This one asks the
@@ -62,7 +62,8 @@ without it, **convenience** means the graph could be wired by hand instead, and
 | `MiniMaxH3VAEPrecision` | instrumentation | the fp32 probe arm, not the canonical graphs |
 | `MiniMaxH3ProvenanceStamp` | instrumentation | bench only |
 | `MiniMaxH3MarkerArm` | instrumentation | **no** |
-| `MiniMaxH3AWQEncoderLoader` | format adapter | **no** |
+| `MiniMaxH3EncoderLoader` | load-bearing (it refuses a bad load) | yes |
+| `MiniMaxH3ReferenceReport` | instrumentation | **no** (a UI node; the conditioner's preview carries the same text) |
 
 The registered nodes wired by no shipped graph are not dead code, and the
 distinction matters:
@@ -77,13 +78,14 @@ distinction matters:
   2026-08-28**, so it no longer appears in the node picker while saved graphs
   that wire it keep loading. Three reasons it is not merely redundant: chaining
   it in front of the append resamples TWICE, it hardcodes `size_policy="max"`
-  and cannot express `match`, and it has no `qwen_short_edge`, so it cannot give
+  and cannot express `match`, and it has no `qwen_view`, so it cannot give
   the text encoder a view separate from the VAE's. `MiniMaxH3ReferenceVideoFit`
   is NOT deprecated -- it is unwired but still live as the reporter
   `bench/check_ref_video_prediction.py` grades core's behaviour against.
-- `MiniMaxH3AWQEncoderLoader` is a **format adapter with no current consumer**,
-  but live code: `bench/preflight_graph.py` and `workflows/h3_config.py` both
-  read its `ARTIFACT_SNAPSHOTS`. See §5.1.
+- `MiniMaxH3AWQEncoderLoader` **was deleted on 2026-09-13** with the AWQ
+  lane's code (`docs/wiki/decisions.md`). Until then this row called it a
+  format adapter with no consumer but live code, read by preflight and the
+  config. See §5.1.
 - `MiniMaxH3MarkerArm` is a research instrument.
 - **`MiniMaxH3SolAttnCurve` was deleted on 2026-08-31** and is no longer in
   this table. It supplied a `hilbert` token ordering by rebinding
@@ -194,7 +196,9 @@ LoadImage ─> MiniMaxH3AppendRefImage ─> MiniMaxH3AppendRefImage ─REFERENCE
 consequential thing our nodes do differently from everyone else** (§4.1).
 Stage one (`reference_fit.py::fit_reference_image`) sets the geometry the VAE
 and the DiT see. Stage two (`qwen_view_size`) builds a *second* view from the
-source for the text encoder alone.
+source for the text encoder alone, when `qwen_view=separate`; since 2026-09-13
+the default is `shared`, one copy for both, and `MiniMaxH3ReferenceReport`
+draws what each reader gets.
 
 ### Reading traps in the shipped JSON
 
@@ -205,10 +209,12 @@ is a bug; all three will mislead anyone pricing a render from the file.
    beside `canvas: "from_keyframe"`, which routes to the anchor-derived canvas
    instead (`conditioning.py::execute`). The tooltip says so; the JSON still
    carries an authoritative-looking value, and it overstates the video rows.
-2. **`video_policy: "encoder"` is inert on every graph that requests it.** Core's
-   `CLIPLoader` stamps no `_h3_encoder_contract`, so
-   `reference_geometry.py::effective_policy` resolves it to `comfy`. Only a log
-   line reports the substitution.
+2. **`video_policy: "encoder"` no longer exists.** Until 2026-09-13 most graphs
+   carried it and it was inert: core's `CLIPLoader` stamped no
+   `_h3_encoder_contract`, so `reference_geometry.py`'s `effective_policy`
+   resolved it to `comfy`, and only a log line reported the substitution. The
+   rebuilt graphs carry `comfy`, which is what ran; the value and the function
+   are gone.
 3. **UI and API forms are not node-for-node identical.** Disabling a node is a
    mode flag in the UI form and omission in the API form, and the UI graphs
    carry a preview node the API graphs do not. Anything grading graphs by node
@@ -226,7 +232,7 @@ is a bug; all three will mislead anyone pricing a render from the file.
 | `MiniMaxH3AddGuide` | none | — | arbitrary-frame guides are reachable only through core, and chain onto ours unchanged |
 | `MiniMaxH3SigmaShift` | none | consumed | a core node, used as-is on every graph |
 | `optimized_attention` / `_override` | `MiniMaxH3SageAttention` | replaces | per-module forward object patch |
-| core `CLIPLoader` | `MiniMaxH3AWQEncoderLoader` | alternate format | contract stamping (§5.1) |
+| core `CLIPLoader` | `MiniMaxH3EncoderLoader` | wraps | core's own load, then refuses a silently incomplete load or wrong marker ids, and stamps what core's preprocessing will do (§5.1) |
 | one `vae_dtype` | `MiniMaxH3VAEPrecision` | wraps | encode and decode split apart |
 | `LoraLoaderModelOnly` | `MiniMaxH3PDDLoRA` | supplements | core's loader applies the backbone and silently skips the mechanisms that are not weight patches |
 | width/height ints, image scaling | `Resolution`, `KeyframeCanvas`, `ReferenceFit`, `ReferenceVideoFit` | supplements | — |
@@ -257,18 +263,20 @@ they are ranked here by whether they change the output or only the cost.
 
 ### 4.1 Changes the output
 
-**1. The reference view the text encoder sees — three independent
-implementations agree, and we differ.** sglang, DiffSynth and diffusers all feed
-**one** prepared reference tensor to both the VAE and Qwen. Our append node sets
-a separate, much smaller `qwen_short_edge` view for the encoder. This is
-deliberate, documented and dated: it was the fix for a two-speaker scene whose
+**1. The reference view the text encoder sees: three independent
+implementations agree, and since 2026-09-13 so do our defaults.** sglang,
+DiffSynth and diffusers all feed **one** prepared reference tensor, at a 2048
+short edge with upscaling, to both the VAE and Qwen. `MiniMaxH3AppendRefImage`
+now defaults to the same (`size_policy=max`, `dit_short_edge=2048`,
+`allow_upscale=True`, `qwen_view=shared`; owner, `docs/wiki/decisions.md`).
+From 2026-08-27 until then the node set a separate, much smaller 512 view for
+the encoder, deliberate and dated: the fix for a two-speaker scene whose
 dialogue was misattributed after upscaled references crowded the prompt out of
-its own segment. But the fix is *priced, not proven* — one render, one seed, and
-arithmetic consistent with it — and it is now three-against-one on a mechanism
-nobody has measured. `h3_config.py`'s own note already says the arm that would
-settle it holds the weights fixed and varies only the bounds, and that it is not
-reachable from a graph. **This is the strongest open candidate in this
-document.**
+its own segment, *priced, not proven* on one render and one seed (CHANGELOG
+0.82.0). That view is still available as `qwen_view=separate`. The ablation
+that would judge it is built and unrendered: `bench/refview2_arms.json`, six
+arms on five scene graphs (`h3_config.REFVIEW2_SCENES`). **This is the
+strongest open candidate in this document.**
 
 **2. `er_sde` against deterministic Euler.** sglang runs eta-0 Euler with no
 noise after the initial draw. We run a stochastic multistep SDE that injects
@@ -367,20 +375,25 @@ Where the graphs could be wired two ways, this is what the choice costs.
 
 ### 5.1 Text-encoder loader
 
-Every shipped graph wires core `CLIPLoader` with the INT8 ConvRot encoder.
-`MiniMaxH3AWQEncoderLoader` is wired by none. The generator picks the loader
-**from the filename**, against `workflows/h3_config.py::CORE_LOADED_ENCODERS`, so a graph
-can never name a file its loader cannot open (*read*).
+Every shipped graph wires `MiniMaxH3EncoderLoader` with the INT8 ConvRot
+encoder (`h3_config.MODELS["clip"]`): core's own `CLIPLoader` load, then a
+refusal if the load left parameters unpopulated or the marker ids are not the
+release's, and a stamp saying what core's preprocessing will do
+(`h3_encoder_loader.native_encoder_contract`, read out of core). The generator
+refuses any file outside `workflows/h3_config.py::CORE_LOADED_ENCODERS`, so a
+graph can never name a file the loader cannot open (*read*).
 
-The downstream difference is larger than which weights load. Only the adapter
-stamps an encoder contract. Without it: the artifact's declared still-image
-bounds never install, core's far wider defaults bind instead, the clamp
-disclosure and preflight's bounds check go dark, two load-time validations
-disappear, and `video_policy: "encoder"` silently resolves to `comfy` on every
-graph that asks for it. What is gained: a stock load path with no repo code on
-it, and the encoder that sits closest to the BF16 release at the layer that
-matters. `REF_QWEN_SHORT_EDGE` is the compensating clamp — and per §4.1 it is a
-stated prior with one supporting render, not a measurement.
+History. Until 2026-08-27 the graphs loaded a compressed-tensors W4A16 AWQ
+artifact through `MiniMaxH3AWQEncoderLoader`, a format adapter that also
+installed the artifact's own narrow still-image bounds; from 2026-08-29 they
+loaded the INT8 file through core's bare `CLIPLoader`, which stamps nothing,
+so `video_policy: "encoder"` resolved to `comfy` on every graph that asked for
+it. On 2026-09-13 the adapter, its snapshots and the `encoder` policy were
+deleted (`docs/wiki/decisions.md`). What is kept: a stock load path with the
+guards core lacks, and the encoder that sits closest to the BF16 release at
+the layer that matters. `REF_QWEN_SHORT_EDGE` is no longer a compensating
+clamp on the default path; it pre-fills `qwen_view=separate`, and per §4.1 it
+is a stated prior with one supporting render, not a measurement.
 
 ### 5.2 Attention
 
@@ -403,8 +416,9 @@ See the PDD document.
 ### 5.4 Conditioning, resolution, VAE, caching
 
 Our two conditioners replace core's everywhere. The reference `image_policy` is
-`comfy` on every reference graph; `video_policy` is `encoder` on most and
-`release` on a few — and per §2 the `encoder` value does not currently run.
+`comfy` on every reference graph; `video_policy` is `comfy` on all but the
+`release` probe arm (walk `h3_config.graph_paths`). The `encoder` value most
+graphs used to select never ran and was removed on 2026-09-13 (§2).
 `MiniMaxH3Resolution` is convenience over typing two integers, and is wired
 almost everywhere. The VAE-precision and cache axes are single-graph probes,
 both carrying committed measurements. A conditioning-encode cache, if one is

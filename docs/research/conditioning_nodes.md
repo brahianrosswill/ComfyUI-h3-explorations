@@ -97,7 +97,7 @@ while the loaded encoder's duration-aware Qwen policy runs. Both `encoder`
 stages bind to the CLIP the node was handed: the loader stamps its artifact's
 declaration and `encoder_contract_from_clip` reads it back; a CLIP that
 declares nothing resolves to the native path, once, logged. Until 2026-08-25
-they read the W4 snapshot whichever CLIP was loaded; enforced by `bench/check_reference_runtime.py::encoder_policy_binds_to_the_loaded_clip` and its red mutations M7/M8.
+they read the W4 snapshot whichever CLIP was loaded; enforced by the `encoder_policy_binds_to_the_loaded_clip` case that `bench/check_reference_runtime.py` carried until 2026-09-13, removed with the `encoder` policy and its red mutations M7/M8.
 `release` applies both vendor video stages; `comfy` remains the stock control.
 
 The current compressed-tensors W4 still-image ceiling is not the native defect

@@ -106,6 +106,22 @@ its scene headings against the verdicts here rather than trusting a count. **All
 finding the catch-all row above already carried. They are listed individually
 only so the catalogue's scene names all resolve to something here.
 
+### Verdicts added 2026-09-13
+
+The five scenes of the rebuilt reference-view ablation
+(`bench/refview2_arms.json`, `h3_config.REFVIEW2_SCENES`), each a bank prompt
+graded clean at 345 frames (`docs/prompt_bank.md` has the grade command per
+prompt). None has rendered; these verdicts are about the prompt text, and the
+ablation's verdicts will be the owner's, blind over seeds, in `bench/results/`.
+
+| scene | mode | verdict | why |
+|---|---|---|---|
+| `ref2va_diner_breakup_refs` | ref2va | **keep** | the diner breakup with both speakers and the room carried from three pictures; inside ref §5.2's word band; the three-still scene of the ablation |
+| `ref2va_night_porter_refs` | ref2va | **keep** | the night porter from one picture, one sung line, two shots; inside the band; the one-still non-human-face scene |
+| `ref2va_stairwell_dialogue_backstage` | ref2va | **keep** | the stairwell dialogue with two speakers carried from ONE picture (a backstage pair), a deliberate two-subjects-one-`<Picture 1>` case; inside the band |
+| `ref2va_stairwell_dialogue_circus` | ref2va | **keep** | the same dialogue as stylised 3D animation from two animated-character stills, medium and identity carried at once; inside the band |
+| `ref2va_studio_dancer_close_refs` | ref2va | **keep** | the studio dancer close from one picture, no vocal sound, two shots cut on the beat; inside the band; the scene whose face the owner has already judged on the t2va version |
+
 ### Misalignments: one closed, one withdrawn, one open
 
 `prompting.md` §14.3 is the long form and owns all three.

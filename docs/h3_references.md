@@ -4,7 +4,7 @@
 is, what ComfyUI actually does to it, what it costs, and how to write the
 prompt so the model uses it the way you meant.
 
-last updated: 2026-08-25
+last updated: 2026-08-25; the reference policies, the append node's defaults and the reference-view ablation corrected 2026-09-13 (`docs/wiki/decisions.md`)
 
 Sources: MiniMax's official prompt guide, general prompting research, ComfyUI's
 own code, and **sglang's MiniMax H3 serving path** (`coderef/sglang`, read at
@@ -152,7 +152,14 @@ for graphs that explicitly wire it.
 *generation's pixel area*. sglang's ceiling does not move with the canvas: it is
 a fixed 2048 short edge with no area cap, so a 16:9 reference lands near 7.5 MP
 where `match` on a 1344x768 render lands near 1 MP. `max` fixes the ceiling and `allow_upscale` fixes the
-floor; you need both to condition the way the release is served.
+floor; you need both to condition the way the release is served. **Since
+2026-09-13 a freshly dragged `MiniMaxH3AppendRefImage` does both**: its
+defaults are `size_policy=max`, `dit_short_edge=2048`, `allow_upscale=True`
+and `qwen_view=shared`, one prepared still for both the video VAE and
+Qwen3-VL, which is what sglang, diffusers and DiffSynth do
+([`research/sglang_h3_pipeline.md`](research/sglang_h3_pipeline.md)
+"Reference stills"). Read the values from the node's `define_schema`;
+`bench/refview2_arms.json` is the ablation that would move them.
 
 **On the typed path both live on `MiniMaxH3AppendRefImage`** and that is the
 whole of it. The sentence you may remember -- that the floor needs
@@ -184,8 +191,10 @@ reach 7.5 megapixels when the video cannot exceed about one.
    routes through its canvas resolver. Native ComfyUI still has this
    divergence. This repo's typed conditioner can handle it locally with
    `video_policy=release`, which also enables the coupled Qwen stage below;
-   generated graphs use `video_policy=encoder`, which keeps native-compatible
-   VAE sizing while enabling only the source-config Qwen stage.
+   generated graphs use `video_policy=comfy`, the default, which is core's
+   behaviour. (The `encoder` value most graphs selected until 2026-09-13
+   always resolved to `comfy` on the shipped encoder and was removed;
+   `docs/wiki/decisions.md`.)
 3. Truncated to the **generated** frame count, then snapped **down** to the
    `17n+5` grid. Fewer than 5 frames raises.
 4. VAE-encoded whole. Those rows ride **every sampling step**.
@@ -514,10 +523,10 @@ clip-wide and becomes duration-sensitive. Native ComfyUI applies 12,845,056 to
 each two-frame block independently, so it never enforces that whole-clip row
 budget. The executed boundary is source-dependent: it starts at legal H3
 lengths of 311 frames for a 1344x768 input, but is outside the legal range for
-the measured 960x544 input. The locally shipped `encoder` policy applies the
-loaded encoder's duration-aware Qwen stage, read off the CLIP's stamped
-contract (a CLIP that declares nothing resolves to native); `comfy` retains
-native behavior and `release` applies both vendor video stages.
+the measured 960x544 input. `comfy`, the default, retains native behavior and
+`release` applies both vendor video stages; the `encoder` policy that used to
+sit between them was removed on 2026-09-13 because it resolved to `comfy` on
+the shipped encoder.
 
 **Above, and this is measured rather than derived.**
 `bench/measure_qwen_bounds_bite.py` calls the real `process_qwen2vl_images`
@@ -754,8 +763,12 @@ construction, both `(w/32)*(h/32)`, and the only genuine extra is the per-
 reference `<Picture N>: ` label plus its vision delimiters — a handful of
 tokens. It may rest on a measurement that was never recorded here. **Price the
 two views with `bench/preflight_graph.py`, which reports each separately and
-says when one was clamped and by whose bounds, rather than applying a rule of
-thumb from this page.**
+says when one was clamped and by whose bounds, or wire the chain into
+`MiniMaxH3ReferenceReport` (`reference_report.py`), which draws both copies of
+every reference, the packed sequence and the prompt's share of the text
+segment from the conditioner's own sizing functions and touches no model but
+the tokenizer, rather than applying a rule of thumb from this page.** The
+conditioner shows the same text as an on-node preview after it runs.
 
 Nothing here says the 2048 version looks better. That is
 `docs/open_experiments.md` #1, still unmeasured, and its own entry notes that
@@ -763,6 +776,17 @@ Nothing here says the 2048 version looks better. That is
 because upscaling adds tokens rather than detail."
 
 ### Both stages on three real sizes, and what the v2 decision changes
+
+> **History note, 2026-09-13.** The v1 and v2 W4 artifacts this section
+> compares, the loader that stamped their contracts and the `encoder` policy
+> that read them were deleted with the AWQ lane's code
+> (`docs/wiki/decisions.md`). The table stands as the computation of its
+> date; on the shipped encoder the Qwen column is the v2 column, because
+> core's own bounds bind nothing a reference node produces
+> (`bench/results/2026-08-29_qwen_view_under_snapshot.json`). The owner
+> decision below is the calibration lane's and is closed with it; the
+> shipped node defaults are now choice B (vendor parity), and
+> `bench/refview2_arms.json` is the ablation that compares it with A.
 
 The table above is the DiT half. A reference is sized twice, and the second
 stage is the encoder's own processor bounds, which can only shrink what Qwen
@@ -827,14 +851,18 @@ where 0 meant "no separate view" -- a number selecting a mode, which is the
 shape the literal-widget rule (`bench/check_literal_widgets.py`) forbids and which also rendered
 differently through the UI than through an API prompt that omitted it.
 `MiniMaxH3AppendRefImage.qwen_view` gives the text encoder a
-view of the reference that the video VAE does not encode. With 0, Qwen sees
-the same tensor the VAE encodes, which is every graph built before the knob
-existed. With N, the conditioner is shown the *source* scaled so its shorter
-side reaches N (nearest 32, one Lanczos resample, upscaling allowed, so a 4k
-source comes down to N as well), while the VAE keeps the stage-one view chosen
-by `size_policy` / `short_edge` / `allow_upscale`. Under `image_policy` of
-`encoder` or `release` the stage-two bounds are pre-applied to the Qwen view
-alone; the VAE view is no longer clamped when a Qwen view exists.
+view of the reference that the video VAE does not encode. With `shared`, Qwen
+sees the same tensor the VAE encodes, which is every graph built before the
+knob existed and, **since 2026-09-13, the default again**: vendor parity, one
+prepared still for both readers. With `separate` and its `qwen_short_edge` N
+(pre-filled from `h3_rules.REF_QWEN_SHORT_EDGE`), the conditioner is shown
+the *source* scaled so its shorter side reaches N (nearest 32, one Lanczos
+resample, upscaling allowed, so a 4k source comes down to N as well), while
+the VAE keeps the stage-one view chosen by `size_policy` / `dit_short_edge` /
+`allow_upscale`. `separate` at 512 was the shipped default from 2026-08-27 to
+2026-09-13, on one observation (CHANGELOG 0.82.0). Under `image_policy=release`
+the stage-two bounds are pre-applied to the Qwen view alone; the VAE view is
+no longer clamped when a Qwen view exists.
 
 Why this breaks no contract is section 1b of
 [`h3_conditioning_end_to_end.md`](h3_conditioning_end_to_end.md): nothing
@@ -843,14 +871,22 @@ run VAE-fine / Qwen-coarse, and video is 2 fps pairs against 24 fps latents by
 design. What it changes is the cost split in the table above: only the Qwen
 column grows. A 640x480 reference at `qwen_view.qwen_short_edge=2048` costs the same 300
 reference-latent rows as choice A and the same 5,440 Qwen tokens as choice B,
-which is the B arm of the reference-view ablation (A: no upscale; B: Qwen-only
-2048; C: full parity). Whether B helps is unmeasured and is the owner's blind
-matched-seed comparison to judge after v2 lands.
+which is the `noup_q2048` arm of the reference-view ablation:
+`bench/refview2_arms.json`, six arms per scene as widget patches on five
+ref2va scene graphs (`h3_config.REFVIEW2_SCENES`,
+`workflows/h3_probe_refview2_*.json`, each built at the node defaults, so
+`parity` is the graph as built). The earlier three-arm family
+(`h3_probe_refview_{a_source,b_qwen2048,c_parity}`) was priced on 2026-08-25,
+never rendered, and deleted on 2026-09-13. Whether any arm helps is
+unmeasured and is the owner's matched-seed comparison to judge.
 
 **The caveat, and which regime you are in decides everything.** The loaded
 encoder's own processor applies its bounds afterwards, so this knob is only ever
-worth as much as the selected artifact's still-image budget allows. There are
-three regimes and they do not agree:
+worth as much as the selected artifact's still-image budget allows. There were
+three regimes and they did not agree; **since 2026-09-13 only the last row is
+a regime this install can be in**, the v1 and v2 artifacts and their loader
+having been deleted with the AWQ lane's code. The table stays as the record's
+shape:
 
 | encoder | still bounds | what `qwen_view.qwen_short_edge` does |
 |---|---|---|
@@ -880,12 +916,13 @@ the reason given here** -- it is live because INT8 loads through core's
 `CLIPLoader`, which stamps no `_h3_encoder_contract`, so no snapshot's bounds
 are installed and core's own defaults apply, 43x wider than v1's.
 `h3_config.py`'s note on `ENCODER_INT8` owns this and is the current one. Read the
-budget with `h3_awq_encoder.py::source_image_pixel_bounds`, never from prose;
-`bench/preflight_graph.py` prices both views per reference and says on the
-line when the Qwen view was clamped and by whose bounds. Controlled by
+bounds from what `MiniMaxH3EncoderLoader` stamps
+(`h3_encoder_loader.native_encoder_contract`, read out of core, never typed),
+never from prose; `MiniMaxH3ReferenceReport` shows on the line when the
+encoder's copy was moved by them, and `bench/preflight_graph.py` prices both
+views per reference the same way. Controlled by
 `bench/check_reference_runtime.py::qwen_view_is_separate_from_the_vae_view`
-and `preflight_prices_the_two_views`; the red harness's M9 feeds the Qwen view
-to the VAE and must go red.
+and `preflight_prices_the_two_views`.
 
 ### Should video and audio have fit nodes too?
 
@@ -907,14 +944,16 @@ not, and the divergence that remains is multichannel, where core silently keeps
 the first two channels and the typed boundary refuses. Preflight reports native
 socket graphs separately, including "unreadable" when ffprobe cannot answer.
 
-**Video: full release parity remains opt-in; the encoder-aware hybrid is now
-the generated default.** The divergence is the same shape as the image one —
-native ComfyUI never upscales, where the release puts the clip on the full
-canvas rule — but video is the most expensive reference input.
-`MiniMaxH3ReferenceConditioning.video_policy=encoder` keeps the native
-no-upscale VAE view while applying the custom encoder's source-config,
-duration-aware processor to the raw 2 fps Qwen samples. `comfy` remains the
-native preprocessing control; `release` is the explicit full-parity experiment.
+**Video: full release parity remains opt-in; `comfy` is the generated
+default.** The divergence is the same shape as the image one, native ComfyUI
+never upscales where the release puts the clip on the full canvas rule, but
+video is the most expensive reference input.
+`MiniMaxH3ReferenceConditioning.video_policy` offers two values: `comfy`, the
+default, is core's no-upscale VAE view and per-pair Qwen processor; `release`
+is the explicit full-parity experiment. The `encoder` hybrid that sat between
+them until 2026-09-13 (the native VAE view plus the loaded encoder's
+duration-aware Qwen stage, read off a stamped contract) resolved to `comfy` on
+the shipped encoder and was removed.
 
 `release` owns two inseparable stages. It upscales the full-rate view to
 `adapt_canvas` for the video VAE, then independently sends the raw 2 fps Qwen
@@ -1317,8 +1356,10 @@ rather than the typed chain, and one loads `fl2va`.
   **Locally handled in shipped graphs** by the typed compiler's derived cap;
   core's own behaviour is unchanged, so this stays a native limitation.
 - **`ref_image_size='max'` does not upscale.** Neither mode does. It picks
-  which ceiling sizes a reference down; `MiniMaxH3ReferenceFit` with
-  `allow_upscale=True` is the only thing that raises a small one to it.
+  which ceiling sizes a reference down; `MiniMaxH3AppendRefImage` with
+  `allow_upscale=True` (its default since 2026-09-13; the deprecated
+  `MiniMaxH3ReferenceFit` did the same on the native path) is the only thing
+  that raises a small one to it.
 - **Reference video is truncated to the generated frame count**, so a short
   render cannot be conditioned on a long reference.
 - **12-total and audio-never-alone are unenforced** by ComfyUI — and by

@@ -37,12 +37,12 @@ checkout is and is not evidence of.
 
 | stage | our code | owner | guard | compare against |
 |---|---|---|---|---|
-| encoder load | core `CLIPLoader`; `MiniMaxH3AWQEncoderLoader` is the alternate | [`../h3_awq_encoder.md`](../h3_awq_encoder.md) | `check_h3_awq_encoder.py` | — |
+| encoder load | `MiniMaxH3EncoderLoader` (`h3_encoder_loader.py`): core's own load plus the guards core lacks, on every generated graph. The AWQ adapter that was the alternate was deleted 2026-09-13 ([`decisions.md`](decisions.md)) | [`../h3_conditioning_end_to_end.md`](../h3_conditioning_end_to_end.md) section 0 | `check_h3_encoder_loader.py` | — |
 | prompt structure | `prompt_bank/<id>.txt`, loaded by id through `workflows/prompts.py` (the generator's constants were literals until 2026-09-03) | `vendor_guides/` | `preflight_graph.py` grades sections, markers, labels — **reports, never refuses**; motion vocabulary is **nothing** | sglang's presentation stage |
 | text encode | core `comfy/text_encoders/minimax.py` | [`../research/official_weights_metadata.md`](../research/official_weights_metadata.md) | — | all four; they agree here |
 | keyframes | `MiniMaxH3Conditioning`, `keyframe_canvas.py` | [`../h3_conditioning_end_to_end.md`](../h3_conditioning_end_to_end.md) | `check_conditioning_behaviour.py`, against core as reference | sglang |
 | reference ingestion | the three `AppendRef*` nodes | [`../h3_references.md`](../h3_references.md) | `check_reference_runtime.py` — order, fps, duration, mono, policy | sglang, DiffSynth, diffusers |
-| reference sizing | `reference_fit.py`, `reference_geometry.py` | [`../h3_references.md`](../h3_references.md) | `check_reference_fit.py`; the **encoder view split is three-against-one and unmeasured** | all three agree against us |
+| reference sizing | `reference_fit.py`, `reference_geometry.py`, `reference_report.py` (`MiniMaxH3ReferenceReport` prices both copies of every reference) | [`../h3_references.md`](../h3_references.md) | `check_reference_fit.py`; the append node's defaults are vendor parity since 2026-09-13 and the **encoder view split is an option, unmeasured** (`bench/refview2_arms.json`) | all three agree with the defaults |
 | packing and positions | core `comfy/ldm/minimax/model.py` | [`../h3_geometry_and_nodes.md`](../h3_geometry_and_nodes.md) | `check_reference_contracts.py` (all five contracts) | sglang; LightX2V matches core exactly |
 | canvas and length | `MiniMaxH3Resolution`, `resolution.py` | [`../h3_resolutions.md`](../h3_resolutions.md) | — | — |
 | static pricing | `MiniMaxH3Preflight`, `bench/preflight_graph.py` | [`../checks.md`](../checks.md) | reports, never refuses; **nothing** asserts it stays wired | — |

@@ -148,7 +148,7 @@ derive it from its actual `clip` before VAE encoding.
 now derives it from its actual `clip`: the loader stamps the artifact's
 declaration on the CLIP and `image_policy` / `video_policy = encoder` read it
 back, so the typed path applies the loaded encoder's ceiling before VAE
-encoding whichever loader built the CLIP; enforced by `bench/check_reference_runtime.py::encoder_policy_binds_to_the_loaded_clip` and its red mutations M7/M8. `reference_fit.py::qwen_max_pixels()` is
+encoding whichever loader built the CLIP; enforced by the `encoder_policy_binds_to_the_loaded_clip` case that `bench/check_reference_runtime.py` carried until 2026-09-13, removed with the `encoder` policy and its red mutations M7/M8. `reference_fit.py::qwen_max_pixels()` is
 unchanged and still has no `clip`, so the fit node remains a native-path
 reporter and must not be read as the AWQ ceiling.
 

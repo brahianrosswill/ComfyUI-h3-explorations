@@ -100,7 +100,7 @@ into runs rather than tagging it wholesale.
 | node | notes |
 |---|---|
 | Load Diffusion Model (`UNETLoader`) | `fl2va` checkpoint for t2v/i2v, `ref2va` for reference-to-video |
-| `CLIPLoader` | Qwen3-VL-32B text encoder, type `minimax`, when using a native Comfy H3-format artifact such as the shipped NVFP4-AWQ file. It does **not** load this repo's compressed-tensors W4A16 artifact merely because that filename appears in its menu |
+| `CLIPLoader` | Qwen3-VL-32B text encoder, type `minimax`, for a native Comfy H3-format artifact. This pack's generated graphs wire `MiniMaxH3EncoderLoader` instead (below), which is the same load plus the guards core lacks; `h3_config.MODELS["clip"]` names the file |
 | `VAELoader` x2 | video VAE and audio VAE are separate loaders |
 | `MiniMaxH3ImageToVideo` | t2v **and** i2v — `first_frame`/`last_frame` are optional, so no image wired is text-to-video |
 | `MiniMaxH3ReferenceToVideo` | reference images / video / audio → conditioning |
@@ -118,19 +118,28 @@ place the defaults live, and it carries the reasoning.
 
 ### Use from this repo
 
-**`MiniMaxH3AWQEncoderLoader`** — the loader used by every generated graph; the
-graphs currently select `qwen3vl_32b_minimax_h3_w4a16_awq.safetensors`, but the
-node itself is not filename-bound. It accepts a selected text-encoder file only
-after its metadata and complete tensor inventory match the versioned contract.
-It keeps core's
-native 50-layer H3 architecture and corrected tokenizer, adapts the source
-compressed-tensors namespace and group-128 int4 packing in memory, and executes
-the W4A16 linears through comfy-kitchen. It also consumes the versioned
-`config/` snapshot for validation and image/video preprocessing. This is local
-support for that representation; core's working NVFP4-AWQ path remains native.
-The exact native/local boundary, adaptation sequence, CUDA routing caveat and
-installed-checkpoint comparison are documented in
-[`h3_awq_encoder.md`](h3_awq_encoder.md).
+**`MiniMaxH3EncoderLoader`** (`h3_encoder_loader.py`) is the loader every
+generated graph wires: core's own `CLIPLoader` load of the INT8 file
+(`h3_config.MODELS["clip"]`), then a refusal if the load left parameters
+unpopulated or the tokenizer did not realise the release's marker ids, and a
+declaration of what core's preprocessing will do, read out of core and
+stamped on the CLIP for the reference report and preflight. It adapts no
+format and touches no weight. The W4A16 adapter that used to stand here
+(`MiniMaxH3AWQEncoderLoader`, with its `config/` snapshots and
+`h3_awq_encoder.md`) was deleted on 2026-09-13 with the closed AWQ lane
+(`docs/wiki/decisions.md`); `bench/check_h3_encoder_loader.py` is the
+current loader's control.
+
+**`MiniMaxH3ReferenceReport`** (`reference_report.py`) prices an ordered
+reference list before anything is encoded: wire it the same references,
+prompt, canvas and policies you give `MiniMaxH3ReferenceConditioning` and it
+returns a picture (what the video model sees and what the text encoder sees,
+per reference, then the packed sequence and the prompt's share of the text
+segment) and the same as text. No VAE or encoder forward; only the tokenizer.
+Every still is read twice: the video VAE's copy becomes DiT reference rows
+attended on every step (`size_policy` sizes it), Qwen3-VL's copy becomes
+vision tokens ahead of the prompt (`qwen_view` sizes it). The conditioner
+shows the same text as an on-node preview after it runs.
 
 **`MiniMax H3 SageAttention`** — the attention node. Replaces all 50 DiT
 attention forwards with SageAttention's INT8-QK / FP8-PV kernel, and *also*

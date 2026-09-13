@@ -1,6 +1,6 @@
 # What holds, and what does not
 
-Last updated: 2026-09-03.
+Last updated: 2026-09-03; the encoder and reference-sizing rows 2026-09-13.
 
 `docs/checks.md` indexes what is *checked*. `docs/open_experiments.md` indexes
 what is *not measured*. This file is the third case and the one that kept
@@ -168,18 +168,28 @@ for each, as it stood when it was written, is in `docs/rules_history.md`.
   can attribute the effect to audio; vary the transform at fixed partition.
   `docs/research/pdd/audio_under_pdd.md`.
 - **The encoder this install loads is `h3_config.MODELS["clip"]`.** The v2
-  AWQ lane was closed on 2026-08-27 rather than adopted. A different question
-  from the first row: that one is about the released weights, this one about
-  which local artifact is wired.
+  AWQ lane was closed on 2026-08-27 rather than adopted, and its code was
+  deleted on 2026-09-13 (`docs/wiki/decisions.md`); the loader every graph
+  wires is `MiniMaxH3EncoderLoader`. A different question from the first row:
+  that one is about the released weights, this one about which local artifact
+  is wired.
 - **Reference sizing: `docs/h3_references.md` is the authority.** `size_policy=max`
-  with the vendor short edge matches the vendor; `short_edge` targets the
+  with the vendor short edge matches the vendor; `dit_short_edge` targets the
   shorter side and only shrinks unless `allow_upscale`; both live on
   `MiniMaxH3AppendRefImage` and are read only under `max`.
   `MiniMaxH3ReferenceFit` is deprecated since 2026-08-28 and no shipped graph
-  wires it. `qwen_view` on the append node keeps the encoder off the video
-  view (a flat `qwen_short_edge` whose 0 meant shared until 2026-08-31). The
-  shipped encoder short edge is a prior resting on one render at one seed; the
-  refview ablation graphs are built and unrendered.
+  wires it. `qwen_view` on the append node can give the encoder a view of its
+  own (`separate`, pre-filled from `h3_rules.REF_QWEN_SHORT_EDGE`); a flat
+  `qwen_short_edge` whose 0 meant shared until 2026-08-31. **Since 2026-09-13
+  the node's defaults are vendor parity**: `max`, a 2048 short edge,
+  `allow_upscale` on, `qwen_view=shared`, one prepared still for both the
+  video VAE and Qwen3-VL, as sglang, diffusers and DiffSynth do
+  (`docs/research/sglang_h3_pipeline.md` "Reference stills"); read them from
+  the node's `define_schema`. The separate 512 view that shipped from
+  2026-08-27 rested on one render at one seed (CHANGELOG 0.82.0).
+  `bench/refview2_arms.json` is the ablation built to settle `qwen_view` and
+  `allow_upscale`, unrendered. `MiniMaxH3ReferenceReport` draws both copies
+  of every reference before anything is encoded.
 
 - **The marker ids are the release's own, fixed by construction rather than by
   literal.** No file in the release assigns `<d>`..`<|caption_end|>` an id --

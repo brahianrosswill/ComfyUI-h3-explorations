@@ -15,6 +15,65 @@ Older history lives elsewhere and is not copied here:
   decisions" and forward-plan sections.
 - `bench/results/`: the verdict records, each with its conditions.
 
+## 2026-09-13
+
+- **The AWQ lane's code is deleted** (owner). The lane closed on 2026-08-27
+  (`docs/roadmap.md` "Closed lanes"); today `h3_awq_encoder.py` and its
+  `MiniMaxH3AWQEncoderLoader`, the `config/` W4 snapshot directories,
+  `docs/h3_awq_encoder.md` and the bench tools that served them
+  (`build_h3_awq_standalone.py`, `check_h3_awq_encoder.py`,
+  `convert_h3_awq_candidate.py`, `capture_h3_encoder_states.py`,
+  `measure_qwen_view_under_snapshot.py`, `measure_still_policy_token_cost.py`,
+  `build_native_h3_calibration_batch.py`) went with it, as did
+  `h3_config.ENCODER_V1` and `ENCODER_V2`. The records under `bench/results/`
+  and `docs/research/` stay as history. `h3_config.MODELS["clip"]` is
+  `ENCODER_INT8`, and every generated graph loads it through
+  `MiniMaxH3EncoderLoader` (`workflows/build_workflows.py`, the loader
+  comment). What the prose used to claim: `docs/wiki/stages.md` named the
+  AWQ loader as the alternate encoder load; `docs/custom_node_gaps.md` §5.1
+  said every graph wires core's `CLIPLoader` and the adapter was live code
+  read by preflight and the config; `docs/h3_geometry_and_nodes.md` called it
+  "the loader used by every generated graph".
+- **The `encoder` option is gone from `MiniMaxH3ReferenceConditioning`**
+  (owner). `image_policy` and `video_policy` each offer `comfy` (default) and
+  `release` (`reference_geometry.IMAGE_POLICIES`, the conditioner's
+  `define_schema`). On the shipped core-loaded encoder `encoder` always
+  resolved to `comfy`, since the CLIP carried no contract, and for stills
+  `release` and `comfy` produce the same geometry at every legal short edge on
+  that encoder (`bench/results/2026-08-29_qwen_view_under_snapshot.json`).
+  `video_policy`'s default moved from `encoder` (which ran as `comfy`) to
+  `comfy`; every graph was rebuilt. What the prose used to claim:
+  `docs/comfyui_vendor_gaps.md` listed `video_policy=encoder` as the "shipped
+  hybrid encoder policy" and `docs/h3_references.md` said "the encoder-aware
+  hybrid is now the generated default"; both had been marked dormant on
+  2026-08-29 and are now marked removed.
+- **`MiniMaxH3AppendRefImage` defaults are vendor parity** (owner):
+  `size_policy=max`, `dit_short_edge=2048`, `allow_upscale=True`,
+  `qwen_view=shared`, which is what sglang, diffusers and DiffSynth do
+  (`docs/research/sglang_h3_pipeline.md` "Reference stills"): one prepared
+  still feeds both the video VAE and Qwen3-VL. Read the values from the node's
+  `define_schema`. Before today `allow_upscale` was off (since 2026-08-28) and
+  `qwen_view` was `separate` at 512 (since 2026-08-27, on one observation,
+  CHANGELOG 0.82.0). `h3_rules.REF_QWEN_SHORT_EDGE` is now only the value
+  pre-filled when a user picks `separate`; `REF_VIDEO_BUDGET` still sets
+  `ref_upscale=False` on the video-bearing reference arms, as an arm setting
+  for memory. What the prose used to claim: `docs/evidence.md` "Reference
+  sizing" called the 512 view the shipped default; `docs/custom_node_gaps.md`
+  §4.1 said "three independent implementations agree, and we differ";
+  `docs/h3_conditioning_end_to_end.md` said most append nodes set
+  `qwen_short_edge=512`.
+- **The reference-view ablation is rebuilt** (owner). The three-arm Gate 6
+  family (`h3_probe_refview_{a_source,b_qwen2048,c_parity}`,
+  `bench/gate6_refview_arms.json`) was priced on 2026-08-25, never rendered,
+  and is deleted. The new one is five ref2va scene graphs
+  (`h3_config.REFVIEW2_SCENES`, `workflows/h3_probe_refview2_*.json`) built
+  at the node defaults, with six arms per scene as widget patches in
+  `bench/refview2_arms.json`. Unrendered; nothing is claimed.
+- **`docs/h3_input_impacts.md` pointed at `preflight.py:28`** for the
+  99,864-row crossing; the line moved, and the docstring is the pointer now.
+  The same section gains the second ceiling, the CUDA v-side `uint32` wrap in
+  the sage fork's `csrc/fused/fused.cu`, from the fork's own CHANGELOG.
+
 ## 2026-09-12
 
 - **PDD reopened for the audio-freeze lane only** (owner: "worth testing if

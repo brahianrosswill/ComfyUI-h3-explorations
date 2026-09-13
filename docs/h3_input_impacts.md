@@ -1,6 +1,6 @@
 # What your inputs actually cost: canvas, length, and Sol-Attn together
 
-Last updated: 2026-08-17.
+Last updated: 2026-08-17; the 100,000-token section corrected 2026-09-13.
 
 Three docs already own the pieces. This one owns the **interaction**, because
 the pieces are chosen together and each of those pages answers only its own
@@ -324,10 +324,19 @@ alignment.
 This gets asked, and the number is real but it is neither a limit nor the
 model's. 99,864 is where a signed int32 byte offset overflows inside the Triton
 quantization kernels, given H3's fused qkv stride of `3 x 56 x 128 = 21504`.
-`preflight.py:28` states it, and states that the crossing is already handled in
-every sage build able to run this repo's attention node. Every shipped graph is
-already past it. The next ceiling is a uint32 wrap near 199,728 tokens, roughly
-660 frames, against a 362 maximum.
+The docstring of `preflight.py` states it, and states that the crossing is
+already handled in every sage build able to run this repo's attention node.
+Every shipped graph is already past it. The next ceiling is a `uint32` wrap
+near 199,729 rows, roughly 660 frames, against a 362 maximum. It is the second
+of two quantizer ceilings, not a second copy of the first (verified in the
+fork's code 2026-09-13): on this card `sageattn_consume` quantizes q and k
+through the fork's Triton `quant_per_thread.py`, where the int32 crossing was
+fixed in the fork's v0.7.0, and v through the CUDA kernels in
+`csrc/fused/fused.cu`, whose strides are `uint32_t` and form the global offset
+in that width. That is unmodified upstream code, unfixed, and unreachable on
+24 GB; the fork's CHANGELOG entry "The CUDA quant kernels form global offsets
+in uint32" (under "Known kernel bugs") carries the arithmetic and the
+measured margin.
 
 Three places in this repo call it "the model's ~100k ceiling"
 (`docs/SOLATTN.md:271`, `docs/bench_plan.md:23`,

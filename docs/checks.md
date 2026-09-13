@@ -360,6 +360,37 @@ WHY: owner removed the whole `internal/prompts/*.md` set on 2026-09-01. It is
 PATH: 2026-08-22_office_refs_fr_subs.md
 WHY: same set, same removal, same reason. Cited as the source of the
      owner-authored marker corpus.
+
+PATH: h3_awq_encoder.py
+WHY: the AWQ adapter, deleted 2026-09-13 with the closed encoder lane
+     (docs/roadmap.md "Closed lanes"; docs/wiki/decisions.md). The research
+     records under docs/research/ cite it as the implementation their
+     measurements ran through, and that provenance stays. Recover from git
+     history before that date.
+
+PATH: h3_awq_encoder.md
+WHY: the adapter's own document, deleted the same day for the same reason.
+
+PATH: qwen3vl_32b_minimax_h3_w4a16_awq
+WHY: the W4 artifact's config snapshot directory under config/, deleted with
+     the adapter. The records cite it as the bounds their calibration rows
+     were sized under.
+
+PATH: check_h3_awq_encoder.py
+WHY: the adapter's check, deleted with it. docs/research/official_weights_metadata.md
+     cites it as the proof that core rejected the compressed-tensors file.
+
+PATH: build_native_h3_calibration_batch.py
+WHY: the calibration-batch builder of the closed lane, deleted 2026-09-13.
+     The seam-audit records cite it as what produced their bundles.
+
+PATH: capture_h3_encoder_states.py
+WHY: the layer-50 capture tool for the W4 artifacts, deleted 2026-09-13.
+     Cited by the holdout records as the producer of their captures.
+
+PATH: measure_still_policy_token_cost.py
+WHY: swept the AWQ snapshot's still bounds against core's; deleted with the
+     snapshot it read. Its record under docs/research/ stands.
 ```
 
 

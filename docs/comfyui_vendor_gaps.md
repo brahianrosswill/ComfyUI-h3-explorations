@@ -1,6 +1,6 @@
 # Where ComfyUI's H3 path differs from the vendor's
 
-last updated: 2026-09-10 (two core commits recorded under "Settled"; row 17 added 2026-09-04; everything else is the 2026-08-29 snapshot)
+last updated: 2026-09-13 (the `encoder` policy and the AWQ adapter marked removed, see the correction below; 2026-09-10 recorded two core commits under "Settled"; row 17 added 2026-09-04; everything else is the 2026-08-29 snapshot)
 
 **Corrected 2026-08-29: this file described the compressed-tensors W4 AWQ
 artifact as the shipped encoder, and it is not.** All 159 encoder-loader nodes
@@ -33,11 +33,25 @@ not a substitute for the owner having run anything**, and three artifacts
 agreeing with each other is not three pieces of evidence. Gap 5 below survived
 the same scrutiny on 2026-08-29 and gap 15 was found while applying it.
 
-`MiniMaxH3EncoderLoader` (`h3_encoder_loader.py`, 2026-08-29) is what would
+**Corrected again 2026-09-13** (`docs/wiki/decisions.md`): the `encoder`
+value is removed from both policies, which now offer `comfy` (default) and
+`release`; every generated graph loads the INT8 file through
+`MiniMaxH3EncoderLoader` (core's load plus guards); and the W4 AWQ adapter,
+its check, its document and `config/` are deleted, the lane having closed on
+2026-08-27. Rows and sentences below that describe `video_policy=encoder` as
+selected, dormant or hybrid describe a value that no longer exists, and the
+ones that describe the W4 artifact describe deleted code; both are kept as
+the 2026-08-29 snapshot's history. The append node's defaults are vendor
+parity since the same day (`docs/h3_references.md`), which changes gap 6's
+"shipped defaults remain native-compatible" to "shipped defaults follow the
+release for stills".
+
+`MiniMaxH3EncoderLoader` (`h3_encoder_loader.py`, 2026-08-29) was what would
 make `encoder` reachable on a native artifact — it stamps a contract derived
-from core's own signatures. No shipped graph wires it yet, because doing so
-activates that policy on the 32 graphs feeding reference video for the first
-time. [`h3_conditioning_end_to_end.md`](h3_conditioning_end_to_end.md) §0 owns
+from core's own signatures. Every generated graph now wires it
+(`workflows/build_workflows.py`, the loader comment); the `encoder` policy it
+was written for was removed instead, and the stamp serves the reference
+report and preflight. [`h3_conditioning_end_to_end.md`](h3_conditioning_end_to_end.md) §0 owns
 the loader chain this rests on.
 
 Every known divergence between this ComfyUI install and the MiniMax H3 release,
@@ -94,20 +108,20 @@ compatible hardware. Its file uses the H3 namespace core detects
 `CLIPLoader` is the correct owner of that artifact. This is native ComfyUI
 support, not code from this repository.
 
-The canonical graph selection, `qwen3vl_32b_minimax_h3_w4a16_awq.safetensors`, is AWQ-calibrated
-but is a different representation: compressed-tensors W4A16, packed `int32`
-weights, group-128 scales, and the full Hugging Face
-`model.language_model.*` namespace. Core lists it because the file is in
+Until 2026-08-27 the graphs selected `qwen3vl_32b_minimax_h3_w4a16_awq.safetensors`,
+AWQ-calibrated but a different representation: compressed-tensors W4A16,
+packed `int32` weights, group-128 scales, and the full Hugging Face
+`model.language_model.*` namespace. Core lists such a file because it is in
 `models/text_encoders`, then detects that namespace as Qwen3-VL-8B and builds
-width 4096 for width-5120 tensors. The resulting load failure was reproduced
-on 2026-08-23. `MiniMaxH3AWQEncoderLoader` is this repo's local adapter for
-that representation: it accepts any selected filename only after its embedded
-metadata and complete adapted tensor inventory satisfy the versioned contract.
-It does not supply or imply generic AWQ support in core.
-[`bench/check_h3_awq_encoder.py`](../bench/check_h3_awq_encoder.py) controls
-both sides from the real files. See
-[`h3_awq_encoder.md`](h3_awq_encoder.md) for the full responsibility boundary,
-packing adaptation, processor behavior and execution-path comparison.
+width 4096 for width-5120 tensors; the resulting load failure was reproduced
+on 2026-08-23. `MiniMaxH3AWQEncoderLoader` was this repo's local adapter for
+that representation, and it never supplied or implied generic AWQ support in
+core. **The adapter, its check (`bench/check_h3_awq_encoder.py`), its
+document (`docs/h3_awq_encoder.md`) and the `config/` snapshots were deleted
+on 2026-09-13** with the closed lane (`docs/wiki/decisions.md`); the records
+under `docs/research/qwen3-vl-special-tokens-post-training/` stay. The
+generator refuses any encoder file outside
+`workflows/h3_config.py::CORE_LOADED_ENCODERS`.
 
 ---
 
@@ -120,7 +134,7 @@ Priority is by what it costs a working user, not by how interesting it is.
 | 1 | Seven special tokens absent from the tokenizer | config | **fixed in the installed checkout by merged PR 15808** | local fallback retired; native behavior is required and audited |
 | 2 | Reference video frame rate assumed, not enforced | behavioural | open | typed nodes normalize from owned loader metadata; shipped graphs also retain and check `force_rate=24` |
 | 3 | Reference image floor (`min_pixels`) | config | open | preflight reports the divergence; no general runtime parity implementation |
-| 4 | Reference image ceiling (`max_pixels`) | config | open | `MiniMaxH3ReferenceConditioning.image_policy` can opt in to one declared ceiling for both towers, off by default; core remains unchanged. **Corrected 2026-08-29**: the shipped encoder is no longer the W4 artifact, so the binding ceiling is core's 12,845,056 px, which no shipped graph reaches. What splits the two towers now is `qwen_short_edge`, deliberately, on 80 of 89 append nodes |
+| 4 | Reference image ceiling (`max_pixels`) | config | open | `MiniMaxH3ReferenceConditioning.image_policy` can opt in to one declared ceiling for both towers, off by default; core remains unchanged. **Corrected 2026-08-29**: the shipped encoder is no longer the W4 artifact, so the binding ceiling is core's 12,845,056 px, which no shipped graph reaches. What split the two towers from 2026-08-27 was `qwen_short_edge`, deliberately, on 80 of 89 append nodes; **since 2026-09-13 nothing does by default** (`qwen_view=shared`, vendor parity) |
 | 5 | Reference soundtracks not truncated | behavioural | open, **measured 2026-08-29**: 15 s against a 5.167 s target is 786 excess rows | all shipped graphs now use typed internal caps; native socket graphs remain exposed unless they trim upstream |
 | 6 | Reference media never upscaled, and never reported | behavioural | sizing divergence remains; native path does not report the choice | fit nodes report it; the typed conditioner has an opt-in atomic release-video policy, while shipped defaults remain native-compatible |
 | 7 | ~~Mono reference audio raises~~ **withdrawn**; multichannel silently truncated | behavioural | **mono: not a gap, core upmixes.** Multichannel: open | typed nodes refuse >2 channels; core keeps the first two silently |
@@ -143,12 +157,12 @@ block. The practical boundary is:
 | input role | stock-versus-release consequence | present assessment |
 |---|---|---|
 | T2VA | no pixels enter Qwen | no image/video-processor exposure |
-| FL2VA keyframe | a legal H3 canvas is inside both still-image bounds and already on the required 32-pixel grid | the stock-versus-release config difference does not change keyframe geometry. Under the current W4 loader this row is not exempt: its `preprocess_embed` treats every image embed alike, so a 1344x768 keyframe reaches Qwen under the 200,704--301,056-pixel snapshot at roughly 294 merged tokens instead of 1,008 (SOURCE, `h3_awq_encoder.py::install_source_processors`). |
+| FL2VA keyframe | a legal H3 canvas is inside both still-image bounds and already on the required 32-pixel grid | the stock-versus-release config difference does not change keyframe geometry. Under the W4 loader (deleted 2026-09-13) this row was not exempt: its `preprocess_embed` treats every image embed alike, so a 1344x768 keyframe reaches Qwen under the 200,704--301,056-pixel snapshot at roughly 294 merged tokens instead of 1,008 (SOURCE at the time, the deleted adapter's `install_source_processors`). |
 | Ref2VA still inside the common interval | inputs from 65,536 through 12,845,056 pixels satisfy both numeric bounds | a processing-policy distinction, not malformed encoding; geometry changes only if another sizing stage acts |
 | tiny or extreme-aspect Ref2VA still | the release floor can enlarge what stock leaves small; stock can hit its lower ceiling before the release | grid and visual-token count can materially differ |
 | Ref2VA video, stock native path | the release has a clip-wide sampled-frame budget; stock budgets each two-frame block independently and never upscales a small source | **MEASURED bounded divergence:** the duration-aware resize begins only for canvas-sized sources at 311+ target frames; it cannot engage inside H3's legal range for the measured 960x544 source |
-| Ref2VA video, this repo's shipped graphs | most shipped graphs select `video_policy=encoder`; the exception is the `release` probe arm. **Corrected 2026-08-29: selecting it is not running it.** With core's `CLIPLoader` there is no stamped contract, so `encoder` resolves to `comfy` and each two-frame block goes through core's own per-block budget | the loaded encoder's duration-aware Qwen stage is locally handled, bound to the CLIP's stamped contract since 2026-08-25 (enforced by `bench/check_reference_runtime.py::encoder_policy_binds_to_the_loaded_clip` and its red mutations M7/M8); the VAE view intentionally remains no-upscale, while `release` is the explicit full-parity option |
-| current compressed-tensors W4 artifact | its local loader replaces the stock still path with the artifact snapshot's 200,704--301,056-pixel budget | **MEASURED major reduction in Qwen input geometry and visual rows**, but this is an artifact-specific deployed-path gap, not a native-ComfyUI defect |
+| Ref2VA video, this repo's shipped graphs | `video_policy=comfy` on every graph but the `release` probe arm since 2026-09-13, so each two-frame block goes through core's own per-block budget. **History:** most graphs selected `encoder` from 2026-08-25, and from 2026-08-29 it was known that selecting it was not running it: with core's `CLIPLoader` there was no stamped contract, so `encoder` resolved to `comfy`; the value was removed 2026-09-13 | the VAE view remains no-upscale and the Qwen stage is core's per-pair one; `release` is the explicit full-parity option. The contract-bound `encoder` stage this cell used to describe (bound to the loaded CLIP since 2026-08-25, enforced by a `bench/check_reference_runtime.py` case, `encoder_policy_binds_to_the_loaded_clip`, that went with it) was removed with the value on 2026-09-13 |
+| the compressed-tensors W4 artifact (loader deleted 2026-09-13) | its local loader replaced the stock still path with the artifact snapshot's 200,704--301,056-pixel budget | **MEASURED major reduction in Qwen input geometry and visual rows**, but this is an artifact-specific deployed-path gap, not a native-ComfyUI defect |
 
 No row above establishes malformed tensors or a perceptual failure. Patch size,
 temporal patch size, merge geometry, H3 normalization, odd-frame padding and
@@ -491,9 +505,11 @@ artifact's, below.
 
 **Native ComfyUI status: open. Handling in this repo:**
 `MiniMaxH3ReferenceConditioning.image_policy` selects WHOSE still-image ceiling
-applies -- `comfy` (default, no opinion), `encoder`, or `release` -- and
-pre-applies the selected policy's bounds before the VAE, keeping both towers on
-one resolution. That is an opt-in local guard and it is **off by default**; the
+applies -- `comfy` (default, no opinion) or `release` (the `encoder` value was
+removed 2026-09-13) -- and pre-applies the selected policy's bounds before the
+VAE, keeping both towers on one resolution. On the shipped encoder the two
+produce the same geometry at every legal short edge
+(`bench/results/2026-08-29_qwen_view_under_snapshot.json`). That is an opt-in local guard and it is **off by default**; the
 native reference node and every graph left on `comfy` remain exposed.
 
 Until 2026-08-24 this was `MiniMaxH3ReferenceFit.keep_towers_matched`, which
@@ -513,13 +529,18 @@ first resizes at 26 sampled frames, corresponding to legal H3 lengths of 311
 frames and above; for the measured 960x544 source the first boundary would be
 outside H3's legal range. Section 2 owns those measurements.
 
-This repo's shipped reference graphs do not take that stock video path. All
-but the `release` probe arm select `video_policy=encoder`, retaining the
-cheaper no-upscale VAE view while applying the loaded encoder's stamped contract (`h3_awq_encoder.install_source_processors` stamps `_h3_encoder_contract` on the CLIP; `reference_geometry.encoder_contract_from_clip` reads it back), so `encoder` is whatever the CLIP the node was handed declares; a CLIP that declares nothing, core's `CLIPLoader` included, resolves to the native path and says so, as its duration-aware Qwen stage. Until 2026-08-25 this read the W4 artifact's snapshot whichever CLIP the graph loaded; enforced by `bench/check_reference_runtime.py::encoder_policy_binds_to_the_loaded_clip` and its red mutations M7/M8. The
-`release` policy applies both vendor stages, and `comfy` remains the native
-control. `bench/preflight_graph.py` resolves the same contract statically from
-the loader node feeding the conditioner's `clip` input and prices the encoder
-video grid from it.
+This repo's shipped reference graphs take that stock video path: all but the
+`release` probe arm select `video_policy=comfy`, the default since 2026-09-13.
+The `release` policy applies both vendor stages. **History:** until
+2026-09-13 all but that arm selected `video_policy=encoder`, meant to retain
+the cheaper no-upscale VAE view while applying the loaded encoder's stamped
+contract as its duration-aware Qwen stage (`h3_awq_encoder.install_source_processors`
+stamped `_h3_encoder_contract` on the CLIP; `reference_geometry.encoder_contract_from_clip`
+read it back), and a CLIP that declared nothing resolved to the native path
+and said so. Until 2026-08-25 it read the W4 artifact's snapshot whichever
+CLIP the graph loaded. On the shipped core-loaded encoder it therefore always
+ran as `comfy`, which is why the value was removed; the adapter and the
+contract functions went with it.
 
 Do not confuse either native policy with the current compressed-tensors W4
 artifact. Its adapter binds a separately snapshotted 200,704--301,056-pixel
@@ -1040,16 +1061,18 @@ rendered clip cannot A/B a numerical change.
 | The node that was missing entirely | [`reference_video_fit.py`](../reference_video_fit.py) |
 | Holds its copy of core's sizing rule to core's real behaviour | [`bench/check_ref_video_prediction.py`](../bench/check_ref_video_prediction.py) |
 | Opt-in local release policy | `MiniMaxH3ReferenceConditioning.video_policy=release`, controlled by [`bench/check_reference_runtime.py`](../bench/check_reference_runtime.py) and its red harness |
-| Shipped hybrid encoder policy | `video_policy=encoder`: native-compatible no-upscale VAE geometry plus the loaded encoder's duration-aware Qwen stage, bound to the CLIP's stamped contract, implemented locally and controlled against accidental release-config substitution and against a module default by the same runtime check |
+| Shipped default | `video_policy=comfy`: core's no-upscale VAE geometry and per-pair Qwen processor. The `encoder` hybrid this row used to name (native VAE view plus a stamped contract's duration-aware Qwen stage) was removed 2026-09-13; on the shipped encoder it always ran as `comfy` |
 
 ### Custom W4A16 encoder format (adjacent, not a vendor-release gap)
 
-| what | where |
-|---|---|
-| Native NVFP4-AWQ control and local compressed-tensors W4A16 loader contract | [`bench/check_h3_awq_encoder.py`](../bench/check_h3_awq_encoder.py) |
-| Repo-local loader/adaptation | [`h3_awq_encoder.py`](../h3_awq_encoder.py) (`MiniMaxH3AWQEncoderLoader`) |
-| Detailed native/local boundary and checkpoint comparison | [`docs/h3_awq_encoder.md`](h3_awq_encoder.md) |
-| Exact source artifact configs, recipes and digests | [`config/qwen3vl_32b_minimax_h3_w4a16_awq/`](../config/qwen3vl_32b_minimax_h3_w4a16_awq/) |
+Deleted on 2026-09-13 with the closed AWQ lane (`docs/wiki/decisions.md`):
+the adapter `h3_awq_encoder.py` (`MiniMaxH3AWQEncoderLoader`), its check
+`bench/check_h3_awq_encoder.py`, its document `docs/h3_awq_encoder.md` and
+the `config/` snapshot directories. Git history has them; the lane's records
+under `docs/research/qwen3-vl-special-tokens-post-training/` and
+`bench/results/` stay. The loader every graph wires is
+[`h3_encoder_loader.py`](../h3_encoder_loader.py) (`MiniMaxH3EncoderLoader`),
+controlled by [`bench/check_h3_encoder_loader.py`](../bench/check_h3_encoder_loader.py).
 
 ### The contracts underneath all of it
 
@@ -1076,11 +1099,11 @@ as a gap after the native H3-owned paths were traced.
 The release's video upscale and duration-aware Qwen resize are implemented as
 one **opt-in local policy**. `video_policy=release` puts the full-rate VAE view
 on the release canvas and independently runs the raw 2 fps samples through the
-release's own Qwen video processor. Shipped graphs now default to the local
-`video_policy=encoder` hybrid: it keeps ComfyUI's cheaper no-upscale VAE view
-while applying the custom encoder's source-config, duration-aware Qwen stage.
-`video_policy=comfy` remains available as the unmodified native preprocessing
-control. Native
+release's own Qwen video processor. Shipped graphs default to
+`video_policy=comfy`, the unmodified native preprocessing (the local
+`encoder` hybrid they selected until 2026-09-13, ComfyUI's no-upscale VAE
+view plus a stamped contract's duration-aware Qwen stage, ran as `comfy` on
+the shipped encoder and was removed). Native
 `MiniMaxH3ReferenceToVideo` still does neither stage and exposes no policy;
 this implementation therefore does not close gap 6 upstream.
 
@@ -1103,7 +1126,7 @@ A gap with no assertion behind it is a gap that will come back.
 | 1, special tokens | **fixed** in installed commit `924743af` / merged PR 15808 | [`bench/audit_h3_marker_tokenization.py`](../bench/audit_h3_marker_tokenization.py) requires and verifies native behavior |
 | 2, frame rate | open | legacy: [`bench/check_ref_prompt_labels.py`](../bench/check_ref_prompt_labels.py); typed: [`bench/check_reference_runtime.py`](../bench/check_reference_runtime.py) |
 | 3, image floor | open | preflight warning only; **no runtime parity enforcement** |
-| 4, image ceiling | open | opt-in local guard, **off by default**: `MiniMaxH3ReferenceConditioning.image_policy` (`encoder`/`release`) since 2026-08-24, replacing `MiniMaxH3ReferenceFit.keep_towers_matched`, which read the wrong ceiling under the AWQ adapter. Graphs left on `comfy` remain exposed |
+| 4, image ceiling | open | opt-in local guard, **off by default**: `MiniMaxH3ReferenceConditioning.image_policy` (`release`; `encoder` removed 2026-09-13) since 2026-08-24, replacing `MiniMaxH3ReferenceFit.keep_towers_matched`, which read the wrong ceiling under the AWQ adapter. Graphs left on `comfy` remain exposed |
 | 5, soundtrack length | open | shipped typed graphs: [`bench/check_reference_runtime.py`](../bench/check_reference_runtime.py); native socket graphs: [`bench/preflight_graph.py`](../bench/preflight_graph.py) reports required upstream handling |
 | 6, media upscale/reporting | sizing divergence remains; native path is silent | custom fit nodes report the resolution reached; the typed conditioner's opt-in `release` policy handles both video stages locally, with no claim that native sizing now matches the vendor |
 | 7, audio channels | mono **not a gap** (core upmixes); >2 channels silently truncated, open | audit only: [`bench/audit_ref_audio_channels.py`](../bench/audit_ref_audio_channels.py); local typed refusal: [`bench/check_reference_runtime.py`](../bench/check_reference_runtime.py) |

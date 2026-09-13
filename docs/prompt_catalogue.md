@@ -8,17 +8,18 @@ Scenes are ordered by how many graphs carry them, so the defaults that reach the
 
 | scene | bank id | graphs | words | shots | speakers | markers |
 |---|---|---|---|---|---|---|
-| [`LONG_T2V_PROMPT`](#long-t2v-prompt) | `t2va_covered_market` | 28 | 281 | 3 | 2 | `<d>` |
-| [`ref2va_role_character_garment_environment`](#ref2va-role-character-garment-environment) | `ref2va_role_character_garment_environment` | 16 | 173 | 1 | 0 | — |
+| [`LONG_T2V_PROMPT`](#long-t2v-prompt) | `t2va_covered_market` | 34 | 281 | 3 | 2 | `<d>` |
+| [`ref2va_role_character_garment_environment`](#ref2va-role-character-garment-environment) | `ref2va_role_character_garment_environment` | 13 | 173 | 1 | 0 | — |
 | [`ref2va_role_character_environment`](#ref2va-role-character-environment) | `ref2va_role_character_environment` | 11 | 135 | 1 | 0 | — |
 | [`ref2va_image_video_audio_music`](#ref2va-image-video-audio-music) | `ref2va_image_video_audio_music` | 5 | 264 | 1 | 0 | — |
-| [`I2V_PROMPT`](#i2v-prompt) | `i2va_lighthouse_keyframe` | 3 | 90 | 1 | 0 | — |
+| [`I2V_PROMPT`](#i2v-prompt) | `i2va_lighthouse_keyframe` | 4 | 90 | 1 | 0 | — |
 | [`MARKET_REF2V_PROMPT`](#market-ref2v-prompt) | `ref2va_market_stallholder` | 3 | 573 | 3 | 2 | `<d>` |
 | [`fl2va_interior_converge`](#fl2va-interior-converge) | `fl2va_interior_converge` | 3 | 159 | 1 | 0 | — |
 | [`ref2va_video_character_swap`](#ref2va-video-character-swap) | `ref2va_video_character_swap` | 3 | 303 | 1 | 0 | — |
 | [`BENCH_T2V_PROMPT`](#bench-t2v-prompt) | `t2va_frontier_standoff` | 2 | 379 | 3 | 2 | `<d>` |
 | [`DIALOGUE_REF2V_PROMPT`](#dialogue-ref2v-prompt) | `ref2va_stairwell_dialogue` | 2 | 625 | 3 | 2 | `<d>` |
 | [`ref2va_video_sound_structure`](#ref2va-video-sound-structure) | `ref2va_video_sound_structure` | 2 | 183 | 1 | 0 | — |
+| [`t2va_dancer_shot_face`](#t2va-dancer-shot-face) | `t2va_dancer_shot_face` | 2 | 160 | 1 | 0 | — |
 | [`DIALOGUE_T2V_PROMPT`](#dialogue-t2v-prompt) | `t2va_stairwell_dialogue` | 1 | 228 | 3 | 2 | `<d>` |
 | [`R2V_PROMPT`](#r2v-prompt) | `ref2va_image_ref_default` | 1 | 281 | 1 | 0 | — |
 | [`T2V_AISLE_LONG`](#t2v-aisle-long) | `t2va_hardware_aisle_long` | 1 | 513 | 3 | 2 | `<d>` |
@@ -28,26 +29,36 @@ Scenes are ordered by how many graphs carry them, so the defaults that reach the
 | [`T2V_SORTLINE_LONG`](#t2v-sortline-long) | `t2va_sortline_long` | 1 | 518 | 3 | 2 | `<d>` |
 | [`T2V_SORTLINE_SHORT`](#t2v-sortline-short) | `t2va_sortline_short` | 1 | 322 | 3 | 2 | `<d>` |
 | [`l2va_interior_converge`](#l2va-interior-converge) | `l2va_interior_converge` | 1 | 137 | 1 | 0 | — |
+| [`ref2va_diner_breakup_refs`](#ref2va-diner-breakup-refs) | `ref2va_diner_breakup_refs` | 1 | 878 | 3 | 2 | `<d>` |
 | [`ref2va_image_audio_music`](#ref2va-image-audio-music) | `ref2va_image_audio_music` | 1 | 184 | 1 | 0 | — |
 | [`ref2va_image_audio_voice`](#ref2va-image-audio-voice) | `ref2va_image_audio_voice` | 1 | 213 | 1 | 1 | `<d>` |
 | [`ref2va_image_video_structure`](#ref2va-image-video-structure) | `ref2va_image_video_structure` | 1 | 215 | 1 | 0 | — |
+| [`ref2va_night_porter_refs`](#ref2va-night-porter-refs) | `ref2va_night_porter_refs` | 1 | 566 | 2 | 1 | `<d>` |
 | [`ref2va_scene_kitchen`](#ref2va-scene-kitchen) | `ref2va_scene_kitchen` | 1 | 520 | 4 | 1 | `<d>`, `<|lyrics_start|>`, `<|caption_start|>`, `<|cutoff|>` |
 | [`ref2va_scene_subway`](#ref2va-scene-subway) | `ref2va_scene_subway` | 1 | 488 | 4 | 2 | `<d>`, `<|lyrics_start|>`, `<|caption_start|>`, `<|cutoff|>` |
+| [`ref2va_stairwell_dialogue_backstage`](#ref2va-stairwell-dialogue-backstage) | `ref2va_stairwell_dialogue_backstage` | 1 | 702 | 3 | 2 | `<d>` |
+| [`ref2va_stairwell_dialogue_circus`](#ref2va-stairwell-dialogue-circus) | `ref2va_stairwell_dialogue_circus` | 1 | 717 | 3 | 2 | `<d>` |
+| [`ref2va_studio_dancer_close_refs`](#ref2va-studio-dancer-close-refs) | `ref2va_studio_dancer_close_refs` | 1 | 570 | 2 | 0 | — |
 | [`ref2va_video_continuation`](#ref2va-video-continuation) | `ref2va_video_continuation` | 1 | 181 | 1 | 0 | — |
 | [`ref2va_video_garment_edit`](#ref2va-video-garment-edit) | `ref2va_video_garment_edit` | 1 | 240 | 1 | 0 | — |
 | [`ref2va_video_image_edit`](#ref2va-video-image-edit) | `ref2va_video_image_edit` | 1 | 284 | 1 | 0 | — |
 | [`ref2va_video_motion_transfer`](#ref2va-video-motion-transfer) | `ref2va_video_motion_transfer` | 1 | 181 | 1 | 0 | — |
 | [`ref2va_video_structure_only`](#ref2va-video-structure-only) | `ref2va_video_structure_only` | 1 | 146 | 1 | 0 | — |
+| [`t2va_dancer_shot_floor`](#t2va-dancer-shot-floor) | `t2va_dancer_shot_floor` | 1 | 167 | 1 | 0 | — |
+| [`t2va_studio_dancer_close`](#t2va-studio-dancer-close) | `t2va_studio_dancer_close` | 1 | 238 | 2 | 0 | — |
 
 ---
 
 ## LONG_T2V_PROMPT
 
-Carried by **28** graph(s). Sections: `integrated_multimodal_description`, `overall_soundscape`, `non_diegetic_music`.
+Carried by **34** graph(s). Sections: `integrated_multimodal_description`, `overall_soundscape`, `non_diegetic_music`.
 
 <details><summary>graphs</summary>
 
 - `h3_candidate_t2v_pdd8_baked_api`
+- `h3_candidate_t2v_pdd8_baked_audio_freeze_api`
+- `h3_candidate_t2v_pdd8_baked_audio_freeze_gain_api`
+- `h3_candidate_t2v_pdd8_baked_audio_freeze_guide_api`
 - `h3_candidate_t2v_pdd8_sol_narrow_api`
 - `h3_candidate_t2v_sol_allrows_api`
 - `h3_candidate_t2v_sol_only_api`
@@ -61,6 +72,7 @@ Carried by **28** graph(s). Sections: `integrated_multimodal_description`, `over
 - `h3_probe_t2v_pdd8_baked_sage_api`
 - `h3_probe_t2v_pdd8_dense_api`
 - `h3_probe_t2v_pdd8_sage_api`
+- `h3_probe_t2v_sol_core_api`
 - `h3_probe_t2v_sol_nosage_api`
 - `h3_probe_t2v_turbo_lx12_sage_api`
 - `h3_probe_t2v_turbo_v4_sage_api`
@@ -71,6 +83,8 @@ Carried by **28** graph(s). Sections: `integrated_multimodal_description`, `over
 - `h3_probe_vsa_api`
 - `h3_probe_vsa_dense_api`
 - `h3_text_to_video_api`
+- `h3_text_to_video_audio_freeze_2windows_api`
+- `h3_text_to_video_audio_freeze_api`
 - `h3_text_to_video_pdd_4step_api`
 - `h3_text_to_video_pdd_api`
 - `h3_text_to_video_pdd_manual_sigmas_api`
@@ -90,7 +104,7 @@ N/A
 
 ## ref2va_role_character_garment_environment
 
-Carried by **16** graph(s). Sections: `subject_definitions`, `summary`, `retention_analysis`, `detailed_description`, `overall_soundscape`, `non_diegetic_music`.
+Carried by **13** graph(s). Sections: `subject_definitions`, `summary`, `retention_analysis`, `detailed_description`, `overall_soundscape`, `non_diegetic_music`.
 
 <details><summary>graphs</summary>
 
@@ -107,9 +121,6 @@ Carried by **16** graph(s). Sections: `subject_definitions`, `summary`, `retenti
 - `h3_probe_ref_turbo768p_ref2va_api`
 - `h3_probe_ref_vae_encoder_fp16_api`
 - `h3_probe_ref_vae_encoder_fp32_api`
-- `h3_probe_refview_a_source_api`
-- `h3_probe_refview_b_qwen2048_api`
-- `h3_probe_refview_c_parity_api`
 
 </details>
 
@@ -226,11 +237,12 @@ A slow instrumental score follows the tempo and instrumentation of <Audio 2>.
 
 ## I2V_PROMPT
 
-Carried by **3** graph(s). Sections: none.
+Carried by **4** graph(s). Sections: none.
 
 <details><summary>graphs</summary>
 
 - `h3_first_frame_to_video_api`
+- `h3_first_frame_to_video_audio_freeze_api`
 - `h3_first_frame_to_video_stamped_api`
 - `h3_probe_sol_on_i2v_api`
 
@@ -435,6 +447,25 @@ non_diegetic_music:
 N/A
 ```
 
+## t2va_dancer_shot_face
+
+Carried by **2** graph(s). Sections: none.
+
+<details><summary>graphs</summary>
+
+- `h3_text_to_video_audio_freeze_shots_api`
+- `h3_text_to_video_audio_freeze_shots_repeat_api`
+
+</details>
+
+```text
+integrated_multimodal_description: [Shot 1] Live-action, cinematic, a close-up frames a dancer's face and shoulders in a bare rehearsal studio across the eight-second take, the mirrored wall soft behind her, a portable speaker off frame playing a fast, dry drum-machine pulse. She is in her twenties in a grey vest, hair tied back, face sharp and well lit, and she produces no vocal sound. Her head snaps to the lens on the downbeats and her shoulders roll on the hits between, eyebrows lifting on the fourth hit of each bar, a grin breaking and holding as the groove builds. Her lips stay closed throughout. The camera pushes in with small amplitude at slow speed until her eyes sit at the centre of the frame.
+
+overall_soundscape: Her breath comes in short controlled bursts between hits, fabric rustles at her shoulders, and bare feet squeak faintly on the sprung floor below the frame, under the dry room tone of an empty studio.
+
+non_diegetic_music: N/A
+```
+
 ## DIALOGUE_T2V_PROMPT
 
 Carried by **1** graph(s). Sections: none.
@@ -610,6 +641,46 @@ overall_soundscape: Quiet room tone with a low ambient hum throughout, unhurried
 non_diegetic_music: N/A
 ```
 
+## ref2va_diner_breakup_refs
+
+Carried by **1** graph(s). Sections: `subject_definitions`, `summary`, `retention_analysis`, `detailed_description`, `overall_soundscape`, `non_diegetic_music`.
+
+<details><summary>graphs</summary>
+
+- `h3_probe_refview2_diner_api`
+
+</details>
+
+```text
+subject_definitions:
+<Subject 1> is the young man with round black-framed glasses shown in <Picture 1>, preserving his facial identity, short dark wavy hair, pale skin and wide easy smile. The grey hooded sweatshirt and crew lanyard of <Picture 1> are replaced by a cuffed denim jacket over a white T-shirt in the target video. The dressing-room background and the woman beside him in <Picture 1> are not present in the target video.
+<Subject 2> is the young woman with purple hair tied up in a loose bun shown in <Picture 2>, preserving her facial identity, the purple hair, the small tattoo below her collarbone and the layered thin necklaces. The red plaid shirt of <Picture 2> is replaced by a pale pink cardigan, and a silver hairpin holds the bun. The sunlit apartment of <Picture 2> is not present in the target video.
+<Subject 3> is the milk bar interior shown in <Picture 3>: matte black walls, white stencilled lettering on the walls, white moulded plastic chairs with sculpted faces on their backs, small white tables and a polished concrete floor. In the target video it is lit in colour by blue and ruby neon rather than in black and white.
+
+summary:
+[reference generation] In three shots inside <Subject 3>, <Subject 1> tells <Subject 2> across a small white table that he has taken a job in another city, and she answers that he always wanted a reason to leave.
+
+retention_analysis:
+<Subject 1> (appears in [Shot 1] and [Shot 3]): fully_preserved - retain the same face, round black-framed glasses, short dark wavy hair and easy smile in every frame he appears in; only the wardrobe changes.
+<Subject 2> (appears in [Shot 2] and [Shot 3]): fully_preserved - retain the same face, purple hair in a loose bun, collarbone tattoo and layered necklaces in every frame she appears in; only the wardrobe changes.
+<Subject 3> (appears in [Shot 1], [Shot 2] and [Shot 3]): fully_preserved - retain the black walls, white stencilled lettering, white moulded chairs with sculpted faces, white tables and polished concrete floor; only the lighting changes from monochrome to coloured neon.
+
+detailed_description:
+Photorealistic live-action, 16:9, cinematic, shallow depth of field, with blue and ruby neon glow washing across the black walls and white chairs of the milk bar and steady rain audible outside. The camera work is slow and restrained, and each speaker's lips move only on their own line and are closed and still while the other speaks. No readable text is added beyond the stencilled lettering already on the walls, and no other customers are present.
+
+[Shot 1] A medium shot frames <Subject 1>, the young man with round black-framed glasses and short dark wavy hair, in a cuffed denim jacket over a white T-shirt, seated on a white moulded chair at a small white table in <Subject 3>, the milk bar, its black wall and white stencilled lettering behind him lit ruby on one side and blue on the other. A cup of black coffee sits in front of him and he stares down into it. He pushes an unlit matchbook across the white table with two fingers, looks up, and, with a vulnerable gravelly tenor and a hesitant delivery (S1), confesses: <d>[English] I took the job in Chicago. Bus leaves at midnight.</d> His lips close tightly and his jaw clenches as he waits for her reaction. The camera pushes in with small amplitude at slow speed toward his hands on the table.
+
+[Shot 2] At 00:05.200, the shot cuts to a close medium shot of <Subject 2>, the young woman with purple hair in a loose bun held by a silver hairpin, in a pale pink cardigan, her layered thin necklaces catching the blue neon, holding a white ceramic mug with both hands, a moulded chair with a sculpted face soft behind her shoulder. She raises her gaze to meet his, tears welling in her eyes, and, with a soft heartbroken contralto and a quiet level delivery (S2), murmurs: <d>[English] You always wanted a reason to leave this valley.</d> Her mouth closes into a sorrowful line and she swallows gently as a single tear rolls down her cheek. The camera holds a static shot on her wistful expression.
+
+[Shot 3] At 00:09.800, the camera cuts to a wide shot from the far end of <Subject 3>, framing <Subject 1> and <Subject 2> seated opposite each other at the small white table beneath the stencilled lettering, the row of white moulded chairs receding along the black wall and the polished concrete floor reflecting the ruby and blue neon. Neither speaks. The camera pulls out with small amplitude at slow speed, then holds a static shot as he turns the matchbook over once and she looks down into her mug until the final frame.
+
+overall_soundscape:
+Steady rain taps against glass somewhere behind the camera under a warm indoor room tone with a long reflective tail off the black walls and concrete floor. Ceramic mugs clink against the white tables, a chair leg scrapes once on polished concrete, and a neon transformer hums faintly.
+
+non_diegetic_music:
+A bittersweet, nostalgic slow dance melody at a slow tempo, featuring a warm hollow-body electric jazz guitar, lush upright bass accompaniment, and a muted vibraphone that gently decrescendos to silence.
+```
+
 ## ref2va_image_audio_music
 
 Carried by **1** graph(s). Sections: `subject_definitions`, `summary`, `retention_analysis`, `detailed_description`, `overall_soundscape`, `non_diegetic_music`.
@@ -717,6 +788,40 @@ non_diegetic_music:
 N/A
 ```
 
+## ref2va_night_porter_refs
+
+Carried by **1** graph(s). Sections: `subject_definitions`, `summary`, `retention_analysis`, `detailed_description`, `overall_soundscape`, `non_diegetic_music`.
+
+<details><summary>graphs</summary>
+
+- `h3_probe_refview2_porter_api`
+
+</details>
+
+```text
+subject_definitions:
+<Subject 1> is the man with the head of a golden cocker spaniel shown in <Picture 1>, preserving the dog's head exactly: long wavy golden-blond ears, dark round eyes, a black nose and an open panting mouth, on an adult man's body with tanned forearms and a wristwatch. The grey T-shirt, khaki trousers and conference hall of <Picture 1> are not present in the target video; he wears blue hospital scrubs under a navy zip fleece.
+
+summary:
+[reference generation] In two shots inside a hospital service lift at night, <Subject 1>, a night porter, rides down with a linen trolley, sings one quiet line to himself, and rolls the trolley out as the doors part on a dim corridor.
+
+retention_analysis:
+<Subject 1> (appears in [Shot 1] and [Shot 2]): fully_preserved - retain the golden cocker spaniel head with its long wavy ears, dark eyes and black nose, and the man's build and forearms, in every frame; only the wardrobe and setting change.
+
+detailed_description:
+Photorealistic live-action, 16:9, cinematic, with one flat white overhead panel as the only light source, brushed steel surfaces and a cool, slightly green cast. The camera moves slowly or not at all. <Subject 1> is the only person present, and his mouth moves only on the sung line.
+
+[Shot 1] A medium close shot frames <Subject 1>, the man with the golden cocker spaniel head, long wavy ears falling to the shoulders of a navy zip fleece worn over blue scrubs, standing inside a hospital service lift at night. Brushed steel walls surround him, a linen trolley heaped with folded white sheets is wedged against the back rail, and the single overhead panel throws flat white light straight down, catching the top of his ears and the black nose. One hand rests on the trolley handle and his dark eyes are turned up to the floor indicator above the doors. The camera zooms in with small amplitude at slow speed as the car settles on its cables and the number above the doors changes. <Subject 1>, with a low, slightly hoarse baritone and an unhurried phrasing (S1), sings quietly to himself: <d>[English] Down to the basement, one more round.</d> His mouth closes on the last word and stays closed. He rolls the trolley a hand's width forward as the doors begin to part on a dim corridor.
+
+[Shot 2] At 00:08.500, the camera cuts to a wide shot from the corridor looking back into the lift, the two steel doors sliding fully open to reveal <Subject 1> and the linen trolley framed square in the bright car, the corridor around the camera dim with a single strip light far down its length. He leans into the handle and pushes the trolley over the threshold, its castors rattling across the gap, the long golden ears swinging once with the effort, and walks it toward the camera. The camera holds a static shot as he passes just beside the lens, the trolley's shadow sweeping the floor, and the lift doors close behind him on the empty bright car until the final frame.
+
+overall_soundscape:
+A low mechanical hum fills the lift car under the soft rattle of trolley castors. Cables tick behind the wall panel, fabric shifts against the handrail, the doors part with a slow pneumatic sigh, and the castors change note as they cross the threshold onto the corridor's harder floor.
+
+non_diegetic_music:
+N/A
+```
+
 ## ref2va_scene_kitchen
 
 Carried by **1** graph(s). Sections: `subject_definitions`, `summary`, `retention_analysis`, `detailed_description`, `overall_soundscape`, `non_diegetic_music`.
@@ -780,6 +885,116 @@ The target video is in a cinematic live-action style.
 
 overall_soundscape:
 Brake squeal rising and cutting out as a train settles, a dense crowd shuffling and coats brushing, a single guitar strummed hard over the noise, an umbrella skittering across tile, a two-tone door chime, and pneumatic doors sealing with a hard thump.
+
+non_diegetic_music:
+N/A
+```
+
+## ref2va_stairwell_dialogue_backstage
+
+Carried by **1** graph(s). Sections: `subject_definitions`, `summary`, `retention_analysis`, `detailed_description`, `overall_soundscape`, `non_diegetic_music`.
+
+<details><summary>graphs</summary>
+
+- `h3_probe_refview2_stairwell_backstage_api`
+
+</details>
+
+```text
+subject_definitions:
+<Subject 1> is the young woman with pink hair piled loosely on top of her head shown in <Picture 1>, preserving her facial identity, the pink hair, fair skin and small features. The lace top and open olive hooded jacket of <Picture 1> are replaced by a charcoal wool coat with the collar turned up in the target video. The dressing room, the camera in her hand and the man beside her in <Picture 1> are not present as such in the target video.
+<Subject 2> is the young man with round black-framed glasses shown in <Picture 1>, preserving his facial identity, short dark wavy hair and pale skin. The grey hooded sweatshirt and crew lanyard of <Picture 1> are replaced by a navy jacket with a strap across the shoulder in the target video. The dressing room of <Picture 1> is not present in the target video.
+
+summary:
+[reference generation] In three shots on a concrete stairwell landing, <Subject 1> and <Subject 2> trade eight short clipped lines with almost no gap between them, about a plan that has moved.
+
+retention_analysis:
+<Subject 1> (appears in [Shot 1] and [Shot 2]): fully_preserved - retain the same face, pink hair piled on top of her head and small features in every frame she appears in; only the wardrobe changes.
+<Subject 2> (appears in [Shot 1] and [Shot 3]): fully_preserved - retain the same face, round black-framed glasses and short dark wavy hair in every frame he appears in; only the wardrobe changes.
+
+detailed_description:
+Photorealistic live-action, 16:9, handheld on 35mm with visible grain, shallow depth of field, lit hard and from above by a single caged bulb on the stairwell ceiling so both faces carry a bright top edge and a deep shadow under the brow and jaw. The stairwell is poured concrete with painted cinderblock walls in a flat institutional green, a steel handrail running down out of frame, and a scuffed landing floor. The camera stays handheld throughout with small continuous drift from the operator's breathing, never a deliberate move. Each speaker's lips move only on their own line and are closed and still while the other speaks. Neither smiles at any point. No other people, no readable text, no signage, no costume changes, no music.
+
+[Shot 1] A medium two-shot frames <Subject 1>, the young woman with pink hair piled on top of her head, in a charcoal wool coat with the collar turned up, facing <Subject 2>, the young man with round black-framed glasses and short dark wavy hair, in a navy jacket, on the stairwell landing, the two of them a little closer than is comfortable. <Subject 1>, with a low measured voice (S1), says: <d>[English] You said tomorrow.</d> <Subject 2>, with a lower gravelled voice (S2), answers immediately: <d>[English] It moved.</d> She says at once: <d>[English] To when?</d> He answers at once: <d>[English] Tonight.</d> Her jaw tightens, she does not step back, and the camera shakes slightly with the operator's breathing while the bulb hums overhead.
+
+[Shot 2] At 00:06.000, the camera cuts to a close-up of <Subject 1> against the painted cinderblock, the bulb throwing a hard edge down one cheek and leaving the other in shadow, the pink hair lit at the crown. She (S1) says: <d>[English] Who else knows?</d> Off screen he (S2) answers immediately: <d>[English] Nobody.</d> She says at once: <d>[English] Keep it that way.</d> She holds his eyeline a moment longer than the line needs, then looks past the camera and down toward the stairs below, her breath just visible.
+
+[Shot 3] At 00:11.000, the camera cuts to a close-up of <Subject 2>, the same hard overhead light catching the rims of his glasses and the edge of his jaw, rain noise faint through a window well behind him and a wet grey rectangle of light on the wall past his shoulder. He (S2) says: <d>[English] Understood.</d> He looks down, adjusts the strap on his shoulder with one hand, exhales once, and holds still with his lips closed until the final frame.
+
+overall_soundscape:
+Close handheld room tone in a hard concrete stairwell with a long reflective tail on every consonant and a faint electrical hum from the caged bulb overhead.
+
+non_diegetic_music:
+N/A
+```
+
+## ref2va_stairwell_dialogue_circus
+
+Carried by **1** graph(s). Sections: `subject_definitions`, `summary`, `retention_analysis`, `detailed_description`, `overall_soundscape`, `non_diegetic_music`.
+
+<details><summary>graphs</summary>
+
+- `h3_probe_refview2_stairwell_circus_api`
+
+</details>
+
+```text
+subject_definitions:
+<Subject 1> is the tall purple rabbit character shown in <Picture 1>, preserving his design exactly: lilac-purple fur, very long upright ears, narrow yellow eyes with black slits, a wide grin of flat yellow teeth, a pink and red striped one-piece with yellow buttons and yellow gloves, and a long lanky frame. The checkered floor and colourful castle of <Picture 1> are not present in the target video.
+<Subject 2> is the small jester character shown in <Picture 2>, preserving her design exactly: a white face with round pink cheek marks and wide dark eyes, a red and blue jester's hat with two bells, a red and blue harlequin bodysuit with yellow buttons, thin stick-like limbs, one red glove and one blue glove, and a nervous, wide-eyed expression. The striped tent hall of <Picture 2> is not present in the target video.
+
+summary:
+[reference generation] In three shots on a concrete stairwell landing, <Subject 2> and <Subject 1> trade eight short clipped lines with almost no gap between them, about a plan that has moved.
+
+retention_analysis:
+<Subject 1> (appears in [Shot 1] and [Shot 3]): fully_preserved - retain the purple fur, long upright ears, yellow slit eyes, flat yellow teeth, striped one-piece and yellow gloves in every frame he appears in.
+<Subject 2> (appears in [Shot 1] and [Shot 2]): fully_preserved - retain the white face, pink cheek marks, red and blue jester's hat with bells, harlequin bodysuit, stick-like limbs and mismatched gloves in every frame she appears in.
+
+detailed_description:
+Stylised 3D animation in the glossy rendered look of <Picture 1> and <Picture 2>, 16:9, with clean plastic-like surfaces, saturated colour on the characters and a muted, realistic stairwell around them. The stairwell is poured concrete with painted cinderblock walls in a flat institutional green, a steel handrail running down out of frame, and a scuffed landing floor, lit hard from above by a single caged bulb so both faces carry a bright top edge and a deep shadow beneath. The camera is handheld with small continuous drift from the operator's breathing, never a deliberate move. Each speaker's mouth moves only on their own line and is closed and still while the other speaks. No other characters, no readable text, no signage, no music.
+
+[Shot 1] A medium two-shot frames <Subject 2>, the small jester in the red and blue harlequin bodysuit and belled hat, looking up at <Subject 1>, the tall purple rabbit in the pink and red striped one-piece, whose long ears nearly brush the caged bulb, the two of them a little closer than is comfortable on the stairwell landing. <Subject 2>, with a small, tight, high voice (S1), says: <d>[English] You said tomorrow.</d> <Subject 1>, with a lazy, drawling tenor (S2), answers immediately: <d>[English] It moved.</d> She says at once: <d>[English] To when?</d> He answers at once: <d>[English] Tonight.</d> Her dark eyes widen, she does not step back, and the camera shakes slightly with the operator's breathing while the bulb hums overhead.
+
+[Shot 2] At 00:06.000, the camera cuts to a close-up of <Subject 2> against the painted cinderblock, the bulb throwing a hard edge down one white cheek and leaving the other in shadow, the two bells on her hat catching the light. She (S1) says: <d>[English] Who else knows?</d> Off screen he (S2) answers immediately: <d>[English] Nobody.</d> She says at once: <d>[English] Keep it that way.</d> She holds his eyeline a moment longer than the line needs, then looks past the camera and down toward the stairs below, the bells swinging once.
+
+[Shot 3] At 00:11.000, the camera cuts to a close-up of <Subject 1>, the same hard overhead light picking out the purple fur along his ears and the flat yellow teeth of his grin, rain noise faint through a window well behind him and a wet grey rectangle of light on the wall past his shoulder. He (S2) says: <d>[English] Understood.</d> He looks down, tugs one yellow glove tighter with the other hand, and holds still with his mouth closed until the final frame.
+
+overall_soundscape:
+Close handheld room tone in a hard concrete stairwell with a long reflective tail on every consonant, a faint electrical hum from the caged bulb overhead, and the small metallic ring of the jester's bells on each turn of her head.
+
+non_diegetic_music:
+N/A
+```
+
+## ref2va_studio_dancer_close_refs
+
+Carried by **1** graph(s). Sections: `subject_definitions`, `summary`, `retention_analysis`, `detailed_description`, `overall_soundscape`, `non_diegetic_music`.
+
+<details><summary>graphs</summary>
+
+- `h3_probe_refview2_dancer_api`
+
+</details>
+
+```text
+subject_definitions:
+<Subject 1> is the woman shown in <Picture 1>, preserving her facial identity, chin-length dark brown hair worn wet-look with a full fringe, bright blue eye makeup, silver nail polish and the small black bird tattoos on both upper arms. The pale blue draped gown and the mirrored dressing room of <Picture 1> are not present in the target video; she wears a plain grey vest and black leggings.
+
+summary:
+[reference generation] In two shots in a bare rehearsal studio, <Subject 1> dances from the waist up to a fast dry drum-machine pulse from a floor speaker, hitting sharp isolations on every beat, and ends square to the lens on a final hit.
+
+retention_analysis:
+<Subject 1> (appears in [Shot 1] and [Shot 2]): fully_preserved - retain the same face, chin-length wet-look dark brown hair with fringe, blue eye makeup and the bird tattoos on both upper arms in every frame; only the wardrobe and setting change.
+
+detailed_description:
+Photorealistic live-action, 16:9, cinematic, evenly lit by high fluorescent panels with a cool neutral palette, one mirrored wall and a sprung wooden floor. The camera is steady and the cuts land on the beat. <Subject 1> produces no vocal sound at any point.
+
+[Shot 1] A medium shot frames <Subject 1>, the woman with chin-length wet-look dark brown hair and a full fringe, blue eye makeup and small black bird tattoos on both upper arms, in a plain grey vest, from the waist up in a bare rehearsal studio, the mirrored wall behind her doubling the room and a portable speaker on the floor at the edge of frame playing a fast, dry drum-machine pulse. Her face is sharp and well lit and her eyes are locked on the lens. She moves to the beat: sharp isolations of the shoulders and head on every hit, chin snapping to the lens on the downbeats, both arms punching out and folding back in time, the tattoos flashing on each extension. The camera holds a static shot as her groove builds, her weight shifting side to side under the vest, the silver nail polish flashing as her hands open and close on each punch, and her expression staying fixed on the camera. The mirrored wall behind her repeats every hit a beat late in the reflection, and the small speaker on the floor buzzes on the loudest kicks.
+
+[Shot 2] At 00:06.316, the shot cuts to a close-up of her face and shoulders from the mirror side, her reflection sharing the left half of the frame, as she turns on the beat and hits a pose with one arm folded across her chest. She rolls her shoulders in a step sequence that lands on every fourth hit, the fringe swinging and settling with each snap of the head, the blue eye makeup catching the overhead light and a bird tattoo sliding in and out of frame at the edge of her shoulder. Her lips stay closed throughout. The camera pushes in slowly at small amplitude until her face fills the frame, and on a final hit she stops square to the lens, chin down, breathing hard, and holds still until the final frame.
+
+overall_soundscape:
+Bare feet squeak and slap on the sprung floor, fabric rustles with each turn, and her breath comes in short controlled bursts between hits, under the dry room tone of an empty studio and the small speaker's drum-machine pulse.
 
 non_diegetic_music:
 N/A
@@ -962,5 +1177,41 @@ Natural ambient atmosphere continues throughout the shot.
 
 non_diegetic_music:
 N/A
+```
+
+## t2va_dancer_shot_floor
+
+Carried by **1** graph(s). Sections: none.
+
+<details><summary>graphs</summary>
+
+- `h3_text_to_video_audio_freeze_shots_api`
+
+</details>
+
+```text
+integrated_multimodal_description: [Shot 1] Live-action, cinematic, a low wide shot frames a dancer's feet and legs on a sprung wooden studio floor across the eight-second take, the mirrored wall behind, a portable speaker on the floor at the edge of frame playing a fast, dry drum-machine pulse. She is in her twenties in a grey vest and loose black trousers, barefoot, and she produces no vocal sound. Her footwork hits on every beat: heel drops on the downbeats, quick toe taps between them, weight shifting side to side so the trousers swing, and on the fourth hit of each bar both feet leave the floor together and land square. The camera holds a static shot as the steps travel toward the lens until her knees fill the frame.
+
+overall_soundscape: Bare feet squeak and slap on the sprung floor, fabric swings and rustles with each shift of weight, and her breath comes in short controlled bursts between hits, under the dry room tone of an empty studio.
+
+non_diegetic_music: N/A
+```
+
+## t2va_studio_dancer_close
+
+Carried by **1** graph(s). Sections: none.
+
+<details><summary>graphs</summary>
+
+- `h3_text_to_video_audio_freeze_shots_api`
+
+</details>
+
+```text
+integrated_multimodal_description: [Shot 1] Live-action, cinematic, a medium shot frames a dancer from the waist up in a bare rehearsal studio across the fourteen-second take, one mirrored wall behind her, a portable speaker on the floor at the edge of frame playing a fast, dry drum-machine pulse. She is in her twenties in a grey vest, hair tied back, face sharp and well lit, and she produces no vocal sound. She moves to the beat: sharp isolations of the shoulders and head on every hit, chin snapping to the lens on the downbeats, both arms punching out and folding back in time. The camera holds a static shot as her groove builds and her expression stays locked on the lens. [Shot 2] At 00:06.316, the shot cuts to a close-up of her face and shoulders from the mirror side, her reflection sharing the frame, as she turns on the beat and hits a pose, then rolls her shoulders in a step sequence that lands on every fourth hit. Her lips stay closed throughout. The camera pushes in slowly at small amplitude until her face fills the frame and she stops square to the lens on a final hit and holds still, breathing hard.
+
+overall_soundscape: Bare feet squeak and slap on the sprung floor, fabric rustles with each turn, and her breath comes in short controlled bursts between hits, under the dry room tone of an empty studio.
+
+non_diegetic_music: N/A
 ```
 

@@ -4,6 +4,92 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.100.0
+
+### Added
+
+- **`MiniMaxH3ReferenceReport`** (`reference_report.py`): what an ordered
+  reference list costs before anything is encoded. Takes the references, the
+  clip, the prompt, the canvas and the two policies, and returns a picture
+  (two columns per reference, what the video model sees and what the text
+  encoder sees, then the packed sequence bar and the prompt's share of the
+  text segment) and the same as text. No VAE or encoder forward; the only
+  model it touches is the tokenizer. The sizing is the conditioner's own
+  functions, so the numbers are the render's. `MiniMaxH3ReferenceConditioning`
+  shows the same text as an on-node preview after it runs. Every still is
+  read twice, and the node names both copies: the video VAE's becomes DiT
+  reference rows attended on every step (`size_policy` sizes it), Qwen3-VL's
+  becomes vision tokens placed ahead of the prompt in the text segment
+  (`qwen_view` sizes it). Until now the split lived in a server log line and
+  in `bench/preflight_graph.py`.
+- **The reference-view ablation, second edition**: five ref2va scene graphs
+  `workflows/h3_probe_refview2_{stairwell_backstage,stairwell_circus,diner,porter,dancer}.json`
+  (`h3_config.REFVIEW2_SCENES`; prompts `prompt_bank/ref2va_*_refs.txt` and
+  `ref2va_stairwell_dialogue_{backstage,circus}.txt`), each built at the
+  append node's defaults, with six arms per scene as widget patches in
+  `bench/refview2_arms.json` (`parity`, `up_q512`, `noup_shared`,
+  `noup_q512`, `noup_q1024`, `noup_q2048`). Replaces the three-arm Gate 6
+  family below. Built, not rendered.
+
+### Changed
+
+- **`MiniMaxH3AppendRefImage` defaults are vendor parity** (owner):
+  `size_policy=max`, `dit_short_edge=2048`, `allow_upscale=True`,
+  `qwen_view=shared`, which is what sglang, diffusers and DiffSynth do: one
+  prepared still at a 2048 short edge feeds both the video VAE and Qwen3-VL
+  (`docs/research/sglang_h3_pipeline.md` "Reference stills"). Replaces
+  `allow_upscale=False` (since 2026-08-28) and `qwen_view=separate` at
+  `qwen_short_edge=512` (since 2026-08-27, on one observation, 0.82.0).
+  `h3_rules.REF_QWEN_SHORT_EDGE` is now only the value pre-filled when a user
+  picks `separate`; `REF_VIDEO_BUDGET` still sets `ref_upscale=False` on the
+  video-bearing reference arms, as an arm setting for memory. The refview2
+  ablation above is what would move these again. Every generated graph was
+  rebuilt.
+- **`MiniMaxH3ReferenceConditioning.image_policy` and `video_policy` offer
+  `comfy` (default) and `release`; the `encoder` option is removed** (owner).
+  On the shipped core-loaded encoder `encoder` always resolved to `comfy`,
+  the CLIP carrying no contract, so it did nothing; and for stills `release`
+  and `comfy` produce the same geometry at every legal short edge on that
+  encoder (`bench/results/2026-08-29_qwen_view_under_snapshot.json`).
+  `video_policy`'s default moved from `encoder` (which ran as `comfy`) to
+  `comfy`.
+- **`docs/h3_input_impacts.md` "There is no 100,000-token budget"** now says
+  which ceiling is which, verified in the sage fork's code and CHANGELOG: on
+  this card `sageattn_consume` quantizes q and k through the fork's Triton
+  `quant_per_thread.py` (the int32 offset crossing, fixed in the fork's
+  v0.7.0) and v through the CUDA `csrc/fused/fused.cu` kernels, whose
+  `uint32_t` strides wrap at a second, higher row count (unfixed upstream
+  code, unreachable on 24 GB; the fork's CHANGELOG entry "The CUDA quant
+  kernels form global offsets in uint32" carries the arithmetic). Its
+  `preflight.py:28` pointer, which had moved, now names the docstring.
+- Docs that described the AWQ loader, the `encoder` policy or the 512
+  separate view as shipped now say what replaced each and when:
+  `docs/h3_references.md`, `docs/evidence.md`,
+  `docs/h3_conditioning_end_to_end.md`, `docs/custom_node_gaps.md`,
+  `docs/comfyui_vendor_gaps.md`, `docs/h3_geometry_and_nodes.md`,
+  `docs/wiki/stages.md`; the old claims are logged in
+  `docs/wiki/decisions.md` under 2026-09-13. `docs/prompt_catalogue.md`
+  regenerated (it still listed the Gate 6 arms) and `docs/prompt_audit.md`
+  carries a verdict row for each refview2 scene.
+
+### Removed
+
+- **The AWQ lane's code** (owner; the lane closed on 2026-08-27,
+  `docs/roadmap.md` "Closed lanes"): `h3_awq_encoder.py` and its
+  `MiniMaxH3AWQEncoderLoader`, the `config/` W4 snapshot directories,
+  `docs/h3_awq_encoder.md`, and the bench tools `build_h3_awq_standalone.py`,
+  `check_h3_awq_encoder.py`, `convert_h3_awq_candidate.py`,
+  `capture_h3_encoder_states.py`, `measure_qwen_view_under_snapshot.py`,
+  `measure_still_policy_token_cost.py`,
+  `build_native_h3_calibration_batch.py`; `h3_config.ENCODER_V1` and
+  `ENCODER_V2`. `h3_config.MODELS["clip"]` is `ENCODER_INT8`, loaded by
+  `MiniMaxH3EncoderLoader`. The records under `bench/results/` and
+  `docs/research/` stay as history.
+- **The Gate 6 reference-view arms**
+  `workflows/h3_probe_refview_{a_source,b_qwen2048,c_parity}.json` and
+  `bench/gate6_refview_arms.json`: priced on 2026-08-25, never rendered,
+  replaced by the refview2 family above.
+
 ## 0.99.93
 
 ### Added

@@ -1,20 +1,30 @@
 # How every H3 conditioning input is handled, end to end
 
-Last verified against the installed ComfyUI and this repo's nodes on 2026-08-29.
+Last verified against the installed ComfyUI and this repo's nodes on 2026-08-29;
+the loader, the reference policies and the append node's defaults corrected
+2026-09-13.
 
 **Corrected 2026-08-29, and the correction is structural.** Everything below
 used to describe a path where the encoder was the compressed-tensors W4 AWQ
 artifact loaded by `MiniMaxH3AWQEncoderLoader`, which stamps a processor
-contract on the CLIP. **The shipped graphs no longer load that artifact.** All
-159 encoder-loader nodes across `workflows/` are core's `CLIPLoader` naming
-`qwen3vl_32b_minimax_h3_int8_convrot.safetensors` (*measured*, over
-`h3_config.graph_paths`), and a core-loaded CLIP stamps nothing. The
-consequence runs through this whole file and is stated once here:
+contract on the CLIP. **The shipped graphs no longer load that artifact.** On
+that date all 159 encoder-loader nodes across `workflows/` were core's
+`CLIPLoader` naming `qwen3vl_32b_minimax_h3_int8_convrot.safetensors`
+(*measured*, over `h3_config.graph_paths`), and a core-loaded CLIP stamps
+nothing. The consequence runs through this whole file and is stated once here:
 **`image_policy` and `video_policy` both resolve to `comfy` on every shipped
 graph, so the reference path this install actually runs is native ComfyUI
-preprocessing end to end.** The local `encoder` policy is wired, is not
-reached, and the sections below now say so where they used to describe it as
-the shipped behaviour.
+preprocessing end to end.**
+
+**Corrected again 2026-09-13** (`docs/wiki/decisions.md`). Three things moved
+since the paragraph above: every generated graph now loads the same INT8 file
+through `MiniMaxH3EncoderLoader` (`workflows/build_workflows.py`, the loader
+comment), core's own load plus guards; the `encoder` policy that was "wired,
+not reached" is removed, so `image_policy` and `video_policy` each offer
+`comfy` (default) and `release`; and the AWQ adapter, its document and the
+`config/` snapshots are deleted. The reference path that runs is still native
+ComfyUI preprocessing end to end, now by selection rather than by fallback.
+Sentences below that describe `encoder` or the adapter are history and say so.
 
 Five things can condition an H3 render: a **keyframe** (first frame, last frame,
 or any frame via `MiniMaxH3AddGuide`), a **reference still**, a **reference
@@ -27,8 +37,8 @@ This file is the map. Where a number or rule is owned elsewhere, it links rather
 than restating: [`h3_references.md`](h3_references.md) owns reference types,
 sizing knobs and measured costs;
 [`h3_geometry_and_nodes.md`](h3_geometry_and_nodes.md) owns the frame grid and
-token maths; [`h3_awq_encoder.md`](h3_awq_encoder.md) owns the AWQ adapter's
-preprocessing.
+token maths; `h3_encoder_loader.py` owns what the loader checks and stamps
+(the AWQ adapter and its document were deleted 2026-09-13).
 
 ## The one-screen answer
 
@@ -52,28 +62,33 @@ packing; a reference's is not, so it is decided by settings that vary per graph
 and per reference, then capped again by the encoder. The 2048 short edge is the
 *vendor serving convention*, and installed ComfyUI caps at it without ever
 upscaling to it, so a reference reaches that size here only when
-`MiniMaxH3AppendRefImage(allow_upscale=True)` is wired, which some shipped
-graphs do and most do not. Reference video is sized by its own separate policy again. Never
+`MiniMaxH3AppendRefImage(allow_upscale=True)` is wired. Since 2026-09-13 that
+is the node's default, so a freshly dragged node does it; the generated graphs
+pin it per arm through the generator's `ref_upscale` argument
+(`workflows/build_workflows.py`), and many arms keep it off, for memory
+(`h3_config.REF_VIDEO_BUDGET`) or for comparability with earlier renders, so
+read the graph rather than the default (until 2026-09-13 the default itself
+was off). Reference video is sized by its own separate policy again. Never
 quote a single number for reference geometry; read
 [`h3_references.md`](h3_references.md) for the knobs and
 [`2026-08-24_serving_geometry_composes.md`](research/qwen3-vl-special-tokens-post-training/canonical/2026-08-24_serving_geometry_composes.md)
 for how upstream sizing and the encoder cap compose.
 
-For Qwen's reference-video view, the shipped graphs *select* a different path
-and *run* the native one. Stock ComfyUI applies shared bounds independently to
-each two-frame block. Shipped graphs other than the `release` probe arm select
-`video_policy=encoder`, which is meant to keep the no-upscale VAE view while
-applying the loaded encoder's clip-wide, duration-aware Qwen stage from the
-CLIP's stamped contract — **but `reference_geometry.effective_policy`
-downgrades `encoder` to `comfy` for a CLIP that declares nothing, and core's
-`CLIPLoader` declares nothing** (*measured* 2026-08-29:
-`effective_policy("encoder", None) == "comfy"`). So on every shipped graph the
-two-frame blocks go through core's own `process_video_block` at its signature
-defaults, and the release's clip-wide budget never applies. `release` is the
-one policy that does not depend on a contract and therefore does still engage;
-`comfy` is the native control and is what `encoder` currently becomes. The source/length boundary where the stock
-and clip-wide grids actually separate is measured—not universal—and is owned
-by [`comfyui_vendor_gaps.md`](comfyui_vendor_gaps.md) section 2.
+For Qwen's reference-video view, the shipped graphs run the native path.
+Stock ComfyUI applies shared bounds independently to each two-frame block, and
+`video_policy=comfy`, the default on every graph but the `release` probe arm,
+selects exactly that: the two-frame blocks go through core's own
+`process_video_block` at its signature defaults, and the release's clip-wide
+budget never applies. `release` is the one alternative, and it engages both
+vendor stages. History: until 2026-09-13 most graphs selected
+`video_policy=encoder`, meant to keep the no-upscale VAE view while applying
+the loaded encoder's clip-wide, duration-aware Qwen stage from the CLIP's
+stamped contract, and `reference_geometry.effective_policy` downgraded it to
+`comfy` for a CLIP that declared nothing (*measured* 2026-08-29:
+`effective_policy("encoder", None) == "comfy"`). The value and the function
+are gone. The source/length boundary where the stock and clip-wide grids
+actually separate is measured, not universal, and is owned by
+[`comfyui_vendor_gaps.md`](comfyui_vendor_gaps.md) section 2.
 
 ## 0. From `CLIPLoader` to the H3 encoder, as core builds it
 
@@ -118,17 +133,18 @@ a mid-stack layernorm instead loads clean and leaves a factory-initialised
 parameter behind, because the load is non-strict and unexpected keys are logged
 below the default level.
 
-**Nothing core builds declares what preprocessing it will apply.** That is why
-`effective_policy` downgrades `encoder` to `comfy` here, and it is the root of
-the correction at the top of this file. `MiniMaxH3EncoderLoader`
+**Nothing core builds declares what preprocessing it will apply.** That was
+why `effective_policy` downgraded `encoder` to `comfy` here, and it is the
+root of the correction at the top of this file. `MiniMaxH3EncoderLoader`
 (`h3_encoder_loader.py`) is core's own load with the three checks it does not
-perform -- inventory, released special-token ids, and a stamped contract
-derived from core's own signatures -- and it exists so that the `encoder`
-policy can mean something on a native artifact. **No shipped graph wires it
-yet**, deliberately: stamping a contract makes `video_policy=encoder` live for
-the first time on the 32 graphs that feed reference video, which swaps core's
-bilinear per-block resize for the release's bicubic, and that is a change to
-measure rather than assume.
+perform -- inventory, released special-token ids, and a declaration of what
+core's own preprocessing will do, read out of core by introspection and
+stamped as `_h3_image_bounds` -- and since the generator's loader switch
+(`workflows/build_workflows.py`, the loader comment) every generated graph
+wires it. The `encoder` policy it was first written to make meaningful was
+removed on 2026-09-13; what the stamp serves now is `MiniMaxH3ReferenceReport`
+and preflight, which read it to say which ceiling applies to the text
+encoder's copy of a still.
 
 ## 1. What Qwen3-VL sees
 
@@ -207,8 +223,8 @@ PRESENTATION (comfy/text_encoders/minimax.py; raw, never chat-templated)
 STAGE 2, per vision block: on the SHIPPED path this is core's own helper, not a
   snapshot -- `process_qwen2vl_images` at min 3,136 / max 12,845,056 px, bilinear,
   patch_size 16 and 0.5 mean/std passed explicitly by `comfy/text_encoders/qwen3vl.py`.
-  (A contract-stamping loader can substitute `release` or `encoder` bounds here; no
-  shipped graph does.) 16-pixel patches; temporal patch 2 (a still repeats its
+  (`image_policy=release` pre-applies the release's declared bounds ahead of
+  this stage; no shipped graph selects it.) 16-pixel patches; temporal patch 2 (a still repeats its
   frame); 2x2 merge -> grid_thw and a patch tensor; timestamps for video blocks
                                                                                ▼
 QWEN3-VL
@@ -260,7 +276,7 @@ Read as a pipeline:
   only v1's ceiling is low enough to bite
   ([`h3_references.md`](h3_references.md)'s regime table, and
   [`../bench/results/2026-08-29_qwen_view_under_snapshot.json`](../bench/results/2026-08-29_qwen_view_under_snapshot.json)).
-  Stage ONE and `qwen_short_edge` now decide what Qwen sees. The old sentence
+  Stage ONE and `qwen_view` now decide what Qwen sees. The old sentence
   survives only for a calibration lane: if anyone quantizes against layer-49
   vectors again, the geometry Qwen sees during calibration still has to be the
   geometry it sees at serving time, and the VAE branch still does not enter
@@ -272,10 +288,11 @@ Read as a pipeline:
   2 fps pairs, VAE at 24 fps" by design. A "Qwen at 2048, VAE at source"
   serving mode therefore breaks no contract; what it changes is a quality
   question. It exists since 2026-08-25 as
-  `MiniMaxH3AppendRefImage.qwen_short_edge`
+  `MiniMaxH3AppendRefImage.qwen_view=separate` with its `qwen_short_edge`
   ([`h3_references.md`](h3_references.md), "A third knob"): the VAE keeps
   the stage-1 view, the encoder is shown the source at an N short edge, and
-  the loaded encoder's bounds still apply to that view afterwards. **INFERENCE:** appearance from the VAE rows, meaning and binding
+  the loaded encoder's bounds still apply to that view afterwards. It is an
+  option, not the default, since 2026-09-13. **INFERENCE:** appearance from the VAE rows, meaning and binding
   from the Qwen rows, in some unmeasured proportion; the blind comparison
   that would measure it has not been run
   ([`eval_comparison.md`](eval_comparison.md) section 3).
@@ -297,11 +314,15 @@ The important asymmetry: **the video VAE and Qwen see different pixels of the
 same reference.** The VAE takes whatever the reference nodes produced; Qwen
 takes that *through* the encoder's own image processor.
 
-**What splits them on the shipped path is `qwen_short_edge`, not the encoder's
-ceiling.** Core's ceiling is 12,845,056 px and binds nothing a reference node
-produces; 80 of the 89 `MiniMaxH3AppendRefImage` instances in `workflows/` set
-`qwen_short_edge=512` (*measured*), which deliberately shows the encoder a
-smaller second view while the VAE keeps the stage-one one. Under the retired W4
+**Nothing splits them on the shipped path since 2026-09-13.** Core's ceiling
+is 12,845,056 px and binds nothing a reference node produces, and
+`qwen_view=shared` is the append node's default and what every rebuilt graph
+carries (walk `h3_config.graph_paths`), so Qwen reads the stage-one copy:
+vendor parity. History: from 2026-08-27 the shipped default was a separate
+512 view (80 of 89 append instances, *measured* 2026-08-29), which showed the
+encoder a smaller second copy while the VAE kept the stage-one one, on one
+observation (CHANGELOG 0.82.0); `bench/refview2_arms.json` is the ablation
+built to judge it. Under the retired W4
 artifact the split came from the opposite direction -- its snapshot capped
 stage two at 200,704--301,056 px, below a single 1344x768 canvas, so the
 reduction happened whether or not anyone asked for it. That
