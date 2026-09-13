@@ -155,9 +155,6 @@ DECLARED: dict[tuple[str, str], tuple] = {
         ("ARM", "'first_seconds' on the shipped song graph, a quick look at "
                 "the seams; the node default 'whole' plans every window to the "
                 "end of the track. Generator knob `freeze_song_seconds`."),
-    ("MiniMaxH3AudioFreezeSong", "extent.seconds"):
-        ("ARM", "the quick look's length on the shipped song graph, "
-                "`freeze_song_seconds` in the generator."),
     ("MiniMaxH3AudioFreezeSong", "prompt_mode"):
         ("ARM", "'uniform' on the shipped song graph (one prompt for every "
                 "window) against the node default 'cycle'; generator knob "
