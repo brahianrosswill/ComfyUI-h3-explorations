@@ -215,6 +215,38 @@ def check_node(problems):
         except ValueError:
             pass
 
+    # The file source, with the folder lookup pointed at a temp dir: the real
+    # `folder_paths` lookup is observed live, not depended on here.
+    real_find = pl.find_wildcard
+    with tempfile.TemporaryDirectory() as d:
+        Path(d, "outfits.txt").write_text("grey vest\n# no\n\nred jacket\n", encoding="utf-8")
+        Path(d, "scene.json").write_text(json.dumps({"outfit": ["track top"], "room": ["studio"]}),
+                                         encoding="utf-8")
+        pl.find_wildcard = lambda rel: str(Path(d, rel)) if Path(d, rel).is_file() else None
+        try:
+            txt = getattr(pl.MiniMaxH3PromptList.execute(
+                "outfit", {"source": "file", "wildcard": "outfits.txt"}, "in_order", 0), "args", None)
+            txt = txt[0][0] if txt else None
+            if txt is None or (txt.values, txt.source) != (("grey vest", "red jacket"), "outfits.txt"):
+                _fail(problems, f"node: the .txt file source gave {txt}")
+            js = pl.MiniMaxH3PromptList.execute("outfit", {"source": "file", "wildcard": "scene.json"},
+                                                "in_order", 0)
+            js = getattr(js, "args", js)[0][0]
+            if js.values != ("track top",):
+                _fail(problems, f"node: the .json file source did not pick the list named for the node ({js})")
+            for label, source in (("a missing file", {"source": "file", "wildcard": "absent.txt"}),
+                                  ("no file chosen", {"source": "file"}),
+                                  ("a JSON with no list of the node's name",
+                                   {"source": "file", "wildcard": "scene.json"})):
+                try:
+                    pl.MiniMaxH3PromptList.execute("shoes" if "JSON" in label else "outfit", source,
+                                                   "in_order", 0)
+                    _fail(problems, f"node: {label} was accepted")
+                except ValueError:
+                    pass
+        finally:
+            pl.find_wildcard = real_find
+
 
 def main() -> int:
     problems: list[str] = []

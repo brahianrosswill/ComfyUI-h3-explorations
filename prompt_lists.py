@@ -287,7 +287,9 @@ class MiniMaxH3PromptList(io.ComfyNode):
                             io.Combo.Input("wildcard", options=_wildcard_files(),
                                            tooltip=("A .txt (one value per line) or .json (a list, or named "
                                                     "lists where this node's name picks one) in the wildcards "
-                                                    "folder. The list refreshes when the folder changes.")),
+                                                    "folder. A file added while ComfyUI runs appears after "
+                                                    "refreshing node definitions (R in the editor), no restart; "
+                                                    "on a network share it can take a moment longer.")),
                         ]),
                     ],
                     tooltip="Where the values come from."),

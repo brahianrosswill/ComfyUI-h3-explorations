@@ -22,7 +22,11 @@ artifact.
   `--input-directory` override included) is registered as the folder type
   `wildcards` and created at load; `extra_model_paths.yaml` can add more. A
   `.txt` holds one value per line (blank and `#` lines skipped), a `.json` a
-  list or named lists. The list node picks a file from a dropdown; a
+  list or named lists; other files are not listed. The list node picks a
+  file from a dropdown, and a file added while ComfyUI runs appears on the
+  next node-definition refresh without a restart. On a CIFS share it can lag:
+  core's filename cache (`folder_paths.py::cached_filename_list_`) is keyed on
+  the folder's modification time, which the share updates late. A
   placeholder with no list node of its name is read from `name.txt`,
   `name.json`, or `parent.json`'s list named for the last segment, shuffled at
   seed 0.
@@ -34,7 +38,13 @@ artifact.
   values of the seed's shuffle, visible in each window's frames, and a
   requeue under the same prefix reused both. The row labelled `again` wrote
   to its own prefix (the runner appends the label), so it rendered again and
-  shows nothing about reuse.
+  shows nothing about reuse. The `files` rows read the outfit list from a
+  `.txt` in the wildcards folder and a second placeholder,
+  `__h3_smoke/speaker__`, with no list node, from `h3_smoke.json`; the logged
+  values followed both lists. The first `files` row is a 400 from queueing
+  before the share's folder cache had caught up. The rows' graph paths are
+  session scratch patches of `workflows/h3_text_to_video_audio_freeze_song_pdd8_api.json`
+  and do not survive.
 
 ### Changed
 
