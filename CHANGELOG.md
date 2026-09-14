@@ -4,6 +4,20 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.108.1
+
+### Fixed
+
+- **The generator runs with the card masked again.** `docs/checks.md` says to
+  run it as `CUDA_VISIBLE_DEVICES= <comfy venv python> workflows/build_workflows.py`
+  while another process renders, and `_ref_short_edge` put core on its CPU path
+  for that; but `_resolution_widgets` imports core first, through
+  `resolution.py`, and a masked build raised "No CUDA GPUs are available"
+  there (seen at `1345791` and at 0.108.0). The switch is now
+  `_core_cpu_when_no_card`, called before both paths into core; a masked and
+  an unmasked build write the same bytes. `bench/check_generator_constants.py`
+  had the same fault at its own core import and takes the same switch.
+
 ## 0.108.0
 
 The frozen-audio loop, simplified before extending (owner, 2026-09-14, after

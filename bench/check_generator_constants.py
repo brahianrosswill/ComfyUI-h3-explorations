@@ -35,7 +35,14 @@ sys.path.insert(0, str(_REPO.parent.parent))  # ComfyUI root
 # Import order matters. `build_workflows` puts this repo's root on sys.path
 # for its own `h3_rules` import, and our `nodes.py` then shadows ComfyUI's,
 # which `comfy_extras.nodes_minimax_h3` imports by that name. Pull core in
-# first, while ComfyUI's root is still the one that answers.
+# first, while ComfyUI's root is still the one that answers. With the card
+# masked (`CUDA_VISIBLE_DEVICES=`, `docs/checks.md`), core's import picks a
+# device and raises, so put it on its CPU path first, as the generator's
+# `_core_cpu_when_no_card` does; with a card visible nothing changes.
+import torch  # noqa: E402
+if not torch.cuda.is_available():
+    import comfy.cli_args  # noqa: E402
+    comfy.cli_args.args.cpu = True
 import comfy_extras.nodes_minimax_h3 as core  # noqa: E402
 import build_workflows as bw  # noqa: E402
 

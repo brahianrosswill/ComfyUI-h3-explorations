@@ -24,7 +24,11 @@ Run it to regenerate:
 
 It writes the JSON next to itself and validates every API graph against a
 live ComfyUI's /object_info (or a cached copy passed with --object-info).
-Validation is static -- nothing is submitted, nothing touches the GPU.
+Validation is static -- nothing is submitted and no model loads. Building does
+import ComfyUI core, which opens a CUDA context when a card is visible; while
+another process renders, run it as `CUDA_VISIBLE_DEVICES= <comfy-venv-python>
+build_workflows.py` and core takes its CPU path (`_core_cpu_when_no_card`,
+`docs/checks.md` "While a render is on the card").
 
 **Generation is byte-deterministic, and checking that the shipped graphs are
 current costs about twelve seconds and needs no server:**
@@ -1096,6 +1100,27 @@ from h3_rules import (  # noqa: E402
 )
 
 
+def _core_cpu_when_no_card():
+    """With no CUDA device visible, put ComfyUI core on its CPU path before anything imports it.
+
+    Importing `comfy_extras.nodes_minimax_h3` pulls `comfy.model_management`,
+    which picks a torch device at import and raises "No CUDA GPUs are
+    available" when `CUDA_VISIBLE_DEVICES=` hides the card. Masking is how this
+    script runs while another process renders (`docs/checks.md`, "While a
+    render is on the card"; on 2026-09-04 the context creation failed against
+    a busy card). The switch lived inside `_ref_short_edge` alone until
+    2026-09-14, but `_resolution_widgets` reaches core first, through
+    `resolution.py`, so a masked build raised there (seen at `1345791` and at
+    the head of that day). Call this before every path into core, with
+    ComfyUI's root already on `sys.path`; with a card visible it changes
+    nothing.
+    """
+    import torch
+    if not torch.cuda.is_available():
+        import comfy.cli_args
+        comfy.cli_args.args.cpu = True
+
+
 def _resolution_widgets(width, height, length):
     """The Resolution node's inputs for an explicit width/height.
 
@@ -1114,6 +1139,8 @@ def _resolution_widgets(width, height, length):
     for extra in (HERE.parent.parent.parent, HERE.parent):
         if str(extra) not in sys.path:
             sys.path.insert(0, str(extra))
+    # resolution.py imports core to sweep the canvases: the first path into it
+    _core_cpu_when_no_card()
     spec = importlib.util.spec_from_file_location(
         "_h3_resolution_for_build", HERE.parent / "resolution.py")
     res = importlib.util.module_from_spec(spec)
@@ -1190,16 +1217,9 @@ def _ref_short_edge():
                  if (p / "comfy_extras" / "nodes_minimax_h3.py").is_file()), None)
     if root is not None and sys.path[0] != str(root):
         sys.path.insert(0, str(root))
-    # The import pulls `comfy.model_management`, which opens a CUDA context on
-    # import to size VRAM. This function needs one constant and no device, and
-    # on 2026-09-04 that context creation failed against a card another
-    # session was rendering on. With no CUDA visible (`CUDA_VISIBLE_DEVICES=`),
-    # tell ComfyUI's argument object it is on CPU before the import so the
-    # module takes its CPU path; with a card visible nothing changes.
-    import torch
-    if not torch.cuda.is_available():
-        import comfy.cli_args
-        comfy.cli_args.args.cpu = True
+    # The import pulls `comfy.model_management`; this function needs one
+    # constant and no device (`_core_cpu_when_no_card`).
+    _core_cpu_when_no_card()
     from comfy_extras.nodes_minimax_h3 import REF_IMAGE_SHORT_EDGE
 
     return REF_IMAGE_SHORT_EDGE

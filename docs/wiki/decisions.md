@@ -17,6 +17,15 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-14
 
+- **The generator runs masked, as documented, rather than needing the card**
+  (owner, choosing the code fix over a doc line saying it needs the GPU). Prose
+  that lost: `docs/checks.md` ("While a render is on the card") said the
+  generator takes ComfyUI's CPU path when no device is visible, and the
+  generator's docstring said nothing touches the GPU; a masked build raised in
+  `resolution.py`'s core import before the CPU switch ran, at `1345791` and
+  after. Fixed in the generator (`_core_cpu_when_no_card`) and in
+  `bench/check_generator_constants.py`; `docs/checks.md` is true again and the
+  docstring now says a visible card gets a CUDA context (CHANGELOG 0.108.1).
 - **The frozen-audio loop simplified before extending** (owner, after the
   footguns were listed: "simplifying is the only way to avoid that"; the
   worry was a new place starting where a window ends, not where the song
