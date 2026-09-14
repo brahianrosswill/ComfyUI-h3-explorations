@@ -227,9 +227,12 @@ before any window samples, takes reference stills with every window's
 prompt, writes its window files to `<prefix>_windows/`, and embeds the prompt
 and workflow in the finished file. Resume followed the same day
 (`loop_resume.py`): stored windows whose inputs have not changed are reused
-in order and rendering starts at the first that has. The stage after it
-(prompt lists and wildcard files) is in
-`docs/wiki/next_steps.md`.
+in order and rendering starts at the first that has. Prompt lists followed
+(`prompt_lists.py`, `MiniMaxH3PromptList`): a `__name__` in the prompt takes
+one value per window that uses it, from a list chained into the node's
+`lists` or a file in `wildcards/` under the input directory, without repeats
+until the list is used up unless the list says `random`. The module docstring
+holds the rules; `docs/wiki/next_steps.md` holds what is still owed.
 
 **Next, in order.**
 

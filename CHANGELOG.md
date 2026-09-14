@@ -4,6 +4,45 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.105.0
+
+### Added
+
+- **Prompt lists** (`prompt_lists.py`, `MiniMaxH3PromptList`; the song
+  node's `lists`, appended last). A `__name__` in the song prompt takes one
+  value per window that uses it, from a list typed on the node or read from a
+  wildcard file. Orders: `shuffled` (the default) uses every value once
+  before any repeats, reshuffles each pass into an order unlike the last, and
+  with three or more values never starts a pass on the value the previous
+  pass ended on; `in_order` cycles; `random` draws independently and may
+  repeat. The same name twice in one window takes one value. Each list node
+  has its own seed, held fixed after each queue like the song node's, so
+  resume keeps working. Lists chain, one node per name.
+- **Wildcard files**: `wildcards/` under ComfyUI's input directory (the
+  `--input-directory` override included) is registered as the folder type
+  `wildcards` and created at load; `extra_model_paths.yaml` can add more. A
+  `.txt` holds one value per line (blank and `#` lines skipped), a `.json` a
+  list or named lists. The list node picks a file from a dropdown; a
+  placeholder with no list node of its name is read from `name.txt`,
+  `name.json`, or `parent.json`'s list named for the last segment, shuffled at
+  seed 0.
+- `bench/check_prompt_lists.py`: the list rules, with a scripted shuffle
+  that offers each forbidden pass first.
+- Harness smoke: `bench/results/2026-09-14_audio_freeze_song_lists_smoke.jsonl`,
+  the PDD8 song graph over the first 14 seconds with its outfit replaced by
+  `__outfit__` and a three-value typed list. Two windows took the first two
+  values of the seed's shuffle, visible in each window's frames, and a
+  requeue under the same prefix reused both. The row labelled `again` wrote
+  to its own prefix (the runner appends the label), so it rendered again and
+  shows nothing about reuse.
+
+### Changed
+
+- **Resume keys a window on its filled-in text**: `lists` joins
+  `loop_resume.SONG_PER_WINDOW`, so a changed list moves only the windows
+  whose text changed.
+- The song node logs the value each window took from each list.
+
 ## 0.104.0
 
 ### Added

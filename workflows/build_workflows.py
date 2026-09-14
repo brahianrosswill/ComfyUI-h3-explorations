@@ -5758,12 +5758,14 @@ def build_ui(task: str, *, sage: bool = True, prompt: str | None = None,
                               seed, "fixed", freeze_mask, "clip_guard",
                               out_prefix or "Video/h3_song", 19, freeze_song_mode, "uniform",
                               # save_metadata_png, keep_windows, then reuse_windows;
-                              # `references` between them is a socket and takes no slot
+                              # `references` between them and `lists` after them
+                              # are sockets and take no slot
                               True, True, True],
                      inputs=[_in("model", "MODEL"), _in("clip", "CLIP"), _in("vae", "VAE"),
                              _in("audio_vae", "VAE"), _in("audio", "AUDIO"),
                              _in("sampler", "SAMPLER"), _in("sigmas", "SIGMAS"),
-                             _in("references", "MINIMAX_H3_REFERENCES", optional=True)],
+                             _in("references", "MINIMAX_H3_REFERENCES", optional=True),
+                             _in("lists", "H3_PROMPT_LISTS", optional=True)],
                      outputs=[_out("path", "STRING"), _out("report", "STRING"),
                               _out("Filenames", "VHS_FILENAMES")],
                      title="Whole track: windows planned from the song")

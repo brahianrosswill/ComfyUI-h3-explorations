@@ -83,7 +83,8 @@
       "save_metadata_png",
       "keep_windows",
       "references",
-      "reuse_windows"
+      "reuse_windows",
+      "lists"
     ],
     "node_id": "MiniMaxH3AudioFreezeSong",
     "outputs": [
@@ -239,6 +240,19 @@
       "samples",
       "sequence_length",
       "report"
+    ]
+  },
+  "MiniMaxH3PromptList": {
+    "inputs": [
+      "name",
+      "source",
+      "order",
+      "seed",
+      "lists"
+    ],
+    "node_id": "MiniMaxH3PromptList",
+    "outputs": [
+      "lists"
     ]
   },
   "MiniMaxH3ProvenanceStamp": {

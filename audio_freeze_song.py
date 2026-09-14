@@ -22,6 +22,12 @@ repeating (`cycle`, the default when there are several), or one is drawn per
 window from the seed (`random`); a block may start with a line `frames: N` to
 set that window's length (on both clocks).
 
+**Lists.** A `__name__` in the prompt takes a value per window from a Prompt
+List chained into `lists`, or from a wildcard file of that name
+(`prompt_lists.py`, which holds the owner's rules). A list advances only for a
+window whose text uses the name, and filling happens during planning, so every
+key and encode below sees the filled-in text.
+
 **Everything is encoded before anything samples.** The track once, and each
 distinct prompt once. A window's conditioning is a function of its text and
 its references alone -- not its seed, start or the previous window -- because
@@ -83,6 +89,7 @@ from .audio_freeze import (MiniMaxH3EncodeTrack, MiniMaxH3FreezeAudioWindow,
                            _ffmpeg, _stereo, audio_grid)
 from .conditioning import MiniMaxH3Conditioning
 from . import loop_resume
+from .prompt_lists import H3PromptLists, find_wildcard, lists_for, resolve_texts
 from .loop_output import join_and_mux, saved_outputs, window_dir, write_metadata_png
 from .reference_conditioning import H3References, MiniMaxH3ReferenceConditioning
 
@@ -250,6 +257,10 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                                  tooltip=("Reuse the stored windows whose inputs have not changed, in order, and "
                                           "render from the first that has. Off renders every window: use it after "
                                           "replacing a model, LoRA or reference file under the same name.")),
+                H3PromptLists.Input("lists", optional=True,
+                                    tooltip=("Prompt List nodes filling __name__ placeholders in the prompt, one "
+                                             "value per window that uses the name. A placeholder with no list here "
+                                             "is read from the wildcards folder under the input directory.")),
             ],
             outputs=[
                 io.String.Output(display_name="path"),
@@ -264,7 +275,7 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                 window_frames, context_frames, extent, seed, audio_mask, level,
                 filename_prefix, crf, prompt_mode="cycle", window_mode="uniform",
                 save_metadata_png=True, keep_windows=True, references=None,
-                reuse_windows=True) -> io.NodeOutput:
+                reuse_windows=True, lists=None) -> io.NodeOutput:
         import folder_paths
         # A DynamicCombo arrives as one nested dict (the selection under its own
         # id, the option's inputs beside it) or, from an API prompt that sets
@@ -292,6 +303,9 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
         # a block's own `frames:` wins for its window; the plan's last window still must reach the end
         frames_per_window = [blocks[pick[i]][0] or n for i, n in enumerate(plan)]
         texts = [blocks[pick[i]][1] for i in range(len(plan))]
+        # filled before anything is keyed or encoded: resume and the encode
+        # cache see the text a window renders, never its placeholders
+        texts, list_picks = resolve_texts(texts, lists_for(texts, lists, find_wildcard))
         n_windows = len(frames_per_window)
 
         out_dir = folder_paths.get_output_directory()
@@ -326,7 +340,8 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
         # the module docstring for why the key is the text (and, with
         # references, the frame count) and nothing else.
         track_latent, conds, cond_keys = None, {}, {}
-        reports = []
+        reports = [f"[{i + 1}] " + ", ".join(f"__{name}__ = {value!r}" for name, value in chosen.items())
+                   for i, chosen in enumerate(list_picks) if chosen]
         if first < n_windows:
             enc = MiniMaxH3EncodeTrack.execute(audio_vae, audio, level)
             enc = getattr(enc, "args", enc)
@@ -421,5 +436,9 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                   f"{total} frames ({total / FPS:.2f}s) over {seconds:.2f}s of track, "
                   f"{first} reused -> {out_path}\n" + "\n".join(reports))
         logger.info("[h3] MiniMaxH3AudioFreezeSong: %s", report.splitlines()[0])
+        for line in reports:
+            # which value each window took is the one thing a list run cannot be checked without
+            if "__ = " in line:
+                logger.info("[h3]   %s", line)
         filenames, preview = saved_outputs(out_path, subfolder, png_path)
         return io.NodeOutput(out_path, report, filenames, ui=preview)

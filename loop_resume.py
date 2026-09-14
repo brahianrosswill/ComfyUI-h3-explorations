@@ -46,10 +46,11 @@ import comfy.utils
 
 #: Song-node inputs that reach a window only through that window's own text,
 #: frames, start and seed, or that change files beside the windows and not the
-#: windows. Reasoned, from `MiniMaxH3AudioFreezeSong.execute`.
+#: windows. `lists` fills the text, so a changed list moves only the windows
+#: whose filled-in text changed. Reasoned, from `MiniMaxH3AudioFreezeSong.execute`.
 SONG_PER_WINDOW = ("prompt", "extent", "extent.seconds", "window_frames", "seed",
                    "prompt_mode", "window_mode", "filename_prefix", "save_metadata_png",
-                   "keep_windows", "reuse_windows")
+                   "keep_windows", "reuse_windows", "lists")
 
 
 def _is_link(value) -> bool:

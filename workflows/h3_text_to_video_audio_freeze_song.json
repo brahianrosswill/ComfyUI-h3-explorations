@@ -555,6 +555,12 @@
           "type": "MINIMAX_H3_REFERENCES",
           "link": null,
           "shape": 7
+        },
+        {
+          "name": "lists",
+          "type": "H3_PROMPT_LISTS",
+          "link": null,
+          "shape": 7
         }
       ],
       "outputs": [

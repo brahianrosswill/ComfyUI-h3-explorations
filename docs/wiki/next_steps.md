@@ -28,13 +28,20 @@ own below the rule.
   full-length run is still a throwaway. Next, as decided on 2026-09-14:
   (2) built the same day: resume from the first changed window, the seed
   held fixed (`loop_resume.py`; harness smoke
-  `bench/results/2026-09-14_audio_freeze_song_resume_smoke.jsonl`); (3) a
-  prompt list node filling
+  `bench/results/2026-09-14_audio_freeze_song_resume_smoke.jsonl`); (3)
+  built the same day: a prompt list node filling
   `__name__` placeholders, one list per node with its own fixed seed, in
   order or reshuffled on each pass so no value repeats before the list is
   used up (an explicit `random` mode allows repeats), advancing only when a
   window uses its placeholder; wildcard `.txt` and JSON files from
-  `<input>/wildcards/`, selectable on the node. The shot-per-window
+  `<input>/wildcards/`, selectable on the node (`prompt_lists.py`,
+  `bench/check_prompt_lists.py`; harness smoke
+  `bench/results/2026-09-14_audio_freeze_song_lists_smoke.jsonl`). Proposed by
+  the session and not yet confirmed by the owner: a placeholder with no list
+  node reads a wildcard file of its name directly, shuffled at seed 0; no
+  shipped graph carries a list node. Still owed on the loop: a full-length
+  song, resume on the reference graph, and an editor queue to exercise the
+  workflow chunk in the finished file. The shot-per-window
   workflows and `MiniMaxH3JoinWindows` retired unrendered the same day.
   Decisions: [`decisions.md`](decisions.md),
   2026-09-14.

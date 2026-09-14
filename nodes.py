@@ -38,6 +38,7 @@ from .reference_conditioning import (
     MiniMaxH3ReferenceConditioning,
 )
 from .reference_report import MiniMaxH3ReferenceReport
+from .prompt_lists import MiniMaxH3PromptList, register_wildcards_folder
 from . import h3_capture
 
 from .attention import (
@@ -276,8 +277,10 @@ class H3ExplorationsExtension(ComfyExtension):
                 MiniMaxH3FreezeAudio, MiniMaxH3FreezeAudioWindow,
                 MiniMaxH3EncodeTrack,
                 MiniMaxH3AudioAttentionGain, MiniMaxH3AudioFreezeSong,
-                MiniMaxH3ReferenceReport]
+                MiniMaxH3ReferenceReport, MiniMaxH3PromptList]
 
 
 async def comfy_entrypoint() -> H3ExplorationsExtension:
+    # before any schema is read: the Prompt List's file dropdown lists this folder
+    register_wildcards_folder()
     return H3ExplorationsExtension()
