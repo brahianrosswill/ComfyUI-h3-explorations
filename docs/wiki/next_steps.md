@@ -15,6 +15,14 @@ own below the rule.
 
 **2026-09-14:**
 
+- **M3-to-H3 bridge: run the image lane next.** The text lane closed (M3
+  maps onto Qwen's text rows up to a cheap aligned map, an order of magnitude
+  outside the tolerance two Qwen runtimes set at the DiT's refiner), the
+  fifteen image pairs are captured on both sides, and the fit was stopped
+  unfinished. The take, the results and the numbered next-session list are
+  `internal/claude/2026-09-14_m3-h3-bridge_independent-take.md` (gitignored,
+  this checkout); the fixed script is `internal/claude/m3-h3-adapter/fit_image_lane.py`
+  and needs a GPU window agreed with the session holding the card.
 - **Two duplicate Sol-on probes retired** (owner). `h3_probe_sol_on` and
   `h3_probe_sol_on_i2v` were Sol-on twins of graphs that were sage-only when
   written; with Sol on by default they matched `h3_text_to_video` and
