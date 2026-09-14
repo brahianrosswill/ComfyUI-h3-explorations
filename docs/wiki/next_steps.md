@@ -21,7 +21,9 @@ own below the rule.
   reference stills with every window's prompt, window files in
   `<prefix>_windows/`, the prompt and workflow in the finished file plus an
   optional PNG, and the seed control slot the song UI graphs were missing.
-  Its first full run is a throwaway. Still to build, in order: (2) window keys
+  Harness smoke, two short windows per arm, reference and plain:
+  `bench/results/2026-09-14_audio_freeze_song_stage1_smoke.jsonl`. Its first
+  full-length run is still a throwaway. Still to build, in order: (2) window keys
   and resume from the first changed window; (3) a prompt list node (`{name}`
   placeholders, one list per node, in order or reshuffled each pass from its
   own seed), wildcard `.txt` and JSON files from a registered
