@@ -2216,7 +2216,8 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
                               "audio_mask": freeze_mask, "level": "clip_guard",
                               "filename_prefix": out_prefix or "Video/h3_song", "crf": 19,
                               "prompt_mode": freeze_song_mode, "window_mode": "uniform",
-                              "save_metadata_png": True, "keep_windows": True}}
+                              "save_metadata_png": True, "keep_windows": True,
+                              "reuse_windows": True}}
         if freeze_song_refs:
             # The song node compiles its references itself, once per distinct
             # prompt, so only the conditioner differs from a reference graph:
@@ -4429,8 +4430,16 @@ takes the quick look. The seed advances by one per window.
 **Files.** The finished `<prefix>_NNNNN.mp4` carries the prompt and the
 workflow; `save_metadata_png` also writes its first frame as a PNG carrying
 the same, which loads back into ComfyUI. Window files stay in
-`<prefix>_windows/` and the next run of the graph overwrites them;
-`keep_windows` off removes this run's after the join.
+`<prefix>_windows/`, each video with the latent beside it, and the next run of
+the graph overwrites them; `keep_windows` off removes this run's after the
+join.
+
+**Resume.** A run reuses the stored windows whose inputs have not changed, in
+order, and renders from the first that has: edit a later prompt block, or go
+from the first N seconds to the whole track, and the earlier windows are kept.
+The seed stays fixed after each queue so a re-queue can reuse; change it for a
+new render. `reuse_windows` off renders everything, which is what to do after
+replacing a model, LoRA or reference file under the same name.
 
 **Cost.** Attention is quadratic in a window's packed sequence
 (`bench/preflight_graph.py` prices one), so shorter windows are cheaper per
@@ -4438,8 +4447,8 @@ second of song, at the price of more seams; reference stills add rows to
 every window. Sage and Sol on the model apply inside each window as on any
 graph.
 
-The encode-first order, references and the window folder are new on
-2026-09-14: treat the first run as a throwaway and read the report.
+The encode-first order, references, the window folder and resume are new
+on 2026-09-14: treat the first run as a throwaway and read the report.
 `docs/h3_audio_freeze.md`.
 """
 
@@ -5743,12 +5752,14 @@ def build_ui(task: str, *, sage: bool = True, prompt: str | None = None,
                               # The control slot after `seed`. Declared on the node since
                               # 2026-09-14; before that the frontend drew it by name
                               # (any INT called `seed`) while this list wrote none, so
-                              # every widget after it loaded one slot late.
-                              seed, "randomize", freeze_mask, "clip_guard",
+                              # every widget after it loaded one slot late. `fixed`, as
+                              # the node declares: resume reuses windows only while the
+                              # seed holds.
+                              seed, "fixed", freeze_mask, "clip_guard",
                               out_prefix or "Video/h3_song", 19, freeze_song_mode, "uniform",
-                              # save_metadata_png, keep_windows; `references` is a socket
-                              # and takes no widget slot
-                              True, True],
+                              # save_metadata_png, keep_windows, then reuse_windows;
+                              # `references` between them is a socket and takes no slot
+                              True, True, True],
                      inputs=[_in("model", "MODEL"), _in("clip", "CLIP"), _in("vae", "VAE"),
                              _in("audio_vae", "VAE"), _in("audio", "AUDIO"),
                              _in("sampler", "SAMPLER"), _in("sigmas", "SIGMAS"),

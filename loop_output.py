@@ -19,9 +19,10 @@ reads a VHS file reads these. `write_metadata_png` adds `<prefix>_NNNNN.png`,
 the first frame carrying the same chunks, which is what a drag into the
 frontend reads.
 
-**Window files** live in `<prefix>_windows/`, one per window slot and
-overwritten in place by the next run of the same graph. The folder name has no
-digits after the prefix, so core's counter ignores it.
+**Window files** live in `<prefix>_windows/`, one video and one latent per
+window slot (`loop_resume.window_paths`), overwritten in place by the next run
+of the same graph. The folder name has no digits after the prefix, so core's
+counter ignores it.
 """
 
 from __future__ import annotations
@@ -43,11 +44,6 @@ from .audio_freeze import _ffmpeg, _write_wav
 def window_dir(full_out: str, filename: str) -> str:
     """The working folder for a graph's window files, beside its finished files."""
     return os.path.join(full_out, f"{filename}_windows")
-
-
-def window_path(work_dir: str, filename: str, number: int) -> str:
-    """Window `number`, counted from 1."""
-    return os.path.join(work_dir, f"{filename}_window_{int(number)}.mp4")
 
 
 def _metadata_payload(prompt, extra_pnginfo) -> dict:

@@ -4,6 +4,33 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.104.0
+
+### Added
+
+- **Resume for the song node** (`loop_resume.py`;
+  `MiniMaxH3AudioFreezeSong.reuse_windows`, appended last, on by default).
+  Each rendered window stores its sampled latent beside its video, keyed on
+  the queued graph upstream of the node, the track's samples, the window's
+  own text, frames, start and seed, and the previous window's key. A run
+  reuses the stored windows whose keys match, in order, renders from the
+  first that does not, and encodes the track and prompts only for the windows
+  that render. Editing a later prompt block or covering more of the track
+  keeps the earlier windows. A file replaced on disk under the same name is
+  invisible to the key; `reuse_windows` off renders everything.
+  `bench/check_audio_freeze.py` gains the resume case. Harness smoke, three
+  queues of the PDD8 song graph over the first 10, 10 and 15 seconds:
+  `bench/results/2026-09-14_audio_freeze_song_resume_smoke.jsonl`; the second
+  reused both windows and loaded no encoder, the third reused the first.
+
+### Changed
+
+- **The song node's seed holds after each queue**: `control_after_generate`
+  is declared fixed and the generator writes `fixed` (owner, 2026-09-14). A
+  new seed on every queue would re-render every window.
+- **Window files**: a `.safetensors` latent beside each window video in
+  `<prefix>_windows/`; `keep_windows` off removes both.
+
 ## 0.103.0
 
 ### Removed

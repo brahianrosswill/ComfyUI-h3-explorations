@@ -161,7 +161,8 @@
       "prompt_mode": "random",
       "window_mode": "uniform",
       "save_metadata_png": true,
-      "keep_windows": true
+      "keep_windows": true,
+      "reuse_windows": true
     }
   }
 }

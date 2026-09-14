@@ -26,8 +26,10 @@ own below the rule.
   Harness smoke, two short windows per arm, reference and plain:
   `bench/results/2026-09-14_audio_freeze_song_stage1_smoke.jsonl`. Its first
   full-length run is still a throwaway. Next, as decided on 2026-09-14:
-  (2) window keys and resume from the first changed window, with the song
-  node's seed held fixed between queues; (3) a prompt list node filling
+  (2) built the same day: resume from the first changed window, the seed
+  held fixed (`loop_resume.py`; harness smoke
+  `bench/results/2026-09-14_audio_freeze_song_resume_smoke.jsonl`); (3) a
+  prompt list node filling
   `__name__` placeholders, one list per node with its own fixed seed, in
   order or reshuffled on each pass so no value repeats before the list is
   used up (an explicit `random` mode allows repeats), advancing only when a

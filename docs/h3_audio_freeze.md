@@ -225,8 +225,10 @@ PDD8 chain). The first item tomorrow is one short run of the song graph.
 `loop_output.py`): it encodes the track and each distinct prompt once
 before any window samples, takes reference stills with every window's
 prompt, writes its window files to `<prefix>_windows/`, and embeds the prompt
-and workflow in the finished file. The stages after it (resume, prompt
-lists and wildcard files) are in
+and workflow in the finished file. Resume followed the same day
+(`loop_resume.py`): stored windows whose inputs have not changed are reused
+in order and rendering starts at the first that has. The stage after it
+(prompt lists and wildcard files) is in
 `docs/wiki/next_steps.md`.
 
 **Next, in order.**

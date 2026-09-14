@@ -162,6 +162,7 @@
       "window_mode": "uniform",
       "save_metadata_png": true,
       "keep_windows": true,
+      "reuse_windows": true,
       "references": [
         "50",
         0

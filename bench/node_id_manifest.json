@@ -82,7 +82,8 @@
       "window_mode",
       "save_metadata_png",
       "keep_windows",
-      "references"
+      "references",
+      "reuse_windows"
     ],
     "node_id": "MiniMaxH3AudioFreezeSong",
     "outputs": [

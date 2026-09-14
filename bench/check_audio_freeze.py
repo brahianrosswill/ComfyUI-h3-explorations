@@ -19,6 +19,13 @@ things here, each a way the freeze could look present and not be:
    carries `SetLatentNoiseMask` at all; every graph carrying the freeze node
    feeds the sampler from it, muxes its `clip_audio`, takes the preflight's
    latent, and has no audio decoder left to consume.
+4. **Resume reuses only what its key covers.** `loop_resume.py`: the graph
+   signature moves with a checkpoint, a sampler, the crf or the canvas and
+   not with the song node's per-window inputs; renumbering nodes moves
+   nothing; a missing prompt or a dangling link gives no key at all; a
+   window's key depends on the previous window's; and a stored window reads
+   back with its key, trim, next start and latent, and not at all once its
+   video is gone.
 
 The encoder is faked (zeros of the right shape) so this runs with no model,
 no CUDA and no server; the real audio VAE is exercised by
@@ -315,12 +322,91 @@ def check_graphs(problems) -> tuple[int, int]:
     return len(paths), frozen
 
 
+def check_resume(problems):
+    import copy
+    import os
+    import tempfile
+    import loop_resume as lr
+
+    base = {
+        "1": {"class_type": "UNETLoader", "inputs": {"unet_name": "a.safetensors"}},
+        "7": {"class_type": "KSamplerSelect", "inputs": {"sampler_name": "euler"}},
+        "74": {"class_type": "MiniMaxH3AudioFreezeSong",
+               "inputs": {"model": ["1", 0], "sampler": ["7", 0], "prompt": "a dancer", "crf": 19,
+                          "seed": 5, "filename_prefix": "Video/x", "extent": "whole", "width": 1344,
+                          "reuse_windows": True}},
+    }
+
+    def sig(g):
+        return lr.graph_signature(g, "74", skip=lr.SONG_PER_WINDOW)
+
+    s0 = sig(base)
+    if s0 is None:
+        _fail(problems, "resume: a complete prompt gave no graph signature")
+        return
+
+    def setter(nid, name, value):
+        return lambda g: g[nid]["inputs"].__setitem__(name, value)
+
+    for label, edit, same in (
+            ("a checkpoint change", setter("1", "unet_name", "b.safetensors"), False),
+            ("a sampler change", setter("7", "sampler_name", "er_sde"), False),
+            ("a crf change", setter("74", "crf", 23), False),
+            ("a canvas change", setter("74", "width", 1152), False),
+            ("a prompt edit", setter("74", "prompt", "a dancer, closer"), True),
+            ("a seed change", setter("74", "seed", 6), True),
+            ("a filename change", setter("74", "filename_prefix", "Video/y"), True),
+            ("an extent change", setter("74", "extent", "first_seconds"), True),
+            ("the reuse switch", setter("74", "reuse_windows", False), True)):
+        g = copy.deepcopy(base)
+        edit(g)
+        if (sig(g) == s0) != same:
+            _fail(problems, f"resume: {label} {'moved' if same else 'did not move'} the graph signature")
+    renumbered = {"9": copy.deepcopy(base["1"]), "7": copy.deepcopy(base["7"]), "74": copy.deepcopy(base["74"])}
+    renumbered["74"]["inputs"]["model"] = ["9", 0]
+    if sig(renumbered) != s0:
+        _fail(problems, "resume: renumbering the graph moved its signature")
+    dangling = copy.deepcopy(base)
+    dangling["74"]["inputs"]["model"] = ["42", 0]
+    if lr.graph_signature(None, "74") is not None or lr.graph_signature(base, "99") is not None \
+            or sig(dangling) is not None:
+        _fail(problems, "resume: a missing prompt, node or link still gave a key")
+
+    root = lr.root_key(s0, lr.track_hash(torch.zeros(1, 2, 100), 44100))
+    if lr.root_key(s0, lr.track_hash(torch.ones(1, 2, 100), 44100)) == root:
+        _fail(problems, "resume: the root ignores the track's samples")
+    k1 = lr.window_key(root, 1, "t", 141, 0.0, 5, None)
+    if lr.window_key(root, 2, "t", 141, 4.25, 6, k1) == lr.window_key(root, 2, "t", 141, 4.25, 6, "other"):
+        _fail(problems, "resume: a window's key ignores the previous window's")
+
+    with tempfile.TemporaryDirectory() as d:
+        video, audio = torch.randn(1, 24, 3, 4, 6), torch.randn(1, 32, 2, 5)
+        samples = comfy.nested_tensor.NestedTensor((video, audio))
+        video_path, _latent = lr.window_paths(d, "song", 1)
+        if lr.read_window(d, "song", 1) is not None:
+            _fail(problems, "resume: an empty store read as a window")
+        open(video_path, "wb").close()
+        lr.save_window(d, "song", 1, k1, samples, 39, 5.875)
+        got = lr.read_window(d, "song", 1)
+        if got is None or (got["key"], got["trim"], got["next_start"]) != (k1, 39, 5.875):
+            _fail(problems, f"resume: a stored window read back as {got}")
+        else:
+            back = lr.load_window_latent(got["latent"])["samples"]
+            if not getattr(back, "is_nested", False) or not all(
+                    torch.equal(a, b) for a, b in zip(back.unbind(), (video, audio))):
+                _fail(problems, "resume: a stored latent did not round-trip")
+        os.remove(video_path)
+        if lr.read_window(d, "song", 1) is not None:
+            _fail(problems, "resume: a latent whose video is gone read as a finished window")
+
+
 def main() -> int:
     problems: list[str] = []
     check_slice(problems)
     check_masks(problems)
     check_execute(problems)
     check_window_geometry(problems)
+    check_resume(problems)
     n, frozen = check_graphs(problems)
     print(f"  {n} api graphs walked, {frozen} carry {FREEZE}, none carry {STOCK_MASK}"
           if not any(STOCK_MASK in p for p in problems) else
