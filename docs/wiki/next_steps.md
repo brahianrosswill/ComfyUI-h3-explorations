@@ -41,7 +41,10 @@ own below the rule.
   read, and the UI form carries the notes, titles, layout and bypass state
   that the frontend's deprecated API import does not rebuild. Open for the
   owner: which graphs get opened in the editor, and whether the notes are
-  used. Nothing changed yet.
+  used. The owner then chose API-only workflows (2026-09-14); the
+  implementation and verification plan for a later session is
+  `internal/2026-09-14_api_only_workflows_plan.md` (not shipped), and it
+  recommends converting before loop stage 2.
 
 **2026-09-13:**
 
