@@ -206,6 +206,18 @@ def check_window_geometry(problems):
         pass
     if af.no_context_geometry(102)["stride_frames"] != 345:
         _fail(problems, "a first window did not get a full-window stride")
+    # The loop plan mixes window lengths, and the window node checks the
+    # previous window's length against the context it hands on, so every
+    # length on both clocks must pass at every context shorter than it.
+    import loop_plan as lp
+    steps = {af.pixel_frames(t): t for t in range(1, 120)}
+    for n in lp.CHAIN_LENGTHS:
+        for c in (39, 90, 141):
+            if c < n:
+                try:
+                    af.window_geometry(steps[n], c)
+                except ValueError as exc:
+                    _fail(problems, f"a {n}-frame window cannot hand on a {c}-frame context: {exc}")
     # window 1 copies the previous tail into the head and freezes it
     video = torch.randn(1, 24, 102, 48, 84)
     audio = torch.randn(1, 32, 2, 575)

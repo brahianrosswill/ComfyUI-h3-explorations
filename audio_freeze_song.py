@@ -295,6 +295,9 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                 lines.append("    " + w.text.replace("\n", "\n    "))
         lines += list(list_lines)
 
+        # In a preview every lazy input arrives as None: nothing above this
+        # line may read model, clip, vae, audio_vae, sampler, sigmas or
+        # references, or a preview raises instead of reporting.
         if preview:
             report = "preview, nothing rendered: " + "\n".join(lines)
             logger.info("[h3] MiniMaxH3AudioFreezeSong: %s", report.splitlines()[0])
