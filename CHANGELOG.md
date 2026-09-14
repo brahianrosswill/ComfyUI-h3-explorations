@@ -4,6 +4,20 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.106.1
+
+### Fixed
+
+- The API builder refuses more prompt lists than it has node ids for; it
+  dropped the extras before, leaving placeholders with no list node. The UI
+  builder already refused.
+- **The song graphs' own note paragraphs now reach their UI graphs.** The
+  song builder returned before the variant note was drawn, so the PDD8,
+  reference and prompt-list song graphs showed only the generic song note and
+  none of the paragraph written for each. The prompt-list example's paragraph
+  also says a window is shorter than a section of its song, so a new place
+  arrives where a window ends, not where the song turns.
+
 ## 0.106.0
 
 ### Added

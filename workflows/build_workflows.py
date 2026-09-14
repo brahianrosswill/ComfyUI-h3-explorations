@@ -2260,9 +2260,10 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
             g["74"]["inputs"]["references"] = chain
         if freeze_song_lists:
             # typed lists, chained in order into the song node's `lists`
+            if len(freeze_song_lists) > len(_PROMPT_LIST_NODES):
+                raise SystemExit(f"at most {len(_PROMPT_LIST_NODES)} prompt lists")
             chain = None
-            for list_id, (name, values, order, list_seed) in zip(_PROMPT_LIST_NODES, freeze_song_lists,
-                                                                  strict=False):
+            for list_id, (name, values, order, list_seed) in zip(_PROMPT_LIST_NODES, freeze_song_lists):
                 g[list_id] = {"class_type": "MiniMaxH3PromptList",
                               "inputs": {"name": name, "source": "typed", "source.values": values,
                                          "order": order, "seed": list_seed,
@@ -5861,7 +5862,10 @@ def build_ui(task: str, *, sage: bool = True, prompt: str | None = None,
                     g.link(chain, 0, node, "lists", "H3_PROMPT_LISTS")
                 chain = node
             g.link(chain, 0, song, "lists", "H3_PROMPT_LISTS")
-        g.add("MarkdownNote", (-2180, 0), size=(620, 620), widgets=[_NOTE_SONG],
+        # A song graph's own note carries `_NOTE_SONG` and its paragraph; this
+        # block returns before the generic variant note below is drawn, which
+        # until 2026-09-14 left those paragraphs out of every song graph.
+        g.add("MarkdownNote", (-2180, 0), size=(620, 620), widgets=[variant_note or _NOTE_SONG],
               title="Whole track: how it works")
         return g.dump(title or f"h3-{task}-song")
 
@@ -6870,7 +6874,9 @@ def main():
                   "on her face whatever place the window before drew. `place` is five "
                   "places, shuffled; `motion` is four movements, in order. Edit the values "
                   "on the list nodes, or remove a list node and put `place.txt` in the "
-                  "`wildcards` folder. Everything else is the PDD8 song graph's. No render "
+                  "`wildcards` folder. A window is shorter than a section of this song, "
+                  "so a new place arrives where a window ends, not where the song turns. "
+                  "Everything else is the PDD8 song graph's. No render "
                   "of it has been judged.")),
          "a whole song on PDD8 with two prompt lists filling the middle shot of every window"),
         # The PDD8 freeze with the audio attention gain node in front of the
