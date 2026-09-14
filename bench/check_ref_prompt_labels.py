@@ -348,9 +348,10 @@ def main():
         bad, compared = [], 0
         for path in graph_paths(WORKFLOWS, "*_api.json"):
             doc = json.loads(path.read_text(encoding="utf-8"))
-            # A windowed graph (`freeze_shots`) declares a LIST, one prompt
-            # per window in node-id order; every other graph declares one
-            # string that every conditioner must carry.
+            # A windowed graph may declare a LIST, one prompt per window in
+            # node-id order; every other graph declares one string that every
+            # conditioner must carry. No shipped graph declares a list since
+            # the shot workflows retired (2026-09-14).
             declared = expected.get(path.name)
             per_window = list(declared) if isinstance(declared, list) else None
             conditioners = sorted(

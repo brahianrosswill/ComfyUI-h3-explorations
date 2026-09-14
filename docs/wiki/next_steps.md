@@ -25,14 +25,16 @@ own below the rule.
   missing.
   Harness smoke, two short windows per arm, reference and plain:
   `bench/results/2026-09-14_audio_freeze_song_stage1_smoke.jsonl`. Its first
-  full-length run is still a throwaway. Proposed next, pending the owner's
-  word on the choices `decisions.md` marks proposed: (2) window keys
-  and resume from the first changed window; (3) a prompt list node (`{name}`
-  placeholders, one list per node, in order or reshuffled each pass from its
-  own seed), wildcard `.txt` and JSON files from a registered
-  `models/wildcards`, frontend dynamic prompts off on the three prompt
-  widgets; (4) the shot chain's own window writer on the same layout, keyed
-  on whether its file exists. Decisions: [`decisions.md`](decisions.md),
+  full-length run is still a throwaway. Next, as decided on 2026-09-14:
+  (2) window keys and resume from the first changed window, with the song
+  node's seed held fixed between queues; (3) a prompt list node filling
+  `__name__` placeholders, one list per node with its own fixed seed, in
+  order or reshuffled on each pass so no value repeats before the list is
+  used up (an explicit `random` mode allows repeats), advancing only when a
+  window uses its placeholder; wildcard `.txt` and JSON files from
+  `<input>/wildcards/`, selectable on the node. The shot-per-window
+  workflows and `MiniMaxH3JoinWindows` retired unrendered the same day.
+  Decisions: [`decisions.md`](decisions.md),
   2026-09-14.
 - **Why the workflows ship as UI and API twins**: a read-only subagent review
   found no recorded reason; the API form is what every runner and most checks

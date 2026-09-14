@@ -17,19 +17,26 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-14
 
-- **A four-stage plan for frozen-audio loops.** The owner approved the plan
-  ("I'm good with this plan"); the choices marked *proposed* below were
-  recommendations inside it that the owner has not confirmed one by one.
-  Owner: encoding comes before sampling, the track and each distinct prompt
-  once; reference stills go with every window's prompt, with a workflow for
-  it; prompt lists fill `{name}` placeholders in order or reshuffled on each
-  pass. Proposed: window files in a per-graph working folder
-  (`<prefix>_windows/`) kept by default, so a later stage can resume from the
-  first changed window (stage one ships this, `keep_windows` on); the shot
-  chain's own window writer on the same layout; frontend dynamic prompts off
-  on the three prompt widgets; the list node's own seed; wildcard files in a
-  registered `models/wildcards`. `docs/wiki/next_steps.md` carries the stages;
-  stage one is `audio_freeze_song.py` and `loop_output.py`.
+- **The frozen-audio loop plan, confirmed** (owner, in answers the same day).
+  Encoding comes before sampling: the track and each distinct prompt once.
+  Reference stills go with every window's prompt, with a workflow for it.
+  The song node keeps its window files in a per-graph working folder
+  (`<prefix>_windows/`, kept by default) and gains resume from the first
+  changed window, with its seed held fixed between queues so a re-queue can
+  reuse windows. Prompt lists fill `__name__` placeholders -- not `{name}`,
+  which the frontend's dynamic prompts rewrite, and not `[name]` or `<name>`,
+  which H3 prompts already use -- one list per node with its own seed held
+  fixed, in order or reshuffled on each pass with no repeat before the list
+  is used up, advancing only when a window uses the placeholder. Wildcard
+  files live in `wildcards/` under ComfyUI's input directory (the
+  `--input-directory` override included) and are selectable on the node.
+  `docs/wiki/next_steps.md` carries the stages.
+- **The shot-per-window workflows retired, unrendered** (owner: never used).
+  `workflows/h3_text_to_video_audio_freeze_shots.json` and
+  `..._shots_repeat.json` with their API twins, the generator's
+  `freeze_shots` knob, and `MiniMaxH3JoinWindows` went. The song node's
+  prompt blocks and `frames:` lines do what they did. The two-window seam
+  graph (`workflows/h3_text_to_video_audio_freeze_2windows_api.json`) stays.
 - **A loop feeds the encoder no per-window image** (owner, after discussion).
   A frame from the previous window would carry drift forward and force an
   encode between windows; the anchor for identity is a fixed reference still.

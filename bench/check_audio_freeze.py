@@ -312,18 +312,6 @@ def check_graphs(problems) -> tuple[int, int]:
             w = g[wid]["inputs"]
             if w.get("previous") and not (isinstance(w.get("start_seconds"), list) or w.get("start_seconds")):
                 _fail(problems, f"{p.name}: window node {wid} has a previous latent but starts at 0")
-        # a chain: more than one window means a join node fed every muxer, in order
-        if len(windows) > 1 and len(muxers) > 1:
-            joins = [nid for nid, ct in classes.items() if ct == "MiniMaxH3JoinWindows"]
-            if len(joins) != 1:
-                _fail(problems, f"{p.name}: {len(windows)} windows and {len(joins)} join nodes")
-            else:
-                j = g[joins[0]]["inputs"]
-                fed = [j.get(f"window_{k + 1}") for k in range(len(windows))]
-                if any(not (isinstance(f, list) and classes.get(f[0]) == "VHS_VideoCombine") for f in fed):
-                    _fail(problems, f"{p.name}: the join node is not fed one muxer per window")
-                if len(muxers) != len(windows):
-                    _fail(problems, f"{p.name}: {len(muxers)} muxers for {len(windows)} windows")
     return len(paths), frozen
 
 

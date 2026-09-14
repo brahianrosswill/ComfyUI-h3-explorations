@@ -102,8 +102,8 @@ SAGE_WIDGET_ORDER = tuple(h3_config.SAGE_NODE)
 
 OUTPUT_TYPES = {"VHS_VideoCombine", "SaveImage", "PreviewImage", "SaveAudio",
                 "SaveAnimatedWEBP", "SaveWEBM", "SaveVideo", "PreviewAny",
-                # this pack's own file writers, output nodes by declaration
-                "MiniMaxH3JoinWindows", "MiniMaxH3AudioFreezeSong"}
+                # this pack's own file writer, an output node by declaration
+                "MiniMaxH3AudioFreezeSong"}
 
 #: {graph stem: (node fields, reason)}. A per-graph deviation that is the point
 #: of the graph. `node fields` is a tuple of widget names on the sage or Sol

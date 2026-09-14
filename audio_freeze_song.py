@@ -1,13 +1,13 @@
 """Drop a song and a prompt; the windows come from the track.
 
-`docs/h3_audio_freeze.md` section 4 step 6, the other mode of the loop. The
-shot-per-window chain (`MiniMaxH3FreezeAudioWindow` groups joined by
-`MiniMaxH3JoinWindows`) is a director's cut: the frames are the cut and are
-typed per window. This node is the LTX pack's music-video mode on H3: one
-prompt (or a few, separated by `---`), one track, and the node plans the
-windows from the track's length, runs them one after another inside itself,
-writes each window's new frames to a file as it goes, and joins the files with
-the full track at the end. Nothing here holds more than one window of frames.
+`docs/h3_audio_freeze.md` section 4 step 6, the loop: the LTX pack's
+music-video mode on H3. One prompt (or a few, separated by `---`), one track,
+and the node plans the windows from the track's length, runs them one after
+another inside itself, writes each window's new frames to a file as it goes,
+and joins the files with the full track at the end. Nothing here holds more
+than one window of frames. The shot-per-window workflows that chained window
+nodes by hand retired unrendered on 2026-09-14; prompt blocks with `frames:`
+lines do what they did.
 
 **The plan.** Windows are `window_frames` long with `context_frames` of the
 previous window frozen at their head, so each adds `window - context` frames.

@@ -19,7 +19,6 @@ Scenes are ordered by how many graphs carry them, so the defaults that reach the
 | [`BENCH_T2V_PROMPT`](#bench-t2v-prompt) | `t2va_frontier_standoff` | 2 | 379 | 3 | 2 | `<d>` |
 | [`DIALOGUE_REF2V_PROMPT`](#dialogue-ref2v-prompt) | `ref2va_stairwell_dialogue` | 2 | 625 | 3 | 2 | `<d>` |
 | [`ref2va_video_sound_structure`](#ref2va-video-sound-structure) | `ref2va_video_sound_structure` | 2 | 183 | 1 | 0 | — |
-| [`t2va_dancer_shot_face`](#t2va-dancer-shot-face) | `t2va_dancer_shot_face` | 2 | 160 | 1 | 0 | — |
 | [`DIALOGUE_T2V_PROMPT`](#dialogue-t2v-prompt) | `t2va_stairwell_dialogue` | 1 | 228 | 3 | 2 | `<d>` |
 | [`R2V_PROMPT`](#r2v-prompt) | `ref2va_image_ref_default` | 1 | 281 | 1 | 0 | — |
 | [`T2V_AISLE_LONG`](#t2v-aisle-long) | `t2va_hardware_aisle_long` | 1 | 513 | 3 | 2 | `<d>` |
@@ -44,8 +43,6 @@ Scenes are ordered by how many graphs carry them, so the defaults that reach the
 | [`ref2va_video_image_edit`](#ref2va-video-image-edit) | `ref2va_video_image_edit` | 1 | 284 | 1 | 0 | — |
 | [`ref2va_video_motion_transfer`](#ref2va-video-motion-transfer) | `ref2va_video_motion_transfer` | 1 | 181 | 1 | 0 | — |
 | [`ref2va_video_structure_only`](#ref2va-video-structure-only) | `ref2va_video_structure_only` | 1 | 146 | 1 | 0 | — |
-| [`t2va_dancer_shot_floor`](#t2va-dancer-shot-floor) | `t2va_dancer_shot_floor` | 1 | 167 | 1 | 0 | — |
-| [`t2va_studio_dancer_close`](#t2va-studio-dancer-close) | `t2va_studio_dancer_close` | 1 | 238 | 2 | 0 | — |
 
 ---
 
@@ -445,25 +442,6 @@ The ambience of <Audio 1> continues under the shot.
 
 non_diegetic_music:
 N/A
-```
-
-## t2va_dancer_shot_face
-
-Carried by **2** graph(s). Sections: none.
-
-<details><summary>graphs</summary>
-
-- `h3_text_to_video_audio_freeze_shots_api`
-- `h3_text_to_video_audio_freeze_shots_repeat_api`
-
-</details>
-
-```text
-integrated_multimodal_description: [Shot 1] Live-action, cinematic, a close-up frames a dancer's face and shoulders in a bare rehearsal studio across the eight-second take, the mirrored wall soft behind her, a portable speaker off frame playing a fast, dry drum-machine pulse. She is in her twenties in a grey vest, hair tied back, face sharp and well lit, and she produces no vocal sound. Her head snaps to the lens on the downbeats and her shoulders roll on the hits between, eyebrows lifting on the fourth hit of each bar, a grin breaking and holding as the groove builds. Her lips stay closed throughout. The camera pushes in with small amplitude at slow speed until her eyes sit at the centre of the frame.
-
-overall_soundscape: Her breath comes in short controlled bursts between hits, fabric rustles at her shoulders, and bare feet squeak faintly on the sprung floor below the frame, under the dry room tone of an empty studio.
-
-non_diegetic_music: N/A
 ```
 
 ## DIALOGUE_T2V_PROMPT
@@ -1177,41 +1155,5 @@ Natural ambient atmosphere continues throughout the shot.
 
 non_diegetic_music:
 N/A
-```
-
-## t2va_dancer_shot_floor
-
-Carried by **1** graph(s). Sections: none.
-
-<details><summary>graphs</summary>
-
-- `h3_text_to_video_audio_freeze_shots_api`
-
-</details>
-
-```text
-integrated_multimodal_description: [Shot 1] Live-action, cinematic, a low wide shot frames a dancer's feet and legs on a sprung wooden studio floor across the eight-second take, the mirrored wall behind, a portable speaker on the floor at the edge of frame playing a fast, dry drum-machine pulse. She is in her twenties in a grey vest and loose black trousers, barefoot, and she produces no vocal sound. Her footwork hits on every beat: heel drops on the downbeats, quick toe taps between them, weight shifting side to side so the trousers swing, and on the fourth hit of each bar both feet leave the floor together and land square. The camera holds a static shot as the steps travel toward the lens until her knees fill the frame.
-
-overall_soundscape: Bare feet squeak and slap on the sprung floor, fabric swings and rustles with each shift of weight, and her breath comes in short controlled bursts between hits, under the dry room tone of an empty studio.
-
-non_diegetic_music: N/A
-```
-
-## t2va_studio_dancer_close
-
-Carried by **1** graph(s). Sections: none.
-
-<details><summary>graphs</summary>
-
-- `h3_text_to_video_audio_freeze_shots_api`
-
-</details>
-
-```text
-integrated_multimodal_description: [Shot 1] Live-action, cinematic, a medium shot frames a dancer from the waist up in a bare rehearsal studio across the fourteen-second take, one mirrored wall behind her, a portable speaker on the floor at the edge of frame playing a fast, dry drum-machine pulse. She is in her twenties in a grey vest, hair tied back, face sharp and well lit, and she produces no vocal sound. She moves to the beat: sharp isolations of the shoulders and head on every hit, chin snapping to the lens on the downbeats, both arms punching out and folding back in time. The camera holds a static shot as her groove builds and her expression stays locked on the lens. [Shot 2] At 00:06.316, the shot cuts to a close-up of her face and shoulders from the mirror side, her reflection sharing the frame, as she turns on the beat and hits a pose, then rolls her shoulders in a step sequence that lands on every fourth hit. Her lips stay closed throughout. The camera pushes in slowly at small amplitude until her face fills the frame and she stops square to the lens on a final hit and holds still, breathing hard.
-
-overall_soundscape: Bare feet squeak and slap on the sprung floor, fabric rustles with each turn, and her breath comes in short controlled bursts between hits, under the dry room tone of an empty studio.
-
-non_diegetic_music: N/A
 ```
 

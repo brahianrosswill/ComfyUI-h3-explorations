@@ -214,8 +214,9 @@ a throwaway): the whole-track node `MiniMaxH3AudioFreezeSong`
 (`workflows/h3_text_to_video_audio_freeze_song.json`, a 30 s look by
 default, uniform or random window lengths, one prompt or blocks in cycle,
 uniform or random order); the shot-per-window chain
-(`workflows/h3_text_to_video_audio_freeze_shots.json`, three windows of
-345, 192 and 192 frames, and `..._shots_repeat.json`, one shot four times);
+(`workflows/h3_text_to_video_audio_freeze_shots.json` and
+`..._shots_repeat.json`, retired unrendered on 2026-09-14: the song node's
+prompt blocks and `frames:` lines cover them);
 the audio attention gain knob (`MiniMaxH3AudioAttentionGain`,
 `bench/audio_freeze_gain_arms.json` renders key and value gains of two on the
 PDD8 chain). The first item tomorrow is one short run of the song graph.
@@ -225,7 +226,7 @@ PDD8 chain). The first item tomorrow is one short run of the song graph.
 before any window samples, takes reference stills with every window's
 prompt, writes its window files to `<prefix>_windows/`, and embeds the prompt
 and workflow in the finished file. The stages after it (resume, prompt
-lists and wildcard files, the chain's own writer) are in
+lists and wildcard files) are in
 `docs/wiki/next_steps.md`.
 
 **Next, in order.**

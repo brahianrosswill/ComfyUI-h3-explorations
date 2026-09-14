@@ -16,8 +16,8 @@
 | [`t2va_swimming_lesson`](#t2va-swimming-lesson) | t2va | 124 | 5.167 | yes | 0 | — | 135 | 1 | 1 | French | Tilt Up | N/A | clean |
 | [`t2va_post_office`](#t2va-post-office) | t2va | 141 | 5.875 | yes | 0 | — | 135 | 1 | 0 | — | Static Shot | scored | clean |
 | [`t2va_night_porter`](#t2va-night-porter) | t2va | 175 | 7.292 | yes | 0 | — | 131 | 1 | 1 | English | Zoom In | N/A | clean |
-| [`t2va_dancer_shot_face`](#t2va-dancer-shot-face) | t2va | 192 | 8.000 | pinned | 2 | — | 121 | 1 | 0 | — | Push In | N/A | clean |
-| [`t2va_dancer_shot_floor`](#t2va-dancer-shot-floor) | t2va | 192 | 8.000 | pinned | 1 | — | 126 | 1 | 0 | — | Static Shot | N/A | clean |
+| [`t2va_dancer_shot_face`](#t2va-dancer-shot-face) | t2va | 192 | 8.000 | pinned | 0 | — | 121 | 1 | 0 | — | Push In | N/A | clean |
+| [`t2va_dancer_shot_floor`](#t2va-dancer-shot-floor) | t2va | 192 | 8.000 | pinned | 0 | — | 126 | 1 | 0 | — | Static Shot | N/A | clean |
 | [`t2va_rooftop_pov`](#t2va-rooftop-pov) | t2va | 192 | 8.000 | pinned | 0 | — | 195 | 2 | 1 | English | Pull Out, Shake Strongly, POV | scored | clean |
 | [`t2va_box_office`](#t2va-box-office) | t2va | 209 | 8.708 | yes | 0 | — | 174 | 1 | 2 | English | Tilt Down | N/A | clean |
 | [`t2va_clay_apiary`](#t2va-clay-apiary) | t2va | 226 | 9.417 | pinned | 0 | — | 206 | 2 | 2 +compound | English | Push In | scored | clean |
@@ -84,7 +84,7 @@
 | [`t2va_stairwell_dialogue`](#t2va-stairwell-dialogue) | t2va | 345 | 14.375 | pinned | 1 | — | 197 | 3 | 2 | English | Shake Slightly | N/A | clean |
 | [`t2va_steampunk_airship_bridge`](#t2va-steampunk-airship-bridge) | t2va | 345 | 14.375 | pinned | 0 | — | 300 | 3 | 2 | English | Push In, Static Shot, Roll Clockwise | scored | clean |
 | [`t2va_studio_dancer`](#t2va-studio-dancer) | t2va | 345 | 14.375 | pinned | 0 | — | 182 | 2 | 0 | — | Push In, Static Shot | N/A | clean |
-| [`t2va_studio_dancer_close`](#t2va-studio-dancer-close) | t2va | 345 | 14.375 | pinned | 1 | — | 201 | 2 | 0 | — | Push In, Static Shot | N/A | clean |
+| [`t2va_studio_dancer_close`](#t2va-studio-dancer-close) | t2va | 345 | 14.375 | pinned | 0 | — | 201 | 2 | 0 | — | Push In, Static Shot | N/A | clean |
 | [`t2va_subway_chase`](#t2va-subway-chase) | t2va | 345 | 14.375 | pinned | 0 | — | 242 | 3 | 1 | English | Push In, Tracking Shot, Static Shot, Shake Strongly | scored | clean |
 | [`t2va_subway_maintenance_alcove`](#t2va-subway-maintenance-alcove) | t2va | 345 | 14.375 | pinned | 0 | — | 185 | 3 | 2 | English | Push In, Shake Slightly | N/A | clean |
 | [`t2va_subway_platform`](#t2va-subway-platform) | t2va | 345 | 14.375 | pinned | 0 | — | 347 | 4 | 3 | English |  | N/A | clean |
@@ -433,7 +433,7 @@ non_diegetic_music: N/A
 
 ## t2va_dancer_shot_face
 
-**t2va, 192 frames, 8.000 s.** One shot, eight seconds: the dancer's face and shoulders to the pulse, a slow push-in; the third window of the chain **Tests:** a single-shot close-up window chained after the floor window; head snaps on the downbeats, lips closed, face sharp Ships in: `h3_text_to_video_audio_freeze_shots_api`, `h3_text_to_video_audio_freeze_shots_repeat_api`.
+**t2va, 192 frames, 8.000 s.** One shot, eight seconds: the dancer's face and shoulders to the pulse, a slow push-in; the third window of the chain **Tests:** a single-shot close-up window chained after the floor window; head snaps on the downbeats, lips closed, face sharp
 
 Derived: camera: Push In; 121 words in the main field; 958 characters in all.
 
@@ -452,7 +452,7 @@ non_diegetic_music: N/A
 
 ## t2va_dancer_shot_floor
 
-**t2va, 192 frames, 8.000 s.** One shot, eight seconds: the dancer's feet on the sprung floor to the drum-machine pulse; a window of the audio-freeze lane's shot-per-window chain **Tests:** a single-shot window on both clocks (192 frames) chained after the reframed dancer window; footwork on the beat with the camera held Ships in: `h3_text_to_video_audio_freeze_shots_api`.
+**t2va, 192 frames, 8.000 s.** One shot, eight seconds: the dancer's feet on the sprung floor to the drum-machine pulse; a window of the audio-freeze lane's shot-per-window chain **Tests:** a single-shot window on both clocks (192 frames) chained after the reframed dancer window; footwork on the beat with the camera held
 
 Derived: camera: Static Shot; 126 words in the main field; 983 characters in all.
 
@@ -1745,7 +1745,7 @@ non_diegetic_music: N/A
 
 ## t2va_studio_dancer_close
 
-**t2va, 345 frames, 14.375 s.** The studio dancer reframed at medium shot then close-up, face sharp and on the lens; the owner's 2026-09-12 note that the wide version blurs the face (a zoomed-out failure common to these models) **Tests:** the same beat-following question as t2va_studio_dancer with the face large enough to judge; the framing the lane's later renders should use Ships in: `h3_text_to_video_audio_freeze_shots_api`.
+**t2va, 345 frames, 14.375 s.** The studio dancer reframed at medium shot then close-up, face sharp and on the lens; the owner's 2026-09-12 note that the wide version blurs the face (a zoomed-out failure common to these models) **Tests:** the same beat-following question as t2va_studio_dancer with the face large enough to judge; the framing the lane's later renders should use
 
 Derived: camera: Push In, Static Shot; cuts: the shot cuts to; 201 words in the main field; 1354 characters in all.
 

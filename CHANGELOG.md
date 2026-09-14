@@ -4,6 +4,22 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.102.0
+
+### Removed
+
+- **The shot-per-window workflows**,
+  `workflows/h3_text_to_video_audio_freeze_shots.json` and
+  `..._shots_repeat.json` with their API twins, never rendered (owner,
+  2026-09-14). The song node's prompt blocks and `frames:` lines cover them.
+  With them go the generator's `freeze_shots` knob, `_NOTE_SHOTS` and the
+  per-window list in `--dump-prompts`, and **`MiniMaxH3JoinWindows`**, which
+  nothing else used: a saved graph containing it no longer loads.
+  `bench/node_id_manifest.json` drops the node and
+  `bench/check_audio_freeze.py` drops its join wiring case. The two bank
+  prompts written for the chain (`t2va_dancer_shot_floor`,
+  `t2va_dancer_shot_face`) stay in the bank and ship in no graph.
+
 ## 0.101.0
 
 ### Added

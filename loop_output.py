@@ -1,8 +1,9 @@
 """Where a frozen-audio loop's files go, and what they carry.
 
-`docs/h3_audio_freeze.md` owns the lane. The two nodes in this pack that write
-video themselves, `MiniMaxH3AudioFreezeSong` and `MiniMaxH3JoinWindows`, write
-through here so the two cannot drift apart.
+`docs/h3_audio_freeze.md` owns the lane. `MiniMaxH3AudioFreezeSong` writes its
+video through here; the layout lives outside the node so the next loop writer
+gets the same one. (`MiniMaxH3JoinWindows`, the shot workflows' join node,
+shared it until both retired on 2026-09-14.)
 
 **The finished file** is `<prefix>_NNNNN.mp4`, the counter from core's
 `folder_paths.get_save_image_path`. Not VHS's `-audio.mp4` spelling: core's
