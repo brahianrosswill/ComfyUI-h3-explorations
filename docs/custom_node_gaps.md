@@ -66,6 +66,7 @@ without it, **convenience** means the graph could be wired by hand instead, and
 | `MiniMaxH3MarkerArm` | instrumentation | **no** |
 | `MiniMaxH3EncoderLoader` | load-bearing (it refuses a bad load) | yes |
 | `MiniMaxH3ReferenceReport` | instrumentation | **no** (a UI node; the conditioner's preview carries the same text) |
+| `MiniMaxH3ChannelBalance` | instrumentation (an experiment lever: off by default, changes numerics only when switched on) | **no** |
 
 The registered nodes wired by no shipped graph are not dead code, and the
 distinction matters:
@@ -89,6 +90,14 @@ distinction matters:
   format adapter with no consumer but live code, read by preflight and the
   config. See §5.1.
 - `MiniMaxH3MarkerArm` is a research instrument.
+- `MiniMaxH3ChannelBalance` (added 2026-09-14) folds a per-channel q/k
+  rebalancing into the norm weights of the blocks whose `k_norm.weight` is
+  lopsided (45, 48, 49 on the shipped checkpoint), so both INT8 attention
+  kernels quantize them with less error at no render-time cost. Its combo is
+  **off by default** and no graph wires it: an experiment under
+  `docs/SOLATTN.md`'s decision standard, with the mechanism in
+  `docs/research/2026-09-14_block49_quant_error.md`. Registered so a probe
+  graph can switch it on without a code change.
 - **`MiniMaxH3SolAttnCurve` was deleted on 2026-08-31** and is no longer in
   this table. It supplied a `hilbert` token ordering by rebinding
   `morton_perm` on the vendored Sol node; that node stopped being loaded on

@@ -93,6 +93,19 @@
       "Filenames"
     ]
   },
+  "MiniMaxH3ChannelBalance": {
+    "inputs": [
+      "model",
+      "balance",
+      "blocks",
+      "alpha",
+      "loud_share"
+    ],
+    "node_id": "MiniMaxH3ChannelBalance",
+    "outputs": [
+      "Output"
+    ]
+  },
   "MiniMaxH3Conditioning": {
     "inputs": [
       "clip",

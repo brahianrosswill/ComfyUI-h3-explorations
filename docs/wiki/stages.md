@@ -30,6 +30,7 @@ checkout is and is not evidence of.
 | sigma shift | core `MiniMaxH3SigmaShift` | [`../../workflows/h3_config.py`](../../workflows/h3_config.py)'s `SAMPLING` note | `check_distill_settings.py` (shift and step count) | diffusers' named H3 scheduler |
 | attention patch | `attention.py`, `MiniMaxH3SageAttention` | [`../SOLATTN.md`](../SOLATTN.md) | `check_attention_defaults.py` — by reachability, and values not presence | sglang (dense FA varlen); LightX2V for the kernel choice on this card |
 | sparse attention | the vendored Sol node | [`../SOLATTN.md`](../SOLATTN.md) | same | `comfy-kitchen-kijai` (read-only; `comfy-kitchen-sol` until 2026-09-08), for sources that ship in no wheel |
+| channel balance (off by default) | `channel_balance.py`, `MiniMaxH3ChannelBalance` | [`../research/2026-09-14_block49_quant_error.md`](../research/2026-09-14_block49_quant_error.md) | `check_channel_balance.py` — the fold is exact, RoPE-safe, off by default, and selects 45/48/49 on the shipped weights | the sage fork's `spike_h3_k_channel_balance.py`, the same fold graded on sage's kernel; `grade_channel_balance.py` on Sol's |
 | chain order | `SageChainAssert` | [`../custom_node_gaps.md`](../custom_node_gaps.md) | itself, at call time — and **nothing** asserts it stays wired | — |
 | step distillation | `MiniMaxH3PDDLoRA`, `pdd_math.py` | [`../h3_pdd.md`](../h3_pdd.md) | `check_pdd_sigmas.py`, `check_pdd_head_selection.py`, `check_distill_grid.py` | [`../research/pdd/pdd_implementations.md`](../research/pdd/pdd_implementations.md) — four other implementations |
 
