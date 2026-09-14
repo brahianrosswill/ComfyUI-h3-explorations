@@ -795,8 +795,7 @@ def sol_for_graph(pdd, steps):
 # `tau` and is what every graph here ships; "top-k (SLA)" carries
 # `keep_percent` and is the selection the lightx2v SLA LoRAs were distilled
 # against. `SOL_SELECTION_INPUTS` in build_workflows.py owns which key belongs
-# to which option, because both graph forms have to agree about it and they
-# encode it differently.
+# to which option, because the API form keys each under the combo's id.
 #
 # `routed_cap_percent` went with the v2 node on 2026-08-22; the v3 node does
 # not declare it, and `bench/check_sol_kernel.py`'s schema case fails on a
@@ -884,7 +883,8 @@ SOL_CUDA_DEFAULTS = dict(
 # head_chunks 1 = off. It trades ~4x the attention launches for headroom that
 # converts to wall-clock at the ~2.6% ceiling measured above, so it is for
 # fitting a render that otherwise will not fit. Keep the key ordered as the
-# node declares its inputs: the UI graph maps widget values positionally.
+# node declares its inputs: the owner's editor-saved graphs map widget values
+# positionally.
 SAGE_NODE = dict(mode="auto", patch_token_refiner=False, head_chunks=1)
 
 # Step caching, on ComfyUI core's EasyCache node (comfy_extras/
@@ -916,8 +916,8 @@ SAGE_NODE = dict(mode="auto", patch_token_refiner=False, head_chunks=1)
 # and can suppress reuse -- a null result on er_sde is a sampler artifact
 # until reproduced on a deterministic sampler; and any cache-on/off quality
 # judgement is a numeric-perturbation A/B, which must run on a deterministic
-# sampler. Keep the key order matching the node's declared inputs: UI graphs
-# map widget values positionally.
+# sampler. Keep the key order matching the node's declared inputs: the
+# owner's editor-saved graphs map widget values positionally.
 #
 # Measured 2026-08-18 (bench/results/2026-08-18_cache_arms.jsonl, all-refs
 # workload, 362f 1024x768, Sol on, 450 W stock): on er_sde at this 0.2
@@ -1002,8 +1002,9 @@ CACHE_NODE = dict(reuse_threshold=0.2, start_percent=0.15, end_percent=0.95,
 # The version a note SHOWS is derived from the filename below via
 # `turbo_label()`, never typed. They were independent strings until
 # 2026-08-23 and drifted the moment this constant moved: sixteen graphs loaded
-# v1.1 under help text still saying v1.0.
-# `check_distill_settings.py::notes_match_the_lora` is that control.
+# v1.1 under help text still saying v1.0. The notes, and
+# `check_distill_settings.py::notes_match_the_lora` that graded them, went
+# with the UI workflows on 2026-09-14.
 SIGMA_SHIFT = dict(shift_video=12.0, shift_audio=3.0)
 
 # The turbo graph. This is the 8-step v1.0; the others are listed in the
@@ -1095,8 +1096,9 @@ def turbo_label(lora_path: str) -> str:
     graph SHOWS and the file it LOADS come from one place. They were typed
     independently until 2026-08-23 and drifted the moment `TURBO_768P_LORA`
     moved to v1.1: sixteen graphs loaded v1.1 while their own help text said
-    v1.0, and nothing looked. `check_distill_settings.py::notes_match_the_lora`
-    is the control.
+    v1.0, and nothing looked. Those notes lived only in the UI workflows and
+    went with them on 2026-09-14, and so did
+    `check_distill_settings.py::notes_match_the_lora`, which graded them.
 
     Returns "" for a filename this cannot parse, so a caller writing a note
     gets an obviously empty label rather than a confident wrong one.
@@ -1955,18 +1957,9 @@ BENCH_GRAPH_DIRS: tuple[str, ...] = ("bench",)
 #   `execute`; a static reader that parsed the same string would be a second
 #   copy of `resolution._parse` living in a file that cannot import it.
 #
-#   It never invents a UI widget position. UI graphs store widget values
-#   positionally and this repo has been bitten by positional reads --
-#   `bench/check_pdd_sigmas.py::case_ui_and_api_agree` exists for exactly that.
-#   The caller passes the literal it read; this only decides whether a link
-#   overrides it. **A linked widget leaves a STALE literal behind in
-#   `widgets_values`**, which is why "read the widget and stop" is wrong rather
-#   than merely incomplete -- it returns a plausible number instead of nothing.
-#   Every shipped UI reference graph carries one, because the conditioner's
-#   width/height/length arrive from `MiniMaxH3Resolution` over links while the
-#   widgets still hold whatever was last typed there;
-#   `bench/check_graph_values.py::case_ui_link_beats_stale_widget` grades that
-#   population rather than naming a node here.
+#   It never reads a UI graph. It walks API form only, which is the only form
+#   shipped; an editor-saved graph is read by `bench/preflight_graph.py`'s own
+#   reader.
 #
 #   It never decides whether an unresolvable value is a failure. It reports a
 #   state and a reason; the caller owns the policy, because "no step count" is
@@ -1985,9 +1978,9 @@ MAX_LINK_HOPS = 16
 #:   COMPUTED   a node produces it at run time and no static reader will ever
 #:              know it. **The graph is fine.** Skip the value, not the graph.
 #:   OPAQUE     this resolver cannot see it: a class with no row in
-#:              `OUTPUT_SOURCES`, or a UI widget whose position the caller did
-#:              not supply. **The graph is probably fine and the RESOLVER is
-#:              incomplete**, so the fix is a table row, not a graph edit.
+#:              `OUTPUT_SOURCES`. **The graph is probably fine and the
+#:              RESOLVER is incomplete**, so the fix is a table row, not a
+#:              graph edit.
 #:   MALFORMED  the link does not describe a reachable value -- absent node,
 #:              slot out of range, cycle, over-deep chain, or an input name the
 #:              node does not have. **The graph is broken** and a caller
@@ -2027,13 +2020,9 @@ class GraphValue:
 class Passthrough:
     """An output slot that hands one of the node's own inputs straight through.
 
-    `input_name` is what an API graph calls it. `ui_widget` is where a UI graph
-    keeps it in `widgets_values`, or `None` when that position is not knowable
-    from the schema alone -- in which case a UI-form chain through this slot
-    reports OPAQUE instead of reading a neighbouring widget.
+    `input_name` is the key the slot's value sits under in the node's `inputs`.
     """
     input_name: str
-    ui_widget: object = None
 
 
 #: `class_type -> one entry per OUTPUT SLOT, in slot order`. `None` means the
@@ -2053,11 +2042,11 @@ OUTPUT_SOURCES: dict = {
     # comfy_extras/nodes_primitive.py: each of the five is
     # `def execute(cls, value): return io.NodeOutput(value)` over a single
     # `value` input, so slot 0 is that input and there is no second slot.
-    "PrimitiveInt": (Passthrough("value", 0),),
-    "PrimitiveFloat": (Passthrough("value", 0),),
-    "PrimitiveString": (Passthrough("value", 0),),
-    "PrimitiveStringMultiline": (Passthrough("value", 0),),
-    "PrimitiveBoolean": (Passthrough("value", 0),),
+    "PrimitiveInt": (Passthrough("value"),),
+    "PrimitiveFloat": (Passthrough("value"),),
+    "PrimitiveString": (Passthrough("value"),),
+    "PrimitiveStringMultiline": (Passthrough("value"),),
+    "PrimitiveBoolean": (Passthrough("value"),),
     # `resolution.MiniMaxH3Resolution`: all seven outputs come out of
     # `execute`, which parses the selected DynamicCombo label and then runs the
     # token arithmetic. Not one is a literal sitting on an input, so every slot
@@ -2086,120 +2075,31 @@ def _is_link(value) -> bool:
 
 
 def _graph_nodes(graph):
-    """`({key: node}, is_ui)` for either graph form, keys as strings.
-
-    API keys are already strings; UI ids are ints, and a link row names them as
-    ints too. Both are normalised to `str` so one walk serves both forms and a
-    lookup can never miss by type.
-    """
-    if isinstance(graph.get("nodes"), list):
-        return ({str(n.get("id")): n for n in graph["nodes"]
-                 if isinstance(n, dict) and n.get("id") is not None}, True)
-    return ({str(k): v for k, v in graph.items() if isinstance(v, dict)}, False)
+    """`{key: node}` for an API graph, keys as strings, non-node values dropped."""
+    return {str(k): v for k, v in graph.items() if isinstance(v, dict)}
 
 
-def _ui_link_table(graph):
-    """`{link_id: (source_node_key, source_slot)}` for a UI graph.
-
-    LiteGraph rows are `[id, src, src_slot, dst, dst_slot, type]`, and that is
-    the only form in this tree. The object form (`origin_id`/`origin_slot`) is
-    read too: reported, not verified -- no graph here carries one and none has
-    been produced to test against, so this is a defensive branch, taken because
-    silently skipping an unrecognised row would report a perfectly good graph
-    as broken, which is the failure this whole section exists to stop.
-    """
-    table = {}
-    for row in graph.get("links") or ():
-        if isinstance(row, list) and len(row) >= 3:
-            table[row[0]] = (str(row[1]), row[2])
-        elif isinstance(row, dict) and row.get("id") is not None:
-            table[row["id"]] = (str(row.get("origin_id")), row.get("origin_slot"))
-    return table
-
-
-def _ui_input_entry(node, name):
-    """The UI `inputs` entry for input `name`, or None.
-
-    A converted widget carries `{"widget": {"name": ...}}` beside its own
-    `name`; a plain socket carries only `name`. Both are matched, because an
-    input that used to be a widget and is now a socket is still that input.
-    """
-    for entry in node.get("inputs") or ():
-        if not isinstance(entry, dict):
-            continue
-        widget = entry.get("widget")
-        if isinstance(widget, dict) and widget.get("name") == name:
-            return entry
-        if entry.get("name") == name:
-            return entry
-    return None
-
-
-#: Distinguishes "the caller passed no literal" from "the caller passed None",
-#: which a UI widget can legitimately hold.
-_UNSET = object()
-
-
-def _ui_hop(node, name, links, via):
-    """`(source_key, slot)` if UI input `name` is linked, else None or a
-    `GraphValue` describing why the link cannot be followed."""
-    entry = _ui_input_entry(node, name)
-    if entry is None or entry.get("link") is None:
-        return None
-    hop = links.get(entry["link"])
-    if hop is None:
-        return GraphValue(
-            MALFORMED,
-            reason=f"node {node.get('id')} input {name!r} records link "
-                   f"{entry['link']}, which is not in the link table",
-            via=tuple(via))
-    return hop
-
-
-def _next_hop(is_ui, links, node, source, via):
+def _next_hop(node, source, via):
     """Follow one `Passthrough` off `node`.
 
     Returns `("value", literal)`, `("link", (key, slot))`, or a `GraphValue` to
     hand straight back to the caller.
     """
-    if not is_ui:
-        inputs = node.get("inputs")
-        if not isinstance(inputs, dict) or source.input_name not in inputs:
-            return GraphValue(
-                MALFORMED,
-                reason=f"{node.get('class_type')} has no input "
-                       f"{source.input_name!r} to pass through, which is what "
-                       f"OUTPUT_SOURCES says it does",
-                via=tuple(via))
-        raw = inputs[source.input_name]
-        if _is_link(raw):
-            return ("link", (str(raw[0]), int(raw[1])))
-        return ("value", raw)
-
-    hop = _ui_hop(node, source.input_name, links, via)
-    if isinstance(hop, GraphValue):
-        return hop
-    if hop is not None:
-        return ("link", hop)
-    if source.ui_widget is None:
-        return GraphValue(
-            OPAQUE,
-            reason=f"{node.get('type')}.{source.input_name} is an unlinked UI "
-                   f"widget and OUTPUT_SOURCES does not record its position",
-            via=tuple(via))
-    widgets = node.get("widgets_values")
-    if not isinstance(widgets, list) or len(widgets) <= source.ui_widget:
-        held = len(widgets) if isinstance(widgets, list) else 0
+    inputs = node.get("inputs")
+    if not isinstance(inputs, dict) or source.input_name not in inputs:
         return GraphValue(
             MALFORMED,
-            reason=f"{node.get('type')} holds {held} widget value(s); "
-                   f"{source.input_name!r} should be at index "
-                   f"{source.ui_widget}",
+            reason=f"{node.get('class_type')} has no input "
+                   f"{source.input_name!r} to pass through, which is what "
+                   f"OUTPUT_SOURCES says it does",
             via=tuple(via))
-    return ("value", widgets[source.ui_widget])
+    raw = inputs[source.input_name]
+    if _is_link(raw):
+        return ("link", (str(raw[0]), int(raw[1])))
+    return ("value", raw)
 
 
-def _walk(nodes, is_ui, links, node_key, slot, max_hops) -> GraphValue:
+def _walk(nodes, node_key, slot, max_hops) -> GraphValue:
     """Follow a chain of links to the literal at its head."""
     via: list = []
     seen = set()
@@ -2223,7 +2123,7 @@ def _walk(nodes, is_ui, links, node_key, slot, max_hops) -> GraphValue:
                        f"graph",
                 via=tuple(via))
         via.append(node_key)
-        cls = node.get("class_type") or node.get("type")
+        cls = node.get("class_type")
         spec = OUTPUT_SOURCES.get(cls)
         if spec is None:
             return GraphValue(
@@ -2243,7 +2143,7 @@ def _walk(nodes, is_ui, links, node_key, slot, max_hops) -> GraphValue:
                 COMPUTED,
                 reason=f"{cls} output {slot} is computed at run time",
                 via=tuple(via))
-        hop = _next_hop(is_ui, links, node, source, via)
+        hop = _next_hop(node, source, via)
         if isinstance(hop, GraphValue):
             return hop
         kind, payload = hop
@@ -2262,69 +2162,28 @@ def resolve_link(graph, value, *, max_hops: int = MAX_LINK_HOPS) -> GraphValue:
     hang. The four states are documented above `RESOLVED`.
 
     `resolve_widget` is what a caller usually wants; this is the entry point
-    for a value already pulled out of `node["inputs"]`. A UI graph stores no
-    API links, so a link-shaped value in one is read as the literal it is.
+    for a value already pulled out of `node["inputs"]`.
     """
     if not _is_link(value):
         return GraphValue(RESOLVED, value)
-    nodes, is_ui = _graph_nodes(graph)
-    if is_ui:
-        return GraphValue(RESOLVED, value)
-    return _walk(nodes, False, {}, str(value[0]), int(value[1]), max_hops)
+    return _walk(_graph_nodes(graph), str(value[0]), int(value[1]), max_hops)
 
 
-def resolve_widget(graph, node, name, literal=_UNSET, *,
+def resolve_widget(graph, node, name, *,
                    max_hops: int = MAX_LINK_HOPS) -> GraphValue:
-    """The concrete value of `node`'s input `name`, in either graph form.
+    """The concrete value of `node`'s input `name`: `node["inputs"][name]`,
+    literal or link.
 
-    API form: reads `node["inputs"][name]`, literal or link. `literal` is
-    ignored -- the graph names its inputs, so there is nothing to fall back to.
-
-    UI form: a linked widget appears in `node["inputs"]` as an entry whose
-    `widget.name` is `name`, and **the value it left behind in
-    `widgets_values` is still there and is stale**. So the link is checked
-    first, and `literal` -- whatever the caller read positionally -- is used
-    only when there is no link. Omit `literal` and an unlinked UI widget is
-    OPAQUE rather than silently absent.
-
-    An API node with no such input is MALFORMED, not OPAQUE: either the class
+    A node with no such input is MALFORMED, not OPAQUE: either the class
     changed under the caller or the caller asked for the wrong name, and both
     are worth a red.
     """
-    nodes, is_ui = _graph_nodes(graph)
-    if not is_ui:
-        inputs = node.get("inputs")
-        if not isinstance(inputs, dict) or name not in inputs:
-            return GraphValue(
-                MALFORMED,
-                reason=f"{node.get('class_type')} has no input {name!r}")
-        return resolve_link(graph, inputs[name], max_hops=max_hops)
-
-    links = _ui_link_table(graph)
-    hop = _ui_hop(node, name, links, [])
-    if isinstance(hop, GraphValue):
-        return hop
-    if hop is not None:
-        return _walk(nodes, True, links, hop[0], hop[1], max_hops)
-    if literal is _UNSET:
+    inputs = node.get("inputs")
+    if not isinstance(inputs, dict) or name not in inputs:
         return GraphValue(
-            OPAQUE,
-            reason=f"{node.get('type')}.{name} is an unlinked UI widget and no "
-                   f"literal was supplied; widget positions are the caller's")
-    return GraphValue(RESOLVED, literal)
-
-
-def _widget(widgets, index):
-    """`widgets_values[index]`, or `_UNSET` when there is no such widget.
-
-    The positional half of a UI-form read, kept beside its caller rather than
-    inside `resolve_widget`: the index is a fact about the node's schema, and
-    `bench/check_pdd_sigmas.py::case_ui_and_api_agree` is what grades it by
-    comparing this read against the API form's named one.
-    """
-    if isinstance(widgets, list) and 0 <= index < len(widgets):
-        return widgets[index]
-    return _UNSET
+            MALFORMED,
+            reason=f"{node.get('class_type')} has no input {name!r}")
+    return resolve_link(graph, inputs[name], max_hops=max_hops)
 
 
 def graph_schedule(graph) -> tuple:
@@ -2372,8 +2231,7 @@ def graph_schedule(graph) -> tuple:
       * neither -> `(None, None)`, and the caller decides whether that is a
         failure. It still is for every current caller.
 
-    Accepts both graph forms: UI (`{"nodes": [...]}` with `widgets_values`) and
-    API (`{id: {"class_type", "inputs"}}`).
+    Reads an API graph (`{id: {"class_type", "inputs"}}`).
 
     **Every value goes through `resolve_widget`, so a LINKED widget reads as
     the value behind it.** The first version of this read `inputs.get("steps")`
@@ -2392,31 +2250,25 @@ def graph_schedule(graph) -> tuple:
     count" rather than "this graph is wrong" -- should call `resolve_widget`
     itself and read `GraphValue.reason`.
     """
-    nodes = (graph.get("nodes") if isinstance(graph.get("nodes"), list)
-             else list(graph.values()))
     steps = scheduler = None
     pdd_steps = manual_steps = None
-    for n in nodes:
+    for n in list(graph.values()):
         if not isinstance(n, dict):
             continue
-        kind = n.get("type") or n.get("class_type")
-        widgets = n.get("widgets_values")
+        kind = n.get("class_type")
         if kind == "BasicScheduler":
-            # UI widget order is [scheduler, steps, denoise].
-            got = resolve_widget(graph, n, "scheduler", _widget(widgets, 0))
+            got = resolve_widget(graph, n, "scheduler")
             if got.ok and isinstance(got.value, str):
                 scheduler = got.value
-            got = resolve_widget(graph, n, "steps", _widget(widgets, 1))
+            got = resolve_widget(graph, n, "steps")
             if got.ok and isinstance(got.value, (int, float)):
                 steps = int(got.value)
         elif kind == "MiniMaxH3PDDLoRA":
-            # Widget order is [name, strength, patch_heads, nfe, steps]; the
-            # input is APPENDED, so index 4 is the only place it can be.
-            got = resolve_widget(graph, n, "steps", _widget(widgets, 4))
+            got = resolve_widget(graph, n, "steps")
             if got.ok and isinstance(got.value, (int, float)) and int(got.value) > 0:
                 pdd_steps = int(got.value)
         elif kind == "ManualSigmas":
-            got = resolve_widget(graph, n, "sigmas", _widget(widgets, 0))
+            got = resolve_widget(graph, n, "sigmas")
             if got.ok and isinstance(got.value, str):
                 pts = [x for x in got.value.split(",") if x.strip()]
                 if len(pts) >= 2:
@@ -2443,14 +2295,12 @@ def manual_sigmas(graph):
     Goes through `resolve_widget` for the same reason everything else here
     does: a linked widget must read as the value behind it.
     """
-    nodes = (graph.get("nodes") if isinstance(graph.get("nodes"), list)
-             else list(graph.values()))
-    for n in nodes:
+    for n in list(graph.values()):
         if not isinstance(n, dict):
             continue
-        if (n.get("type") or n.get("class_type")) != "ManualSigmas":
+        if n.get("class_type") != "ManualSigmas":
             continue
-        got = resolve_widget(graph, n, "sigmas", _widget(n.get("widgets_values"), 0))
+        got = resolve_widget(graph, n, "sigmas")
         if got.ok and isinstance(got.value, str):
             try:
                 vals = [float(x) for x in got.value.split(",") if x.strip()]
