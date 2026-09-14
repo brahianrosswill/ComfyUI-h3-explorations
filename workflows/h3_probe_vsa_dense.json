@@ -10,8 +10,8 @@
   },
   "id": "6b53f016-4429-5cdd-9901-48f609f9dc41",
   "revision": 0,
-  "last_node_id": 23,
-  "last_link_id": 25,
+  "last_node_id": 22,
+  "last_link_id": 24,
   "nodes": [
     {
       "id": 1,
@@ -65,7 +65,7 @@
           "name": "CLIP",
           "type": "CLIP",
           "links": [
-            5
+            4
           ]
         }
       ],
@@ -97,8 +97,8 @@
           "name": "VAE",
           "type": "VAE",
           "links": [
-            4,
-            21
+            3,
+            20
           ]
         }
       ],
@@ -130,7 +130,7 @@
           "name": "VAE",
           "type": "VAE",
           "links": [
-            23
+            22
           ]
         }
       ],
@@ -207,7 +207,7 @@
           "name": "MODEL",
           "type": "MODEL",
           "links": [
-            3
+            5
           ]
         }
       ],
@@ -222,55 +222,6 @@
     },
     {
       "id": 7,
-      "type": "ModelPreviewOverrideKJ",
-      "pos": [
-        -460,
-        190
-      ],
-      "size": [
-        360,
-        200
-      ],
-      "flags": {},
-      "order": 6,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "model",
-          "type": "MODEL",
-          "link": 3
-        },
-        {
-          "name": "vae",
-          "type": "VAE",
-          "link": null,
-          "shape": 7
-        }
-      ],
-      "outputs": [
-        {
-          "name": "MODEL",
-          "type": "MODEL",
-          "links": [
-            6
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "ModelPreviewOverrideKJ"
-      },
-      "widgets_values": [
-        512,
-        80,
-        true,
-        4,
-        8,
-        "taeh3.safetensors"
-      ],
-      "title": "Preview (taeh3)"
-    },
-    {
-      "id": 8,
       "type": "MiniMaxH3Resolution",
       "pos": [
         -1900,
@@ -281,7 +232,7 @@
         200
       ],
       "flags": {},
-      "order": 7,
+      "order": 6,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -289,21 +240,21 @@
           "name": "width",
           "type": "INT",
           "links": [
-            9
+            8
           ]
         },
         {
           "name": "height",
           "type": "INT",
           "links": [
-            10
+            9
           ]
         },
         {
           "name": "length",
           "type": "INT",
           "links": [
-            11
+            10
           ]
         },
         {
@@ -338,7 +289,7 @@
       "title": "Resolution: shape, and what it costs"
     },
     {
-      "id": 9,
+      "id": 8,
       "type": "MiniMaxH3Conditioning",
       "pos": [
         -460,
@@ -349,18 +300,18 @@
         620
       ],
       "flags": {},
-      "order": 8,
+      "order": 7,
       "mode": 0,
       "inputs": [
         {
           "name": "clip",
           "type": "CLIP",
-          "link": 5
+          "link": 4
         },
         {
           "name": "vae",
           "type": "VAE",
-          "link": 4
+          "link": 3
         },
         {
           "name": "first_frame",
@@ -377,7 +328,7 @@
         {
           "name": "width",
           "type": "INT",
-          "link": 9,
+          "link": 8,
           "widget": {
             "name": "width"
           }
@@ -385,7 +336,7 @@
         {
           "name": "height",
           "type": "INT",
-          "link": 10,
+          "link": 9,
           "widget": {
             "name": "height"
           }
@@ -393,7 +344,7 @@
         {
           "name": "length",
           "type": "INT",
-          "link": 11,
+          "link": 10,
           "widget": {
             "name": "length"
           }
@@ -404,14 +355,14 @@
           "name": "positive",
           "type": "CONDITIONING",
           "links": [
-            12
+            11
           ]
         },
         {
           "name": "LATENT",
           "type": "LATENT",
           "links": [
-            13
+            12
           ]
         }
       ],
@@ -427,7 +378,7 @@
       ]
     },
     {
-      "id": 10,
+      "id": 9,
       "type": "RandomNoise",
       "pos": [
         40,
@@ -438,7 +389,7 @@
         110
       ],
       "flags": {},
-      "order": 9,
+      "order": 8,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -446,7 +397,7 @@
           "name": "NOISE",
           "type": "NOISE",
           "links": [
-            16
+            15
           ]
         }
       ],
@@ -459,7 +410,7 @@
       ]
     },
     {
-      "id": 11,
+      "id": 10,
       "type": "KSamplerSelect",
       "pos": [
         40,
@@ -470,7 +421,7 @@
         60
       ],
       "flags": {},
-      "order": 10,
+      "order": 9,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -478,7 +429,7 @@
           "name": "SAMPLER",
           "type": "SAMPLER",
           "links": [
-            18
+            17
           ]
         }
       ],
@@ -490,7 +441,7 @@
       ]
     },
     {
-      "id": 12,
+      "id": 11,
       "type": "BasicScheduler",
       "pos": [
         40,
@@ -501,13 +452,13 @@
         130
       ],
       "flags": {},
-      "order": 17,
+      "order": 16,
       "mode": 0,
       "inputs": [
         {
           "name": "model",
           "type": "MODEL",
-          "link": 7
+          "link": 6
         }
       ],
       "outputs": [
@@ -515,7 +466,7 @@
           "name": "SIGMAS",
           "type": "SIGMAS",
           "links": [
-            19
+            18
           ]
         }
       ],
@@ -529,7 +480,7 @@
       ]
     },
     {
-      "id": 13,
+      "id": 12,
       "type": "BasicGuider",
       "pos": [
         40,
@@ -540,18 +491,18 @@
         70
       ],
       "flags": {},
-      "order": 18,
+      "order": 17,
       "mode": 0,
       "inputs": [
         {
           "name": "model",
           "type": "MODEL",
-          "link": 8
+          "link": 7
         },
         {
           "name": "conditioning",
           "type": "CONDITIONING",
-          "link": 14
+          "link": 13
         }
       ],
       "outputs": [
@@ -559,7 +510,7 @@
           "name": "GUIDER",
           "type": "GUIDER",
           "links": [
-            17
+            16
           ]
         }
       ],
@@ -568,7 +519,7 @@
       }
     },
     {
-      "id": 14,
+      "id": 13,
       "type": "SamplerCustomAdvanced",
       "pos": [
         400,
@@ -579,33 +530,33 @@
         150
       ],
       "flags": {},
-      "order": 19,
+      "order": 18,
       "mode": 0,
       "inputs": [
         {
           "name": "noise",
           "type": "NOISE",
-          "link": 16
+          "link": 15
         },
         {
           "name": "guider",
           "type": "GUIDER",
-          "link": 17
+          "link": 16
         },
         {
           "name": "sampler",
           "type": "SAMPLER",
-          "link": 18
+          "link": 17
         },
         {
           "name": "sigmas",
           "type": "SIGMAS",
-          "link": 19
+          "link": 18
         },
         {
           "name": "latent_image",
           "type": "LATENT",
-          "link": 15
+          "link": 14
         }
       ],
       "outputs": [
@@ -613,8 +564,8 @@
           "name": "output",
           "type": "LATENT",
           "links": [
-            20,
-            22
+            19,
+            21
           ]
         },
         {
@@ -628,11 +579,50 @@
       }
     },
     {
-      "id": 15,
+      "id": 14,
       "type": "VAEDecode",
       "pos": [
         780,
         0
+      ],
+      "size": [
+        260,
+        60
+      ],
+      "flags": {},
+      "order": 19,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 19
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 20
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            23
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      }
+    },
+    {
+      "id": 15,
+      "type": "VAEDecodeAudio",
+      "pos": [
+        780,
+        110
       ],
       "size": [
         260,
@@ -645,51 +635,12 @@
         {
           "name": "samples",
           "type": "LATENT",
-          "link": 20
-        },
-        {
-          "name": "vae",
-          "type": "VAE",
           "link": 21
-        }
-      ],
-      "outputs": [
-        {
-          "name": "IMAGE",
-          "type": "IMAGE",
-          "links": [
-            24
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "VAEDecode"
-      }
-    },
-    {
-      "id": 16,
-      "type": "VAEDecodeAudio",
-      "pos": [
-        780,
-        110
-      ],
-      "size": [
-        260,
-        60
-      ],
-      "flags": {},
-      "order": 21,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "samples",
-          "type": "LATENT",
-          "link": 22
         },
         {
           "name": "vae",
           "type": "VAE",
-          "link": 23
+          "link": 22
         }
       ],
       "outputs": [
@@ -697,7 +648,7 @@
           "name": "AUDIO",
           "type": "AUDIO",
           "links": [
-            25
+            24
           ]
         }
       ],
@@ -706,7 +657,7 @@
       }
     },
     {
-      "id": 17,
+      "id": 16,
       "type": "VHS_VideoCombine",
       "pos": [
         1080,
@@ -717,18 +668,18 @@
         520
       ],
       "flags": {},
-      "order": 22,
+      "order": 21,
       "mode": 0,
       "inputs": [
         {
           "name": "images",
           "type": "IMAGE",
-          "link": 24
+          "link": 23
         },
         {
           "name": "audio",
           "type": "AUDIO",
-          "link": 25,
+          "link": 24,
           "shape": 7
         },
         {
@@ -768,7 +719,7 @@
       }
     },
     {
-      "id": 18,
+      "id": 17,
       "type": "SageChainAssert",
       "pos": [
         -480,
@@ -779,13 +730,13 @@
         130
       ],
       "flags": {},
-      "order": 11,
+      "order": 10,
       "mode": 0,
       "inputs": [
         {
           "name": "model",
           "type": "MODEL",
-          "link": 6
+          "link": 5
         }
       ],
       "outputs": [
@@ -793,8 +744,8 @@
           "name": "model",
           "type": "MODEL",
           "links": [
-            7,
-            8
+            6,
+            7
           ]
         }
       ],
@@ -812,7 +763,7 @@
       "title": "Assert the attention chain composed"
     },
     {
-      "id": 19,
+      "id": 18,
       "type": "MiniMaxH3Preflight",
       "pos": [
         -60,
@@ -823,18 +774,18 @@
         260
       ],
       "flags": {},
-      "order": 12,
+      "order": 11,
       "mode": 0,
       "inputs": [
         {
           "name": "conditioning",
           "type": "CONDITIONING",
-          "link": 12
+          "link": 11
         },
         {
           "name": "samples",
           "type": "LATENT",
-          "link": 13
+          "link": 12
         }
       ],
       "outputs": [
@@ -842,14 +793,14 @@
           "name": "conditioning",
           "type": "CONDITIONING",
           "links": [
-            14
+            13
           ]
         },
         {
           "name": "samples",
           "type": "LATENT",
           "links": [
-            15
+            14
           ]
         },
         {
@@ -869,7 +820,7 @@
       "title": "Preflight: what this render costs"
     },
     {
-      "id": 20,
+      "id": 19,
       "type": "MarkdownNote",
       "pos": [
         -2180,
@@ -880,7 +831,7 @@
         620
       ],
       "flags": {},
-      "order": 13,
+      "order": 12,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -893,7 +844,7 @@
       "title": "Canvas + length: what is actually selectable"
     },
     {
-      "id": 21,
+      "id": 20,
       "type": "MarkdownNote",
       "pos": [
         -2180,
@@ -904,7 +855,7 @@
         560
       ],
       "flags": {},
-      "order": 14,
+      "order": 13,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -912,12 +863,12 @@
         "Node name for S&R": "MarkdownNote"
       },
       "widgets_values": [
-        "## Node order is load-bearing\n\n```\nLoad Diffusion Model\n  -> ModelSamplingMiniMaxH3       (core's MiniMaxH3SigmaShift; sigma shift,\n                                   anywhere before the fork. NOT in the PDD\n                                   graphs -- see below)\n  -> MiniMax H3 SageAttention     (this repo)\n  -> Patch Sol-Attn (MiniMax)     (this repo's MiniMaxH3SolAttn; must be AFTER)\n  -> BasicScheduler + BasicGuider (MODEL forks to BOTH)\n```\n\n`ModelSamplingMiniMaxH3` is the picker name; `MiniMaxH3SigmaShift` is the id\nyou will see in an API graph. Same node.\n\n**Sol-Attn must come second.** It composes with the attention patch it\nfinds; reversed, it overwrites ours and you silently get sage only, with no\nerror and no log line saying so.\n\n**The sigma shift is here to be changed, not because it does anything at\n12/3.** Those are the base checkpoint's training shifts, so the node is a\nno-op as shipped -- which is why the PDD graphs omit it entirely: there the\nPDD node emits the schedule from its own fused shift, and moving this one\nmakes `check_shift` raise at step 0. It is a knob for the turbo arms, not a\nfixture. The turbo LoRAs inherit the sampler's shift instead of\ncarrying their own, and the 4-step v1.1 768p one was\ndistilled at video shift **6** -- and that is the variant trained at 1344x768,\nthis canvas. Load it without changing this and you sample it off a schedule it\nnever saw.\nSteps move with it too: 16 is a base-model number, these want 4 or 8. The\n4-step v0.1 and 8-step v1.0 were both distilled at 12/3 and need no change\nhere.\n\n**MODEL forks to two consumers.** Rewiring only the guider leaves the\nscheduler reading sigmas off the unpatched model, and the render still\nsucceeds -- which is why that mistake survives.\n\n## Check it is actually running, once per graph change\n\nTurn `verbose` on in Patch Sol-Attn (MiniMax) for one render, then off. You want three\nlines. **Read them in the terminal** -- piping or redirecting block-buffers\nthe output and they may not appear even when everything is fine.\n\n```\nsage routing: arch=sm89 ... pv_accum=fp32+fp16 -> fp8_cuda++\n[sol_attn] chaining onto an existing attention override\n[sol_attn] sparse (1, ..., 56, 128) tau=1.0 int8 pointer\n```\n\nLine 1: sage engaged on the fast kernel. Line 3: sparse engaged at your tau.\n**Line 2 is the order check** -- it only prints when Sol-Attn finds sage's\noverride already installed. Missing means the nodes are backwards and you\nare paying full price for a render that otherwise looks fine.\n\n## What each node is here for\n\n- **ModelPreviewOverrideKJ** -- taeh3 preview, and it is arguably the\n  largest optimization here rather than a convenience. Killing a bad seed at\n  90s instead of 11 minutes saves ~9.5 min; the entire kernel and sparsity\n  stack saves ~7 min per render. If one render in three is a bad seed the\n  preview beats everything else combined -- and they compound rather than\n  compete.\n- **MiniMax H3 SageAttention** -- INT8-QK / FP8-PV kernel on all 50 DiT\n  attention forwards, plus an `optimized_attention_override` registration.\n  That second part is what lets Sol-Attn compose instead of bypassing sage.\n- **Patch Sol-Attn (MiniMax)** -- block-sparse attention, on the CUDA\n  kernel (`comfy_kitchen.sol_attn`). Settings are pinned from\n  `workflows/h3_config.py`; edit there and regenerate, not here.\n\n## Deliberately absent\n\n- **MiniMaxH3MemoryEfficientSageAttentionPatch** (KJNodes) -- same job as\n  our node, patches the same key, so they conflict. Ours also registers the\n  override.\n- **MiniMaxLowVRAMAttention** -- head chunking. ~3227 MiB saved at 4 groups\n  (measured; three times the ~1070 this note carried before 2026-08-13), but\n  1000 attention calls become 4000. On 24GB freed VRAM converts to wall-clock\n  at a ~2.6% ceiling. Take it only if you are actually hitting OOM.\n- **MiniMaxChunkFeedForward** -- at 362 frames attention peaks ~17.8 GiB\n  against FFN's 9-12, so it chunks a peak that is not binding. Short-clip\n  feature.\n- **PathchSageAttentionKJ** -- global no-guard sage switch. Prefer the\n  per-workflow node.\n"
+        "## Node order is load-bearing\n\n```\nLoad Diffusion Model\n  -> ModelSamplingMiniMaxH3       (core's MiniMaxH3SigmaShift; sigma shift,\n                                   anywhere before the fork. NOT in the PDD\n                                   graphs -- see below)\n  -> MiniMax H3 SageAttention     (this repo)\n  -> Patch Sol-Attn (MiniMax)     (this repo's MiniMaxH3SolAttn; must be AFTER)\n  -> BasicScheduler + BasicGuider (MODEL forks to BOTH)\n```\n\n`ModelSamplingMiniMaxH3` is the picker name; `MiniMaxH3SigmaShift` is the id\nyou will see in an API graph. Same node.\n\n**Sol-Attn must come second.** It composes with the attention patch it\nfinds; reversed, it overwrites ours and you silently get sage only, with no\nerror and no log line saying so.\n\n**The sigma shift is here to be changed, not because it does anything at\n12/3.** Those are the base checkpoint's training shifts, so the node is a\nno-op as shipped -- which is why the PDD graphs omit it entirely: there the\nPDD node emits the schedule from its own fused shift, and moving this one\nmakes `check_shift` raise at step 0. It is a knob for the turbo arms, not a\nfixture. The turbo LoRAs inherit the sampler's shift instead of\ncarrying their own, and the 4-step v1.1 768p one was\ndistilled at video shift **6** -- and that is the variant trained at 1344x768,\nthis canvas. Load it without changing this and you sample it off a schedule it\nnever saw.\nSteps move with it too: 16 is a base-model number, these want 4 or 8. The\n4-step v0.1 and 8-step v1.0 were both distilled at 12/3 and need no change\nhere.\n\n**MODEL forks to two consumers.** Rewiring only the guider leaves the\nscheduler reading sigmas off the unpatched model, and the render still\nsucceeds -- which is why that mistake survives.\n\n## Check it is actually running, once per graph change\n\nTurn `verbose` on in Patch Sol-Attn (MiniMax) for one render, then off. You want three\nlines. **Read them in the terminal** -- piping or redirecting block-buffers\nthe output and they may not appear even when everything is fine.\n\n```\nsage routing: arch=sm89 ... pv_accum=fp32+fp16 -> fp8_cuda++\n[sol_attn] chaining onto an existing attention override\n[sol_attn] sparse (1, ..., 56, 128) tau=1.0 int8 pointer\n```\n\nLine 1: sage engaged on the fast kernel. Line 3: sparse engaged at your tau.\n**Line 2 is the order check** -- it only prints when Sol-Attn finds sage's\noverride already installed. Missing means the nodes are backwards and you\nare paying full price for a render that otherwise looks fine.\n\n## What each node is here for\n\n- **MiniMax H3 SageAttention** -- INT8-QK / FP8-PV kernel on all 50 DiT\n  attention forwards, plus an `optimized_attention_override` registration.\n  That second part is what lets Sol-Attn compose instead of bypassing sage.\n- **Patch Sol-Attn (MiniMax)** -- block-sparse attention, on the CUDA\n  kernel (`comfy_kitchen.sol_attn`). Settings are pinned from\n  `workflows/h3_config.py`; edit there and regenerate, not here.\n\n## Deliberately absent\n\n- **MiniMaxH3MemoryEfficientSageAttentionPatch** (KJNodes) -- same job as\n  our node, patches the same key, so they conflict. Ours also registers the\n  override.\n- **MiniMaxLowVRAMAttention** -- head chunking. ~3227 MiB saved at 4 groups\n  (measured; three times the ~1070 this note carried before 2026-08-13), but\n  1000 attention calls become 4000. On 24GB freed VRAM converts to wall-clock\n  at a ~2.6% ceiling. Take it only if you are actually hitting OOM.\n- **MiniMaxChunkFeedForward** -- at 362 frames attention peaks ~17.8 GiB\n  against FFN's 9-12, so it chunks a peak that is not binding. Short-clip\n  feature.\n- **PathchSageAttentionKJ** -- global no-guard sage switch. Prefer the\n  per-workflow node.\n"
       ],
       "title": "Which nodes, and the order that matters"
     },
     {
-      "id": 22,
+      "id": 21,
       "type": "MarkdownNote",
       "pos": [
         -2860,
@@ -928,7 +879,7 @@
         1560
       ],
       "flags": {},
-      "order": 15,
+      "order": 14,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -941,7 +892,7 @@
       "title": "Resolution, references, and reading the preflight"
     },
     {
-      "id": 23,
+      "id": 22,
       "type": "MarkdownNote",
       "pos": [
         -2180,
@@ -952,7 +903,7 @@
         760
       ],
       "flags": {},
-      "order": 16,
+      "order": 15,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -984,39 +935,39 @@
     ],
     [
       3,
-      6,
-      0,
-      7,
-      0,
-      "MODEL"
-    ],
-    [
-      4,
       3,
       0,
-      9,
+      8,
       1,
       "VAE"
     ],
     [
-      5,
+      4,
       2,
       0,
-      9,
+      8,
       0,
       "CLIP"
     ],
     [
+      5,
       6,
-      7,
       0,
-      18,
+      17,
+      0,
+      "MODEL"
+    ],
+    [
+      6,
+      17,
+      0,
+      11,
       0,
       "MODEL"
     ],
     [
       7,
-      18,
+      17,
       0,
       12,
       0,
@@ -1024,145 +975,137 @@
     ],
     [
       8,
-      18,
+      7,
       0,
-      13,
-      0,
-      "MODEL"
-    ],
-    [
-      9,
       8,
-      0,
-      9,
       4,
       "INT"
     ],
     [
-      10,
-      8,
-      1,
       9,
+      7,
+      1,
+      8,
       5,
       "INT"
     ],
     [
-      11,
-      8,
+      10,
+      7,
       2,
-      9,
+      8,
       6,
       "INT"
     ],
     [
-      12,
-      9,
+      11,
+      8,
       0,
-      19,
+      18,
       0,
       "CONDITIONING"
     ],
     [
-      13,
-      9,
+      12,
+      8,
       1,
-      19,
+      18,
       1,
       "LATENT"
     ],
     [
-      14,
-      19,
-      0,
       13,
+      18,
+      0,
+      12,
       1,
       "CONDITIONING"
     ],
     [
-      15,
-      19,
-      1,
       14,
+      18,
+      1,
+      13,
       4,
       "LATENT"
     ],
     [
-      16,
-      10,
+      15,
+      9,
       0,
-      14,
+      13,
       0,
       "NOISE"
     ],
     [
-      17,
-      13,
+      16,
+      12,
       0,
-      14,
+      13,
       1,
       "GUIDER"
+    ],
+    [
+      17,
+      10,
+      0,
+      13,
+      2,
+      "SAMPLER"
     ],
     [
       18,
       11,
       0,
-      14,
-      2,
-      "SAMPLER"
-    ],
-    [
-      19,
-      12,
-      0,
-      14,
+      13,
       3,
       "SIGMAS"
     ],
     [
-      20,
+      19,
+      13,
+      0,
       14,
       0,
-      15,
-      0,
       "LATENT"
+    ],
+    [
+      20,
+      3,
+      0,
+      14,
+      1,
+      "VAE"
     ],
     [
       21,
-      3,
+      13,
+      0,
+      15,
+      0,
+      "LATENT"
+    ],
+    [
+      22,
+      4,
       0,
       15,
       1,
       "VAE"
     ],
     [
-      22,
+      23,
       14,
       0,
       16,
       0,
-      "LATENT"
-    ],
-    [
-      23,
-      4,
-      0,
-      16,
-      1,
-      "VAE"
+      "IMAGE"
     ],
     [
       24,
       15,
       0,
-      17,
-      0,
-      "IMAGE"
-    ],
-    [
-      25,
       16,
-      0,
-      17,
       1,
       "AUDIO"
     ]

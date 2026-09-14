@@ -10,8 +10,8 @@
   },
   "id": "c3e6fa86-d17d-5fca-b4da-ecc7c5949afe",
   "revision": 0,
-  "last_node_id": 23,
-  "last_link_id": 19,
+  "last_node_id": 22,
+  "last_link_id": 18,
   "nodes": [
     {
       "id": 1,
@@ -65,7 +65,7 @@
           "name": "CLIP",
           "type": "CLIP",
           "links": [
-            14
+            13
           ]
         }
       ],
@@ -97,7 +97,7 @@
           "name": "VAE",
           "type": "VAE",
           "links": [
-            15
+            14
           ]
         }
       ],
@@ -129,7 +129,7 @@
           "name": "VAE",
           "type": "VAE",
           "links": [
-            16
+            15
           ]
         }
       ],
@@ -269,7 +269,7 @@
           "name": "MODEL",
           "type": "MODEL",
           "links": [
-            4
+            6
           ]
         }
       ],
@@ -294,55 +294,6 @@
     },
     {
       "id": 9,
-      "type": "ModelPreviewOverrideKJ",
-      "pos": [
-        -460,
-        190
-      ],
-      "size": [
-        360,
-        200
-      ],
-      "flags": {},
-      "order": 8,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "model",
-          "type": "MODEL",
-          "link": 4
-        },
-        {
-          "name": "vae",
-          "type": "VAE",
-          "link": null,
-          "shape": 7
-        }
-      ],
-      "outputs": [
-        {
-          "name": "MODEL",
-          "type": "MODEL",
-          "links": [
-            7
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "ModelPreviewOverrideKJ"
-      },
-      "widgets_values": [
-        512,
-        80,
-        true,
-        4,
-        8,
-        "taeh3.safetensors"
-      ],
-      "title": "Preview (taeh3)"
-    },
-    {
-      "id": 10,
       "type": "MiniMaxH3Resolution",
       "pos": [
         -1900,
@@ -353,7 +304,7 @@
         200
       ],
       "flags": {},
-      "order": 9,
+      "order": 8,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -404,7 +355,7 @@
       "title": "Resolution: shape, and what it costs"
     },
     {
-      "id": 13,
+      "id": 12,
       "type": "KSamplerSelect",
       "pos": [
         40,
@@ -415,7 +366,7 @@
         60
       ],
       "flags": {},
-      "order": 10,
+      "order": 9,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -423,7 +374,7 @@
           "name": "SAMPLER",
           "type": "SAMPLER",
           "links": [
-            18
+            17
           ]
         }
       ],
@@ -435,7 +386,7 @@
       ]
     },
     {
-      "id": 14,
+      "id": 13,
       "type": "BasicScheduler",
       "pos": [
         40,
@@ -446,13 +397,13 @@
         130
       ],
       "flags": {},
-      "order": 14,
+      "order": 13,
       "mode": 0,
       "inputs": [
         {
           "name": "model",
           "type": "MODEL",
-          "link": 8
+          "link": 7
         }
       ],
       "outputs": [
@@ -460,7 +411,7 @@
           "name": "SIGMAS",
           "type": "SIGMAS",
           "links": [
-            19
+            18
           ]
         }
       ],
@@ -474,7 +425,7 @@
       ]
     },
     {
-      "id": 20,
+      "id": 19,
       "type": "SageChainAssert",
       "pos": [
         -480,
@@ -485,13 +436,13 @@
         130
       ],
       "flags": {},
-      "order": 11,
+      "order": 10,
       "mode": 0,
       "inputs": [
         {
           "name": "model",
           "type": "MODEL",
-          "link": 7
+          "link": 6
         }
       ],
       "outputs": [
@@ -499,8 +450,8 @@
           "name": "model",
           "type": "MODEL",
           "links": [
-            8,
-            13
+            7,
+            12
           ]
         }
       ],
@@ -518,7 +469,7 @@
       "title": "Assert the attention chain composed"
     },
     {
-      "id": 21,
+      "id": 20,
       "type": "LoadAudio",
       "pos": [
         -460,
@@ -529,7 +480,7 @@
         130
       ],
       "flags": {},
-      "order": 12,
+      "order": 11,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -537,7 +488,7 @@
           "name": "AUDIO",
           "type": "AUDIO",
           "links": [
-            17
+            16
           ]
         }
       ],
@@ -550,7 +501,7 @@
       "title": "The track"
     },
     {
-      "id": 22,
+      "id": 21,
       "type": "MiniMaxH3AudioFreezeSong",
       "pos": [
         -60,
@@ -561,43 +512,43 @@
         760
       ],
       "flags": {},
-      "order": 15,
+      "order": 14,
       "mode": 0,
       "inputs": [
         {
           "name": "model",
           "type": "MODEL",
-          "link": 13
+          "link": 12
         },
         {
           "name": "clip",
           "type": "CLIP",
-          "link": 14
+          "link": 13
         },
         {
           "name": "vae",
           "type": "VAE",
-          "link": 15
+          "link": 14
         },
         {
           "name": "audio_vae",
           "type": "VAE",
-          "link": 16
+          "link": 15
         },
         {
           "name": "audio",
           "type": "AUDIO",
-          "link": 17
+          "link": 16
         },
         {
           "name": "sampler",
           "type": "SAMPLER",
-          "link": 18
+          "link": 17
         },
         {
           "name": "sigmas",
           "type": "SIGMAS",
-          "link": 19
+          "link": 18
         },
         {
           "name": "references",
@@ -648,7 +599,7 @@
       "title": "Whole track: windows planned from the song"
     },
     {
-      "id": 23,
+      "id": 22,
       "type": "MarkdownNote",
       "pos": [
         -2180,
@@ -659,7 +610,7 @@
         620
       ],
       "flags": {},
-      "order": 13,
+      "order": 12,
       "mode": 0,
       "inputs": [],
       "outputs": [],
@@ -698,82 +649,74 @@
       "MODEL"
     ],
     [
-      4,
+      6,
       8,
       0,
-      9,
+      19,
       0,
       "MODEL"
     ],
     [
       7,
-      9,
+      19,
       0,
-      20,
+      13,
       0,
       "MODEL"
     ],
     [
-      8,
-      20,
+      12,
+      19,
       0,
-      14,
+      21,
       0,
       "MODEL"
     ],
     [
       13,
-      20,
-      0,
-      22,
-      0,
-      "MODEL"
-    ],
-    [
-      14,
       2,
       0,
-      22,
+      21,
       1,
       "CLIP"
     ],
     [
-      15,
+      14,
       3,
       0,
-      22,
+      21,
       2,
       "VAE"
     ],
     [
-      16,
+      15,
       4,
       0,
-      22,
+      21,
       3,
       "VAE"
     ],
     [
-      17,
-      21,
+      16,
+      20,
       0,
-      22,
+      21,
       4,
       "AUDIO"
+    ],
+    [
+      17,
+      12,
+      0,
+      21,
+      5,
+      "SAMPLER"
     ],
     [
       18,
       13,
       0,
-      22,
-      5,
-      "SAMPLER"
-    ],
-    [
-      19,
-      14,
-      0,
-      22,
+      21,
       6,
       "SIGMAS"
     ]

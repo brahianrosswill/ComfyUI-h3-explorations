@@ -4,6 +4,15 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.103.0
+
+### Removed
+
+- **The taeh3 live preview node (`ModelPreviewOverrideKJ`) from every
+  generated UI graph** (owner, 2026-09-14: it costs GPU time on the render it
+  previews), with the generator's `preview` path. API graphs never carried it,
+  so their bytes do not change.
+
 ## 0.102.0
 
 ### Removed

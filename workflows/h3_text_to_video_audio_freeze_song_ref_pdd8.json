@@ -10,8 +10,8 @@
   },
   "id": "20d7b98d-d5cb-5597-8924-652396458919",
   "revision": 0,
-  "last_node_id": 26,
-  "last_link_id": 21,
+  "last_node_id": 25,
+  "last_link_id": 20,
   "nodes": [
     {
       "id": 1,
@@ -65,7 +65,7 @@
           "name": "CLIP",
           "type": "CLIP",
           "links": [
-            14
+            13
           ]
         }
       ],
@@ -97,7 +97,7 @@
           "name": "VAE",
           "type": "VAE",
           "links": [
-            15
+            14
           ]
         }
       ],
@@ -129,7 +129,7 @@
           "name": "VAE",
           "type": "VAE",
           "links": [
-            16
+            15
           ]
         }
       ],
@@ -206,7 +206,7 @@
           "name": "SIGMAS",
           "type": "SIGMAS",
           "links": [
-            19
+            18
           ]
         }
       ],
@@ -348,7 +348,7 @@
           "name": "MODEL",
           "type": "MODEL",
           "links": [
-            5
+            7
           ]
         }
       ],
@@ -373,55 +373,6 @@
     },
     {
       "id": 11,
-      "type": "ModelPreviewOverrideKJ",
-      "pos": [
-        -460,
-        190
-      ],
-      "size": [
-        360,
-        200
-      ],
-      "flags": {},
-      "order": 16,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "model",
-          "type": "MODEL",
-          "link": 5
-        },
-        {
-          "name": "vae",
-          "type": "VAE",
-          "link": null,
-          "shape": 7
-        }
-      ],
-      "outputs": [
-        {
-          "name": "MODEL",
-          "type": "MODEL",
-          "links": [
-            8
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "ModelPreviewOverrideKJ"
-      },
-      "widgets_values": [
-        512,
-        80,
-        true,
-        4,
-        8,
-        "taeh3.safetensors"
-      ],
-      "title": "Preview (taeh3)"
-    },
-    {
-      "id": 12,
       "type": "MiniMaxH3Resolution",
       "pos": [
         -1900,
@@ -483,7 +434,7 @@
       "title": "Resolution: shape, and what it costs"
     },
     {
-      "id": 15,
+      "id": 14,
       "type": "KSamplerSelect",
       "pos": [
         40,
@@ -502,7 +453,7 @@
           "name": "SAMPLER",
           "type": "SAMPLER",
           "links": [
-            18
+            17
           ]
         }
       ],
@@ -514,7 +465,7 @@
       ]
     },
     {
-      "id": 21,
+      "id": 20,
       "type": "SageChainAssert",
       "pos": [
         -480,
@@ -525,13 +476,13 @@
         130
       ],
       "flags": {},
-      "order": 17,
+      "order": 16,
       "mode": 0,
       "inputs": [
         {
           "name": "model",
           "type": "MODEL",
-          "link": 8
+          "link": 7
         }
       ],
       "outputs": [
@@ -539,7 +490,7 @@
           "name": "model",
           "type": "MODEL",
           "links": [
-            13
+            12
           ]
         }
       ],
@@ -557,7 +508,7 @@
       "title": "Assert the attention chain composed"
     },
     {
-      "id": 22,
+      "id": 21,
       "type": "LoadAudio",
       "pos": [
         -460,
@@ -576,7 +527,7 @@
           "name": "AUDIO",
           "type": "AUDIO",
           "links": [
-            17
+            16
           ]
         }
       ],
@@ -589,7 +540,7 @@
       "title": "The track"
     },
     {
-      "id": 23,
+      "id": 22,
       "type": "MiniMaxH3AudioFreezeSong",
       "pos": [
         -60,
@@ -600,48 +551,48 @@
         760
       ],
       "flags": {},
-      "order": 18,
+      "order": 17,
       "mode": 0,
       "inputs": [
         {
           "name": "model",
           "type": "MODEL",
-          "link": 13
+          "link": 12
         },
         {
           "name": "clip",
           "type": "CLIP",
-          "link": 14
+          "link": 13
         },
         {
           "name": "vae",
           "type": "VAE",
-          "link": 15
+          "link": 14
         },
         {
           "name": "audio_vae",
           "type": "VAE",
-          "link": 16
+          "link": 15
         },
         {
           "name": "audio",
           "type": "AUDIO",
-          "link": 17
+          "link": 16
         },
         {
           "name": "sampler",
           "type": "SAMPLER",
-          "link": 18
+          "link": 17
         },
         {
           "name": "sigmas",
           "type": "SIGMAS",
-          "link": 19
+          "link": 18
         },
         {
           "name": "references",
           "type": "MINIMAX_H3_REFERENCES",
-          "link": 21,
+          "link": 20,
           "shape": 7
         }
       ],
@@ -686,7 +637,7 @@
       "title": "Whole track: windows planned from the song"
     },
     {
-      "id": 24,
+      "id": 23,
       "type": "LoadImage",
       "pos": [
         -1420,
@@ -705,7 +656,7 @@
           "name": "IMAGE",
           "type": "IMAGE",
           "links": [
-            20
+            19
           ]
         },
         {
@@ -723,7 +674,7 @@
       ]
     },
     {
-      "id": 25,
+      "id": 24,
       "type": "MiniMaxH3AppendRefImage",
       "pos": [
         -760,
@@ -740,7 +691,7 @@
         {
           "name": "image",
           "type": "IMAGE",
-          "link": 20
+          "link": 19
         }
       ],
       "outputs": [
@@ -748,7 +699,7 @@
           "name": "references",
           "type": "MINIMAX_H3_REFERENCES",
           "links": [
-            21
+            20
           ]
         }
       ],
@@ -764,7 +715,7 @@
       "title": "Append Picture 1"
     },
     {
-      "id": 26,
+      "id": 25,
       "type": "MarkdownNote",
       "pos": [
         -2180,
@@ -822,90 +773,82 @@
       "MODEL"
     ],
     [
-      5,
+      7,
       10,
       0,
-      11,
+      20,
       0,
       "MODEL"
     ],
     [
-      8,
-      11,
+      12,
+      20,
       0,
-      21,
+      22,
       0,
       "MODEL"
     ],
     [
       13,
-      21,
-      0,
-      23,
-      0,
-      "MODEL"
-    ],
-    [
-      14,
       2,
       0,
-      23,
+      22,
       1,
       "CLIP"
     ],
     [
-      15,
+      14,
       3,
       0,
-      23,
+      22,
       2,
       "VAE"
     ],
     [
-      16,
+      15,
       4,
       0,
-      23,
+      22,
       3,
       "VAE"
     ],
     [
-      17,
-      22,
+      16,
+      21,
       0,
-      23,
+      22,
       4,
       "AUDIO"
     ],
     [
-      18,
-      15,
+      17,
+      14,
       0,
-      23,
+      22,
       5,
       "SAMPLER"
     ],
     [
-      19,
+      18,
       6,
       1,
-      23,
+      22,
       6,
       "SIGMAS"
+    ],
+    [
+      19,
+      23,
+      0,
+      24,
+      0,
+      "IMAGE"
     ],
     [
       20,
       24,
       0,
-      25,
-      0,
-      "IMAGE"
-    ],
-    [
-      21,
-      25,
-      0,
-      23,
+      22,
       7,
       "MINIMAX_H3_REFERENCES"
     ]

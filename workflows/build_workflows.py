@@ -2582,12 +2582,6 @@ are paying full price for a render that otherwise looks fine.
 
 ## What each node is here for
 
-- **ModelPreviewOverrideKJ** -- taeh3 preview, and it is arguably the
-  largest optimization here rather than a convenience. Killing a bad seed at
-  90s instead of 11 minutes saves ~9.5 min; the entire kernel and sparsity
-  stack saves ~7 min per render. If one render in three is a bad seed the
-  preview beats everything else combined -- and they compound rather than
-  compete.
 - **MiniMax H3 SageAttention** -- INT8-QK / FP8-PV kernel on all 50 DiT
   attention forwards, plus an `optimized_attention_override` registration.
   That second part is what lets Sol-Attn compose instead of bypassing sage.
@@ -5148,7 +5142,7 @@ def build_ui(task: str, *, sage: bool = True, prompt: str | None = None,
              single_frame: bool = False,
              cache: dict | None = None,
              variant_note: str | None = None,
-             length: int = LENGTH, seed: int = SEED, preview: bool = False,
+             length: int = LENGTH, seed: int = SEED,
              sol: dict | None = None, sol_enabled: bool = True,
              canvas_mode: str = "match_keyframe", stamp: bool = False,
              last_frame: bool = False,
@@ -5438,31 +5432,6 @@ def build_ui(task: str, *, sage: bool = True, prompt: str | None = None,
             g._node(sol_node)["mode"] = 4
         g.link(model_src, 0, sol_node, "model", "MODEL")
         model_src = sol_node
-
-    prev_node = None
-    if preview:
-        # The largest practical saving on a long clip, and not a kernel
-        # change: a 362-frame render is ~17 min, so seeing step 3 is what
-        # lets a bad seed die at 90 s instead of costing the whole run.
-        #
-        # It has to be this node rather than ComfyUI's built-in preview,
-        # because the launcher passes --preview-method none globally; this
-        # node sidesteps that by pushing its own frame to a DOM widget on
-        # itself. taeh3 is the H3 tiny decoder (latent_channels 24,
-        # patch_size 2) -- without it H3 has no approx VAE at all and
-        # previews degrade to latent2rgb.
-        #
-        # preview_frames=4 rather than 1: a still frame catches a bad
-        # composition, but the failures worth aborting a 17-minute render
-        # for are motion failures, and those need more than one frame.
-        prev_node = g.add("ModelPreviewOverrideKJ", (-460, 190), size=(360, 200),
-                          widgets=[512, 80, True, 4, 8, "taeh3.safetensors"],
-                          inputs=[_in("model", "MODEL"),
-                                  _in("vae", "VAE", optional=True)],
-                          outputs=[_out("MODEL", "MODEL")],
-                          title="Preview (taeh3)")
-        g.link(model_src, 0, prev_node, "model", "MODEL")
-        model_src = prev_node
 
     # See build_api: geometry comes from Resolution everywhere except i2v,
     # where the keyframe decides it.
@@ -6522,21 +6491,18 @@ def validate_ui(wf: dict, oi: dict, label: str) -> list[str]:
 # Nodes that are browser affordances rather than computation, so their
 # absence from the API form is intentional and not drift.
 #
-# ModelPreviewOverrideKJ is the non-obvious one: it patches the model, but
-# only to decode intermediate latents through taeh3 for display. Headless
-# has nowhere to show them, and those decodes cost time that would land in
-# any timing run as an unattributed confound. It belongs in the graph you
-# watch and nowhere near the graph you measure.
+# `ModelPreviewOverrideKJ` (the taeh3 live preview) sat here until
+# 2026-09-14, when the owner dropped it from every graph: its decodes cost
+# GPU time on the renders it previewed.
 #
 # `PreviewImage` is kept in this set although nothing emits one: it is a stock
 # node somebody may add to a UI graph by hand, and stripping it from the API
 # form is right whether or not this generator produces it.
-_UI_ONLY = {"MarkdownNote", "Note", "Reroute", "PrimitiveNode",
-            "ModelPreviewOverrideKJ", "PreviewImage"}
+_UI_ONLY = {"MarkdownNote", "Note", "Reroute", "PrimitiveNode", "PreviewImage"}
 
 # Rendered entirely by the frontend, so they have no entry in /object_info.
-# Subset of _UI_ONLY: ModelPreviewOverrideKJ is a real backend node that we
-# exclude from the API form by choice, not by necessity.
+# Subset of _UI_ONLY: PreviewImage is a real backend node that we exclude
+# from the API form by choice, not by necessity.
 _FRONTEND_ONLY = {"MarkdownNote", "Note", "Reroute", "PrimitiveNode"}
 
 
@@ -6701,10 +6667,7 @@ def main():
     written = []
 
     # The ones you actually open in ComfyUI. Named for what they do, not for
-    # the task abbreviation the code uses internally. All carry the taeh3
-    # preview, which is what lets a bad seed die at ~90s instead of costing a
-    # full render -- worth more than any kernel knob when render time is the
-    # objective.
+    # the task abbreviation the code uses internally.
     # `label` keys the UI/API cross-check and has to be unique; `task` is what
     # the builder dispatches on. They are separate because a task can have more
     # than one graph, differing only in model source.
@@ -8726,7 +8689,6 @@ def main():
         rest = {k: v for k, v in extra.items()
                 if k not in ("sol_on", "dense_attn", "sol_overrides")}
         wf = build_ui(task, sage=sage_on,
-                      preview=True,
                       sol=(_sol_with_overrides(extra)
                            if not (is_image or dense_mode in ("none", "sage") or vsa_on)
                            else None),

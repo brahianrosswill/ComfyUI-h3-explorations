@@ -17,6 +17,14 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-14
 
+- **No live preview node in generated graphs** (owner: it wastes GPU).
+  `ModelPreviewOverrideKJ` with taeh3 left every UI graph and the generator's
+  `preview` path. What the prose used to claim: the generator's node note and
+  graph comment called it "arguably the largest optimization here" and worth
+  more than any kernel knob; `docs/h3_geometry_and_nodes.md` said the same.
+  The owner also answered the API-only plan's open questions
+  (`internal/2026-09-14_api_only_workflows_plan.md`, top): loop stage 2 goes
+  before the conversion.
 - **The frozen-audio loop plan, confirmed** (owner, in answers the same day).
   Encoding comes before sampling: the track and each distinct prompt once.
   Reference stills go with every window's prompt, with a workflow for it.

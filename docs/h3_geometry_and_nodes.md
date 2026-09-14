@@ -244,10 +244,9 @@ dense+sparse, so remove it once you have the numbers.
 
 ### Use from KJNodes
 
-**`ModelPreviewOverrideKJ`** — taeh3 preview during sampling. Worth more
-than any kernel knob: it lets a bad seed be killed in the first moments
-instead of costing a full render. Deliberately kept out of the API-format workflows, since its
-decodes would land in any timing run as an unattributed cost.
+**`ModelPreviewOverrideKJ`** — taeh3 preview during sampling. Not in any
+generated graph since 2026-09-14 (owner: its decodes cost GPU time on the
+render it previews); add it by hand if you want to watch one.
 
 ### Skip, with reasons
 
