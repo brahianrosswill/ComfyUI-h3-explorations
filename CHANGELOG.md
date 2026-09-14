@@ -4,6 +4,56 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.107.0
+
+### Removed
+
+- **UI-format workflows.** Every UI twin in `workflows/` is gone; shipped
+  workflows are API format only, under their existing `_api.json` names. The
+  editor loads an API file by input name and arranges it, so titles, layout,
+  bypass state and the in-graph note panels went with the twins (owner,
+  2026-09-14).
+- **The generator's UI half**: `build_ui`, `UIGraph`, `validate_ui`,
+  `cross_check`, every in-graph note and note helper, the `api_only` and
+  `variant_note` GRAPHS keys, and the parked image lane's builder
+  `_image_graphs`.
+- **`bench/check_workflow_schema.py`**: its subject, the positional UI form, no
+  longer ships (`docs/checks.md`, Retired checks).
+- **`h3_probe_sol_on` and `h3_probe_sol_on_i2v`** (owner, 2026-09-14): with Sol
+  on by default each matched `h3_text_to_video` or `h3_first_frame_to_video` in
+  everything but its output name. `check_bench_matches_shipped.py` and
+  `profile_sol_stages.py` read `h3_text_to_video_api.json` instead.
+  `h3_probe_sol_on_all_refs` stays: different references, and the control the
+  EasyCache and euler probes are paired with.
+
+### Changed
+
+- **`validate_api` grades what `validate_ui` did, plus member order.** A literal
+  must have its input's type (a `True` where an INT belongs fails); a
+  DynamicCombo member is graded against the selected option's own spec; and a
+  member placed before its parent fails, since the editor drops it on load.
+  Controls, each failing the build with nothing written: a string for
+  `extent.seconds`, a boolean for `crf`, `extent.seconds` ahead of `extent`.
+- **Checks read API graphs only.** `check_graph_values.py`,
+  `check_pdd_sigmas.py`, `check_distill_settings.py`, `check_distill_grid.py`,
+  `check_attention_defaults.py` and `check_model_files.py` lost their UI cases
+  (the UI/API pairings, the stale-widget control, `notes_match_the_lora`), and
+  each fails on an empty graph set. Each was run on the tree before the twins
+  were deleted and on an API-only copy with the same counts, with a control
+  per check.
+- **The API graphs' bytes did not move**: every `_api.json` hashes as it did
+  before the conversion, and a changed literal in a scratch build changed
+  exactly the graphs it reaches.
+- Docs that pointed at UI workflow files now point at the `_api.json`.
+- **`h3_config`'s graph readers read API form only**: the UI link and widget
+  helpers are gone, `resolve_widget` drops its literal fallback and
+  `Passthrough` its widget position. The checks that use them gave the same
+  exits and counts before and after on the same graph set.
+- **Facts that lived only in the in-graph notes moved to the docs that own
+  them**, correcting stale prose on the way (the Sol log prefix, the canvas
+  node and node order, the retired swap twin, the v4 turbo-pack graphs, the
+  archived image-edit note); each is logged in `docs/wiki/decisions.md`.
+
 ## 0.106.1
 
 ### Fixed

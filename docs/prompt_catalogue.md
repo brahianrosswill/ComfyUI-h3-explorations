@@ -8,11 +8,11 @@ Scenes are ordered by how many graphs carry them, so the defaults that reach the
 
 | scene | bank id | graphs | words | shots | speakers | markers |
 |---|---|---|---|---|---|---|
-| [`LONG_T2V_PROMPT`](#long-t2v-prompt) | `t2va_covered_market` | 34 | 281 | 3 | 2 | `<d>` |
+| [`LONG_T2V_PROMPT`](#long-t2v-prompt) | `t2va_covered_market` | 33 | 281 | 3 | 2 | `<d>` |
 | [`ref2va_role_character_garment_environment`](#ref2va-role-character-garment-environment) | `ref2va_role_character_garment_environment` | 13 | 173 | 1 | 0 | — |
 | [`ref2va_role_character_environment`](#ref2va-role-character-environment) | `ref2va_role_character_environment` | 11 | 135 | 1 | 0 | — |
 | [`ref2va_image_video_audio_music`](#ref2va-image-video-audio-music) | `ref2va_image_video_audio_music` | 5 | 264 | 1 | 0 | — |
-| [`I2V_PROMPT`](#i2v-prompt) | `i2va_lighthouse_keyframe` | 4 | 90 | 1 | 0 | — |
+| [`I2V_PROMPT`](#i2v-prompt) | `i2va_lighthouse_keyframe` | 3 | 90 | 1 | 0 | — |
 | [`MARKET_REF2V_PROMPT`](#market-ref2v-prompt) | `ref2va_market_stallholder` | 3 | 573 | 3 | 2 | `<d>` |
 | [`fl2va_interior_converge`](#fl2va-interior-converge) | `fl2va_interior_converge` | 3 | 159 | 1 | 0 | — |
 | [`ref2va_video_character_swap`](#ref2va-video-character-swap) | `ref2va_video_character_swap` | 3 | 303 | 1 | 0 | — |
@@ -48,7 +48,7 @@ Scenes are ordered by how many graphs carry them, so the defaults that reach the
 
 ## LONG_T2V_PROMPT
 
-Carried by **34** graph(s). Sections: `integrated_multimodal_description`, `overall_soundscape`, `non_diegetic_music`.
+Carried by **33** graph(s). Sections: `integrated_multimodal_description`, `overall_soundscape`, `non_diegetic_music`.
 
 <details><summary>graphs</summary>
 
@@ -62,7 +62,6 @@ Carried by **34** graph(s). Sections: `integrated_multimodal_description`, `over
 - `h3_probe_canvas_portrait_api`
 - `h3_probe_canvas_ultrawide_api`
 - `h3_probe_head_chunks_api`
-- `h3_probe_sol_on_api`
 - `h3_probe_split_base_first_api`
 - `h3_probe_split_base_last_api`
 - `h3_probe_square_canvas_api`
@@ -234,14 +233,13 @@ A slow instrumental score follows the tempo and instrumentation of <Audio 2>.
 
 ## I2V_PROMPT
 
-Carried by **4** graph(s). Sections: none.
+Carried by **3** graph(s). Sections: none.
 
 <details><summary>graphs</summary>
 
 - `h3_first_frame_to_video_api`
 - `h3_first_frame_to_video_audio_freeze_api`
 - `h3_first_frame_to_video_stamped_api`
-- `h3_probe_sol_on_i2v_api`
 
 </details>
 

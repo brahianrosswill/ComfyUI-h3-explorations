@@ -1,6 +1,6 @@
 # How to write an H3 prompt
 
-last updated: 2026-09-01
+last updated: 2026-09-14
 
 **The single source of truth for writing an H3 prompt, in any mode.** Everything
 needed is restated here: the closed vocabularies in full, the exact Part One
@@ -196,6 +196,12 @@ base §4.2 and ref §5.1, *stated*:
   time that **falls within the video duration**.
 - The format is `[Shot N] At MM:SS.mmm, ...` (spelled out in ref §5.1; base §4.2
   shows it: `[Shot 2] At 00:03.500, the camera cuts to...`).
+
+**FL2VA defaults to one shot** (base §3.2, *stated*): it "generally favors a
+single shot so the model can interpolate continuously from the first frame to
+the last frame", and uses multiple shots only when they are explicitly
+specified. When it does cut, the last frame is reached by the final `[Shot N]`
+at the end of the video.
 
 A malformed header such as `[Shot 1, 00:00.000-00:06.000]` is not merely
 non-conformant: `bench/preflight_graph.py` requires a literal `]` after the

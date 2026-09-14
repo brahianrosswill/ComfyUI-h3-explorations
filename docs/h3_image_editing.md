@@ -19,8 +19,9 @@ Last updated: 2026-08-16.
 >
 > `h3_config.GRAPH_DIRS` no longer carries `image`, so the graphs are neither
 > discovered nor graded, and anything deriving a single-frame class from it
-> derives an empty one. The generator still contains `_image_graphs()`; its one
-> call site is commented out, so un-parking is that line plus the moves above.
+> derives an empty one. The generator's `_image_graphs()` was deleted with its
+> UI half on 2026-09-14, so un-parking means restoring it from git history
+> (before that commit) plus the moves above.
 >
 > **A consequence worth having on purpose:** this pack no longer modifies
 > ComfyUI core at all. The shim was the last thing that did, and it is archived
@@ -49,8 +50,13 @@ exists to enable.
 **Everything else about the mechanism** -- the 5-frame floor, what the patch
 does and refuses to do, the single-image VAE, and how the shim retires itself
 -- is the module docstring of [`archive/single_frame.py`](../archive/single_frame.py), which
-owns it, plus the note drawn on `workflows/image/h3_image_edit.json` itself.
-This file is about the **prompts** and the **layout**.
+owns it, plus the note drawn on
+[`archive/workflows/image/h3_image_edit.json`](../archive/workflows/image/h3_image_edit.json)
+itself, which also carries the single-image VAE round-trip against the video
+VAE and core's `t == 1` decode branch (`comfy/ldm/minimax/vae.py`). The
+generator no longer draws notes, so that archived file is the only copy. (This
+pointed at `workflows/image/h3_image_edit.json` until 2026-09-14; that folder
+is gone.) This file is about the **prompts** and the **layout**.
 
 ---
 

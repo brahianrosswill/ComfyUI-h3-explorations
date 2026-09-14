@@ -217,10 +217,8 @@ is a bug; all three will mislead anyone pricing a render from the file.
    resolved it to `comfy`, and only a log line reported the substitution. The
    rebuilt graphs carry `comfy`, which is what ran; the value and the function
    are gone.
-3. **UI and API forms are not node-for-node identical.** Disabling a node is a
-   mode flag in the UI form and omission in the API form, and the UI graphs
-   carry a preview node the API graphs do not. Anything grading graphs by node
-   presence gets a different answer per format.
+3. **UI and API forms were not node-for-node identical** (resolved 2026-09-14:
+   only the API form ships, and a disabled node is simply absent).
 
 ---
 

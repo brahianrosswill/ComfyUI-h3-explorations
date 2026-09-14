@@ -141,14 +141,13 @@ so when the power limit is not stock.
    python, never `uv run`: the repo-local venv lacks `packaging`; while a
    render holds the card, prefix `CUDA_VISIBLE_DEVICES=`, see `docs/checks.md`
    "Running them")
-5. `<comfy-venv-python> bench/check_workflow_schema.py`, then the smoke. With no
-   paths it walks `graph_paths(include_bench=True)`, so no directory is typed
-   here; pass paths only to narrow it. It exits 2, not 0, when no server
-   answered -- nothing validated is not nothing wrong.
+5. The smoke, `bench/smoke_h3.py`. Step 4 already validated every graph by
+   input name against the live `/object_info` and wrote nothing if one failed;
+   given `--object-info <file>` it validates against that cached schema and
+   says it could not confirm the server.
 
-**Adding a probe or an arm.** Copy an existing probe row:
-`workflows/build_workflows.py::_probe_note` is the template and its docstring
-the contract. A setting no vendor row attests runs as a
+**Adding a probe or an arm.** Copy an existing probe row in
+`workflows/build_workflows.py::main`'s `GRAPHS`. A setting no vendor row attests runs as a
 `bench/run_graph_arms.py --set` patch, not as a shipped row; that script's
 docstring says when. Before the card, run `bench/preflight_graph.py <graph>`
 on any new or hand-built graph and `bench/check_distill_settings.py` on any
@@ -286,7 +285,8 @@ grouping is the instinct that breaks this. (Cost a real bug on 2026-08-10:
 `head_chunks` inserted after `mode` landed an old graph's
 `patch_token_refiner=False` on an INT with `min=1`.)
 
-`bench/check_workflow_schema.py` catches **the ordering rule**, positionally.
+Shipped workflows are API format and carry inputs by name, so this rule now
+protects the owner's editor-saved graphs, not anything in `workflows/`.
 
 **`bench/check_node_ids.py` catches the rename rule**, against
 `bench/node_id_manifest.json` — a committed baseline that is *not* regenerated
@@ -295,9 +295,9 @@ too: ordered input and output names, so the "append only" half above is guarded
 by the same file. Added 2026-08-16; before that nothing guarded either.
 
 **Why nothing else can, and it is worth knowing.** Every graph here is
-generated from the schema, so a rename regenerates all 91 tracked graphs
-consistently: `check_workflow_schema.py` passes, the generator revalidates
-against a live `/object_info` and passes, the smoke renders. Everything is
+generated from the schema, so a rename regenerates every tracked graph
+consistently: the generator revalidates against a live `/object_info` and
+passes, the smoke renders. Everything is
 green and the artifacts that actually break — the owner's live graphs outside
 this repo — are invisible to all of it. **A control whose input is regenerated
 from the thing it is checking cannot fail**, which is why the guard had to be a
@@ -306,5 +306,5 @@ hand-maintained file.
 Two partial catches exist and neither rescues the rule: `bench/bench_e2e_h3.py`
 hardcodes **2 of the 8** `node_id` strings, so a rename of those two fails at
 submit time (GPU, server, runtime — not the fast suite); and a rename shows as
-~91 files changing their `type` field in `git diff`, which is human-visible and
+every generated graph changing its `class_type` in `git diff`, which is human-visible and
 machine-checked by nothing.

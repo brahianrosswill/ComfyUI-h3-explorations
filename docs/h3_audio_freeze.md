@@ -142,7 +142,7 @@ batch is enough.
 
 1. **The freeze node, its graph and its control**
    (`audio_freeze.py::MiniMaxH3FreezeAudio`,
-   `workflows/h3_text_to_video_audio_freeze.json`,
+   `workflows/h3_text_to_video_audio_freeze_api.json`,
    `bench/check_audio_freeze.py`; the pack's song node as the bit-for-bit
    control, [`../bench/results/2026-09-12_audio_freeze_control.json`](../bench/results/2026-09-12_audio_freeze_control.json)).
    The node also fixes what it is given (rate, channels, level) and names
@@ -171,8 +171,8 @@ batch is enough.
 `audio_freeze.py::MiniMaxH3FreezeAudioWindow` (one window of a long track,
 the previous window's video latent tail copied in as frozen context, the
 geometry rules in `window_geometry`), the first-frame twin
-`workflows/h3_first_frame_to_video_audio_freeze.json`, and the API-only
-two-window seam graph `workflows/h3_text_to_video_audio_freeze_2windows.json`
+`workflows/h3_first_frame_to_video_audio_freeze_api.json`, and the API-only
+two-window seam graph `workflows/h3_text_to_video_audio_freeze_2windows_api.json`
 (second window fed the first sampler's output, decoded separately, the
 39-frame overlap dropped, the two joined, the muxer on the track's span).
 The freeze node also grew a `level` input (the level guard above).
@@ -181,7 +181,7 @@ The freeze node also grew a `level` input (the level guard above).
    both PDD8 arms "look and sound great"; rows
    `bench/results/2026-09-12_audio_freeze_pdd_arms.jsonl`). Every later
    render in this lane goes through
-   `workflows/h3_candidate_t2v_pdd8_baked_audio_freeze.json` first; the base
+   `workflows/h3_candidate_t2v_pdd8_baked_audio_freeze_api.json` first; the base
    chain is for keepers.
 4. **The two open pairs from step 2, answered in direction.** Loose against
    frozen at a second seed: both read good, so the seed-1 gap was the seed;
@@ -211,7 +211,7 @@ prompt id and seed. One line per clip into
 
 **Built the same evening, first run still owed** (a new tool's first run is
 a throwaway): the whole-track node `MiniMaxH3AudioFreezeSong`
-(`workflows/h3_text_to_video_audio_freeze_song.json`, a 30 s look by
+(`workflows/h3_text_to_video_audio_freeze_song_api.json`, a 30 s look by
 default, uniform or random window lengths, one prompt or blocks in cycle,
 uniform or random order); the shot-per-window chain
 (`workflows/h3_text_to_video_audio_freeze_shots.json` and
@@ -234,14 +234,14 @@ one value per window that uses it, from a list chained into the node's
 until the list is used up unless the list says `random`. Every loop node
 fills through the same call, and a graph built from separate nodes uses
 Fill Prompt Lists by index; the example graph is
-`workflows/h3_text_to_video_audio_freeze_song_lists_pdd8.json`, on
+`workflows/h3_text_to_video_audio_freeze_song_lists_pdd8_api.json`, on
 `just-a-flicker.mp3`. The module docstring holds the rules; `docs/wiki/next_steps.md` holds what is still owed.
 
 **Next, in order.**
 
 5. **First-frame keyframe**: the LTX pack's init-image pattern, one graph
    change on the freeze graph, for a first window
-   (`workflows/h3_first_frame_to_video_audio_freeze.json`). **Corrected
+   (`workflows/h3_first_frame_to_video_audio_freeze_api.json`). **Corrected
    2026-09-14:** this said the keyframe was needed before the loop because
    the loop anchors each window on a frame. The loop anchors on the previous
    window's frozen latent tail, and no per-window image goes to the encoder
@@ -259,7 +259,7 @@ Fill Prompt Lists by index; the example graph is
    Expect identity drift across windows first; the lever is a fixed
    reference still presented with every window's prompt, which fl2va takes
    (owner, 2026-09-14): the song node's `references` input and
-   `workflows/h3_text_to_video_audio_freeze_song_ref_pdd8.json`. Corrected
+   `workflows/h3_text_to_video_audio_freeze_song_ref_pdd8_api.json`. Corrected
    2026-09-14 from "the ref2va checkpoint with a per-window reference image".
 7. **Then the ideas in section 5**, ordered by what the verdicts so far
    suggest: the stem (once a separated stem is on disk), the hybrid and the

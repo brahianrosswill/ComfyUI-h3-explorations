@@ -299,7 +299,7 @@ different.
 ```bash
 python bench/check_sol_kernel.py --require     # kernel present, right backend, signature intact
 python bench/check_solattn_correctness.py      # both kernels against the eager reference
-python bench/smoke_h3.py --workflow h3_probe_sol_on_api.json --log <comfyui.log>
+python bench/smoke_h3.py --workflow h3_text_to_video_api.json --log <comfyui.log>
 ```
 
 The smoke is the only one that submits a prompt. Its three log lines are the
@@ -312,18 +312,22 @@ path from Triton's — `_apply_patch`, `_compose_module_patch` and
 like, from the log:
 
 ```
-[sol_attn] chaining onto an existing attention override
-[sol_attn] composed with 50 patched attention forward(s)
-[sol_attn] dense (1, 2048, 56, 128): seq 2048 < 4096
-[sol_attn] sparse (1, 4608, 56, 128) tau=1.3 cuda-int8
+[h3-sol] chaining onto an existing attention override
+[h3-sol] composed with 50 patched attention forward(s)
+[h3-sol] dense (1, 2048, 56, 128): seq 2048 < 4096
+[h3-sol] sparse (1, 4608, 56, 128) tau=1.3 cuda-int8
 [h3] chain assert: sage routed a 2048-token probe on fp16_cuda and correctly
      did NOT get the 4608-token one, so the sparse gate at 4096 is live
-[sol_attn] conditioning sink: KV blocks (0, 3) exact, dense query blocks (0, 3)
+[h3-sol] conditioning sink: KV blocks (0, 3) exact, dense query blocks (0, 3)
 ```
 
-**Check the kernel tag.** `cuda-int8` is the CUDA kernel; Triton logs
-`int8 pointer`. That string is the difference between the kernel running and a
-silent fallback.
+The prefix is `[h3-sol]` (`sol_attn_h3.py::_log_once`). This block printed
+`[sol_attn]` until 2026-09-14; grep the log for the current prefix or every
+line reads as missing.
+
+**Check the kernel tag.** `cuda-int8` is the CUDA kernel; the deleted Triton
+node logged `int8 pointer`. That string is the difference between the kernel
+running and a silent fallback.
 
 ### 4. Know where the gains live before you measure
 
@@ -2046,8 +2050,8 @@ Confirmed engaged rather than assumed, from the log:
 
 ```
 [h3] ... sage routed a 2048-token probe on fp16_cuda
-[sol_attn] chaining onto an existing attention override
-[sol_attn] sparse (1, 37826, 56, 128) tau=1.3
+[h3-sol] chaining onto an existing attention override
+[h3-sol] sparse (1, 37826, 56, 128) tau=1.3
 ```
 
 The middle line is the ordering check. `smoke_h3.py --log` checks all three.

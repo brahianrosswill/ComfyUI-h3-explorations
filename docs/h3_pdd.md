@@ -813,7 +813,7 @@ paper's job by accident rather than by construction.
 > `[8,8,4,4,4,4]` is the one that matters: same evaluation count, same width
 > multiset, coarse blocks at the FRONT, and a **63.2%** final step — the same
 > tail the vendor's own eight-evaluation schedule has. It now ships as
-> `workflows/h3_text_to_video_pdd_manual_sigmas.json`.
+> `workflows/h3_text_to_video_pdd_manual_sigmas_api.json`.
 >
 > **And four evaluations cannot be improved at all.** Enumerated: `[8,8,8,8]` is
 > the ONLY partition of the 32-point grid into four blocks that starts every

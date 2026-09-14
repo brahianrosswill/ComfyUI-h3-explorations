@@ -199,6 +199,16 @@ They differ there by a few percent, like everywhere else.)
 A separate low rank for that path (16, against 64 for attention and MLP) is a
 deliberate design decision, not an artifact of how the LoRA was extracted.
 
+**That path needs the pack's own loader, not `LoraLoaderModelOnly`.** Our base
+is pruned: its adaln projection is collapsed into a curve, so the v4 adaln
+update cannot land as a weight patch, and `ComfyUI-MiniMax-H3-Turbo`'s
+`MiniMaxH3TurboLoRA` re-injects it every forward from a `silu(t_emb)` grid the
+pack ships (`_inject_adaln_egrid`, `_make_adaln_forward`). The stock loader
+applies the backbone modules, skips the rest with a log line, and renders: a
+wrong render, not an error. `workflows/build_workflows.py::build_api` wires
+`MiniMaxH3TurboLoRA` and the pack's `MiniMaxH3TurboSampler` whenever
+`turbo_pack` is set.
+
 **This narrows the thesis of this document.** The claim was never that
 distilling ref2va is impossible -- it is that the *official* turbo LoRAs are
 fl2v distillations that do not adapt the conditioning-modulation path, so
@@ -209,11 +219,15 @@ exactly this split in practice -- lightx2v failing to blend references on
 ref2va while the v4 family holds prompt adherence -- and the header
 difference above is a mechanism that would produce that result.
 
-**Untested here.** Nothing in this repo has yet rendered ref2va with v4, and
-the weight analysis says only that v4 *touches* the right modules, not that
-it touches them *well*. `h3_probe_ref2v_turbo` currently runs ref2va with an
-fl2v distill, which is the arm the community reports as the failing one; its
-missing twin is the same graph with v4.
+**Graphed, not judged.** `workflows/h3_probe_ref2v_turbo_pack_api.json` runs
+ref2va with v4 (`h3_config.TURBO_PACK_LORA`) through the pack's loader, and
+`workflows/h3_probe_ref2v_split_turbo_pack_api.json` is the same LoRA with the
+base checkpoint running the opening steps. No judged render of either is
+recorded in `bench/results/`. (Until 2026-09-14 this paragraph said nothing
+here had rendered ref2va with v4 and that the v4 twin was missing.) The weight
+analysis says only that v4 *touches* the right modules, not that it touches
+them *well*. `h3_probe_ref2v_turbo` runs ref2va with an fl2v distill, which is
+the arm the community reports as the failing one.
 
 Reproduce with the checkpoints in `models/diffusion_models/` and the LoRA in
 `models/loras/`: dequantise each `*.weight` by its `*.weight_scale`, then
@@ -283,6 +297,10 @@ argument.
 Against it: the 4-step 768p was trained at 1344x768, which is the ref2v node's
 default canvas, where the 8-step was trained at 544p mixed aspect. A real
 argument the other way, and worth one arm — after the 8-step baseline exists.
+The same row is its limit: 1344x768 is the one shape the 768p LoRA saw, where
+the 544p rows list mixed aspect ratios (`coderef/Minimax-H3-Turbo/README.md`,
+the model table). At 1:1 or 9:16 the 768p LoRA is the one off its training
+distribution.
 
 ### 2. Lower the LoRA strength
 

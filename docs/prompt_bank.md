@@ -32,7 +32,7 @@
 | [`t2va_clinic_corridor`](#t2va-clinic-corridor) | t2va | 345 | 14.375 | pinned | 0 | — | 209 | 3 | 2 | English | Truck Right | N/A | clean |
 | [`t2va_cooking_show_meltdown`](#t2va-cooking-show-meltdown) | t2va | 345 | 14.375 | pinned | 0 | — | 300 | 3 | 1 | English | Zoom In, Push In, Static Shot | scored | clean |
 | [`t2va_courtroom_verdict`](#t2va-courtroom-verdict) | t2va | 345 | 14.375 | pinned | 0 | — | 285 | 3 | 2 | English | Push In, Truck Right, Static Shot | scored | clean |
-| [`t2va_covered_market`](#t2va-covered-market) | t2va | 345 | 14.375 | pinned | 34 | — | 240 | 3 | 2 | English | Truck Left, Static Shot | N/A | clean |
+| [`t2va_covered_market`](#t2va-covered-market) | t2va | 345 | 14.375 | pinned | 33 | — | 240 | 3 | 2 | English | Truck Left, Static Shot | N/A | clean |
 | [`t2va_crowd_churn_long`](#t2va-crowd-churn-long) | t2va | 345 | 14.375 | yes | 1 | — | 373 | 1 | 0 | — | Shake Strongly | N/A | clean |
 | [`t2va_cyber_hacker_den`](#t2va-cyber-hacker-den) | t2va | 345 | 14.375 | pinned | 0 | — | 292 | 3 | 1 | English | Push In, Truck Right, Static Shot | scored | clean |
 | [`t2va_cyberpunk_music_video`](#t2va-cyberpunk-music-video) | t2va | 345 | 14.375 | pinned | 0 | — | 255 | 3 | 1 | English | Push In, Arc Shot, Tracking Shot | scored | clean |
@@ -99,7 +99,7 @@
 | [`i2va_vet_night`](#i2va-vet-night) | i2va | 260 | 10.833 | pinned | 0 | — | 184 | 2 | 1 | English | Push In, Truck Left | N/A | clean |
 | [`i2va_glassblower`](#i2va-glassblower) | i2va | 277 | 11.542 | pinned | 0 | — | 255 | 2 | 1 | Italian | Zoom Out, Push In | scored | clean |
 | [`i2va_night_market`](#i2va-night-market) | i2va | 311 | 12.958 | pinned | 0 | — | 273 | 2 | 2 | Chinese, English | Push In, Shake Slightly | scored | clean |
-| [`i2va_lighthouse_keyframe`](#i2va-lighthouse-keyframe) | i2va | 345 | 14.375 | pinned | 4 | — | 48 | 1 | 0 | — | Push In | N/A | clean |
+| [`i2va_lighthouse_keyframe`](#i2va-lighthouse-keyframe) | i2va | 345 | 14.375 | pinned | 3 | — | 48 | 1 | 0 | — | Push In | N/A | clean |
 | [`fl2va_origami_crane`](#fl2va-origami-crane) | fl2va | 107 | 4.458 | yes | 0 | — | 144 | 1 | 0 | — | Static Shot | scored | clean |
 | [`fl2va_paper_train`](#fl2va-paper-train) | fl2va | 158 | 6.583 | yes | 0 | — | 148 | 1 | 0 | — | Pan Right | scored | clean |
 | [`fl2va_potter_wheel`](#fl2va-potter-wheel) | fl2va | 175 | 7.292 | pinned | 0 | — | 183 | 1 | 1 | English | Zoom In | scored | clean |
@@ -743,7 +743,7 @@ non_diegetic_music: A brooding orchestral string motif at a slow tempo, driven b
 
 ## t2va_covered_market
 
-**t2va, 345 frames, 14.375 s.** Live-action handheld; covered market aisle; the scene every shipped t2v graph carried until 2026-09-03 and the one every real-activation Sol record came from **Tests:** the busy wide scene every shipped t2v graph carried: many small figures, clutter, handheld motion; the scene most speedups were tuned on until 2026-09-03. Ships in: `h3_candidate_t2v_pdd8_baked_api`, `h3_candidate_t2v_pdd8_baked_audio_freeze_api`, `h3_candidate_t2v_pdd8_baked_audio_freeze_gain_api`, `h3_candidate_t2v_pdd8_baked_audio_freeze_guide_api`, `h3_candidate_t2v_pdd8_sol_narrow_api`, `h3_candidate_t2v_sol_allrows_api`, `h3_candidate_t2v_sol_only_api`, `h3_probe_canvas_portrait_api`, `h3_probe_canvas_ultrawide_api`, `h3_probe_head_chunks_api`, `h3_probe_sol_on_api`, `h3_probe_split_base_first_api`, `h3_probe_split_base_last_api`, `h3_probe_square_canvas_api`, `h3_probe_t2v_pdd8_baked_sage_api`, `h3_probe_t2v_pdd8_dense_api`, `h3_probe_t2v_pdd8_sage_api`, `h3_probe_t2v_sol_core_api`, `h3_probe_t2v_sol_nosage_api`, `h3_probe_t2v_turbo_lx12_sage_api`, `h3_probe_t2v_turbo_v4_sage_api`, `h3_probe_turbo_768p_owner_api`, `h3_probe_turbo_768p_sla_api`, `h3_probe_turbo_768p_sla_dense_api`, `h3_probe_turbo_home_canvas_api`, `h3_probe_vsa_api`, `h3_probe_vsa_dense_api`, `h3_text_to_video_api`, `h3_text_to_video_audio_freeze_2windows_api`, `h3_text_to_video_audio_freeze_api`, `h3_text_to_video_pdd_4step_api`, `h3_text_to_video_pdd_api`, `h3_text_to_video_pdd_manual_sigmas_api`, `h3_text_to_video_turbo_api`.
+**t2va, 345 frames, 14.375 s.** Live-action handheld; covered market aisle; the scene every shipped t2v graph carried until 2026-09-03 and the one every real-activation Sol record came from **Tests:** the busy wide scene every shipped t2v graph carried: many small figures, clutter, handheld motion; the scene most speedups were tuned on until 2026-09-03. Ships in: `h3_candidate_t2v_pdd8_baked_api`, `h3_candidate_t2v_pdd8_baked_audio_freeze_api`, `h3_candidate_t2v_pdd8_baked_audio_freeze_gain_api`, `h3_candidate_t2v_pdd8_baked_audio_freeze_guide_api`, `h3_candidate_t2v_pdd8_sol_narrow_api`, `h3_candidate_t2v_sol_allrows_api`, `h3_candidate_t2v_sol_only_api`, `h3_probe_canvas_portrait_api`, `h3_probe_canvas_ultrawide_api`, `h3_probe_head_chunks_api`, `h3_probe_split_base_first_api`, `h3_probe_split_base_last_api`, `h3_probe_square_canvas_api`, `h3_probe_t2v_pdd8_baked_sage_api`, `h3_probe_t2v_pdd8_dense_api`, `h3_probe_t2v_pdd8_sage_api`, `h3_probe_t2v_sol_core_api`, `h3_probe_t2v_sol_nosage_api`, `h3_probe_t2v_turbo_lx12_sage_api`, `h3_probe_t2v_turbo_v4_sage_api`, `h3_probe_turbo_768p_owner_api`, `h3_probe_turbo_768p_sla_api`, `h3_probe_turbo_768p_sla_dense_api`, `h3_probe_turbo_home_canvas_api`, `h3_probe_vsa_api`, `h3_probe_vsa_dense_api`, `h3_text_to_video_api`, `h3_text_to_video_audio_freeze_2windows_api`, `h3_text_to_video_audio_freeze_api`, `h3_text_to_video_pdd_4step_api`, `h3_text_to_video_pdd_api`, `h3_text_to_video_pdd_manual_sigmas_api`, `h3_text_to_video_turbo_api`.
 
 Derived: camera: Truck Left, Static Shot; speakers: S1, S2; languages: English; cuts: the shot cuts to; 240 words in the main field; 1610 characters in all.
 
@@ -2049,7 +2049,7 @@ non_diegetic_music: A plucked guzheng figure at a moderate tempo over a soft han
 
 ## i2va_lighthouse_keyframe
 
-**i2va, 345 frames, 14.375 s.** First-frame continuation of the lighthouse scene: <Picture 1> fully referenced at 0 s Ships in: `h3_first_frame_to_video_api`, `h3_first_frame_to_video_audio_freeze_api`, `h3_first_frame_to_video_stamped_api`, `h3_probe_sol_on_i2v_api`.
+**i2va, 345 frames, 14.375 s.** First-frame continuation of the lighthouse scene: <Picture 1> fully referenced at 0 s Ships in: `h3_first_frame_to_video_api`, `h3_first_frame_to_video_audio_freeze_api`, `h3_first_frame_to_video_stamped_api`.
 
 Derived: camera: Push In; labels: <Picture 1>; 48 words in the main field; 622 characters in all.
 

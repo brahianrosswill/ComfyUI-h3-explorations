@@ -302,12 +302,13 @@ So there are two starting points and they land on different rules:
 
 | you start from | `morton_curve` you get | rule of thumb |
 |---|---|---|
-| a graph from `build_workflows.py` | **`3d`**, baked in `widgets_values` | height 768 / 640 / 512, any width |
+| a graph from `build_workflows.py` | **`3d`**, set as `morton_curve` in the graph | height 768 / 640 / 512, any width |
 | a fresh `SolAttnMiniMax` dropped in your own graph | **`2d_frame`**, the node default | both dims divisible by 256 |
 
-Verified rather than assumed: the four Sol-enabled probe graphs bake
-`'3d'` at widget index 6, e.g. `h3_probe_sol_on.json`
-`[1.3, 0.2, 0.9, 4096, 'exact_kv_and_rows', False, '3d', ...]`.
+Verified rather than assumed: the shipped Sol graphs carry
+`"morton_curve": "3d"`, e.g. `workflows/h3_text_to_video_api.json`. (The first
+check read widget index 6 of the UI graph `h3_probe_sol_on.json`; both the UI
+form and that probe have since retired.)
 
 **The trap is that flipping `morton` on is one widget and choosing the curve is
 another.** Turning Morton on in a hand-built graph silently selects the curve

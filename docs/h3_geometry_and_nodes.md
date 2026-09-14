@@ -13,6 +13,16 @@ rounds each axis to a multiple of **32**. There is no higher resolution to
 select — asking for 4K returns the same canvas as asking for 720p at the
 same aspect.
 
+That rule describes the family the checkpoint was trained on; nothing applies
+it to what you type. Core's H3 conditioning nodes take `width` and `height` as
+plain ints and never call `adapt_canvas` on the target canvas
+(`comfy_extras/nodes_minimax_h3.py` calls it only to size reference videos),
+so what is typed is what renders, in the family or not. This pack's
+`MiniMaxH3Conditioning` does the same under `canvas=explicit`, and under
+`from_keyframe` derives the canvas from the keyframe (below).
+`MiniMaxH3Preflight` (`preflight.py`) is what reports whether a canvas sits
+inside the trained family.
+
 The cap only binds on wide or tall ratios, so a square never reaches it.
 That is the whole reason aspect ratio is a cost decision:
 
@@ -147,9 +157,26 @@ registers an `optimized_attention_override`. That second registration is
 what lets Sol-Attn compose rather than silently bypassing sage. Defaults are
 the intended config.
 
-**`MiniMax H3 Keyframe Resolution`** — use it on every i2v and fl2v graph.
-`MiniMaxH3ImageToVideo` takes `width`/`height` as required inputs defaulting
-to 1344x768, and non-uniformly stretches the first keyframe onto them. That
+**`MiniMax H3 Conditioning`** (`MiniMaxH3Conditioning`, `conditioning.py`)
+owns the canvas on the t2v and keyframe graphs, in place of core's
+`MiniMaxH3ImageToVideo`. Its `canvas` combo is the choice this entry is about:
+`from_keyframe` derives the canvas from the anchor keyframe, as the release
+does, and ignores `width`/`height`; `explicit` uses them and cover-crops the
+anchor to fit. `workflows/build_workflows.py::build_api` sets `from_keyframe`
+on the keyframe graphs and `explicit` on text-to-video, where
+`MiniMaxH3Resolution` owns the geometry.
+
+Until 2026-09-14 this entry said to wire `MiniMax H3 Keyframe Resolution`
+(`MiniMaxH3KeyframeCanvas`, `keyframe_canvas.py`) on every i2v and fl2v graph.
+No generated graph wires it (walk `h3_config.graph_paths`): it left geometry
+owned by two nodes in series, and it requires a `first_frame`, so it cannot
+reach the last-frame-only signature (`conditioning.py`, module docstring). The
+node is still installed, and its `resolve_keyframe_geometry` is the function
+the conditioning node calls.
+
+Why the choice matters: core's `MiniMaxH3ImageToVideo` takes `width`/`height`
+as required inputs defaulting to 1344x768, and non-uniformly stretches the
+first keyframe onto them. That
 stretch is faithful to the reference pipeline, which also stretches the
 geometry anchor and cover-crops any follower. What ComfyUI lacks is the
 *default* that normally makes it a no-op: the reference derives the canvas
@@ -174,16 +201,17 @@ Measured distortion at 1344x768, from
 genuine 16:9 source takes a 1.6% squeeze, not a no-op — small, but do not read
 the table as "16:9 is safe". Round-to-32 on both axes means no H3 canvas is
 exactly 16:9: `adapt_canvas(16, 9)` returns 1344x768. That is the model's canvas
-rule, not a ComfyUI choice, and the node inherits it.
+rule, not a ComfyUI choice, and both nodes inherit it.
 
-It is silent, and every frame of the clip inherits it. The node runs
-`adapt_canvas` — ComfyUI's own port of `resolve_canvas_size`, sitting unused
-on the keyframe path — and fits the keyframes onto the result. Wire its
-`width`/`height` and the `first_frame` output into the H3 node; the keyframe
-then arrives already at canvas size and the stock resize is a bit-identical
-no-op (verified, `max|delta| = 0`).
+Core's stretch is silent, and every frame of the clip inherits it. Under
+`from_keyframe` the conditioning node runs `adapt_canvas` — ComfyUI's own port
+of `resolve_canvas_size`, sitting unused on core's keyframe path — on the
+anchor and fits the keyframes onto the result inside the one node, so no size
+is handed to a second node that resizes again. A lone last frame anchors the
+canvas itself rather than being cropped into one chosen elsewhere.
 
-**Wire the `last_frame` output only if you connected a `last_frame` input.**
+**Only if you wire the standalone `MiniMaxH3KeyframeCanvas` by hand:** wire its
+`last_frame` output only if you connected a `last_frame` input.
 With no last frame, that output slot returns the *same tensor* as
 `first_frame` (`keyframe_canvas.py`), because an IMAGE output cannot be
 null. Wiring it anyway turns a one-anchor render into fl2va with
@@ -191,10 +219,12 @@ null. Wiring it anyway turns a one-anchor render into fl2va with
 `frame_count - 1`, a spurious `<Picture 2>` enters the presentation, and a
 second block of cond rows enters the packed sequence. Nothing errors.
 
-With two keyframes the canvas comes from the first. In `match_keyframe` the
-first is stretched and the follower cover-cropped, as in the reference; in
+With two keyframes the canvas comes from the first. `from_keyframe` maps to
+the `match_keyframe` mode and `explicit` to `fit_to_canvas`
+(`conditioning.py`, in `MiniMaxH3Conditioning.execute`). In `match_keyframe`
+the first is stretched and the follower cover-cropped, as in the reference; in
 `fit_to_canvas` **both** are cover-cropped, which is a deliberate divergence.
-Use `match_keyframe` for anything being compared against diffusers.
+Use `from_keyframe` for anything being compared against diffusers.
 
 Cost: output resolution now follows the input's aspect. A 9:16 still renders
 768x1344, the slowest canvas on the area cap. That is the reference's own
@@ -231,16 +261,20 @@ provenance record beside it reads as more trustworthy while carrying a wrong
 causal story just as well. It records what settings resolved to, never why a
 number came out the way it did.
 
-### Use from Sol-Attn (`ComfyUI-SolAttn_triton`)
+### Sol-Attn, also from this repo
 
-**`SolAttnPatch`** — block-sparse attention. **Must come after** the sage
-node; it composes with the attention patch it finds, and reversed it
-overwrites ours and you silently get sage only. Settings live in
-`workflows/h3_config.py`.
+**`MiniMax H3 Sol-Attn`** (`MiniMaxH3SolAttn`, `sol_attn_h3.py`) — block-sparse
+attention on the CUDA kernel. **Must come after** the sage node; it composes
+with the attention patch it finds, and reversed it overwrites ours and you
+silently get sage only. Settings live in `workflows/h3_config.py`. This entry
+named `SolAttnPatch` from `ComfyUI-SolAttn_triton` until 2026-09-14; that pack
+was deleted on 2026-08-16 (`docs/SOLATTN.md`, "The Triton node").
 
-**`SolAttnBlockProbe`** — diagnostic only. Runs every attention call both
-sparse and dense and logs per-block error worst-first. Costs roughly
-dense+sparse, so remove it once you have the numbers.
+**Per-block Sol error** — the Triton pack's `SolAttnBlockProbe` went with it.
+Its successor is `sol_block_probe.py`, armed by the `H3_SOL_PROBE` environment
+variable rather than wired as a node and read by
+`bench/check_sol_probe.py --record`. Every Sol call on an armed render also
+runs the fallback, so its timings are void.
 
 ### Use from KJNodes
 
@@ -281,10 +315,14 @@ per-workflow node.
 it is absent from `/object_info` rather than untested.)
 
 `MiniMaxH3SigmaShift` was listed here as an untested third-party node until
-2026-08-13. It is **core ComfyUI** (`comfy_extras/nodes_minimax_h3.py`), it
-sits in all eight shipped graphs at 12/3, and
-`bench/check_distill_settings.py` now validates its value against the LoRA
-each graph loads.
+2026-08-13. It is **core ComfyUI** (`comfy_extras/nodes_minimax_h3.py`,
+picker name `ModelSamplingMiniMaxH3`). The generator wires it into every graph
+except a PDD graph at the default shift, where the PDD node builds its
+schedule from its own fused shift and the node would only be a knob that
+breaks it (`workflows/build_workflows.py::build_api`, the
+`pdd and sh == SIGMA_SHIFT` test); `bench/check_distill_settings.py`
+validates its value against the LoRA each graph loads. This said it sits in
+all eight shipped graphs until 2026-09-14.
 
 ### On `ResolutionSelector`
 
@@ -296,13 +334,24 @@ type the numbers, or let the conditioning node's defaults stand.
 ## Node order
 
 ```
-Load Diffusion Model
+Load Diffusion Model (UNETLoader)
+  -> LoRA / PDD loader               (distilled arms only; before the patches)
+  -> ModelSamplingMiniMaxH3          (core's MiniMaxH3SigmaShift; anywhere
+                                      before the fork; absent on a PDD graph
+                                      at the default shift)
   -> MiniMax H3 SageAttention        (ours: kernel + attention override)
-  -> SolAttnPatch                    (sparse; must be after ours)
+  -> MiniMax H3 Sol-Attn             (ours, MiniMaxH3SolAttn; must be after sage)
+  -> SageChainAssert                 (ours: refuses a wrong composition)
   -> BasicScheduler / BasicGuider    (MODEL forks to both -- rewire both)
 ```
+
+`workflows/build_workflows.py::build_api` is the order; read it over this
+block. Until 2026-09-14 the block named `SolAttnPatch` and left out the shift
+node and the assert.
 
 MODEL forks to **two** consumers, `BasicScheduler.model` and
 `BasicGuider.model`. Rewiring only the guider leaves the scheduler reading
 sigmas off the unpatched model, and the render still succeeds — which is why
 that mistake survives. The generated workflows drive both from one variable.
+A PDD graph that is not split has no `BasicScheduler`: the PDD node emits the
+schedule, and only the guider reads MODEL.

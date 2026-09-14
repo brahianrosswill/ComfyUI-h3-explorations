@@ -17,6 +17,40 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-14
 
+- **Shipped workflows are API format only** (owner: "If I dont need a layout,
+  node titles, bypassed nodes (we dont even use those), or notes in workflows,
+  why dont we just simplify all of them to API json workflows?"). The UI twins,
+  `build_ui`, `UIGraph`, `validate_ui`, `cross_check`, the in-graph notes and
+  `bench/check_workflow_schema.py` went; `validate_api` gained the value-type
+  and DynamicCombo-member checks `validate_ui` had, and member order. The editor
+  loads an API file by input name (the frontend's `loadApiJson`, read from the
+  source of comfyui_frontend_package 1.52.7, not exercised). Prose that lost,
+  and what it claimed: `UIGraph`'s docstring said the generator made no
+  widget-to-input conversions (its Resolution and PDD step links were exactly
+  that); `bench/smoke_h3.py` said Sol-Attn ships off; `bench/check_graph_discovery.py`
+  said it had no exemptions (it has one); `docs/custom_node_gaps.md` item 3
+  described a UI/API node mismatch that no longer exists. The deleted notes
+  also carried stale claims (the Sol window at 0.2/0.9, a keyframe canvas node
+  the graphs do not wire, sage-only twins of the Sol probes); they went with
+  the notes. Facts that lived only in the notes moved to their docs, and the
+  move corrected doc prose that had lost: `docs/SOLATTN.md` printed `[sol_attn]`
+  log lines (the prefix is `[h3-sol]`); `docs/h3_geometry_and_nodes.md` told
+  readers to wire `MiniMaxH3KeyframeCanvas` on every i2v and fl2v graph (the
+  conditioner owns the canvas), showed a node order through the deleted
+  `SolAttnPatch`, and said `MiniMaxH3SigmaShift` sits in every shipped graph;
+  `docs/h3_references.md` said the concise swap twin stays shipped (retired
+  2026-08-22); `docs/h3_ref2v_distillation.md` said no v4 ref2va graph existed;
+  `docs/h3_image_editing.md` pointed at a note in a graph that now lives only
+  under `archive/`. Plan: `internal/2026-09-14_api_only_workflows_plan.md`.
+- **Two duplicate Sol-on probes retired** (owner: "retire the
+  duplicative/redundant workflows"). `h3_probe_sol_on` and `h3_probe_sol_on_i2v`
+  matched `h3_text_to_video` and `h3_first_frame_to_video` in everything but
+  the output name once Sol went on by default. What prose claimed: the
+  generator read `h3_probe_sol_on` "against h3_text_to_video.json, which is
+  now sage-only", and `check_bench_matches_shipped.py` said the plain t2v graph
+  omits Sol. This session's own note first counted `h3_probe_sol_on_all_refs`
+  among the duplicates; its reference video and audio disprove that, and it
+  stays.
 - **Prompt lists serve every loop, not the song node** (owner: "I should be
   able to use this for any type of looping workflow we build here"; agreed
   the approach the same day). A node that loops inside itself fills through

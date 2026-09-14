@@ -4,7 +4,7 @@
 is, what ComfyUI actually does to it, what it costs, and how to write the
 prompt so the model uses it the way you meant.
 
-last updated: 2026-08-25; the reference policies, the append node's defaults and the reference-view ablation corrected 2026-09-13 (`docs/wiki/decisions.md`)
+last updated: 2026-08-25; the reference policies, the append node's defaults and the reference-view ablation corrected 2026-09-13 (`docs/wiki/decisions.md`); the retired concise swap twin corrected 2026-09-14
 
 Sources: MiniMax's official prompt guide, general prompting research, ComfyUI's
 own code, and **sglang's MiniMax H3 serving path** (`coderef/sglang`, read at
@@ -1186,8 +1186,16 @@ delete the imperative arm, which was made and is recorded in the changelog. It
 does **not** support "the six sections protect the speech": one clean render
 of four, with the only within-arm pair disagreeing with itself, is a draw from
 a distribution and says nothing about the knob -- `CLAUDE.md`'s
-different-sample rule applies to prompts as much as to numbers. The concise
-twin stays shipped because nothing here refuted it either.
+different-sample rule applies to prompts as much as to numbers.
+
+**The concise twin is retired**, and this paragraph said it "stays shipped"
+until 2026-09-14. A later batch at the shipped canvas and length, with matched
+seeds and no bench patch, broke its speech on every seed, by ear and by
+`bench/grade_soundtrack_reuse.py`
+([`../bench/results/2026-08-22_swap_prompt_verdict_362.json`](../bench/results/2026-08-22_swap_prompt_verdict_362.json);
+CHANGELOG 0.57.0). That record still does not make the six sections the cause:
+structure, length and how the soundtrack is stated moved together there too.
+`workflows/h3_ref_video_swap_api.json` is the one swap graph.
 
 **Two things were ruled out afterwards and one hypothesis is still open.**
 The source clip is **25 fps** (489 frames / 19.560s, `r_frame_rate=25/1`),
@@ -1241,7 +1249,7 @@ nothing. And a low-resolution reference, or a face far from the camera, is
 the first thing to rule out when likeness fails -- the identity has to
 survive being fitted into the reference budget before any wording matters.
 
-Graph: `h3_ref_video_swap.json`.
+Graph: `h3_ref_video_swap_api.json`.
 
 ### Continue from the end of a source video
 

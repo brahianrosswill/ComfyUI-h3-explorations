@@ -786,7 +786,7 @@ by a four-line dialogue scene and, in the second, a `MiniMaxH3VendorTokens`
 node inserted between the CLIP loader and the conditioning node. Nothing else
 differs. (**That base graph was removed on 2026-08-31** -- its stem said
 `4step` while it ran six. The arms above were built when it existed and this
-record is left as written; `workflows/h3_probe_turbo_768p_owner.json` runs the
+record is left as written; `workflows/h3_probe_turbo_768p_owner_api.json` runs the
 same LoRA, shift and step count today.) `run_graph_arms.py` bumps the seed per run, so `--runs N` gives N
 distinct samples per arm and the same N seeds to both.
 
