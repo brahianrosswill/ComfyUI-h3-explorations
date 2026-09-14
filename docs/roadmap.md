@@ -935,7 +935,21 @@ head's error rather than its threshold, which is a different kind of change.
 Both fell out of reading Sol-Engine's H3 profiles properly. Neither is
 scheduled work; both are calls the owner can make.
 
-**Adopt `dense_blocks="0-1"`, or decide not to.** Every H3 profile NVLabs
+**Adopt `dense_blocks="0-1"`, or decide not to.** **DECIDED 2026-09-14: not.**
+Two instruments that share no code agree the first blocks are where the
+error is smallest on both terms: this repo's Sol split has blocks 0 and 8
+carrying the lowest sparsity and INT8 error of anything measured, and the
+sage fork's ten-cell grade has block 0 as the cleanest cell with INT8 error
+rising ~5x to block 49. `0-1` protects the blocks that need it least for
+the ~2% the transplant measured. `dense_blocks` stays empty. The block that
+does need something is 49, and `dense_blocks` cannot give it: the fallback
+is sage, also INT8, so `-1` removes the sparsity term and leaves the INT8
+term that is half the error there. What can is a weights-side fold, see
+"Fold block-49 K-channel balancing" below and `docs/SOLATTN.md`, "The
+defaults, re-read against the sage-side error records, 2026-09-14". The
+original reasoning is kept under this line.
+
+Every H3 profile NVLabs
 publishes runs the first two transformer blocks dense --
 `SOL_ATTN_FIRST_DENSE_LAYERS=2` on the single-card RTX 5090 cell,
 `H3_SOL_DENSE_LAYERS=2` on GB200, `dense_blocks: int = 2` on GB10, and the
@@ -956,6 +970,25 @@ answers "which blocks does sparsity hurt *here*", which is the question for
 choosing **our own** list. Copying a list four hardware profiles already
 validated needs no instrument, and conflating the two is why this sat as
 `SOL_ARTIFACT_INSURANCE`, unwired, for weeks.
+
+**Fold block-49 K-channel balancing into the norm weights (added 2026-09-14).**
+The 2026-08-20 attribution above named four K channels (82, 34, 67, 19) as
+~93% of block 49's K energy, at the `k_norm.weight` peaks. The sage fork
+reproduced that on the 2026-09-03 capture and tested the obvious response:
+rescale q and k per channel before INT8 quantization, `q . k` unchanged,
+`s = rms_k^0.5 / rms_q^0.5` per head. Block 49's sage fp8++ error fell by
+a fifth at both captured steps, below the fp16 kernel's unbalanced error;
+every other captured block, having no loud channels, moved by a few percent
+the wrong way. The four channels are two RoPE pairs (34/82, 19/67), so a
+pair-equal `s` commutes with the split-half RoPE and folds into block 49's
+`q_norm.weight`/`k_norm.weight` at load, zero runtime cost; Sol's threshold
+is invariant under the paired rescale, so routing does not move. An
+EXPERIMENT under the decision standard, four steps in `docs/SOLATTN.md`:
+rank all 50 blocks from `k_norm.weight` (no card; 41-48 were never
+captured), fold at block 49, grade `quant_l2` with `analyze_sol_error.py`
+on the balanced q/k (the one step that says whether Sol's kernel benefits,
+or only the sage steps do), then the blind comparison. Record:
+sage fork `CHANGELOG.md`, workload intel, "MiniMax H3, block 49".
 
 **Compare the NVLabs sm89 kernel against comfy-kitchen's.** PR #464 (2026-08-15)
 added an official BF16 SM89 CuTe Sol-Attn kernel, so there are now two

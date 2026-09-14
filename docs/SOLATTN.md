@@ -2205,6 +2205,173 @@ steps: a statement about these cells, not every layer.
 
 ---
 
+## The defaults, re-read against the sage-side error records, 2026-09-14
+
+Written from the sage fork's session, on the owner's request, after the fork
+graded `smooth_k` across ten cells of the 2026-09-03 base16 t2v capture and
+found the block-depth structure below. Sources are this page's error split
+("Inside Sol: sparsity costs more than the kernel's INT8, except at the last
+block"), the 2026-08-20 head-magnitude attribution in `docs/roadmap.md`, the
+node source (`sol_attn_h3.py`, `block_spec.py`, `workflows/h3_config.py`,
+read 2026-09-14), and three records in the sage fork's `CHANGELOG.md`:
+the decision-log entries "sm89 q/k quantization" and "`smooth_k` on H3:
+graded across the trajectory", and the workload-intel entry "MiniMax H3,
+block 49: per-channel K balancing". Their harnesses are
+`tests/spikes/spike_h3_real_activations.py` and
+`tests/spikes/spike_h3_k_channel_balance.py` in that tree.
+
+**Scope, before any number.** The sage-side instrument measures sage's
+dense INT8/FP8 kernel on captured q/k/v against fp32 attention. It never
+runs Sol. So it can inform a Sol default only where Sol's error shares a
+cause with sage's, and this page's own split says where that is: Sol's
+total error is a sparsity term plus an INT8 term, the INT8 term is a
+property of the inputs, and at block 49 the two terms are equal. Every
+recommendation below is labelled by which term it rests on.
+
+### What the sage records add
+
+**Quantization error is a function of block depth and nothing else.** Ten
+cells, blocks 0/24/32/40/49 at two or three steps each: at a given block the
+steps agree to within a fraction of a percent, and mean rtol rises about
+fivefold from block 0 to block 49. The same shape as this page's
+`1 - quant_cos`, about 10x at block 49 against the trunk. Two instruments,
+one on Sol's kernel and one on sage's, on different captures, agree that the
+INT8 term is a depth profile with no step axis.
+
+**Its cause at block 49 is four K channels, and they can be tamed without
+touching the kernel.** The 2026-08-20 attribution named K channels 82, 34,
+67, 19 as carrying ~93% of block 49's K energy, at the `k_norm.weight`
+peaks. The sage-side spike reproduces that exactly (top-4 by energy across
+heads: 34, 82, 67, 19, share 93.2%) and finds no such concentration at
+blocks 0, 32 or 40 (top-4 share 5-11%). Sage quantizes K per 64-token block
+with one INT8 scale across all 128 channels, so at block 49 four channels
+set the scale and the other 124 lose resolution.
+
+For the dot product, `q . k == (q * s) . (k / s)` for any per-(head,
+channel) factor `s`, so the channels can be rebalanced before quantization
+at no cost to the math. With `s = rms_k^a / rms_q^(1-a)` (SmoothQuant's
+form, geometric mean one per head):
+
+| cell | plain fp8++ rtol | balanced, a=0.5 | change |
+|---|---|---|---|
+| block 0, step 15 | 0.0085 | 0.0088 | +3.5% |
+| block 32, step 15 | 0.0293 | 0.0295 | +0.8% |
+| block 40, step 15 | 0.0426 | 0.0433 | +1.8% |
+| block 49, step 15 | 0.0472 | **0.0381** | **-19.4%** |
+| block 49, step 4 | 0.0474 | **0.0367** | **-22.6%** |
+
+Alpha 0.5 is the optimum on the sweep at block 49 (0.35 and 0.65 give about
+-12% to -18%; 0.15 hurts; fully equalizing K, a=1.0, is bad everywhere
+because Q then carries the whole scale). At block 49 the balanced fp8++
+call lands *below* the fp16 kernel's unbalanced error on the same cell,
+which no accumulator or PV-width choice has achieved in any H3 measurement.
+Where no channel is loud it costs a few percent. It is a per-block lever.
+
+**It folds into the weights, and it does not move Sol's routing.** H3's
+RoPE is split-half over channels 0-95, rotating (i, i+48) together, and the
+four loud channels are two such pairs (34/82, 19/67). An `s` equal within
+each pair commutes with RoPE, so it can be folded into `q_norm.weight` and
+`k_norm.weight` for block 49 at load, zero runtime cost, and the pair-equal
+form measured within a point of the free form (-19.4% against -20.4%). Sol's
+threshold, `tau * sqrt(sum_d c_d^2 * kcvar_d * ...)`, is also invariant
+under the paired rescale in exact arithmetic (`c_d` scales by `s_d`, `kcvar_d`
+by `1/s_d^2`), so which blocks Sol routes does not change; only the INT8
+rounding inside both kernels does.
+
+### Recommendations, knob by knob
+
+**`dense_blocks`: keep it empty, and close the "adopt `0-1`" question as
+no.** Two instruments now say the first blocks are where the INT8 term is
+smallest (sage: block 0 is the cleanest cell in the set) and this page says
+they are where Sol's sparsity term is smallest too. Running them dense
+protects the blocks that need it least, for the ~2% the 2026-08-18
+transplant measured. Rests on both terms.
+
+Deep-block dense (`SOL_ARTIFACT_INSURANCE`'s `33-35,39-42`, or `-1`) is a
+different question, and the sage records say something specific about it:
+`dense_blocks` routes to the chained sage fallback (node source, and the
+tooltip), which is INT8 too, so at block 49 it removes Sol's sparsity term
+and leaves the INT8 term -- the term that is half the error there --
+exactly where it was. The K-channel fold is the move at block 49, and it
+costs nothing at render time; `-1` in `dense_blocks` costs a dense block
+and fixes half. Rests on the split.
+
+**New candidate, the only one here that costs no render time: fold the
+block-49 K balancing into the norm weights.** As an EXPERIMENT under this
+page's decision standard, not a default. Steps, cheapest first, none of
+them a render:
+
+1. Rank all 50 blocks for loud channels from `k_norm.weight` alone (the
+   attribution says the peaks are a weights property, identical in fl2va
+   and ref2va to ~0.3%). No card. Blocks 41-48 were never captured, and
+   this is the only way to know whether 49 is alone.
+2. Fold a pair-equal a=0.5 `s` into block 49's q/k norm weights at load,
+   gated per block. Bit-identical routing is the expected result; check
+   `blk_cnt` under `H3_SOL_OBSERVE` on one armed render if the
+   invariance argument is doubted.
+3. Grade with `bench/analyze_sol_error.py` on the surviving captures:
+   `quant_l2` at block 49 should drop by roughly a fifth if Sol's kernel
+   quantizes K with a shared channel scale the way sage does; if it does
+   not move, the kernel's scale granularity differs and the fold helps
+   only the sage steps (the dense window, and every `dense_blocks`
+   entry).
+4. Only then the blind multi-scene comparison this page requires of any
+   shipped default.
+
+What this cannot claim: that a fifth less INT8 error at the last block is
+visible. Nothing in the sage records is perceptual.
+
+**`tau` (1.0): no information from the sage side.** Quantization error has
+no step axis and does not depend on tau. The tau sweep this page names as
+the open half is still the instrument; the sage records neither hurry nor
+delay it. Rests on the sparsity term only.
+
+**`start_percent` (0.2) and `end_percent` (1.0): no information.** Both
+gates compare sigmas, not steps (`sol_attn_h3.py`, the override gate and
+the compose gate), and nothing quantization-shaped varies with sigma, so
+the dense window's cost and benefit are entirely the sparsity term's.
+`start_percent` remains never measured. Rests on the sparsity term only.
+
+**`min_tokens` (12288): no information**, with one framing note the node
+tooltip already carries: below it the call falls to sage, so the gate
+chooses Sol against an INT8 kernel, not against dense torch; the sage
+records grade that fallback and nothing else.
+
+**`sink_conditioning`, `pooled_tail`, `morton`, `morton_curve`: outside the
+sage instrument.** The one cross-link is Morton's: `kcvar` is the per-dim
+variance across block centroids, and at block 49 four dims dominate it,
+so the routing threshold there is set by the same channels that set the
+INT8 scale. That is why block 49 has been the counterexample in every
+Morton table on this page (`docs/morton.md`, the 0.136 sigma spread
+against 0.022 at block 24): the block's K statistics are degenerate in a
+way the other captured blocks' are not. Hypothesis about a mechanism,
+consistent with three records; not measured.
+
+**`token_aug_blocks`: same block, same suspicion.** Token routing helped
+four captured blocks and hurt block 49, with head 11 losing at every step
+(`docs/research/2026-09-04_sol_token_aug_grade.md`). The loud channels are
+a candidate mechanism for a per-head INT8 boundary effect at that block,
+which the fold would change. Worth re-grading `token_aug` at block 49
+after step 3 above, since the record explicitly leaves head 11's mechanism
+open. Hypothesis, not measured.
+
+**`smooth_k` on the sage fallback: leave it off.** Graded on the same ten
+cells: slightly harmful at block 0, a few percent helpful at 32-49, a full
+bf16 K copy at the frame ceiling, and it inverts this pack's clone-v
+choice. The K-channel fold does what `smooth_k` was reaching for at block
+49, four times over and for free. Record in the sage fork's decision log.
+
+**Per-thread q/k on sm89: leave it.** Per-warp CUDA quantization measured
+slower for the whole call at every length and worse on all ten cells. The
+fork's dispatcher comment now says so with the date.
+
+### What would settle it
+
+The four-step experiment above, in that order. Step 1 needs no card and
+decides whether this is a one-block fix or a deep-block fix; step 3 is the
+only step that can say whether Sol's kernel benefits at all. The capture
+set this rests on is kept to 2026-09-20.
+
 ## What is open
 
 | question | why it matters | blocker |
@@ -2217,6 +2384,7 @@ steps: a statement about these cells, not every layer.
 | CUDA e2e vs Triton e2e, ours | we have upstream's 1.4x, not our own | **the Triton pack is deleted**; recover from `kijai/ComfyUI-SolAttn_triton@842c4ea` first |
 | **comfy-kitchen's 4090 kernel vs NVLabs' own** | since PR #464 (2026-08-15) there are two independent sm89 implementations; which is faster or more accurate here is unknown, and it is the only external cross-check available on this card. Sana's RTX 4090 cell (added 2026-08-17) is the first published H3 run on theirs, with a real-QKV gate against SDPA and no comparison against kitchen's | one Python dep (`cutlass.cute`) and a seam -- their API has no `sink_q`, so `exact_kv_and_rows`'s query half needs doing at the integration layer. See [`docs/sol_upstream.md`](sol_upstream.md) |
 | **Which `dense_blocks`, if any?** | Empty is the honest default as of 2026-09-02. The historical `0-2,32` probe sampled only 11/50 blocks and did not cover the PDD head, actual active sigmas, interactions, or perceptual output. Upstream no longer agrees with itself either (2026-09-10): Sol-Engine's per-hardware cells keep the first two, Sol-H3 keeps two for T2V and none for Ref2VA, Spark's Ref2VA draft keeps layer 0, and sglang's SubBlock measured its layer cutoff inside run-to-run noise ([`docs/sol_upstream.md`](sol_upstream.md)) | all-50-block scans at actual PDD/base schedule states, then a set-level multi-scene A/B; the route observer supplies costs, not sensitivity |
+| **Fold block-49 K-channel balancing into the norm weights** | the one lever on this page that costs no render time; cuts sage's INT8 error at block 49 by a fifth on captures, and block 49 is where Sol's INT8 term equals its sparsity term (section "The defaults, re-read against the sage-side error records, 2026-09-14") | whether Sol's kernel shares the channel scale the way sage does: `analyze_sol_error.py` on the balanced q/k, step 3 there |
 | **Per-step tau** | the only upstream H3 policy that varies sparsity with the step is Sana Spark's opt-in Ref2VA draft, and it goes sparser as denoising proceeds; our node varies tau per block (`tau_profile`) and never per step | a step-indexed tau in `sol_attn_h3.py`, graded first on captures as "What Sana's newer H3 packages offer this card" above says |
 | **Text and audio exact, references sparse** | the sink split the `sink_conditioning` row says our kernel cannot express, because reference rows sit between text and audio; Sana's Spark expresses it with the same kind of contiguous-sink kernel by permuting Q/K/V | a permuting sink mode in `sol_attn_h3.py`, graded on a reference capture first, as the section above says |
 | quality at the shipped tau, watched to the end | the artifact is temporal and length-dependent. *Corrected 2026-09-10:* this row named tau 1.3, which stopped being the shipped value on 2026-08-20 | a human watching |
