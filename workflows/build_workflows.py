@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the MiniMax H3 test workflows, in API format and UI format.
+"""Generate the MiniMax H3 test workflows, in API format.
 
 Why a generator instead of hand-edited JSON: the three bundled ComfyUI
 templates are not equally editable. `video_minimax_h3_r2v` is a flat graph,
@@ -57,7 +57,6 @@ divergence that actually ships, i.e. survives the session that made it.
 from __future__ import annotations
 
 import argparse
-from collections import Counter
 import json
 import re
 import sys
@@ -86,21 +85,16 @@ _OUR_NODES = {
 # 2026-09-03 (owner): one source of truth for prompt text.
 from prompts import text as _bank_prompt  # noqa: E402
 from h3_config import (  # noqa: E402
-    ENCODER_INT8, CORE_LOADED_ENCODERS, IMAGE_VAE, IMAGE_EDIT_BUDGET,
-    ASPECTS, CANVAS, FPS, LENGTH, LONG_LENGTH, MODELS,
-    SAMPLING, SAGE_NODE, SEED, SIGMA_SHIFT, SOL_RECOMMENDED_CUDA,
-    SOL_CORE_NODE, SOL_CORE_DEFAULTS,
+    CORE_LOADED_ENCODERS, IMAGE_VAE, CANVAS, FPS, LENGTH, LONG_LENGTH, MODELS,
+    SAMPLING, SAGE_NODE, SEED, SIGMA_SHIFT, SOL_CORE_NODE, SOL_CORE_DEFAULTS,
     VSA_KEEP_PERCENT,
     CACHE_NODE, CACHE_NODE_CLASS,
     TURBO_LORA, TURBO_LORA_STRENGTH, TURBO_SHIFT, TURBO_STEPS,
     TURBO_768P_LORA, TURBO_768P_SHIFT, TURBO_768P_STEPS,
-    TURBO_768P_STRENGTH, TURBO_768P_DISTILLED_STEPS,
-    TURBO_768P_V12_LORA, TURBO_768P_V12_STEPS,
-    turbo_label,
+    TURBO_768P_STRENGTH, TURBO_768P_V12_LORA, TURBO_768P_V12_STEPS,
     TURBO_SLA_LORA, TURBO_SLA_SHIFT, TURBO_SLA_STEPS,
     TURBO_OWNER_STRENGTH, TURBO_OWNER_SCHEDULER,
     TURBO_HOME_CANVAS, TURBO_SAMPLER, DISTILL_SAMPLING, SPLIT_AT,
-    REF_QWEN_SHORT_EDGE,
     REF_VIDEO_BUDGET,
     CAPTURE_REF_IMAGES,
     TURBO_PACK_LORA, TURBO_PACK_STEPS, TURBO_PACK_STRENGTH,
@@ -190,23 +184,16 @@ def _retimed_from_bank(prompt_id: str, alignment, length: int) -> str:
 # measured, not argued: `bench/check_sol_node_equivalence.py` asserts the two
 # dispatches produce the SAME BYTES at both selections.
 #
-# It is a node id in saved graphs, so it obeys the one rule in CLAUDE.md: the
-# UI form matches `widgets_values` POSITIONALLY against the schema, so the
-# widget order below must stay in the node's declared input order, widgets
-# only (`model` is a socket, not a widget). Verified against a live
-# /object_info, which is the only thing that can confirm it.
+# It is a node id in saved graphs, so it obeys the one rule in CLAUDE.md (the
+# owner's editor-saved graphs match `widgets_values` positionally). The order
+# below is the node's declared input order, widgets only (`model` is a socket);
+# verified against a live /object_info.
 SOL_NODE = "MiniMaxH3SolAttn"
 
 # `selection` is a DynamicCombo: choosing an option adds
-# that option's own inputs to the node, and the two graph forms encode them
-# DIFFERENTLY, which is the whole reason this lives in one place.
+# that option's own inputs to the node, which is the whole reason this lives
+# in one place.
 #
-#   UI form   the option's widgets are spliced in immediately after the
-#             selector, not appended at the end. Source read, not a build:
-#             ComfyUI_frontend v1.49.6 (the version installed here),
-#             `src/core/graph/widgets/dynamicWidgets.ts` --
-#             `insertionPoint = node.widgets.findIndex(w => w === widget) + 1`
-#             followed by `node.widgets.splice(insertionPoint, 0, ...)`.
 #   API form  the option's inputs are keyed under the combo's id with a dot,
 #             `selection.tau`, and ComfyUI regroups them into the dict the
 #             node receives (`comfy_api/latest/_io.py::build_nested_inputs`).
@@ -246,48 +233,6 @@ def sol_widget_order(sol):
         raise KeyError(f"Sol config selection {sol.get('selection')!r} is not "
                        f"one of {sorted(SOL_SELECTION_INPUTS)}") from None
     return ("selection",) + nested + SOL_TAIL_WIDGETS
-
-
-def _sol_widgets(sol):
-    """Widget values in schema order. Raises rather than emitting a short list.
-
-    A missing key would silently shift every later widget by one, which is
-    exactly the failure that cost a real bug on 2026-08-10 -- a saved graph
-    stores widgets_values as a bare list and matches by index.
-    """
-    order = sol_widget_order(sol)
-    missing = [k for k in order if k not in sol]
-    if missing:
-        raise KeyError(f"Sol config is missing {missing}; widgets are positional "
-                       f"and a short list re-points every later one")
-    return [sol[k] for k in order]
-
-
-def _sol_title(sol, sol_enabled, pdd=False):
-    """Node title, naming `end_percent` when it is not the base recipe's.
-
-    The value is picked by the generator -- from the step count on an ordinary
-    arm, from `h3_config.SOL_PDD_CUDA` on a distilled one -- and cannot be
-    recomputed by the node, which converts percent to sigma at patch time,
-    before the scheduler downstream has said how many steps there will be. So
-    the widget is static and the only place a reader can learn where it came
-    from is here. The two reasons are named separately because editing `steps`
-    by hand invalidates one of them and not the other.
-    """
-    if not sol_enabled:
-        return "Patch Sol-Attn (bypassed)"
-    end = sol.get("end_percent")
-    base = SOL_RECOMMENDED_CUDA.get("end_percent")
-    if end is None or end == base:
-        return "Patch Sol-Attn"
-    if pdd:
-        dense = sol.get("dense_blocks")
-        dense_note = f", dense_blocks {dense!r}" if dense else ""
-        return (f"Patch Sol-Attn (PDD recipe - end_percent {end:g}, "
-                f"min_tokens {sol.get('min_tokens')}{dense_note}; "
-                "h3_config.SOL_PDD_CUDA)")
-    return (f"Patch Sol-Attn (end_percent {end:g} - derived from the step "
-            f"count so the LAST step stays dense; default is {base:g})")
 
 
 def _distill(lora, pdd, key):
@@ -838,50 +783,6 @@ def _append_image_inputs(load_id: str, chain, ref_upscale: bool, ref_qwen_short_
     return inputs
 
 
-def _append_image_widgets(ref_upscale: bool, ref_qwen_short_edge: int) -> list:
-    """UI widgets_values of one `MiniMaxH3AppendRefImage`; the UI half of `_append_image_inputs`."""
-    # positional: size_policy, then the SELECTED
-    # DynamicCombo option's own widgets IN SCHEMA ORDER,
-    # then qwen_short_edge. `references` is a socket and
-    # consumes no widget slot.
-    #
-    # Under `max` the schema declares short_edge BEFORE
-    # allow_upscale, so that is the order here. This was
-    # wrong for one build on 2026-08-27: the API branch
-    # was converted to the dotted form and this one was
-    # left on the pre-DynamicCombo order, emitting
-    # ["max", True, 2048, 0] -- short_edge=True,
-    # allow_upscale=2048. Every validator passed, which
-    # is the finding: nothing here grades a
-    # DynamicCombo's sub-widget ORDER against the schema
-    # it came from, only that the graph is well-formed.
-    #
-    # `qwen_view` is a DynamicCombo since 2026-08-31,
-    # so the SELECTION occupies a slot and the size
-    # follows it ONLY under `separate`. Under `shared`
-    # there is no size widget at all -- emitting one
-    # would shift nothing here (it is last) but would
-    # not match the schema, and `check_workflow_schema`
-    # grades exactly that against the served node.
-    #
-    # The retired advice this replaces said to ALWAYS
-    # emit `qwen_short_edge`, even at 0, because the UI
-    # form matches BY POSITION and an omitted value
-    # shifts every later widget up one slot. That
-    # reasoning was right and is preserved by emitting
-    # the SELECTION unconditionally; what is gone is
-    # the value 0, which no longer exists on this node.
-    #
-    # This half was missed on the first pass of the
-    # rename: the API branch was converted and this one
-    # kept emitting the bare number, so 42 UI graphs
-    # carried `qwen_view = 512`. Same shape as the
-    # 2026-08-27 miss recorded above, and caught by the
-    # same check.
-    return (["max", _ref_short_edge(), ref_upscale, "separate", ref_qwen_short_edge]
-            if ref_qwen_short_edge else
-            ["max", _ref_short_edge(), ref_upscale, "shared"])
-
 T2V_PROMPT = _bank_prompt("t2va_lighthouse")
 
 I2V_PROMPT = _bank_prompt("i2va_lighthouse_keyframe")
@@ -1384,13 +1285,6 @@ def _assert_inputs(sage: bool, sol_present: bool) -> dict:
                 "warn_only": False, "require_absent": False, "require_no_forward_patch": True}
     return {"require_override": False, "require_forward_patch": False, "exercise": False,
             "warn_only": False, "require_absent": True, "require_no_forward_patch": False}
-
-
-def _assert_widgets(sage: bool, sol_present: bool) -> list:
-    """The same flags in the UI node's widget order."""
-    a = _assert_inputs(sage, sol_present)
-    return [a["require_override"], a["require_forward_patch"], a["exercise"],
-            a["warn_only"], a["require_absent"], a["require_no_forward_patch"]]
 
 
 def _plain_model_chain(g, *, sage, sol, shift, head_chunks):
@@ -2277,589 +2171,8 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
 
 
 # --------------------------------------------------------------------------
-# UI format
+# Reference roles and composed reference prompts
 # --------------------------------------------------------------------------
-
-class UIGraph:
-    """Minimal litegraph workflow writer.
-
-    Field shapes are copied from the bundled `video_minimax_h3_r2v` template,
-    which is the one H3 template that is already flat, so this emits the same
-    dialect the frontend just loaded from disk.
-
-    Deliberately no widget-to-input conversions and no helper nodes
-    (ResolutionSelector, ComfyMathExpression, PrimitiveStringMultiline). The
-    templates use those for convenience, but every one of them is another
-    place a hand-edit can go wrong, and the point of these copies is to be
-    easy to edit. Resolution, length and prompt are plain widget values on
-    the conditioning node.
-    """
-
-    def __init__(self):
-        self.nodes: list[dict] = []
-        self.links: list[list] = []
-        self._next_node = 1
-        self._next_link = 1
-
-    def add(self, type_: str, pos, *, widgets=None, inputs=None, outputs=None,
-            size=(320, 100), title=None):
-        nid = self._next_node
-        self._next_node += 1
-        n = {
-            "id": nid, "type": type_, "pos": list(pos), "size": list(size),
-            "flags": {}, "order": 0, "mode": 0,
-            "inputs": [dict(i) for i in (inputs or [])],
-            "outputs": [dict(o) for o in (outputs or [])],
-            # Deliberately NOT emitting `cnr_id` or `aux_id`, reversing a
-            # change made earlier on 2026-08-11.
-            #
-            # `cnr_id` lets ComfyUI-Manager offer "install missing custom
-            # nodes" to someone who opens this graph without the pack. That
-            # audience is strangers pulling from a public registry, which is
-            # not how this repo is used: local only, private, LAN remote. So
-            # the benefit is near zero here, while `useConflictDetection`
-            # ships in the same lazily-loaded chunk as
-            # `useComfyRegistryService` (baseURL https://api.comfy.org) and
-            # the consuming path was not proven to stay local. Under a
-            # local-only constraint, unproven beats unlikely.
-            #
-            # There is also a squatting edge: we would be claiming
-            # "comfyui-h3-explorations", and if a stranger registers that
-            # name later, a user's "install missing" click resolves to their
-            # package rather than nothing.
-            #
-            # `aux_id` is worse and must never be added automatically. Its
-            # conventional value is the git remote's owner/repo, and this
-            # repo's only remote is a LAN address -- deriving it would write
-            # a private IP into every shared workflow.
-            "properties": {"Node name for S&R": type_},
-        }
-        if widgets is not None:
-            # A dict stays a dict. Most nodes serialize widgets_values as a
-            # positional list, but a node whose widget set depends on another
-            # widget cannot -- VHS_VideoCombine adds pix_fmt/crf/... after
-            # `format`, so position cannot address them and the frontend
-            # writes a keyed object instead. `list(a_dict)` silently yields
-            # the keys, which is a graph that loads and renders with every
-            # setting wrong.
-            n["widgets_values"] = (dict(widgets) if isinstance(widgets, dict)
-                                   else list(widgets))
-        if title:
-            n["title"] = title
-        self.nodes.append(n)
-        return nid
-
-    def _node(self, nid):
-        for n in self.nodes:
-            if n["id"] == nid:
-                return n
-        raise KeyError(nid)
-
-    def remove(self, nid):
-        """Drop a node and every link touching it. For a branch that replaces
-        the base chain's tail (the shot-per-window chain) after the base
-        nodes were already added; link ids are not renumbered."""
-        if nid is None:
-            return
-        dead = {lk[0] for lk in self.links if lk[1] == nid or lk[3] == nid}
-        self.links = [lk for lk in self.links if lk[0] not in dead]
-        for n in self.nodes:
-            for o in n.get("outputs", []):
-                if o.get("links"):
-                    o["links"] = [l for l in o["links"] if l not in dead]
-            for i in n.get("inputs", []):
-                if i.get("link") in dead:
-                    i["link"] = None
-        self.nodes = [n for n in self.nodes if n["id"] != nid]
-
-    def link(self, src, src_slot, dst, dst_input_name, type_):
-        lid = self._next_link
-        self._next_link += 1
-        s, d = self._node(src), self._node(dst)
-        s["outputs"][src_slot].setdefault("links", [])
-        if s["outputs"][src_slot]["links"] is None:
-            s["outputs"][src_slot]["links"] = []
-        s["outputs"][src_slot]["links"].append(lid)
-        for inp in d["inputs"]:
-            if inp["name"] == dst_input_name:
-                inp["link"] = lid
-                break
-        else:
-            raise KeyError(f"{d['type']} has no input {dst_input_name!r}")
-        self.links.append([lid, src, src_slot, dst, self._input_index(d, dst_input_name), type_])
-        return lid
-
-    @staticmethod
-    def _input_index(node, name):
-        return [i["name"] for i in node["inputs"]].index(name)
-
-    def _topo_order(self):
-        # `order` is advisory -- the frontend recomputes it -- but an
-        # inconsistent value shows up as nodes drawn in a nonsense sequence,
-        # so emit a real topological order.
-        incoming = {n["id"]: set() for n in self.nodes}
-        for lid, src, _ss, dst, _ds, _t in self.links:
-            incoming[dst].add(src)
-        order, placed = {}, set()
-        i = 0
-        while len(placed) < len(self.nodes):
-            progressed = False
-            for n in self.nodes:
-                nid = n["id"]
-                if nid in placed or not incoming[nid] <= placed:
-                    continue
-                order[nid], i = i, i + 1
-                placed.add(nid)
-                progressed = True
-            if not progressed:
-                raise RuntimeError("cycle in graph")
-        for n in self.nodes:
-            n["order"] = order[n["id"]]
-
-    @staticmethod
-    def _uuid_for(name: str) -> str:
-        """A stable UUID for a graph, derived from its name.
-
-        The frontend writes `id` as a UUID and we were writing a readable
-        slug. Deterministic rather than random so regenerating a graph does
-        not churn its identity in git, and so the same graph keeps the same
-        id across machines.
-
-        The namespace seed is a bare string rather than a URL. Determinism is
-        the only property needed, and the first version seeded from a
-        github.com URL that named a handle and a repository -- both wrong,
-        and neither anyone's business in a published repo.
-        """
-        import uuid
-
-        return str(uuid.uuid5(uuid.NAMESPACE_URL,
-                              f"comfyui-h3-explorations/{name}"))
-
-    def dump(self, workflow_id: str) -> dict:
-        self._topo_order()
-        return {
-            # Frontend saves carry extra.ds; without it litegraph opens at
-            # its default viewport and these graphs start at x = -2860, so
-            # the first thing you see is empty canvas.
-            "extra": {"ds": {"scale": 0.5, "offset": [3000.0, 400.0]}},
-            "id": self._uuid_for(workflow_id), "revision": 0,
-            "last_node_id": self._next_node - 1,
-            "last_link_id": self._next_link - 1,
-            "nodes": self.nodes, "links": self.links, "groups": [],
-            "config": {}, "version": 0.4,
-        }
-
-
-def _in(name, type_, *, optional=False, widget=False, label=None):
-    d = {"name": name, "type": type_, "link": None}
-    if label:
-        d["label"] = label
-    if optional:
-        d["shape"] = 7
-    if widget:
-        d["widget"] = {"name": name}
-    return d
-
-
-def _out(name, type_):
-    return {"name": name, "type": type_, "links": None}
-
-
-# Text for the in-graph notes. Kept next to the builder rather than in
-# docs/h3_geometry_and_nodes.md on purpose: that doc is the long form, this
-# is what you need with the graph open. Numbers here come from
-# comfy_extras/nodes_minimax_h3.py, not from lore.
-_NOTE_GEOMETRY = """\
-## You pick an aspect ratio. The resolution follows from it.
-
-`adapt_canvas()` reads your two numbers as a ratio and derives the pixels:
-short edge starts at 768, the area caps at 1,032,192 (768x1344), each axis
-rounds to 32. Asking for 4K gives the same resolution as 720p at the same
-ratio. Exactly 95 resolutions exist across the legal 1/4 to 4 aspect range.
-
-Full table, the derivation, and the length and int32 axes:
-`docs/h3_resolutions.md`.
-
-## The fourteen worth knowing
-
-| Ask for | Resolution | Video tokens/frame | Attention |
-|---|---|---|---|
-| 21:9 | 1536x672 | 1008 | 1.00x |
-| 2:1 | 1440x704 | 990 | 0.96x |
-| 16:9 | 1344x768 | 1008 | 1.00x |
-| 5:3 | 1280x768 | 960 | 0.91x |
-| 3:2 | 1152x768 | 864 | 0.73x |
-| 4:3 | 1024x768 | 768 | 0.58x |
-| 5:4 | 960x768 | 720 | 0.51x |
-| 1:1 | 768x768 | 576 | 0.33x |
-| 4:5 | 768x960 | 720 | 0.51x |
-| 3:4 | 768x1024 | 768 | 0.58x |
-| 2:3 | 768x1152 | 864 | 0.73x |
-| 9:16 | 768x1344 | 1008 | 1.00x |
-| 1:2 | 704x1440 | 990 | 0.96x |
-| 9:21 | 672x1536 | 1008 | 1.00x |
-
-All fourteen reproduce themselves, so typing one into width/height gives it
-back. 1:1 costs a third of 16:9 at the same frame count, and attention
-dominates the step, so this is the largest speed lever anywhere, larger than
-any kernel or sparsity setting.
-
-Attention goes as the square of the token count. Video tokens per frame are
-`(w//32) * (h//32)`, which is symmetric, so portrait and landscape of a ratio
-cost the same. 16:9 against 9:16 is a quality question, never a speed one.
-
-## Where the 32 comes from
-
-The VAE compresses space by 16, then the DiT patchifies that latent 2x2
-before attending it. 16 x 2 = 32. Divisible by 16 alone leaves an odd latent
-axis the patchify cannot tile.
-
-Core's conditioning nodes do not apply `adapt_canvas()` to the video
-resolution at all: width and height are plain ints at step 32, so what you
-type is what you get. The 768 and the area cap describe the trained family,
-not a limit the node enforces.
-
-## Two things that surprise people
-
-The short edge is not always 768. It is 768 only while the area cap does not
-bind, roughly 3:4 through 7:4. Outside that the cap takes over: 21:9 is
-1536x672, 9:21 is 672x1536.
-
-1.00x is not the ceiling. Rounding to 32 can land above the 16:9 token count.
-Ask for 23:7 and you get 1856x576, which is 1044 video tokens against 1008,
-so 1.073x the attention for no extra pixels. That is the worst case in the
-set. Nearby ratios behave: 29:9 gives 1824x576 at 1.036x. Stay on the
-fourteen unless you have a reason.
-
-## If you want this decided for you
-
-`MiniMax H3 Keyframe Resolution` (this repo) derives the resolution from your
-first keyframe the way the reference pipeline does, fits the keyframes onto
-it, and reports the cost before you render. The first-frame graph is wired
-that way. Text-to-video has no keyframe to derive from, so type a row above.
-
-## Length rounds up to n % 17 == 5
-
-Ask 200, get 209. Ask 300, get 311. Near the top: 311, 328, 345, 362.
-
-362 is the ceiling -- 15.083s, and the longest length H3 was trained on.
-ComfyUI's own node accepts up to 3600 with no ceiling at all. Ask for 363 and
-you get 379, which is over, and that is why the check runs on the rounded
-number rather than the request.
-
-The reference pipeline stops one grid step earlier, at 345, because its
-`max_duration` is a hard-coded 15.0s. That is a fact about diffusers, not a
-limit on the model: a graph at 362 renders here and will not run unmodified
-there. There is no on-grid count at exactly 15.0s, which is how the gap
-appears.
-
-At 345 frames attention is ~76% of the step, against ~50% at 124, so long
-clips are where sparsity and kernel work pay off most. 362 is 5% longer
-again.
-
-The frame count is not the sequence-length ceiling. At 1344x768, 345 frames
-is S=108,078 -- already past the fused-layout int32 crossing at 99,864
-tokens -- and 362 is longer still. That is safe here only because this repo's
-node refuses any sageattention without `sageattn_consume`. See the doc.
-"""
-
-
-_NOTE_NODES = f"""\
-## Node order is load-bearing
-
-```
-Load Diffusion Model
-  -> ModelSamplingMiniMaxH3       (core's MiniMaxH3SigmaShift; sigma shift,
-                                   anywhere before the fork. NOT in the PDD
-                                   graphs -- see below)
-  -> MiniMax H3 SageAttention     (this repo)
-  -> Patch Sol-Attn (MiniMax)     (this repo's MiniMaxH3SolAttn; must be AFTER)
-  -> BasicScheduler + BasicGuider (MODEL forks to BOTH)
-```
-
-`ModelSamplingMiniMaxH3` is the picker name; `MiniMaxH3SigmaShift` is the id
-you will see in an API graph. Same node.
-
-**Sol-Attn must come second.** It composes with the attention patch it
-finds; reversed, it overwrites ours and you silently get sage only, with no
-error and no log line saying so.
-
-**The sigma shift is here to be changed, not because it does anything at
-12/3.** Those are the base checkpoint's training shifts, so the node is a
-no-op as shipped -- which is why the PDD graphs omit it entirely: there the
-PDD node emits the schedule from its own fused shift, and moving this one
-makes `check_shift` raise at step 0. It is a knob for the turbo arms, not a
-fixture. The turbo LoRAs inherit the sampler's shift instead of
-carrying their own, and the {turbo_label(TURBO_768P_LORA)} one was
-distilled at video shift **6** -- and that is the variant trained at 1344x768,
-this canvas. Load it without changing this and you sample it off a schedule it
-never saw.
-Steps move with it too: 16 is a base-model number, these want 4 or 8. The
-4-step v0.1 and 8-step v1.0 were both distilled at 12/3 and need no change
-here.
-
-**MODEL forks to two consumers.** Rewiring only the guider leaves the
-scheduler reading sigmas off the unpatched model, and the render still
-succeeds -- which is why that mistake survives.
-
-## Check it is actually running, once per graph change
-
-Turn `verbose` on in Patch Sol-Attn (MiniMax) for one render, then off. You want three
-lines. **Read them in the terminal** -- piping or redirecting block-buffers
-the output and they may not appear even when everything is fine.
-
-```
-sage routing: arch=sm89 ... pv_accum=fp32+fp16 -> fp8_cuda++
-[sol_attn] chaining onto an existing attention override
-[sol_attn] sparse (1, ..., 56, 128) tau=1.0 int8 pointer
-```
-
-Line 1: sage engaged on the fast kernel. Line 3: sparse engaged at your tau.
-**Line 2 is the order check** -- it only prints when Sol-Attn finds sage's
-override already installed. Missing means the nodes are backwards and you
-are paying full price for a render that otherwise looks fine.
-
-## What each node is here for
-
-- **MiniMax H3 SageAttention** -- INT8-QK / FP8-PV kernel on all 50 DiT
-  attention forwards, plus an `optimized_attention_override` registration.
-  That second part is what lets Sol-Attn compose instead of bypassing sage.
-- **Patch Sol-Attn (MiniMax)** -- block-sparse attention, on the CUDA
-  kernel (`comfy_kitchen.sol_attn`). Settings are pinned from
-  `workflows/h3_config.py`; edit there and regenerate, not here.
-
-## Deliberately absent
-
-- **MiniMaxH3MemoryEfficientSageAttentionPatch** (KJNodes) -- same job as
-  our node, patches the same key, so they conflict. Ours also registers the
-  override.
-- **MiniMaxLowVRAMAttention** -- head chunking. ~3227 MiB saved at 4 groups
-  (measured; three times the ~1070 this note carried before 2026-08-13), but
-  1000 attention calls become 4000. On 24GB freed VRAM converts to wall-clock
-  at a ~2.6% ceiling. Take it only if you are actually hitting OOM.
-- **MiniMaxChunkFeedForward** -- at 362 frames attention peaks ~17.8 GiB
-  against FFN's 9-12, so it chunks a peak that is not binding. Short-clip
-  feature.
-- **PathchSageAttentionKJ** -- global no-guard sage switch. Prefer the
-  per-workflow node.
-"""
-
-_NOTE_PDD_NODE = """\
-## What this node does that the UI does not show
-
-**The step count comes in on the `steps` socket, and this node emits the
-schedule.** The `PDD steps` PrimitiveInt on the canvas is the one number that
-sets the arm; SIGMAS runs from this node's second output straight into
-`SamplerCustomAdvanced`. There is no `BasicScheduler` in a PDD graph to change
--- this note used to say there was, which described the topology before this
-node emitted SIGMAS. (The `manual_sigmas` graph is the exception: its schedule
-comes from `ManualSigmas` and the socket is 0.)
-
-**`nfe` stays 0, and 0 is not an evaluation count.** It is a mode: 0 means
-"take the count from `steps`", and a non-zero value overrides it. That is the
-falsy-sentinel shape this repo is migrating away from -- a numeric widget
-should mean the quantity it names -- and it is carried as accepted debt in
-`bench/check_literal_widgets.py::SENTINELS` rather than fixed, because
-converting a number to a combo re-points every later widget value in every
-saved graph.
-
-**There is no sigma-shift node either, and that is deliberate.** This node
-builds its schedule from the shift its file was fused at, and the fused heads
-are a function of that same shift, so `check_shift` REFUSES a render whose
-shift disagrees -- a raise at step 0, not a warning. At the checkpoint's own
-12/3 a `ModelSamplingMiniMaxH3` node would patch the model into what it
-already is, so it is omitted here rather than left sitting as a knob that only
-breaks things. With it absent, `check_shift` compares against the model's
-class default instead, which is the same 12/3.
-
-**Three surfaces are patched, and only one is a normal LoRA:**
-
-- backbone attention and MLP weights
-- the adaln modulation update, pre-solved into this checkpoint's curve basis
-- the two output projections in `final_layer`
-
-**The output heads are swapped every sampling step.** The file carries a
-32-interval bank; the block a step spans is fused on first use and cached.
-
-**It refuses rather than renders** when the file was converted against the
-other partition -- fl2va and ref2va share every tensor name, so a mismatch
-would otherwise load with nothing unmatched and simply be wrong -- or when
-another node already owns the output heads.
-
-`patch_heads` off applies the backbone and adaln updates against the
-checkpoint's own heads. That is the control arm for whether the head
-machinery is what is doing the work.
-"""
-
-_NOTE_SOL_NODE = """\
-## What this node does that the UI does not show
-
-**Sol runs from `start_percent` through the last step.** `end_percent` is
-1.0, the default that sglang's Sol backend and ComfyUI's own sparse-attention
-node both use. The steps before `start_percent` run on sage.
-
-**The window is a sigma band, not a step fraction.** The node turns a percent
-into a sigma when it is patched, before the step count exists, so the same
-`start_percent` covers a different share of the steps at 16 steps than at 4.
-
-**The packed conditioning rows always run dense** (`sink_conditioning`). They
-are a few hundred rows in a ~90k sequence and are the first thing a
-block-sparse router drops; dropping them is what breaks generated audio.
-
-**No block is forced dense** (`dense_blocks` is empty, as in ComfyUI's own
-node; sglang's Sol backend keeps blocks 0-1 dense by default).
-
-**It composes onto the sage patch rather than replacing it**, which is why it
-must sit after it. See the node-order note.
-"""
-
-
-def _probe_note(subject, companion, changed, compare, expect,
-                held="same prompt, same canvas"):
-    """Note for a probe graph: one variable, its twin, and what to look at.
-
-    A probe that does not name its companion and its seed is a graph with an
-    unusual setting, not an experiment. Every one of these is identical to its
-    twin except the line under "what differs", and they share
-    `h3_config.SEED`, so anything you see between them is that line.
-
-    `held` is what stays fixed, and it is a parameter because the default
-    sentence claimed "same prompt" -- which is a contradiction on the two image
-    probes whose prompt IS the variable. A boilerplate line that contradicts
-    the paragraph under it teaches the reader to skim the boilerplate.
-    """
-    return f"""\
-## Probe: {subject}
-
-**Run this against `{companion}`.** Same seed ({SEED}), {held}, same
-everything except one setting. That is the whole design: if the seed moved
-between the two, the difference you are looking for would be underneath the
-difference you are not.
-
-**What differs:** {changed}
-
-**What to compare:** {compare}
-
-**What to expect:** {expect}
-
-This is a probe, not a render config. If you like what one side does, change
-the setting in the shipped graph rather than rendering from this file.
-"""
-
-
-_NOTE_SIZING = """\
-## What the sizing nodes decide, and what Preflight tells you
-
-**Preflight is pass-through.** It changes nothing. It reads the assembled
-conditioning through the model's own `PackedLayout`, so the sequence length
-it draws is the one attention will actually run at.
-
-Read it top to bottom:
-
-```
-1152x768  trained family  864 video tokens/frame
-124 frames (5.167s)  37 latent frames
-sequence length 52,702
-  video         31,968  ############........   60.7%
-  references    17,216  #######.............   32.7%
-  text           3,104  #...................    5.9%
-  audio            414  ....................    0.8%
-if the aspect ratio changed, same length:
-  1:1   768x768      42,046    -20%
-  16:9  1344x768     58,030    +10%
-```
-
-The percentages are the decision. Reference tokens are attended at every
-sampling step exactly as video tokens are, so references at a third of the
-sequence means a third of your attention cost is spent describing them.
-
-**"trained family" vs "OUTSIDE trained family".** Core's conditioning nodes
-take width and height as plain ints and never call `adapt_canvas`, so the 768
-short edge and the 768x1344 area cap constrain nothing you type. 1024x1024 is
-legal, renders, costs more per frame than 16:9, and is outside the family the
-checkpoint was trained on. Outside is a choice, not an error -- but it should
-be one you made on purpose.
-
-## Keyframes and references are not sized the same way
-
-- A **keyframe** is patchified on the video's own latent grid, so its
-  resolution must equal the video's. That is why *MiniMax H3 Keyframe
-  Resolution* outputs width and height: the keyframe decides them.
-- A **reference** is patchified on its own grid, so its resolution only sets
-  how many vision tokens it contributes, and *Append Picture* carries that
-  decision itself rather than outputting a size.
-
-## Reference sizing lives on the Append Picture node
-
-These graphs use this repo's `MiniMaxH3AppendRefImage`, not native ComfyUI's
-autogrow image sockets. Each append carries its own `size_policy`,
-`short_edge`, `allow_upscale` and `qwen_view`, and *MiniMax H3 Reference
-Conditioning* performs ONE resize with the target canvas in scope.
-
-**Do not add a Reference Resolution node.** It is DEPRECATED as of 2026-08-28
-and no graph here wires it. Chaining it in front of the append resamples
-twice, it cannot express `match`, and it has no `qwen_view`.
-
-### There are TWO budgets, and they are only the same number under `qwen_view = shared`
-
-| budget | what sets it | what it costs |
-|---|---|---|
-| **DiT rows** | `size_policy` + `short_edge` + `allow_upscale` | attended at EVERY sampling step, alongside video |
-| **vision tokens** | `qwen_view.qwen_short_edge` (or the above, under `shared`) | sit in the TEXT segment **ahead of your prompt** |
-
-### short_edge is a CEILING, not a target
-
-The scale is `short_edge / min(w, h)`, clamped by `min(1.0, ...)` unless
-`allow_upscale` is on, then snapped to 32. So a source already smaller than
-`short_edge` is left alone and the widget does nothing for it.
-
-A 4096x2304 source, `max`, `allow_upscale` off:
-
-```
-short_edge   VAE view    DiT rows   tokens @qwen 0   tokens @qwen 512
-      128     224x128          28               28                448
-      512     896x512         448              448                448
-     1024   1824x1024       1,824            1,824                448
-     2048   3648x2048       7,296            7,296                448
-```
-
-A 640x480 source is **640x480 at 512, 1024 and 2048 alike** -- all three
-identical, because each is above its short edge. `allow_upscale` on is what
-makes it a target: that source becomes 672x512 / 1376x1024 / 2720x2048.
-
-Rows go as the SQUARE of `short_edge`. 2048 is the released checkpoint's own
-`reference_image_short_edge` and is what these graphs use.
-
-### The defaults, and what moving each one does
-
-The defaults are vendor parity since 2026-09-13 (owner decision,
-`docs/wiki/decisions.md`): what sglang, diffusers and DiffSynth do with a
-still, which is one prepared copy at a 2048 short edge for both towers.
-
-- **`size_policy = max`, `dit_short_edge = 2048`** -- the vendor's rule. `match`
-  sizes from the target canvas area instead, is off-vendor, and never enlarges.
-- **`allow_upscale = True`** -- matches the three serving implementations
-  (upscale unconditionally); off matches core ComfyUI (shrink only). It only
-  ever matters for a source *below* `dit_short_edge`. Upscaling adds rows,
-  not detail, so whether it helps an already-small source is unmeasured;
-  `h3_probe_reference_upscale` and the `refview2` ablation are the arms.
-- **`qwen_view = shared`** -- the text encoder reads the same copy the video
-  model gets. `separate` gives it its own copy at `qwen_short_edge`; from
-  2026-08-27 to 2026-09-13 the shipped default was `separate` at 512, on one
-  observation (CHANGELOG 0.82.0). The `refview2` ablation is what tests it.
-
-`MiniMaxH3ReferenceReport` prices every copy of every reference and the
-prompt's share of the text segment before a render; wire it beside the
-conditioner rather than reasoning from this page.
-
-`image_policy` on the conditioner is a separate decision: whose still-image
-bounds are pre-applied once the reference has been prepared. `comfy` leaves
-it to the loaded encoder's own processor, which is the default and what these
-graphs have always done; `release` pre-applies the release's declared bounds
-so the VAE and Qwen stay on one size. On the shipped encoder the two coincide
-at every legal short edge.
-"""
-
 
 VIDEO_ROLES = ("structure", "edit", "continue", "motion", "swap")
 AUDIO_ROLES = ("music", "voice", "copy")
@@ -3574,164 +2887,6 @@ def _ref_prompt(*, images: bool | tuple[str, ...] = True,
     ]))
 
 
-_NOTE_IMAGE_EDIT = """\
-## One frame. This graph is an image editor, and it rests on a patch
-
-H3 renders a single frame if you ask it for one, and at one frame it behaves
-like a capable reference-driven image editor. **ComfyUI does not let you ask.**
-Its H3 nodes floor `length` at 5 -- the only video family in `comfy_extras`
-that floors above 1 (Wan uses `min=1` at all 16 of its length inputs, Hunyuan
-at 3, Cosmos at 3). This pack lifts that floor in memory at load
-(`single_frame.py`), which means:
-
-**If the shim is disabled, `MiniMaxH3Resolution` refuses the render** and says
-why. That refusal is load-bearing and it is ours, not ComfyUI's: **measured
-2026-08-15, ComfyUI accepts this graph without the shim and renders five
-frames through the single-image VAE, silently.** Its validator enforces a
-widget's `min` only on LITERAL values, and this graph wires `length` over a
-link from the Resolution node, so core never checks it -- it just clamps 1 up
-to 5 at execution. The note here said the opposite until it was tested.
-Upstream tracking: Comfy-Org/ComfyUI#15644.
-
-### What is different from every other graph here
-
-| | this graph | the video graphs |
-|---|---|---|
-| length | **1** | 124-362 |
-| VAE | **single-image H3 VAE** | `minimax_h3_video_vae_fp16` |
-| audio | no decoder at all | decoded and muxed |
-| output | `SaveImage` | `VHS_VideoCombine` |
-
-**The VAE is the half that is easy to get wrong.** It is the same checkpoint
-with a decoder retrained to reconstruct one image from a single temporal
-latent -- verified from the safetensors, not its README: 121 of 562 tensors are
-byte-identical to the stock video VAE, being all 116 encoder tensors,
-`quant_conv` and the latent statistics, while the 441 that differ are the
-decoder plus `post_quant_conv`. **The encoder is frozen, so the latent space is
-identical and this is purely a decoder swap.** Its own README warns it
-regresses multi-frame reconstruction, with patch-grid ghosting and cross-frame
-mixing. Never put it in a video graph.
-
-**Measured here 2026-08-15, with ground truth, because "you need the special
-VAE" was worth checking rather than repeating.** Round-tripping this graph's
-own reference image (encode then decode at T=1, so the source IS the target):
-
-| decoder | PSNR | SSIM | mean abs error |
-|---|---|---|---|
-| single-image VAE | **37.27 dB** | 0.947 | 1.95/255 |
-| stock video VAE fp16 | 22.04 dB | 0.821 | 14.72/255 |
-
-15.2 dB. So the swap is not a preference. **Core decodes T=1 with either** --
-the video VAE does not fail, it just returns a harsher, colour-shifted image,
-which is the trap: it looks like a working render.
-
-And the artifact the community reported is real and reproduces: decoding a
-5-frame latent with this VAE and keeping frame 0 leaves gradient energy
-aligned to the patch grid at 1.46x (16px) and 1.50x (32px) the off-grid
-average, against 1.03-1.22x for every other combination tried.
-
-Core was already ready for this: `comfy/ldm/minimax/vae.py` has an explicit
-`t == 1` branch, and it keeps the LAST of the 4 frames one latent decodes to --
-which is exactly the `h3_t1_output_slice: 3` the VAE's metadata declares. The
-node floor was the only thing in the way.
-
-### Without the shim, the fallback is worse and it is not the same thing
-
-Render `length=5` with the stock video VAE and keep frame 0. It works, and the
-community reports it comes out soft. Note what that fallback actually is: the
-DiT denoises 2 latent temporal steps instead of 1, so it costs about twice the
-video rows, and the decode is a video decode you then throw 4 frames of away.
-
-### Where this graph deliberately differs from the community workflow
-
-It follows the r/StableDiffusion single-image-edit write-up (2026-08-14), and
-departs from it in four places, each on purpose:
-
-- **Canvas 768x1152, not 1024x1536.** Theirs is 1.57 MP, which is 52% over
-  H3's 768*1344 area cap and outside the trained family. Ours is the in-family
-  2:3. Theirs is not wrong -- it renders, and bigger may well look better --
-  but it is a different question, and `MiniMaxH3Resolution`'s `custom` option
-  reaches it and says which side of the family you are on.
-- **sage fp16, not Comfy Kitchen attention.** Theirs carried CK over from a
-  video workflow; the author re-ran without it and reported quality slightly
-  improved and speed unchanged.
-- **Base ref2va, no turbo LoRA.** Theirs stacks a hybrid fl2va/ref2va
-  checkpoint plus a turbo LoRA plus a detail LoRA. Each is plausible and each
-  is a variable; this is the baseline they should be measured against.
-- **One reference, not several.** The question an edit model has to answer is
-  whether identity survives the change.
-
-### The cost lever here is NOT the canvas
-
-At one frame the video segment is a single latent step, so the shape of the
-sequence is nothing like a video render. Measured by Preflight on this graph:
-
-```
-sequence length 9,240      text        4,276   46.3%
-768x1152, trained family   references  4,096   44.3%
-864 video tokens/frame     video         864    9.4%
-                           audio           4    0.0%
-```
-
-**The video is 9% of it, and the reference is nearly all the rest.** Read that
-`text` row carefully: the prompt is under 200 tokens of it. The other ~4,100
-are the reference image again, as Qwen vision tokens -- **every reference is
-paid for twice**, once in the text segment and once as latent rows, and both
-ride every sampling step. Measured across a 1/2/3/4/6 ladder on 2026-08-15, the
-text half scales with reference COUNT and lands 75-160 rows *above* the
-reference half at every rung (see `docs/h3_references.md`).
-
-So changing the canvas moves almost nothing here -- 1:1 saves 3%, 16:9 costs
-2% -- where in a 124-frame render it is the single largest lever. What costs is
-the references, doubled. Nine of them at this sizing is ~94k rows and **OOMs a
-24 GB 4090**, which is more than the 124-frame video graph asks for.
-
-**The numbers above are the `allow_upscale=True` shape, which this graph no
-longer ships.** They are kept because they are what a reference costs when the
-fit node takes it to 2048, and that is still one `ref_upscale=True` away.
-
-### `allow_upscale` is off here, and it was the whole cost
-
-The fit node's upscaling is the single largest lever on this path. Measured at
-one seed on the two-reference scene, then confirmed here 2026-08-16 on the
-shipped graph:
-
-| sizing | ref rows | secs |
-|---|---:|---:|
-| `max` + fit upscale (what this used to ship) | 8,192 | 84 |
-| `max`, no fit upscale (**ships now**) | 2,048 | 18 |
-| `match` | 1,682 | 16 |
-
-4.9x the rows and 5.2x the wall clock, and at 1:1 on the face all three held
-the same identity, glasses, hair and features. `docs/open_experiments.md` #16e
-has the caveat that matters: that comparison is one subject at one seed, and it
-is why the VIDEO graphs have not moved.
-
-`ref_image_size` stays `max` (2048 short edge) and is still a **no-op** for
-every reference in `h3_refs/`, but for a different reason than before, and the
-old one is now wrong. It used to be a no-op because the fit node had already
-reached 2048, so core's `min(1.0, 2048 / short_edge)` was 1.0. Now the fit node
-leaves the source alone and a sub-2048 reference hits `min(1.0, >1.0)` = 1.0
-instead. Same outcome, different mechanism -- and above 2048 the two diverge,
-so it is not redundant.
-
-For scale, measured by `bench/preflight_graph.py` rather than estimated -- an
-earlier version of this paragraph said "~5,200" from arithmetic and was 58%
-high:
-
-```
-h3_image_edit          3,282     1 reference
-h3_image_recolor       3,304     1
-h3_image_sheet         3,260     1
-h3_image_style         5,386     2
-h3_image_composite     5,419     2
-h3_image_multiperson   7,520     3
-```
-
-Against ~82,686 for the 124-frame reference video graph, which is why these
-render in seconds."""
-
-
 # --------------------------------------------------------------------------
 # The single-frame image gen/edit prompts
 # --------------------------------------------------------------------------
@@ -4122,776 +3277,6 @@ _MARKER_PROSE = {
 }
 
 
-def _marker_to_prose(line: str) -> str:
-    """`<Subject 1>: fully_preserved - x` -> `<Subject 1> is fully preserved: x`.
-
-    Raises rather than passing an unknown marker through: a marker this does
-    not recognise is either a typo or a fifth marker, and both mean the flat
-    arm would silently carry different text from its twin -- which is the one
-    thing that would make the comparison meaningless.
-    """
-    m = re.match(r"(<Subject \d+>): (\w+) - (.*)$", line, re.S)
-    if not m or m.group(2) not in _MARKER_PROSE:
-        raise ValueError(f"retention line is not `<Subject N>: <marker> - ...` "
-                         f"with a known marker: {line!r}")
-    return f"{m.group(1)} {_MARKER_PROSE[m.group(2)]}: {m.group(3)}"
-
-
-def _image_prompt(scene: str = "camera", fmt: str = "sections") -> str:
-    """A single-frame image gen/edit prompt, in one of three formats.
-
-    `scene` selects the content from `_IMAGE_SCENES`; `fmt` selects the
-    scaffolding from `IMAGE_FORMATS`. Content and format are separate on
-    purpose -- see the ladder note above.
-
-    What every format guarantees, because these are the parts that are not
-    stylistic:
-
-    - **Every `<Picture N>` the graph wires gets a job, and only jobs the
-      graph can honour.** `check_ref_prompt_labels` fails the build otherwise,
-      in any format, and it is not waived for image graphs: naming a reference
-      that is not wired is wrong however the prompt is laid out.
-    - **A reference that supplies technique says what it does NOT supply.**
-      The official guide never writes a negative clause -- every relationship
-      there is stated as what a reference provides -- so this comes from
-      general prompting research and from the community write-ups, where the
-      reported failure is a style reference dragging its own content along.
-      Untested here, like the same technique in `_ref_prompt`'s swap arm.
-    - **Retention markers stay inside the guide's visual set**
-      (fully_preserved / partially_preserved / attribute_transfer /
-      weak_reference). `check_prompt_guide_conformance` enforces that on image
-      graphs unwaived, because a marker is vocabulary rather than structure.
-    """
-    if fmt not in IMAGE_FORMATS:
-        raise ValueError(f"unknown image prompt format {fmt!r}; "
-                         f"expected one of {IMAGE_FORMATS}")
-    if scene not in _IMAGE_SCENES:
-        raise ValueError(f"unknown image scene {scene!r}; "
-                         f"expected one of {tuple(_IMAGE_SCENES)}")
-    s = _IMAGE_SCENES[scene]
-
-    # `reference generation` and nothing else, from guide section 3.2. The
-    # other five types describe relationships a still frame cannot stand in:
-    # there is no source video to edit or continue, no audio to reuse or
-    # reference, and a reference here is guidance rather than a frame anchor
-    # of the target, which is what `keyframe completion` means.
-    summary = "[reference generation] " + s["summary"] + "."
-
-    if fmt == "flat":
-        # One paragraph, no headers, no shot marker. The community's post-1
-        # form and this repo's previous shipped form. Same sentences as the
-        # structured arms, so the only variable is the scaffolding.
-        #
-        # **The retention markers become English here, and that is on
-        # purpose.** Leaving `attribute_transfer - ...` sitting mid-paragraph
-        # would produce a form nobody writes, and an arm nobody would write is
-        # a strawman: if it rendered worse, "the structure wins" and "loose
-        # vocabulary tokens are noise" would be indistinguishable. So this rung
-        # removes the guide's formal apparatus as a UNIT -- headers, shot
-        # marker and marker vocabulary -- which is the thing actually in
-        # question, and keeps every clause's content word for word.
-        return " ".join([
-            "Task: reference-guided single-image edit.",
-            *s["subjects"], *[_marker_to_prose(r) for r in s["retention"]],
-            s["style"], s["body"],
-        ])
-
-    out = [
-        "subject_definitions:", *s["subjects"], "",
-        "summary:", summary, "",
-        "retention_analysis:", *s["retention"], "",
-        # Guide section 5.3 wants the style stated on its own line BEFORE
-        # [Shot 1] on the reference path, not inside it -- the opposite of the
-        # t2v rule, and the case `check_prompt_guide_conformance` reads.
-        "detailed_description:", s["style"], "[Shot 1] " + s["body"],
-    ]
-    if fmt == "av":
-        # The arm. "N/A" is the guide's own value for an absent layer, so this
-        # is the most conformant thing a graph with no audio decoder can say
-        # -- which is exactly the question: does carrying the sections at all
-        # cost anything on a still?
-        out += ["", "overall_soundscape:", "N/A",
-                "", "non_diegetic_music:", "N/A"]
-    return "\n".join(out)
-
-
-def _note_image_scene(what: str, watch: str) -> str:
-    """Note for a canonical image graph: what it asks for, what to look at."""
-    return f"""\
-## Single-frame image edit: {what}
-
-One frame, so this is an image editor rather than a video render. The path,
-the VAE and the shim it rests on are documented once in `h3_image_edit.json`
-and in `docs/h3_image_editing.md`; this note is only about this scene.
-
-**References, and their jobs.** Every `<Picture N>` this graph wires is given
-an explicit role in `subject_definitions`, and the ones that supply technique
-rather than content also say what they do *not* supply. An unassigned
-reference still costs its rows on every sampling step and the model has to
-guess what it was for.
-
-**What to look at:** {watch}
-
-**The prompt format is the four visual guide sections**, not the six. The two
-audio ones describe a track this graph has no decoder for. Whether that is the
-right call is what `h3_image_probe_format_av.json` exists to answer -- render
-that and this one's twin scene together before assuming either way.
-"""
-
-
-def _image_graphs() -> tuple:
-    """The `GRAPHS` rows for the single-frame image path.
-
-    Kept as a function rather than inlined so the scene table stays the one
-    place a scene is described: a row here is a filename, a scene name and a
-    format, and everything about what the render CONTAINS lives in
-    `_IMAGE_SCENES`.
-    """
-    def scene(fname, label, scene_name, note, *, fmt="sections", extra=None):
-        s = _IMAGE_SCENES[scene_name]
-        # `extra` OVERRIDES rather than adds. It was a merge until 2026-08-22,
-        # which meant a scene could not restate a key IMAGE_EDIT_BUDGET
-        # already set -- `dict(**a, **b)` raises on a collision, so the only
-        # way to change the canvas for one scene was to change it for all of
-        # them. No caller relied on the old behaviour; a collision could not
-        # have shipped, it would have crashed the build.
-        spec = dict(single_frame=True, length=1, ref_images=s["refs"],
-                    **IMAGE_EDIT_BUDGET,
-                    out_prefix=f"Image/{fname.removesuffix('.json')}",
-                    variant_note=note)
-        spec.update(extra or {})
-        return (fname, label, "r2v", _image_prompt(scene_name, fmt), spec,
-                f"{len(s['refs'])} reference image(s) -> ONE image: "
-                f"{scene_name}, {fmt} prompt")
-
-    return (
-        # The canonical graph, and the one carrying the long note about the
-        # path itself. Its scene is a camera move because that is the one
-        # thing this reference cannot already satisfy -- the version before it
-        # asked to age a man well past 70 to 60, which rendered, looked like a
-        # working edit, and proved only that the pipeline runs.
-        scene("h3_image_edit.json", "r2i", "camera", _NOTE_IMAGE_EDIT),
-
-        scene("h3_image_style.json", "r2i-style", "style",
-              _note_image_scene(
-                  "a style reference that must not bring its own content",
-                  "whether the drawing technique of <Picture 2> arrives "
-                  "WITHOUT its cottage and woodland. That is the whole test: "
-                  "a style reference read as content is the most common "
-                  "multi-reference failure, and here it is unmissable. Then "
-                  "whether the likeness in <Picture 1> survives the medium "
-                  "change, and whether any region stays photographic.")),
-
-        scene("h3_image_composite.json", "r2i-composite", "composite",
-              _note_image_scene(
-                  "one identity relit into a different environment",
-                  "the contact shadow and the light direction, before the "
-                  "face. A composite fails as a CUTOUT long before it fails "
-                  "as a likeness: correct pixels, studio lighting still on "
-                  "them, no shadow where the feet meet the ground. The prompt "
-                  "asks for the studio illumination not to survive, which is "
-                  "a harder request than it reads as.")),
-
-        # The image-path twin of h3_ref_video_swap, and the only graph here
-        # that swaps TWO identities at once. Render it before spending a
-        # video arm on the two-identity case: same question, seconds instead
-        # of minutes.
-        scene("h3_image_swap.json", "r2i-swap", "swap",
-              # The ONLY image scene whose canvas is not the shared 2:3
-              # portrait, and the reason is structural rather than taste: the
-              # prompt promises the plate's framing survives, and a portrait
-              # output cannot hold a 16:9 plate's framing however the model
-              # tries. `ASPECTS["16x9"]` is 1.75 against the plate's 1.79 --
-              # close, not equal, and the small recompose that implies is a
-              # known cost of the scene rather than a swap failure. Read the
-              # edges before reading the faces.
-              extra=dict(zip(("width", "height"), ASPECTS["16x9"])),
-              note=_note_image_scene(
-                  "two identities replaced inside one plate",
-                  "whether each face lands on the RIGHT person. A swap that "
-                  "happens on one of the two, or blends the pair, is the "
-                  "reported failure and it is unmissable here -- both "
-                  "originals are young and dark-haired and neither "
-                  "replacement is. Then whether the plate survives: the "
-                  "couch, the window light, the two outfits and the objects "
-                  "on the glass table have to come through untouched, since "
-                  "a swap that also redecorates the room has not done the "
-                  "job asked of it.")),
-
-        scene("h3_image_multiperson.json", "r2i-multiperson", "multiperson",
-              _note_image_scene(
-                  "two identities in one frame, plus a place",
-                  "whether the two faces stay two people. 2026-08-16 measured "
-                  "four and six references composing cleanly on this path, so "
-                  "the cost side is answered and the open question is "
-                  "attribution -- does the prompt still control WHICH person "
-                  "is which once there are two of them. Watch for features of "
-                  "one appearing on the other, and for a third person.")),
-
-        scene("h3_image_recolor.json", "r2i-recolor", "recolor",
-              _note_image_scene(
-                  "changing exactly two attributes and nothing else",
-                  "everything that was NOT asked to change. The named edit "
-                  "(skin, hair) is the easy half; the test is whether the "
-                  "crop, expression, gaze, clothing colour, folds and "
-                  "background all survive it. Edit models drift wardrobe "
-                  "while nobody is looking at the wardrobe.")),
-
-        scene("h3_image_sheet.json", "r2i-sheet", "sheet",
-              _note_image_scene(
-                  "three consistent views from one",
-                  "the rear view, which is the only one with no source "
-                  "pixels behind it. Hair, collar and footwear there have to "
-                  "FOLLOW from the front view rather than be invented, and "
-                  "that is the geometric consistency a video model should be "
-                  "structurally better at than an image editor.")),
-
-        # --- the format ladder --------------------------------------------
-        #
-        # Both arms are the `style` scene, so their twin is
-        # `h3_image_style.json` and the ONLY difference is the scaffolding --
-        # the sentences are generated from one scene entry for all three. See
-        # the ladder note above `IMAGE_FORMATS`.
-        #
-        # `style` rather than `camera` because it is the scene where the
-        # reference roles carry the most weight: one reference supplies
-        # identity, the other supplies technique and is explicitly told it
-        # supplies nothing else. If structure helps anywhere, it helps here.
-        scene("h3_image_probe_format_av.json", "r2i-fmt-av", "style",
-              _probe_note(
-                  "whether the two audio sections cost anything on a still",
-                  "h3_image_style.json",
-                  "all six guide sections instead of four, with "
-                  "`overall_soundscape` and `non_diegetic_music` present and "
-                  "set to the guide's own `N/A`. Same scene, same references, "
-                  "same seed.",
-                  "the image, against its twin. There is no audio to judge -- "
-                  "this graph has no `VAEDecodeAudio` at all -- so the "
-                  "question is purely whether carrying two more section "
-                  "headers changes what gets drawn.",
-                  "no visible difference, which is the useful outcome: it "
-                  "would mean the four-section default is free of risk and "
-                  "the shorter prompt is simply cheaper. A visible difference "
-                  "is the more interesting result and would mean conditioning "
-                  "on section headers reaches the image, which nothing here "
-                  "has ever shown.",
-                  held="same scene, same references, same canvas"),
-              fmt="av"),
-
-        scene("h3_image_probe_format_flat.json", "r2i-fmt-flat", "style",
-              _probe_note(
-                  "whether the guide structure earns its tokens on a still",
-                  "h3_image_style.json",
-                  "one unbroken paragraph: no section headers, no `[Shot 1]`, "
-                  "the same sentences in the same order. This is the form the "
-                  "community's first write-up used and the form this repo "
-                  "shipped until 2026-08-16.",
-                  "whether the roles still bind. The structured twin states "
-                  "`attribute_transfer` on the style reference in its own "
-                  "section; here the same clause is mid-paragraph. If "
-                  "structure matters, this is where the cottage shows up.",
-                  "genuinely open, and it is the reason this arm exists. The "
-                  "author of the write-up switched from this form to the "
-                  "structured one between their two posts, which is a "
-                  "practitioner's revealed preference and not a controlled "
-                  "comparison -- neither post held the scene or the "
-                  "references fixed. This pair does.",
-                  held="same scene, same references, same canvas"),
-              fmt="flat"),
-    )
-
-
-_NOTE_AUDIO_FREEZE = """\
-## A frozen audio track: the video is generated against it
-
-`MiniMaxH3FreezeAudio` sits between the preflight and the sampler. It cuts
-one window of the loaded track onto H3's audio latent grid, encodes it with
-the audio VAE, writes it into the target audio rows, and attaches a nested
-noise mask: video generated, audio frozen. Core's own masked path then
-re-injects the clean audio every step and labels those rows with the
-conditioning timestep, so the video is denoised in the presence of a track
-the model did not generate. `docs/h3_audio_freeze.md` is the lane.
-
-**Mux the node's `clip_audio`, never a decoded audio stream.** The latent is a
-control signal and the audio VAE round trip is lossy; this graph has no audio
-decoder for that reason. The muxed track is the node's exact slice, at the
-VAE's rate.
-
-**Knobs.** `start_seconds` is where in the track the window begins, snapped to
-the latent grid; for a loop it advances by the window minus the context each
-pass. `audio_mask` 0.0 is the hard freeze. A small value above zero lets the
-model own the audio rows a little, which the lane doc lists as worth a ladder;
-values within 0.001 of 1.0 are dropped by core and mean no freeze.
-
-**Do not add a stock `Set Latent Noise Mask` anywhere on this graph.** It
-stores a flat mask; the sampler then pads a ones mask for the audio stream and
-the track regenerates silently. The node refuses a flat mask on its input for
-the same reason.
-
-**Prompt.** The shipped t2v scene is carried here so the graph stays inside the
-prompt bank; it does not describe the placeholder track. Prompting the audio
-as it actually is (music, dialogue, transcript or not) is the lane's step 2,
-and the dialogue case is idea 4 there.
-
-**Length.** The graph renders at the long default, which lands on both the
-video run grid and the 40 Hz audio grid; the trained ceiling does not.
-"""
-
-_NOTE_SONG = """\
-## A whole track from one node
-
-`MiniMax H3 Audio Freeze Song` plans the windows from the track's length
-(`window_frames` long, `context_frames` of the previous window frozen at
-each head, the last window the smallest length on both clocks that reaches
-the end), encodes the track and every distinct prompt once before anything
-samples, and renders the windows one after another inside itself: the
-track's slice frozen in each window's audio rows, the previous window's tail
-frozen as context, its new frames written to `<prefix>_windows/` at once. At
-the end the files are joined without re-encoding and the full track muxed
-over them. Nothing holds more than one window of frames, so the track's
-length is not a memory question.
-
-**Prompt.** One block for every window, or blocks separated by a line of
-`---`: `cycle` uses them in order (the last repeating), `uniform` uses the
-first everywhere, `random` draws one per window from the seed. A block may
-start with `frames: N` to set that window's length (141, 192, 243, 294 or
-345). Each distinct block is encoded once, however many windows use it.
-
-**References.** Wire an Append Ref Image chain to `references` and every
-window's prompt is presented with those stills, encoded once per distinct
-prompt. Write the prompt in the reference format, naming each still as
-`<Picture N>`.
-
-**Lists.** Write `__name__` in the prompt and chain a Prompt List node of
-that name into `lists`: each window that uses the name takes the list's next
-value, and a list uses every value once before any repeats unless its order is
-`random`. Values are typed on the node or read from a `.txt` or `.json` in the
-`wildcards` folder under ComfyUI's input directory; a name with no list node is
-read from `name.txt` there. Each list's seed stays fixed, so resume keeps the
-windows whose filled-in text did not change.
-
-**`extent`** is the whole track, or its first N seconds; the shipped graph
-takes the quick look. The seed advances by one per window.
-
-**Files.** The finished `<prefix>_NNNNN.mp4` carries the prompt and the
-workflow; `save_metadata_png` also writes its first frame as a PNG carrying
-the same, which loads back into ComfyUI. Window files stay in
-`<prefix>_windows/`, each video with the latent beside it, and the next run of
-the graph overwrites them; `keep_windows` off removes this run's after the
-join.
-
-**Resume.** A run reuses the stored windows whose inputs have not changed, in
-order, and renders from the first that has: edit a later prompt block, or go
-from the first N seconds to the whole track, and the earlier windows are kept.
-The seed stays fixed after each queue so a re-queue can reuse; change it for a
-new render. `reuse_windows` off renders everything, which is what to do after
-replacing a model, LoRA or reference file under the same name.
-
-**Cost.** Attention is quadratic in a window's packed sequence
-(`bench/preflight_graph.py` prices one), so shorter windows are cheaper per
-second of song, at the price of more seams; reference stills add rows to
-every window. Sage and Sol on the model apply inside each window as on any
-graph.
-
-The encode-first order, references, the window folder and resume are new
-on 2026-09-14: treat the first run as a throwaway and read the report.
-`docs/h3_audio_freeze.md`.
-"""
-
-_NOTE_TURBO_PACK = """\
-## A different turbo LoRA, and a different loader on purpose
-
-Read against `h3_probe_ref2v_turbo.json`. Same task, same references, same
-seed. The variable is which turbo LoRA, and it is not a small one.
-
-**Measured from the safetensors headers, not argued:**
-
-| LoRA | modules | touches | rank |
-|---|---|---|---|
-| official fl2v 8-step | 208 | `qkv_proj`, `out_proj`, `fc1`, `fc2` | 128 / 384 |
-| this one (v4 600 ema) | **259** | those **plus 51 `adaln_proj.linear`** | 64, adaln at **16** |
-
-Those 51 extra modules are the 50 per-block `adaln_proj` and
-`final_layer.adaln_proj` -- the conditioning-modulation path, which the
-official LoRA leaves untouched and this one adapts at a deliberately
-separate low rank. (Until 2026-08-20 this note called that path "the place
-fl2va and ref2va differ MOST"; withdrawn, the figure behind it compared
-curve-form coefficients on differently-signed bases. At the modulation
-output the parents differ by a few percent there, as they do everywhere.)
-
-**Why the pack's own two nodes instead of `LoraLoaderModelOnly`.** Our base is
-*pruned*. This LoRA's time conditioning has to be re-injected at run time from
-a `silu(t_emb)` grid the pack ships. The stock loader applies the weights,
-silently skips that, and reports nothing -- a wrong render, not an error.
-
-**`low_vram` is off, and that is deliberate.** On it merges the LoRA into the
-weights for a lower peak; its README says merging comes out softer on
-quantized bases, and ours is int8 *and* pruned, so we would pay that twice.
-It is the dial to reach for on an OOM, not before.
-
-**What this arm is not.** The pack's README claims t2v and i2v and never
-mentions ref2va. Running it here is our experiment; a poor result is evidence
-about an unsupported combination, not a defect in the LoRA."""
-
-
-_NOTE_TURBO_PACK_SPLIT = """\
-## Base first, distill last -- the variant with an actual prior behind it
-
-Two stages off one `SplitSigmas`: the base checkpoint runs the opening steps,
-the turbo LoRA finishes. Its twin is `h3_probe_ref2v_turbo_pack.json`, the
-same LoRA with no split.
-
-**The reason to expect this to help is specific.** What diverges between fl2va
-and ref2va is concentrated in the conditioning-modulation path -- the
-`adaln_proj` family -- and conditioning binds hardest in the EARLY steps,
-while composition and identity are still being decided. Late steps are mostly
-refinement. So spend undistilled steps where the references are established
-and distilled steps where they are only being sharpened.
-
-If that story is right, this arm keeps reference blending that the
-single-stage distill loses, at most of the speed. If the single-stage arm
-already blends fine, this one costs time for nothing and the story was wrong.
-Both outcomes are worth knowing and neither is readable from one arm alone.
-
-**Watch the audio.** Its README calls audio the weaker axis at low step
-counts, and these arms carry a `fully_copy` reference track, so a distilled
-tail is exactly where lip-sync and continuity would break first."""
-
-
-def _note_ref_relationship(role: str) -> str:
-    what = {
-        "swap": ("replacing a character in a source video", """\
-**This is the only swap prompt left, and two others were rendered against it
-and retired on 2026-08-22.** An imperative arm carried from a community
-write-up, and a concise one-paragraph twin written here. The concise arm is
-the one that settles the format question this graph used to be half of: the
-owner judged it **broken speech, gibberish, 3 of 3** at the shipped canvas and
-length on matched seeds, and the log-mel measure ordered it the same way
-without hearing anything -- bad in the FIRST third on two of three seeds,
-where this arm starts at 0.589-0.704. `bench/results/2026-08-22_swap_prompt_verdict_362.json`
-holds the numbers.
-
-**What that does NOT establish is that the six sections are the cause.** This
-prompt differs from the retired one in structure AND length AND whether the
-soundtrack is stated as an `<Audio 1>: fully_copy` retention line or as prose.
-Three variables moved together and the separating arm was never rendered.
-
-**A separate problem is open and is not about the prompt.** This arm drifts in
-the last third of a 15.083s render -- 0.704/0.647/0.481 at its best seed,
-0.688/0.537/0.017 at its worst -- because a 19.56s source is cut mid-delivery
-and 362 frames is the trained ceiling. See the reference-video note below.
-
-This is the **character swap** arm: the video is the *plate* and the image is
-the *new identity*. Read it against `h3_ref_video_image_edit`, which is the
-same machinery pointed at a different question -- there the person in
-`<Video 1>` stays and their garment changes; here the person is the only
-thing that changes and everything around them must not.
-
-**Its distinguishing feature is a technique the official guide does not
-contain.** `<Picture 1>` and `<Video 1>` are each told what they do *not*
-supply:
-
-```
-<Picture 1> supplies subject identity only. It does not supply lighting,
-    exposure, colour grade, background, camera angle, pose, framing, or
-    scene composition.
-<Video 1> ... It does not supply the face or identity.
-```
-
-The guide never writes a negative clause -- every relationship there is
-stated as what a reference *provides*. These come from general prompting
-research, where the reported failure is the model blending the two
-identities, or dragging the image's own lighting and background into the
-plate. **Whether the negatives earn their tokens is untested here**, and it
-is the reason this arm exists rather than a claim it ships with.
-
-`[video editing]`, not `[reference generation]`, because the source video is
-directly modified -- and `+ audio reuse` alongside it, since the original
-track stays audible. Community write-ups of this scenario routinely stop at
-a bare `[video editing]`; guide section 3.2 asks for both.
-
-**A reference image that is too small, or a face too far from the camera,
-is the failure mode to rule out first.** The identity has to survive being
-resized into the reference budget before any of the wording above matters."""),
-        "edit": ("editing a source video", """\
-This is the **edit / "inpaint over it"** arm, and the first thing to know is
-that H3's reference node has **no mask socket**. The edit is whole-frame
-regeneration conditioned on the source, not a painted region. What holds the
-untouched parts still is `retention_analysis` saying precisely what survives:
-
-```
-<Video 1> (source video for the edit): partially_preserved - framing, camera
-    movement, and shot timing are kept; only what is named above changes.
-<Subject 1> ...: partially_preserved - face, build, posture, and motion are
-    retained from <Video 1>; the garment changes.
-<Subject 2> ...: attribute_transfer - the red jacket replaces the original
-    garment on <Subject 1>.
-```
-
-`partially_preserved` is the marker that means "keep this, except". Using
-`fully_preserved` here asks for a copy and gives the edit nowhere to happen;
-using `weak_reference` throws away the framing you are trying to keep."""),
-        "continue": ("continuing from the end of a source video", """\
-The **continuation / extend** arm. `<Video 1>` is a starting state rather than
-a thing to copy, so the marker is `partially_preserved` on the continuation
-relationship and the shot text says plainly that it begins where the source
-ends, without a cut.
-
-Worth knowing about the geometry: the reference video is truncated to the
-GENERATED frame count and snapped down to the 17n+5 grid, so a continuation is
-conditioned on at most as many frames as it will produce. A long source does
-not buy a longer run-up."""),
-        "motion": ("transferring motion onto a different subject", """\
-The **motion transfer** arm, and the one that uses a mechanism the others do
-not. Motion does not ride on `<Video N>`: guide section 2.1 defines ONE subject
-from TWO assets, naming what each provides.
-
-```
-<Subject 1> is the person whose appearance comes from <Picture 1> and whose
-    walking motion comes from <Video 1>.
-<Subject 1> ...: attribute_transfer - the gait and timing of <Video 1> are
-    transferred to the person in <Picture 1>.
-```
-
-`attribute_transfer` is defined as "referenced characteristics are transferred
-to a different identifiable target subject", which is exactly this. The video's
-own scene is explicitly NOT reused, and the definition says so, because
-otherwise the model has two competing environments."""),
-        "voice": ("referencing a speaker's voice", """\
-The **voice timbre** arm. Section 2.4 lists voice as an audio reference use and
-requires the target speaker's **global speaker id** in the definition:
-
-```
-<Audio 1> is the voice-timbre reference for <Subject 1> (S1).
-```
-
-The id comes from the target video's speaker order and is not renumbered for
-the audio. The marker is `reference`, from the AUDIO set -- the signal is not
-copied, only timbre and delivery. `fully_copy` would ask for the source
-waveform itself, which is a different request.
-
-This is the only arm here that puts a spoken line in `overall_soundscape`, so
-it is also the only one testing whether the referenced timbre survives into
-generated speech."""),
-    }[role]
-    return f"""\
-## Reference relationship: {what[0]}
-
-The five socket-combination arms all ask for the same weak thing -- pacing at
-`weak_reference` -- because which sockets are wired is mechanical. **What the
-prompt asks those labels to do is the axis that changes the output**, and this
-arm isolates one point on it.
-
-{what[1]}
-
-## Markers do not cross sets
-
-Visual labels take `fully_preserved`, `partially_preserved`,
-`attribute_transfer`, `weak_reference` (guide 4.1). Audio labels take
-`fully_copy`, `partially_copy`, `reference`, `weak_reference` (4.2). Only
-`weak_reference` appears in both. `bench/check_ref_prompt_labels.py` checks the
-labels exist; it does NOT check you picked a sensible marker, so that part is
-on the reader.
-
-See `docs/h3_references.md` for the full reference-type reference.
-"""
-
-
-def _note_ref_matrix(what: str) -> str:
-    return f"""\
-## Reference matrix arm: {what}
-
-One of five graphs that differ only in **which typed references are appended**.
-Run them against each other; everything else -- seed, prompt skeleton, canvas,
-length, sampler, attention chain -- is shared by construction.
-
-| graph | images | video | its soundtrack | standalone audio |
-|---|---|---|---|---|
-| `h3_ref_video_only` | | yes | | |
-| `h3_ref_video_audio` | | yes | yes | |
-| `h3_ref_image_audio` | yes | | | yes |
-| `h3_ref_video_to_video` | yes | yes | yes | |
-| `h3_ref_image_video_audio` | yes | yes | yes | yes |
-
-**The prompt in each one declares exactly the labels that graph wires**, and
-`bench/check_ref_prompt_labels.py` fails the build if that stops being true.
-The numbering is the tokenizer's, not a convention. The typed surface permits
-arbitrary list order; this generator deliberately preserves the legacy order:
-images, then videos with each owned soundtrack's `<Audio j>` immediately BEFORE
-its `<Video k>`, then standalone audio, with a separate 1-based counter per type.
-So in the all-types arm the soundtrack is `<Audio 1>` and the standalone clip
-is `<Audio 2>`, while the video is `<Video 1>` in every arm that has one.
-
-**A silent clip cannot have a soundtrack pulled.** VHS raises
-"failed to extract audio" when its audio output is pulled on a video with no
-audio stream, and the render dies at execution having validated cleanly. The
-video-only arm therefore loads a different, silent clip and leaves the append
-node's soundtrack
-alone.
-
-`force_rate` is {REF_VIDEO_FORCE_RATE:g} on every arm that loads a video. See
-`h3_ref_video_to_video.json` for why that is not optional.
-"""
-
-
-_NOTE_REF_VIDEO = f"""\
-## The first graph here that wires a reference video
-
-Everything this repo knew about reference video before 2026-08-13 was read off
-source and never executed. This graph is what executing it looks like.
-
-## force_rate is 24, and it is not optional
-
-The native `ref_videos.ref_video_0` socket takes an **IMAGE batch**, not a
-VIDEO. Native ComfyUI has **no fps input at all** and assumes 24 twice over:
-once for the DiT's
-temporal clock, and once for the `<T.T seconds>` labels the conditioner reads
-off the 2 fps subsample. The reference pipeline instead resamples onto 24 from
-the rate the container reports, and diffusers' own docstring flags the hazard
-in as many words -- a video whose real rate is lost on the way in is
-conditioned at the wrong speed, silently.
-
-**Measured**, on three 6.00-second clips trimmed to differ only in frame rate,
-with `force_rate=0` against `force_rate={REF_VIDEO_FORCE_RATE:g}`:
-
-| source | frames handed over | snapped to 17n+5 | H3 reads it as | error | last label |
-|---|---|---|---|---|---|
-| 24 fps | 144 | 141 | 5.875s | 0.0% | `<5.2 seconds>` |
-| 25 fps | 150 | 141 | 5.875s | **+4.2%** | `<5.2 seconds>` |
-| 30 fps | 180 | 175 | **7.292s** | **+25.0%** | `<7.0 seconds>` |
-
-At 30 fps the model is told a six-second reference is seven and a quarter
-seconds of action, and the conditioner's final timestamp says
-`<7.0 seconds>` where it should say `<5.2 seconds>`. **A 24 fps source is
-unaffected either way**, which is exactly why testing on one proves nothing.
-
-This repo's `MiniMaxH3AppendRefVideo` also owns `VHS_VIDEOINFO` and normalizes
-from its `loaded_fps`. Shipped graphs still hold `force_rate=24` so the clock
-policy did not change in the ordering migration; `bench/check_ref_prompt_labels.py`
-fails the build if a shipped reference-video loader drops it.
-
-## What it costs, and why the video path has no upscale knob
-
-Reference rows ride every sampling step exactly as video rows do. A five-second
-reference at the full 1344x768 canvas is **+32,256 rows**, taking the sequence
-from 38,222 to 70,478 -- 1.84x, and attention goes as the square, so roughly
-3.4x the attention work. A `max` image reference is +7,168 by comparison.
-
-Budget references by pixel area, not by count: the same clip at 640x360 costs
-+7,040.
-
-The image path carries `allow_upscale` on its append node because ComfyUI
-clamps image references with `min(1.0, 2048/short_edge)` where the reference
-pipeline has no clamp. **The video path has the same class of divergence** --
-ComfyUI refuses to upscale a reference video, the reference puts it on the full
-canvas rule -- and deliberately has no knob closing it. Closing it costs 5x what the
-image one does, and nothing has measured whether it buys anything.
-
-## Two more divergences to know about
-
-- **Native reference audio is not truncated.** The reference cuts a soundtrack
-  to the generated duration; core encodes the whole waveform, at 80 rows per
-  unwanted second. This repo's typed conditioner caps owned and standalone
-  audio internally; that handles shipped graphs, not native ComfyUI generally.
-- **The frame count snaps DOWN** to the 17n+5 grid after being truncated to the
-  generated length, and fewer than 5 frames raises.
-
-## Labels
-
-`<Video k>` and `<Audio j>` are numbered independently, and an owned
-soundtrack's `<Audio j>` is emitted immediately BEFORE its `<Video k>`. One
-video with sound therefore reads as `<Audio 1>` then `<Video 1>`. Images are
-`<Picture i>`. This generated graph appends its images first.
-
-**The shipped clip has an audio track**, owned by its video append record, so
-the prompt declares `<Audio 1>`. Swap in a silent clip and remove both the
-soundtrack link and those prompt lines. Section 4.2's `<Audio N>` markers are a
-different set from the visual ones:
-
-```
-subject_definitions:
-<Audio 1> is the synchronized audio track of <Video 1> and is reused in the target video.
-
-retention_analysis:
-<Audio 1>: fully_copy - <Audio 1> is reused 1:1 as the target video's complete final audio track.
-```
-
-Valid audio markers are `fully_copy`, `partially_copy`, `reference` and
-`weak_reference`. Valid visual markers are `fully_preserved`,
-`partially_preserved`, `attribute_transfer` and `weak_reference`. They do not
-interchange.
-
-Limits diffusers enforces and ComfyUI, sglang, and this typed surface do not:
-9 images, 3 videos, 3 audios, **12 references total**, and an audio reference
-may never appear without an image or video.
-"""
-
-
-def _note_split(base_last: bool) -> str:
-    order = ("distilled student on the high-noise steps, plain base model on "
-             "the finish" if base_last else
-             "plain base model on the high-noise steps, distilled student on "
-             "the finish")
-    twin = ("h3_probe_split_base_first.json" if base_last
-            else "h3_probe_split_base_last.json")
-    why = ("""**Why this ordering.** The distilled student's measured deficit is
-high-frequency detail, and high-frequency detail is resolved at low sigma. So
-putting the student on the *finishing* steps places its known weakness exactly
-where a reference-heavy or identity-heavy render needs the most. Base-last
-spends the base model's cost where it buys most and keeps the speedup where
-the student is strong."""
-           if base_last else
-           """**Why this ordering.** This is the Krea 2 arrangement, where the
-win was seed and compositional diversity at near-turbo cost: the base model
-forms the composition in the high-noise steps and the distilled student
-delivers a fast, sharp finish. It is the right way round when the finish is
-about sharpness rather than identity.""")
-    return f"""\
-## Two-stage split: {order}
-
-One `BasicScheduler` feeds `SplitSigmas`, and both halves sample **the same
-curve**. That shared schedule is the whole precondition, and it is why both
-stages carry the same `ModelSamplingMiniMaxH3` values. Two different shifts
-would mean the two halves are integrating different curves and the handoff
-means nothing.
-
-Run this against **{twin}**, which is the same graph with the two models
-swapped.
-
-{why}
-
-## Sweep the boundary from 1, not from 3
-
-H3's schedule is far more front-loaded than the model this pattern came from.
-At video shift 12 and 8 steps the evaluation points are
-
-```
-1.0  0.9882  0.973  0.9524  0.9231  0.878  0.8  0.6316
-```
-
-Seven of the eight sit at sigma >= 0.8, and the **final interval alone covers
-the bottom 63% of the range**. Krea 2's sweet spot of k=2-3 was still at sigma
-0.84 there; here k=3 is 0.9524, barely denoised. This graph ships k={SPLIT_AT}.
-
-## Honest caveats
-
-- **Both orderings have a handoff mismatch.** A distilled student's state after
-  its steps is not on the base model's trajectory, so whichever model receives
-  the handoff gets an input whose sigma label does not match its actual noise
-  content. The reverse ordering has the same problem mirrored. Nobody has
-  measured this for H3.
-- **Two samplers are expressible here and nowhere else.** Each stage has its
-  own `KSamplerSelect`, so a multistep base stage into a first-order distilled
-  finish is one graph. At low k the base stage has no multistep history yet and
-  degenerates to euler, which is exactly where the front-loaded schedule wants
-  the boundary -- so that freedom is smallest where it is most wanted.
-- `add_noise` is not a widget in this stack. `DisableNoise` is the
-  custom-sampler spelling of it, and it is what stage 2 reads.
-"""
-
-
-
-
 # **`_NOTE_TURBO_768P` and `_NOTE_FL2V_TURBO` stood here and are deleted as of
 # 2026-08-31**, with the two `turbo_4step_768p` graphs that were their only
 # consumers (`e9098fb`). Deleted rather than moved into `docs/`, which was the
@@ -4910,1101 +3295,6 @@ the bottom 63% of the range**. Krea 2's sweet spot of k=2-3 was still at sigma
 # It does not -- it grades the same facts from its own source and never read
 # that table. A markdown table nothing can invalidate is the exact shape
 # `docs/config_drift.md` is about.
-
-
-def _note_ref_transfer(checkpoint: str, what: str) -> str:
-    return f"""\
-## Does an fl2v distill transfer to reference work, and on which weights
-
-This is `h3_probe_capture_ref3.json`'s request -- three reference images
-(character, garment, environment), one continuous shot, 1024x768 x 362 -- run
-on **{checkpoint}** with the 4-step 768p turbo LoRA at the vendor's row
-(euler, `simple`, 4 steps, shift 6/3, strength 1.0). {what}
-
-Four graphs share everything but the checkpoint: `fl2va`, the HF hybrid
-`b30-49` (fl2va with ref2va's adaln in blocks 30-49), a locally built hybrid
-with ref2va's adaln in **all** blocks and the final layer
-(`bench/build_hybrid.py`, which first reproduces the HF file byte-for-byte),
-and `ref2va` itself.
-
-**The prediction, written before the render.** The lightx2v fl2v LoRAs were
-fitted against fl2va's attention and MLP weights. Both hybrids keep those
-weights; ref2va's differ from them by about 3% relative
-(`bench/results/2026-08-20_dit_internals.json`). If the LoRA's reference
-handling holds on the hybrids and breaks on ref2va, that difference is the
-mechanism. The all-adaln hybrid adds a second question: if it transfers as
-well as ref2va does, the "adaln is the reference pathway" reading holds
-functionally; if it does not, the linears matter.
-
-**How to read it: briefs met, never clips matched.** Does the reference
-identity survive at all, per checkpoint. Single seed first; a distribution if
-the single seed separates the arms. Bench arms patch the LoRA file
-(`--set LABEL:LoraLoaderModelOnly.lora_name=...`) to run the v1.1 and SLA
-releases on the same four graphs.
-
-**Two confounds carried on purpose.** The canvas is the capture graph's
-1024x768, the configuration known to fit three references at full length and
-the one the activation captures were taken at; the LoRA's one trained shape is
-1344x768. And fl2va-family weights never saw reference rows, so a failure on
-the `fl2va` arm is informative rather than a bug.
-"""
-
-
-_NOTE_TURBO_OWNER = f"""\
-## The owner's recipe, not the vendor's row
-
-This is the **vendor row** for the 768p turbo LoRA with **two** things moved,
-all at once, to the settings the owner arrived at in their own t2v trials on
-2026-08-20: scheduler `simple` -> `{TURBO_OWNER_SCHEDULER}`, LoRA strength
-1.0 -> {TURBO_OWNER_STRENGTH:g}. The sampler was the third until 2026-08-27,
-when `{TURBO_SAMPLER}` became the default for every distilled arm and the
-baseline moved to meet this graph.
-Because two knobs move together, a difference against the vendor graph is not
-attributable to either one; this graph is a recipe, and it is judged as a
-recipe against the vendor-recipe arm in the same blind session.
-
-Two costs the recipe carries, stated up front:
-
-- **Strength below 1.0 at 4 steps under-distills.** The student was fitted at
-  1.0 on a 4-step schedule; 0.75 interpolates toward a base model that needs
-  16 steps. `docs/h3_ref2v_distillation.md` recommends strength sweeps on the
-  8-step LoRA at 6-8 steps for exactly this reason.
-- **`beta` halves Sol-Attn's sparse steps here.** Sol's window is a sigma band
-  (0.96 down to 0.40 at shift 6 with the shipped 0.2/0.9). Under `simple` 3 of
-  4 steps land inside it; under `beta` only 2 of 4, because beta's second
-  sigma is 0.966, just above the ceiling. At 6 steps it is 4/6 against 3/6.
-  So this recipe runs more of the trajectory dense than the vendor row does,
-  which is a speed cost and, for a Sol-quality question, a confound.
-
-Bench arms patch the LoRA file onto this graph (`run_graph_arms.py --set
-LABEL:LoraLoaderModelOnly.lora_name=...`) rather than shipping a row per
-file, so one graph carries the recipe and the file is the only thing that
-moves. **This paragraph argued the opposite until 2026-08-23**: it said only
-the v1.0 768p file had a vendor-attested row and that v1.1 was deliberately
-not a graph. v1.1 is now the graph -- v1.0 left this machine -- and its 6/3
-shift and 4 steps are inherited from v1.0's vendor row by filename family
-rather than attested. `bench/check_distill_settings.py::UNATTESTED` is where
-that is written down, and it fails if the vendor ever publishes the real
-row and the declaration is left standing.
-"""
-
-
-_NOTE_FL2V = f"""\
-## First and last frame, and the first in-distribution turbo arm
-
-Two keyframes into one continuous shot. `MiniMaxH3Conditioning` derives the
-canvas from the FIRST frame under `from_keyframe`, the way the release does
-(`resolve_canvas_size` on `keyframes[0]`), and cover-crops the closing frame to
-match. The `width`/`height` in this graph are the FALLBACK, and they govern
-only if you switch `canvas` to `explicit`. **Load a 3:2 still to render at
-{FL2V_CANVAS['width']}x{FL2V_CANVAS['height']}**; load something else and you
-get that image's aspect on H3's grid, which is the point of the mode.
-
-The prompt carries the FL2VA alignment sentence, which is not the I2VA one with
-a word changed: it is the only one of the three that carries no angle brackets
-and no square brackets (`base_en.md:14-32`). Its `S.SS` is derived from
-`length` by `fl2v_prompt()` rather than typed, so it cannot drift from the
-graph.
-
-**One shot, deliberately.** `base_en.md:60`: FL2VA "generally favors a single
-shot so the model can interpolate continuously from the first frame to the last",
-and multiple shots are for when they are explicitly specified.
-"""
-
-
-
-_NOTE_REF2V_TURBO = f"""\
-## Deliberately out of distribution
-
-This is `h3_image_ref_plus_text_to_video.json` with an **fl2v** turbo LoRA
-loaded onto the **ref2va** checkpoint. That pairing is not supported and is
-not meant to be: all three released turbo LoRAs are `fl2v`, and the vendor
-lists ref2v distillation as unshipped future work.
-
-It is here because how it fails is informative, and because the failure is
-silent. The two checkpoints have **identical tensor key sets**, so the LoRA
-applies with zero unmatched keys and no warning.
-
-**What the numbers say to expect** (see `docs/h3_ref2v_distillation.md`):
-
-- ref2v is a separate `transformer_ref` partition measuring **4.2%** relative
-  Frobenius from fl2va. The whole 8-step turbo LoRA measures **0.036%**. The
-  distillation target moved about 120x further than the adapter reaches.
-- The LoRA touches only `attn.qkv_proj`, `attn.out_proj`, `mlp.fc1` and
-  `mlp.fc2`. It does **not** touch `final_layer`, `adaln_proj`, the norms or
-  the patch projections. (A claim that those are "where the two checkpoints
-  differ most" was withdrawn 2026-08-20; they differ by a few percent there,
-  as the linears do.) So expect degradation, not garbage. NaN or noise means
-  a wiring error, not this.
-- fl2v conditioning sits at the target's own rotary coordinates; a reference
-  does not, and pushes the target's origin by 1 to 1206 units.
-
-**Look for identity drift, not collapse.** The subject stays the right kind of
-thing in roughly the right clothes; what goes is the specific face, the
-hairline, logo text, fabric weave. Compare a still against the reference at
-100%.
-
-**The diagnostic test:** re-run with the reference order reversed. If the same
-reference behaves differently at slot 1 than at the end, that is the rotary
-coupling rather than generic quality loss -- fl2v cannot produce that
-signature.
-
-**Knobs, in order of expected payoff.** Lower the LoRA strength first: {TURBO_LORA_STRENGTH:g}
-is shipped here, and public in-distribution evaluation needed 0.75 even on the
-model the LoRA was trained for. Use **0.01, not 0.0**, as the control -- 0.0
-short-circuits the dequantise/add/requantise round trip entirely and is not a
-like-for-like baseline. Then try a two-stage split, and note the ordering:
-**base-last**, not base-first. The distilled student's measured weakness is
-high-frequency detail, resolved at low sigma, and high-frequency identity is
-the entire point of a reference. **Leave the shift at 12/3.**
-"""
-
-
-_NOTE_TURBO = f"""\
-## Turbo LoRA: what the training resolution means
-
-This graph loads the **8-step v1.0** LoRA at {TURBO_STEPS} steps, shift
-{TURBO_SHIFT["shift_video"]:g}/{TURBO_SHIFT["shift_audio"]:g}.
-
-| LoRA | trained at | shift (v/a) | steps |
-|---|---|---|---|
-| 4-step v0.1 | 544p, **mixed aspect** | 12 / 3 | 4 |
-| 8-step v1.0 (this graph) | 544p, **mixed aspect** | 12 / 3 | 8 or 4 |
-| {turbo_label(TURBO_768P_LORA)} | **1344x768** | **6** / 3 | {TURBO_768P_DISTILLED_STEPS} distilled, {TURBO_768P_STEPS} rendered |
-| ref2v 4-step v0.1 | 544p, **mixed aspect** | 12 / 3 | 4 |
-| 4-step v0.1 768p SLA | **1344x768** | **6** / 3 | 4 |
-
-**Two things move with the LoRA, and only one of them is the shift.** Steps
-always move: 16 is a base-model number. The shift moves only for the 768p
-ones, which were distilled at video shift 6. The 544p ones were distilled at
-12/3, which is already the default, so for them the shift node stays put.
-Changing one without the other is not a partial fix.
-
-## The resolution question
-
-A step-distillation LoRA learns to take bigger jumps along the schedule *at
-the token count it saw*. 544p and 768p are roughly a factor of two apart in
-tokens, so a 544p LoRA rendering at 1344x768 is working at about twice the
-sequence length it was distilled on.
-
-**You cannot satisfy both distributions at once, and that is the real
-choice here.** MiniMax H3's own canvas rule is a 768 short edge with a
-1344x768 area cap: that is what `adapt_canvas` enforces and what the
-reference generates. 544p is below it. So:
-
-- Render at **1344x768** and the base model is in its trained canvas while
-  the 544p LoRA is off its distillation resolution.
-- Render at **544p** and the LoRA is home while the base model is outside
-  the canvas family it was trained on. Nothing stops you: the width and
-  height on the conditioning node are plain ints at 32-px steps, so 544p is
-  typeable. `MiniMaxH3KeyframeCanvas` is the node that refuses, which is why
-  this graph is t2v.
-
-**Which one costs less is not measured here.** Do not assume the LoRA's
-resolution wins just because the LoRA is the thing you added.
-
-**The {turbo_label(TURBO_768P_LORA)} is the only one with no resolution gap at this
-canvas** -- it was distilled at exactly 1344x768. The trade is aspect: it saw
-that one shape, where **both** 544p LoRAs (v0.1 and the 8-step v1.0 this
-graph loads) saw mixed aspect ratios. So render 1:1 or 9:16 and the 768p LoRA
-becomes the off-distribution one while this graph's LoRA is at home on shape
-and away on resolution. Neither is free; they are away in different
-directions. `h3_probe_turbo_768p_owner.json` is the sibling to compare
-against -- it runs the 768p LoRA at its own shift and step count.
-
-Specs from `coderef/Minimax-H3-Turbo`, README model table.
-"""
-
-
-
-
-def _plain_chain_ui(g, unet_node, *, sh, sage, sol, head_chunks,
-                    sol_enabled=True):
-    """The UI twin of `_plain_model_chain`: a second model path, no LoRA.
-
-    Same UNETLoader, same shift, same attention chain. The shift MUST match
-    stage 1's: both halves read sigmas from one `BasicScheduler`, so two
-    different shifts would have them integrating different curves and the
-    handoff would mean nothing.
-    """
-    src = g.add("MiniMaxH3SigmaShift", (-1500, 900), size=(360, 110),
-                widgets=[sh["shift_video"], sh["shift_audio"]],
-                inputs=[_in("model", "MODEL")], outputs=[_out("MODEL", "MODEL")],
-                title="Sigma shift (stage 2, must match stage 1)")
-    g.link(unet_node, 0, src, "model", "MODEL")
-    if sage:
-        node = g.add("MiniMaxH3SageAttention", (-880, 900), size=(360, 110),
-                     widgets=[SAGE_NODE["mode"], SAGE_NODE["patch_token_refiner"],
-                              SAGE_NODE["head_chunks"] if head_chunks is None
-                              else head_chunks],
-                     inputs=[_in("model", "MODEL")], outputs=[_out("MODEL", "MODEL")])
-        g.link(src, 0, node, "model", "MODEL")
-        src = node
-    if sol is not None:
-        node = g.add(SOL_NODE, (-880, 1040), size=(360, 330),
-                     widgets=_sol_widgets(sol),
-                     # `tau_profile` is no longer a top-level socket: the v3
-                     # node moved it inside the "adaptive tau" option, where
-                     # the frontend names it `selection.tau_profile`. It is
-                     # unwired in every graph here, so it is dropped rather
-                     # than renamed to a socket nothing connects.
-                     inputs=[_in("model", "MODEL")],
-                     outputs=[_out("MODEL", "MODEL")],
-                     title=("Patch Sol-Attn (stage 2)" if sol_enabled
-                            else "Patch Sol-Attn (stage 2, bypassed)"))
-        # Bypass here too, or the split graphs ship Sol enabled on their second
-        # model path while every other graph has it off -- and the UI/API
-        # cross-check catches it as a node-set mismatch rather than as the
-        # policy break it actually is.
-        if not sol_enabled:
-            g._node(node)["mode"] = 4
-        g.link(src, 0, node, "model", "MODEL")
-        src = node
-    node = g.add("SageChainAssert", (-480, 900), size=(360, 130),
-                 widgets=_assert_widgets(sage, sol is not None and sol_enabled),
-                 inputs=[_in("model", "MODEL")], outputs=[_out("model", "MODEL")],
-                 title="Assert the stage-2 chain composed")
-    g.link(src, 0, node, "model", "MODEL")
-    return node
-
-
-def build_ui(task: str, *, sage: bool = True, prompt: str | None = None,
-             steps: int | None = None, shift: dict | None = None,
-             sampler_name: str | None = None, scheduler_name: str | None = None,
-             head_chunks: int | None = None,
-              # Owner decision 2026-09-13: True, the node's own default and
-              # what sglang, diffusers and DiffSynth do (every still to the
-              # 2048 short edge, one copy for both towers). It was flipped
-              # False on 2026-08-28 for cost; the cost is now shown by
-              # `MiniMaxH3ReferenceReport` before a render rather than
-              # avoided by default. `REF_VIDEO_BUDGET` still turns it off on
-              # the video-bearing arms, for memory.
-              ref_upscale: bool = True,
-              manual_sigmas: str | None = None,
-             ref_video_policy: str = "comfy",
-             ref_image_policy: str = "comfy",
-             ref_qwen_short_edge: int = 0,
-             ref_video: bool = False, ref_video_audio: bool = True,
-             ref_images_on: bool = True, ref_image_count: int = 2,
-             ref_images: tuple[str, ...] | None = None,
-             turbo_pack: bool = False,
-             pdd: bool = False,
-             pdd_heads: bool = True,
-             pdd_nfe: int = 0,          # an override; see the API builder
-             ref_audio: bool = False,
-             split_at: int | None = None,
-             split_base_last: bool = True,
-             single_frame: bool = False,
-             cache: dict | None = None,
-             variant_note: str | None = None,
-             length: int = LENGTH, seed: int = SEED,
-             sol: dict | None = None, sol_enabled: bool = True,
-             canvas_mode: str = "match_keyframe", stamp: bool = False,
-             last_frame: bool = False,
-             first_frame: bool = True,
-             unet: str | None = None, lora: tuple[str, float] | None = None,
-             ref_latents: bool = True,   # see build_api; no native_ref here
-             out_prefix: str | None = None, title: str | None = None,
-             vsa: tuple[float, bool] | None = None,
-             vae_encoder: str | None = None,
-             clip: str | None = None,
-             freeze_audio: bool = False, freeze_start: float = 0.0,
-             freeze_mask: float = 0.0, freeze_track: str = PLACEHOLDER_AUDIO,
-             freeze_windows: int = 0, freeze_context: int = 39,
-             freeze_guide: bool = False,
-             freeze_gain: bool = False,
-             freeze_song: bool = False, freeze_song_seconds: float | None = 30.0,
-             freeze_song_mode: str = "cycle",
-             freeze_song_refs: tuple[str, ...] | None = None,
-             freeze_song_lists: tuple[tuple[str, str, str, int], ...] | None = None,
-             **canvas) -> dict:
-    ref = task == "r2v"
-    if (freeze_song_refs or freeze_song_lists) and not freeze_song:
-        raise SystemExit("freeze_song_refs and freeze_song_lists need freeze_song")
-    if freeze_song_lists and len(freeze_song_lists) > len(_PROMPT_LIST_NODES):
-        raise SystemExit(f"at most {len(_PROMPT_LIST_NODES)} prompt lists")
-    if freeze_gain:
-        raise SystemExit("the audio-gain graph is API only (api_only=True on its GRAPHS entry)")
-    if freeze_guide:
-        raise SystemExit("the guide-audio freeze graph is API only (api_only=True on its GRAPHS entry)")
-    if freeze_windows:
-        raise SystemExit("the two-window seam graph is API only (api_only=True on its GRAPHS entry)")
-    # The same consistency guard `build_api` carries, and it has to be here
-    # too: `main()` writes every UI graph in one loop BEFORE the API loop runs,
-    # so a guard only in `build_api` lets a wrong `.json` reach disk and then
-    # exits -- leaving a graph that loads the one-frame VAE for a 124-frame
-    # clip, which is exactly what the guard exists to prevent.
-    _check_single_frame(single_frame, length)
-    if ref_video_policy not in ("comfy", "release", "encoder"):
-        raise ValueError(
-            f"unknown ref_video_policy {ref_video_policy!r}; "
-            "expected 'comfy', 'release', or 'encoder'"
-        )
-    if ref_image_policy not in ("comfy", "release", "encoder"):
-        raise ValueError(
-            f"unknown ref_image_policy {ref_image_policy!r}; "
-            "expected 'comfy', 'release', or 'encoder'"
-        )
-    cv = dict(CANVAS, **canvas)
-    # Resolved once, exactly as `build_api` does it. Both the PDD node's own
-    # `steps` and BasicScheduler's read this, so a UI graph cannot ship with
-    # the two disagreeing -- and the UI/API pair check compares what lands
-    # in each.
-    _resolved_steps = steps if steps is not None else SAMPLING["steps"]
-    prompt = resolve_default_prompt(task, prompt, length=length,
-                                    last_frame=last_frame,
-                                    first_frame=first_frame)
-    g = UIGraph()
-
-    unet_node = g.add("UNETLoader", (-1500, 0), size=(560, 90),
-                      widgets=[unet or MODELS["unet_ref2va" if ref else "unet_fl2va"],
-                               "default"],
-                      outputs=[_out("MODEL", "MODEL")])
-    clip = _require_core_encoder(clip or MODELS["clip"])
-    clip = g.add(
-        "MiniMaxH3EncoderLoader", (-1500, 140), size=(560, 110),
-        widgets=[clip],
-        outputs=[_out("CLIP", "CLIP")],
-        title="Load H3 encoder (core's load, plus the checks core omits)",
-    )
-    # Single-frame swaps the decoder, and the node TITLE carries the warning:
-    # it is the only thing visible when someone copies this node into a video
-    # graph, which is the mistake worth making hard to make.
-    vvae = g.add("VAELoader", (-1500, 300), size=(560, 70),
-                 widgets=[IMAGE_VAE if single_frame else MODELS["video_vae"]],
-                 outputs=[_out("VAE", "VAE")],
-                 title=("Load VAE (SINGLE IMAGE ONLY -- do not use for video)"
-                        if single_frame else "Load VAE (video)"))
-    # Optional encoder promotion; see the note in `build_api`. Only the
-    # conditioning node moves onto it -- `VAEDecode` keeps the raw loader, so
-    # the graph reads as "encoder changed, decoder untouched".
-    vae_enc_src = vvae
-    if vae_encoder:
-        vae_enc_src = g.add(
-            "MiniMaxH3VAEPrecision", (-900, 300), size=(340, 100),
-            widgets=[vae_encoder, "unchanged"],
-            inputs=[_in("vae", "VAE")], outputs=[_out("VAE", "VAE")],
-            title="VAE precision (encode/decode split)")
-        g.link(vvae, 0, vae_enc_src, "vae", "VAE")
-
-    avae = g.add("VAELoader", (-1500, 410), size=(560, 70),
-                 widgets=[MODELS["audio_vae"]], outputs=[_out("VAE", "VAE")],
-                 title="Load VAE (audio)")
-
-    model_src = unet_node
-    if lora is not None:
-        # Before the attention patches -- see the matching note in build_api.
-        # The strength widget is the one thing this graph exists to be swept,
-        # so the node gets a title that says what its arm is.
-        # See build_api: the turbo pack's loader is not interchangeable with
-        # the stock one on a pruned base. Its widget list is three long
-        # (lora_name, strength, low_vram) -- the pack's own shipped example
-        # graph carries only two, because low_vram was added after it was
-        # written, so that example is not the thing to copy the shape from.
-        if pdd:
-            # Directly above the loader column, where someone reading the node
-            # will see it. UI-only, like every MarkdownNote here.
-            g.add("MarkdownNote", (-1500, -660), size=(560, 480),
-                  widgets=[_NOTE_PDD_NODE],
-                  title="PDD LoRA: what runs that the widgets do not show")
-            lora_node = g.add(
-                "MiniMaxH3PDDLoRA", (-1500, 560), size=(560, 170),
-                # Order is required-then-optional, which is how the frontend
-                # derives it from `define_schema`: lora_name, strength, then
-                # patch_heads, nfe, steps, head_strength, unmerged_blocks,
-                # unmerged_strength, unmerged_window.
-                #
-                # **head_strength is LAST, and this list disagreed with the
-                # schema for most of 2026-08-29.** The input was added at
-                # position 2 that afternoon and this list put it third, so
-                # neither matched: a loaded graph read `patch_heads` as 1.0,
-                # `nfe` as True and `steps` as 0. `check_distill_settings.py`
-                # is what noticed, by reporting an `nfe` of True on a graph
-                # whose nfe is an Int -- the value it was really reading was
-                # `patch_heads`.
-                #
-                # Nothing structural stops this recurring: the build-time
-                # validator checks that every node and input EXISTS in the
-                # served schema, not that this list is in the schema's ORDER,
-                # so a positional drift validates clean. Changing the input
-                # list in `pdd_lora.py` means changing this line in the same
-                # commit.
-                #
-                # `unmerged_blocks` APPENDED 2026-08-30, empty on every shipped
-                # graph. Empty is "merge everything", which is bit-for-bit what
-                # these graphs did before the input existed -- so this is a
-                # widget-count change and not a behaviour change, and a graph
-                # regenerated today renders identically to one from yesterday.
-                # It is a knob for an experiment (`bench/check_pdd_unmerged.py`,
-                # `bench/results/2026-08-30_pdd_quant_interaction.json`), not a
-                # recipe, so nothing here sets it until something has measured
-                # that it should.
-                # `unmerged_strength` -1.0 (follow `strength`) and
-                # `unmerged_window` "" (every step) are both the inert values,
-                # so all three un-merge widgets together are a no-op on every
-                # shipped graph. They are a probe surface, not a recipe.
-                # `head_strength` is -1.0, NOT `lora[1]`. -1.0 is the schema's
-                # sentinel for "follow `strength`", so this makes a shipped
-                # graph behave like a freshly created node. It used to pass
-                # `lora[1]`, which pinned the heads to a literal 1.0: identical
-                # while `strength` is 1.0, and silently divergent the moment
-                # anyone edited `strength` on a shipped graph, because
-                # `resolve_head_strength` only follows when it sees exactly
-                # -1.0. Nothing graded it -- both checks naming `head_strength`
-                # read the node, never the graphs.
-                widgets=[lora[0], lora[1], pdd_heads, pdd_nfe,
-                         0 if split_at else _resolved_steps, -1.0,
-                         "", -1.0, ""],
-                # `steps` is a socket in the UI form too, fed by the
-                # PrimitiveInt added below, so the value is visible on the
-                # canvas rather than inside the loader.
-                inputs=([_in("model", "MODEL")] if split_at else
-                        [_in("model", "MODEL"), _in("steps", "INT", widget=True)]),
-                outputs=[_out("MODEL", "MODEL"), _out("SIGMAS", "SIGMAS")],
-                title=(f"PDD LoRA (strength {lora[1]}"
-                       + (f", {pdd_nfe} NFE" if pdd_nfe else "")
-                       + ("" if pdd_heads else ", HEADS OFF -- control arm")
-                       + (f", {_resolved_steps} steps -> SIGMAS"
-                          if not split_at else "")
-                       + ")"))
-        else:
-            lora_node = (
-                g.add("MiniMaxH3TurboLoRA", (-1500, 560), size=(560, 140),
-                      widgets=[lora[0], lora[1], TURBO_PACK_LOW_VRAM],
-                      inputs=[_in("model", "MODEL")],
-                      outputs=[_out("MODEL", "MODEL")],
-                      title=f"Turbo LoRA (pack node, strength {lora[1]})")
-                if turbo_pack else
-                g.add("LoraLoaderModelOnly", (-1500, 560), size=(560, 110),
-                      widgets=[lora[0], lora[1]],
-                      inputs=[_in("model", "MODEL")],
-                      outputs=[_out("MODEL", "MODEL")],
-                      title=f"Load LoRA (ref delta, strength {lora[1]})"))
-        g.link(unet_node, 0, lora_node, "model", "MODEL")
-        if pdd and not split_at and not manual_sigmas:
-            # The arm's step count as ONE visible number on the canvas, rather
-            # than a widget inside the loader. Mirrors node 61 in build_api.
-            steps_const = g.add("PrimitiveInt", (-1500, 780), size=(300, 60),
-                                # PrimitiveInt declares control_after_generate,
-                                # so the frontend draws a second widget. Its
-                                # default is "fixed", which is what a constant
-                                # wants; omitting it fails validate_ui.
-                                widgets=[_resolved_steps, "fixed"],
-                                outputs=[_out("INT", "INT")],
-                                title=f"PDD steps ({_resolved_steps})")
-            g.link(steps_const, 0, lora_node, "steps", "INT")
-        model_src = lora_node
-
-    # See the matching note in build_api, which carries the reasoning and the
-    # PDD omission. Titled with its values because the whole reason it is in
-    # the graph is that a turbo LoRA needs them changed, and a node showing
-    # "ModelSamplingMiniMaxH3" and nothing else does not prompt anyone to look.
-    sh = shift if shift is not None else SIGMA_SHIFT
-    if not (pdd and sh == SIGMA_SHIFT):
-        sigma_node = g.add("MiniMaxH3SigmaShift", (-1500, 700), size=(360, 110),
-                           widgets=[sh["shift_video"], sh["shift_audio"]],
-                           inputs=[_in("model", "MODEL")],
-                           outputs=[_out("MODEL", "MODEL")],
-                           title=f"Sigma shift (video {sh['shift_video']:g}, "
-                                 f"audio {sh['shift_audio']:g})")
-        g.link(model_src, 0, sigma_node, "model", "MODEL")
-        model_src = sigma_node
-
-    sage_node = None
-    if vsa is not None and sol is not None:
-        raise SystemExit("vsa replaces the DiT block forward and Sol-Attn "
-                         "overrides attention on the same 50 blocks; pass "
-                         "sol=None with vsa")
-    if sage:
-        sage_node = g.add("MiniMaxH3SageAttention", (-880, 0), size=(360, 110),
-                          widgets=[SAGE_NODE["mode"],
-                                   SAGE_NODE["patch_token_refiner"],
-                                   SAGE_NODE["head_chunks"] if head_chunks is None
-                                   else head_chunks],
-                          inputs=[_in("model", "MODEL")],
-                          outputs=[_out("MODEL", "MODEL")])
-        g.link(model_src, 0, sage_node, "model", "MODEL")
-        model_src = sage_node
-
-    if vsa is not None:
-        # See the API builder for why sage stays and Sol may not: VSA replaces
-        # the 50 main blocks' forward, sage keeps the 2 token-refiner blocks,
-        # and a Sol node here would be silently inert.
-        keep_percent, pooled_tail = vsa
-        vsa_node = g.add("MiniMaxH3VSAAttention", (-880, 140), size=(380, 100),
-                         widgets=[keep_percent, pooled_tail],
-                         inputs=[_in("model", "MODEL")],
-                         outputs=[_out("MODEL", "MODEL")],
-                         title="VSA (EXPERIMENTAL - draft core PR, "
-                               "experimental checkpoint)")
-        g.link(model_src, 0, vsa_node, "model", "MODEL")
-        model_src = vsa_node
-
-    if sol is not None:
-        # After sage, never before. SolAttn composes by walking the model's
-        # existing object patches and wrapping the attention forwards it
-        # finds; run first it has nothing to find, and ours then overwrites
-        # its patch. Both orders load and render, which is exactly why it is
-        # worth pinning in a generated graph instead of leaving to hand-wiring.
-        #
-        # Enabled when the graph is built for it, bypassed otherwise. Bypass
-        # passes MODEL straight through, so a graph carrying a disabled
-        # Sol-Attn node still loads and renders without the node installed.
-        # The error-prone part is the ordering above, not the toggle.
-        g.add("MarkdownNote", (-880, -660), size=(560, 480),
-              widgets=[_NOTE_SOL_NODE],
-              title="Sol-Attn: what runs that the widgets do not show")
-        sol_node = g.add(SOL_NODE, (-880, 190), size=(360, 330),
-                         widgets=_sol_widgets(sol),
-                         # tau_profile, added by Sol-Attn 0e334dc: per-block tau
-                         # overriding the base value. It is declared
-                         # `force_input=True`, so it is a SOCKET, not a widget.
-                         # An earlier version of this file emitted it as a 13th
-                         # widget value instead. That was harmless in effect --
-                         # it landed after dense_blocks, and LiteGraph drops
-                         # widget values past the end of the widget list -- but it
-                         # meant the node carried a widget count no build of
-                         # Sol-Attn has ever had, and the socket was never
-                         # declared at all.
-                         #
-                         # The API-graph validator cannot catch this class of bug:
-                         # API graphs have no widget list, so widget/socket
-                         # confusion is invisible there. That is what
-                         # check_workflow_schema.py is for.
-                         #
-                         # The v3 node (2026-08-22) moved it inside the
-                         # "adaptive tau" option, so its socket is now named
-                         # `selection.tau_profile`. Dropped rather than
-                         # renamed: one tau everywhere is what we ship, and it
-                         # was unconnected under the old name too.
-                         inputs=[_in("model", "MODEL")],
-                         outputs=[_out("MODEL", "MODEL")],
-                         # Titled with `end_percent` when it differs from the
-                         # base recipe. Since 2026-09-11 nothing shipped does
-                         # (1.0 everywhere, the step table and the PDD
-                         # override both empty), so every shipped graph gets
-                         # the plain title; `_sol_title` keeps its branches
-                         # for an arm that sets its own window.
-                         title=_sol_title(sol, sol_enabled, pdd=pdd))
-        if not sol_enabled:
-            g._node(sol_node)["mode"] = 4
-        g.link(model_src, 0, sol_node, "model", "MODEL")
-        model_src = sol_node
-
-    # See build_api: geometry comes from Resolution everywhere except i2v,
-    # where the keyframe decides it.
-    resn = None
-    if task != "i2v":
-        rw = _resolution_widgets(cv["width"], cv["height"], length)
-        order = ["shape"] + [k for k in rw if k not in ("shape", "length")] + ["length"]
-        resn = g.add("MiniMaxH3Resolution", (-1900, 900), size=(400, 200),
-                     widgets=[rw[k] for k in order],
-                     outputs=[_out("width", "INT"), _out("height", "INT"),
-                              _out("length", "INT"), _out("video_tokens", "INT"),
-                              _out("tokens_per_frame", "INT"),
-                              _out("attn_cost_vs_16_9", "FLOAT"),
-                              _out("summary", "STRING")],
-                     title="Resolution: shape, and what it costs")
-
-    img_a = img_b = None
-    if ref:
-        slots = _ref_image_slots(ref_images_on, ref_image_count, ref_images)
-        # The two VAE sockets are optional on the node since 0.99.33 and
-        # are drawn either way; `ref_latents=False` leaves them unlinked,
-        # which is the encoder-only arm in the form a person opens.
-        cond_inputs = [
-            _in("clip", "CLIP"),
-            _in("vae", "VAE", optional=True),
-            _in("audio_vae", "VAE", optional=True),
-            _in("references", "MINIMAX_H3_REFERENCES"),
-        ]
-        cond = g.add("MiniMaxH3ReferenceConditioning", (-460, 0), size=(430, 620),
-                     # `vendor_tokens` was removed from the schema on
-                     # 2026-08-27 -- ComfyUI owns the H3 tokens natively and the
-                     # input had been an inert placeholder held only to keep
-                     # saved widget positions stable. Compatibility with
-                     # externally saved graphs was traded away by owner
-                     # decision the same day, so the slot goes rather than
-                     # staying as a True nobody reads.
-                     widgets=[prompt, cv["width"], cv["height"], length,
-                              ref_video_policy, ref_image_policy],
-                     inputs=cond_inputs + [
-                         _in("width", "INT", widget=True), _in("height", "INT", widget=True),
-                         _in("length", "INT", widget=True)],
-                     outputs=[_out("positive", "CONDITIONING"), _out("LATENT", "LATENT")])
-        if ref_latents:
-            g.link(vae_enc_src, 0, cond, "vae", "VAE")
-            g.link(avae, 0, cond, "audio_vae", "VAE")
-        # One typed append node per image, carrying its own sizing. `max`
-        # sizes from `short_edge` rather than the target canvas area, which is
-        # the policy the shipped graphs have always used.
-        #
-        # Loaders, then the append chain. Keeping each layer aligned makes
-        # presentation order legible in the saved UI graph.
-        def row_y(i):
-            return 900 + 370 * i
-
-        loads = [g.add("LoadImage", (-1420, row_y(i)), size=(290, 330),
-                       widgets=[fname, "image"],
-                       outputs=[_out("IMAGE", "IMAGE"), _out("MASK", "MASK")])
-                 for i, (_ld, _ft, fname) in enumerate(slots)]
-        if loads:
-            img_a = loads[0]
-        if len(loads) > 1:
-            img_b = loads[1]
-        # No fit node here either. This is the UI half of the same fold, and
-        # `docs/comfy_notes.md` is why both halves move in one commit: nothing
-        # checks that the two emission paths agree, so a change to one is
-        # invisible until somebody opens a graph.
-        chain = None
-        for i, src in enumerate(loads):
-            append_inputs = [_in("image", "IMAGE")]
-            if chain is not None:
-                append_inputs.append(
-                    _in("references", "MINIMAX_H3_REFERENCES", optional=True))
-            append = g.add("MiniMaxH3AppendRefImage", (-760, row_y(i)),
-                           size=(280, 150),
-                           widgets=_append_image_widgets(ref_upscale, ref_qwen_short_edge),
-                           inputs=append_inputs,
-                           outputs=[_out("references", "MINIMAX_H3_REFERENCES")],
-                           title=f"Append Picture {i + 1}")
-            g.link(src, 0, append, "image", "IMAGE")
-            if chain is not None:
-                g.link(chain, 0, append, "references", "MINIMAX_H3_REFERENCES")
-            chain = append
-        if ref_video:
-            # See the matching note in build_api. force_rate=24 is the whole
-            # point during migration: changing source clock policy at the same
-            # time would confound output comparisons. The typed compiler also
-            # receives video_info and derives the effective source fps.
-            video_y = row_y(len(slots))
-            vid = g.add("VHS_LoadVideo", (-1420, video_y), size=(340, 500),
-                        widgets={"video": (PLACEHOLDER_VIDEO if ref_video_audio
-                                           else PLACEHOLDER_VIDEO_SILENT),
-                                 "force_rate": REF_VIDEO_FORCE_RATE,
-                                 "custom_width": 0, "custom_height": 0,
-                                 "frame_load_cap": length,
-                                 "skip_first_frames": 0,
-                                 "select_every_nth": 1, "format": "AnimateDiff"},
-                        outputs=[_out("IMAGE", "IMAGE"), _out("frame_count", "INT"),
-                                 _out("audio", "AUDIO"), _out("video_info", "VHS_VIDEOINFO")],
-                        title="Reference video (force_rate 24)")
-            append_inputs = [_in("frames", "IMAGE"),
-                             _in("video_info", "VHS_VIDEOINFO")]
-            if ref_video_audio:
-                append_inputs.append(_in("soundtrack", "AUDIO", optional=True))
-            if chain is not None:
-                append_inputs.append(
-                    _in("references", "MINIMAX_H3_REFERENCES", optional=True))
-            append = g.add("MiniMaxH3AppendRefVideo", (-760, video_y),
-                           size=(280, 150), inputs=append_inputs,
-                           outputs=[_out("references", "MINIMAX_H3_REFERENCES")],
-                           title="Append video + owned soundtrack")
-            g.link(vid, 0, append, "frames", "IMAGE")
-            g.link(vid, 3, append, "video_info", "VHS_VIDEOINFO")
-            if ref_video_audio:
-                g.link(vid, 2, append, "soundtrack", "AUDIO")
-            if chain is not None:
-                g.link(chain, 0, append, "references", "MINIMAX_H3_REFERENCES")
-            chain = append
-        if ref_audio:
-            audio_y = row_y(len(slots) + int(ref_video))
-            aud = g.add("LoadAudio", (-1420, audio_y), size=(300, 130),
-                        widgets=[PLACEHOLDER_AUDIO],
-                        outputs=[_out("AUDIO", "AUDIO")],
-                        title="Standalone audio reference")
-            append_inputs = [_in("audio", "AUDIO")]
-            if chain is not None:
-                append_inputs.append(
-                    _in("references", "MINIMAX_H3_REFERENCES", optional=True))
-            append = g.add("MiniMaxH3AppendRefAudio", (-760, audio_y),
-                           size=(280, 100), inputs=append_inputs,
-                           outputs=[_out("references", "MINIMAX_H3_REFERENCES")],
-                           title="Append standalone audio")
-            g.link(aud, 0, append, "audio", "AUDIO")
-            if chain is not None:
-                g.link(chain, 0, append, "references", "MINIMAX_H3_REFERENCES")
-            chain = append
-        if chain is None:
-            raise SystemExit("r2v graph has no references to condition on")
-        g.link(chain, 0, cond, "references", "MINIMAX_H3_REFERENCES")
-    else:
-        # Widget order mirrors the schema: prompt, width, height, length,
-        # canvas. The legacy vendor_tokens slot was removed from the schema on
-        # 2026-08-27. The keyframe images stay sockets.
-        cond_inputs = [_in("clip", "CLIP"), _in("vae", "VAE"),
-                       _in("first_frame", "IMAGE", optional=True),
-                       _in("last_frame", "IMAGE", optional=True),
-                       _in("width", "INT", widget=True),
-                       _in("height", "INT", widget=True),
-                       _in("length", "INT", widget=True)]
-        cond = g.add("MiniMaxH3Conditioning", (-460, 0), size=(430, 620),
-                     widgets=[prompt, cv["width"], cv["height"], length,
-                              ("from_keyframe"
-                               if task == "i2v" and canvas_mode == "match_keyframe"
-                               else "explicit")],
-                     inputs=cond_inputs,
-                     outputs=[_out("positive", "CONDITIONING"), _out("LATENT", "LATENT")])
-        g.link(vae_enc_src, 0, cond, "vae", "VAE")
-        if task == "i2v":
-            # Straight into the conditioning node. There is no canvas node in
-            # front of it any more: it derives the canvas from this keyframe
-            # itself, which is one owner instead of two agreeing by wiring.
-            if first_frame:
-                img_a = g.add("LoadImage", (-880, 900), size=(290, 330),
-                              widgets=[PLACEHOLDER_IMAGE_A, "image"],
-                              outputs=[_out("IMAGE", "IMAGE"),
-                                       _out("MASK", "MASK")])
-                g.link(img_a, 0, cond, "first_frame", "IMAGE")
-            if last_frame:
-                # Mirrors `build_api`. `cross_check` is what asserts the
-                # two builders agree, so a second frame added to one and
-                # not the other fails at build time rather than at
-                # render time.
-                img_b = g.add("LoadImage", (-880, 1260), size=(290, 330),
-                              widgets=[PLACEHOLDER_IMAGE_B, "image"],
-                              outputs=[_out("IMAGE", "IMAGE"),
-                                       _out("MASK", "MASK")])
-                g.link(img_b, 0, cond, "last_frame", "IMAGE")
-    g.link(clip, 0, cond, "clip", "CLIP")
-
-    noise = g.add("RandomNoise", (40, 0), size=(300, 110), widgets=[seed, "randomize"],
-                  outputs=[_out("NOISE", "NOISE")])
-    samp = (g.add("MiniMaxH3TurboSampler", (40, 150), size=(300, 60),
-                  outputs=[_out("SAMPLER", "SAMPLER")],
-                  title="Turbo Sampler (pack node)")
-            if turbo_pack else
-            g.add("KSamplerSelect", (40, 150), size=(300, 60),
-                  widgets=[sampler_name or _distill(lora, pdd, "sampler")],
-                  outputs=[_out("SAMPLER", "SAMPLER")]))
-    # On a non-split PDD graph the PDD node emits the schedule and there is no
-    # BasicScheduler at all -- see the long note in build_api. Not created
-    # rather than created-and-unlinked: this writer has no node removal, so an
-    # orphan would ship in the graph and read as intentional wiring.
-    _pdd_sigmas = pdd and lora is not None and not split_at and not manual_sigmas
-    manual_node = (g.add("ManualSigmas", (40, 250), size=(360, 90),
-                         widgets=[manual_sigmas],
-                         outputs=[_out("SIGMAS", "SIGMAS")],
-                         title=f"Manual sigmas ({PDD_MANUAL_EVALS} evaluations, "
-                               f"tail-weighted)")
-                   if manual_sigmas else None)
-    sched = (None if (_pdd_sigmas or manual_sigmas) else
-             g.add("BasicScheduler", (40, 250), size=(300, 130),
-                   widgets=[scheduler_name or _distill(lora, pdd, "scheduler"),
-                            _resolved_steps, SAMPLING["denoise"]],
-                   inputs=[_in("model", "MODEL")],
-                   outputs=[_out("SIGMAS", "SIGMAS")]))
-    guider = g.add("BasicGuider", (40, 420), size=(300, 70),
-                   inputs=[_in("model", "MODEL"), _in("conditioning", "CONDITIONING")],
-                   outputs=[_out("GUIDER", "GUIDER")])
-    sampler = g.add("SamplerCustomAdvanced", (400, 0), size=(320, 150),
-                    inputs=[_in("noise", "NOISE"), _in("guider", "GUIDER"),
-                            _in("sampler", "SAMPLER"), _in("sigmas", "SIGMAS"),
-                            _in("latent_image", "LATENT")],
-                    outputs=[_out("output", "LATENT"), _out("denoised_output", "LATENT")])
-    vdec = g.add("VAEDecode", (780, 0), size=(260, 60),
-                 inputs=[_in("samples", "LATENT"), _in("vae", "VAE")],
-                 outputs=[_out("IMAGE", "IMAGE")])
-    # No audio decoder on the single-frame path: one frame's share of the
-    # audio stream is 0.04s of nothing. Omitted rather than bypassed, so the
-    # graph does not carry a node whose presence implies a soundtrack.
-    adec = (None if (single_frame or freeze_audio) else
-            g.add("VAEDecodeAudio", (780, 110), size=(260, 60),
-                  inputs=[_in("samples", "LATENT"), _in("vae", "VAE")],
-                  outputs=[_out("AUDIO", "AUDIO")]))
-    # One node for mux + save. Its widgets_values is a *dict*, not the
-    # positional list every other node uses -- VHS adds format-dependent
-    # widgets (pix_fmt, crf, ...) after `format`, so position cannot address
-    # them. Shape copied from a frontend-written graph rather than guessed.
-    save = (g.add("SaveImage", (1080, 0), size=(500, 560),
-                  widgets=[out_prefix or "Image/h3_image_edit"],
-                  inputs=[_in("images", "IMAGE")],
-                  title="Save the edited image")
-            if single_frame else
-            g.add("VHS_VideoCombine", (1080, 0), size=(600, 520),
-                  widgets={"frame_rate": FPS, "loop_count": 0,
-                           "filename_prefix": out_prefix or f"Video/h3_{task}",
-                           "format": VIDEO_FORMAT, "pix_fmt": "yuv420p",
-                           "crf": 19, "save_metadata": True,
-                           "trim_to_audio": False,
-                           "pingpong": False, "save_output": True},
-                  inputs=[_in("images", "IMAGE"),
-                          _in("audio", "AUDIO", optional=True),
-                          _in("meta_batch", "VHS_BatchManager", optional=True),
-                          _in("vae", "VAE", optional=True)],
-                  outputs=[_out("Filenames", "VHS_FILENAMES")]))
-
-    # See the matching note in build_api: last in the chain, asserting the
-    # composition rather than any single node's intent.
-    assert_node = g.add("SageChainAssert", (-480, 0), size=(360, 130),
-                        widgets=_assert_widgets(sage, sol is not None and sol_enabled),
-                        inputs=[_in("model", "MODEL")],
-                        outputs=[_out("model", "MODEL")],
-                        title="Assert the attention chain composed")
-    g.link(model_src, 0, assert_node, "model", "MODEL")
-    model_src = assert_node
-
-    if cache is not None:
-        # Mirrors the build_api insertion: after the assert, because the cache
-        # is a forward-skipping wrapper over the finished attention chain, not
-        # a member of it. Widget order is the node's declared input order.
-        cache_node = g.add(CACHE_NODE_CLASS, (-480, 200), size=(360, 150),
-                           widgets=[cache["reuse_threshold"],
-                                    cache["start_percent"],
-                                    cache["end_percent"],
-                                    cache["verbose"]],
-                           inputs=[_in("model", "MODEL")],
-                           outputs=[_out("MODEL", "MODEL")],
-                           title="EasyCache: reuse near-identical steps")
-        g.link(model_src, 0, cache_node, "model", "MODEL")
-        model_src = cache_node
-
-    # The second model path for a two-stage split: same UNETLoader, same
-    # shift, no LoRA. Built here rather than lower down because the stage-1
-    # guider has to be linked to the right chain the first time -- there is no
-    # re-linking in this writer.
-    plain_src = None
-    if split_at:
-        if lora is None:
-            raise SystemExit("split_at needs a `lora`; see build_api")
-        plain_src = _plain_chain_ui(g, unet_node, sh=sh, sage=sage, sol=sol,
-                                    sol_enabled=sol_enabled,
-                                    head_chunks=head_chunks)
-    stage1_src = model_src
-    if split_at and not split_base_last:
-        # base_first: the plain base model runs the high-noise steps.
-        stage1_src = plain_src
-    if sched is not None:
-        g.link(stage1_src, 0, sched, "model", "MODEL")
-    g.link(stage1_src, 0, guider, "model", "MODEL")
-    if resn is not None:
-        g.link(resn, 0, cond, "width", "INT")
-        g.link(resn, 1, cond, "height", "INT")
-        g.link(resn, 2, cond, "length", "INT")
-
-    if freeze_song:
-        # The whole-track node replaces the base chain's tail. Mirrors build_api.
-        for dead in (cond, noise, guider, sampler, vdec, adec, save, manual_node if manual_sigmas else None):
-            g.remove(dead)
-        if stamp or split_at or single_frame or ref or task == "i2v":
-            raise SystemExit("freeze_song is a t2v chain and composes with no other latent-side knob")
-        _sig_node = sched if sched is not None else (lora_node if _pdd_sigmas else None)
-        _sig_slot = 1 if (_pdd_sigmas and sched is None) else 0
-        track = g.add("LoadAudio", (-460, 940), size=(300, 130), widgets=[freeze_track],
-                      outputs=[_out("AUDIO", "AUDIO")], title="The track")
-        song = g.add("MiniMaxH3AudioFreezeSong", (-60, 0), size=(520, 760),
-                     widgets=[prompt, cv["width"], cv["height"], length, freeze_context,
-                              # `extent`: the selection, then its own widget,
-                              # which exists only under `first_seconds`.
-                              *(["first_seconds", freeze_song_seconds]
-                                if freeze_song_seconds is not None else ["whole"]),
-                              # The control slot after `seed`. Declared on the node since
-                              # 2026-09-14; before that the frontend drew it by name
-                              # (any INT called `seed`) while this list wrote none, so
-                              # every widget after it loaded one slot late. `fixed`, as
-                              # the node declares: resume reuses windows only while the
-                              # seed holds.
-                              seed, "fixed", freeze_mask, "clip_guard",
-                              out_prefix or "Video/h3_song", 19, freeze_song_mode, "uniform",
-                              # save_metadata_png, keep_windows, then reuse_windows;
-                              # `references` between them and `lists` after them
-                              # are sockets and take no slot
-                              True, True, True],
-                     inputs=[_in("model", "MODEL"), _in("clip", "CLIP"), _in("vae", "VAE"),
-                             _in("audio_vae", "VAE"), _in("audio", "AUDIO"),
-                             _in("sampler", "SAMPLER"), _in("sigmas", "SIGMAS"),
-                             _in("references", "MINIMAX_H3_REFERENCES", optional=True),
-                             _in("lists", "H3_PROMPT_LISTS", optional=True)],
-                     outputs=[_out("path", "STRING"), _out("report", "STRING"),
-                              _out("Filenames", "VHS_FILENAMES")],
-                     title="Whole track: windows planned from the song")
-        g.link(stage1_src, 0, song, "model", "MODEL")
-        g.link(clip, 0, song, "clip", "CLIP")
-        g.link(vae_enc_src if vae_encoder else vvae, 0, song, "vae", "VAE")
-        g.link(avae, 0, song, "audio_vae", "VAE")
-        g.link(track, 0, song, "audio", "AUDIO")
-        g.link(samp, 0, song, "sampler", "SAMPLER")
-        g.link(_sig_node, _sig_slot, song, "sigmas", "SIGMAS")
-        if freeze_song_refs:
-            # Mirrors build_api: the reference graphs' loaders and appends,
-            # the song node as the conditioner.
-            chain = None
-            slots = _ref_image_slots(True, len(freeze_song_refs), freeze_song_refs)
-            for i, (_ld, _ft, fname) in enumerate(slots):
-                load = g.add("LoadImage", (-1420, 1200 + 370 * i), size=(290, 330),
-                             widgets=[fname, "image"],
-                             outputs=[_out("IMAGE", "IMAGE"), _out("MASK", "MASK")])
-                append_inputs = [_in("image", "IMAGE")]
-                if chain is not None:
-                    append_inputs.append(_in("references", "MINIMAX_H3_REFERENCES", optional=True))
-                append = g.add("MiniMaxH3AppendRefImage", (-760, 1200 + 370 * i), size=(280, 150),
-                               widgets=_append_image_widgets(ref_upscale, ref_qwen_short_edge),
-                               inputs=append_inputs,
-                               outputs=[_out("references", "MINIMAX_H3_REFERENCES")],
-                               title=f"Append Picture {i + 1}")
-                g.link(load, 0, append, "image", "IMAGE")
-                if chain is not None:
-                    g.link(chain, 0, append, "references", "MINIMAX_H3_REFERENCES")
-                chain = append
-            g.link(chain, 0, song, "references", "MINIMAX_H3_REFERENCES")
-        if freeze_song_lists:
-            # Mirrors build_api: one typed list node per name, chained into `lists`.
-            chain = None
-            for i, (name, values, order, list_seed) in enumerate(freeze_song_lists):
-                # `source`: the selection, then its option's widget; `seed`
-                # takes the control slot after it, declared fixed on the node.
-                node = g.add("MiniMaxH3PromptList", (-1420 + 460 * i, -760), size=(440, 520),
-                             widgets=[name, "typed", values, order, list_seed, "fixed"],
-                             inputs=[_in("lists", "H3_PROMPT_LISTS", optional=True)],
-                             outputs=[_out("lists", "H3_PROMPT_LISTS")],
-                             title=f"Prompt list: __{name}__")
-                if chain is not None:
-                    g.link(chain, 0, node, "lists", "H3_PROMPT_LISTS")
-                chain = node
-            g.link(chain, 0, song, "lists", "H3_PROMPT_LISTS")
-        # A song graph's own note carries `_NOTE_SONG` and its paragraph; this
-        # block returns before the generic variant note below is drawn, which
-        # until 2026-09-14 left those paragraphs out of every song graph.
-        g.add("MarkdownNote", (-2180, 0), size=(620, 620), widgets=[variant_note or _NOTE_SONG],
-              title="Whole track: how it works")
-        return g.dump(title or f"h3-{task}-song")
-
-    # Pass-through, between conditioning and the sampler, so the report is
-    # about the graph that is actually going to run.
-    pre = g.add("MiniMaxH3Preflight", (-60, 640), size=(420, 260),
-                inputs=[_in("conditioning", "CONDITIONING"),
-                        _in("samples", "LATENT")],
-                outputs=[_out("conditioning", "CONDITIONING"),
-                         _out("samples", "LATENT"),
-                         _out("sequence_length", "INT"),
-                         _out("report", "STRING")],
-                title="Preflight: what this render costs")
-    g.link(cond, 0, pre, "conditioning", "CONDITIONING")
-    g.link(cond, 1, pre, "samples", "LATENT")
-    g.link(pre, 0, guider, "conditioning", "CONDITIONING")
-    freeze = None
-    if freeze_audio:
-        if single_frame or split_at or stamp:
-            raise SystemExit(
-                "freeze_audio does not compose with single_frame, split_at or "
-                "stamp: each rewires the sampler's latent or the audio decoder")
-        track = g.add("LoadAudio", (-460, 940), size=(300, 130),
-                      widgets=[freeze_track],
-                      outputs=[_out("AUDIO", "AUDIO")],
-                      title="The track to freeze")
-        freeze = g.add("MiniMaxH3FreezeAudio", (-60, 940), size=(420, 200),
-                       widgets=[freeze_start, freeze_mask, "clip_guard"],
-                       inputs=[_in("latent", "LATENT"), _in("audio_vae", "VAE"),
-                               _in("audio", "AUDIO")],
-                       outputs=[_out("latent", "LATENT"),
-                                _out("clip_audio", "AUDIO"),
-                                _out("report", "STRING")],
-                       title="Freeze the track into the audio rows")
-        g.link(pre, 1, freeze, "latent", "LATENT")
-        g.link(avae, 0, freeze, "audio_vae", "VAE")
-        g.link(track, 0, freeze, "audio", "AUDIO")
-        g.link(freeze, 0, sampler, "latent_image", "LATENT")
-    else:
-        g.link(pre, 1, sampler, "latent_image", "LATENT")
-    g.link(noise, 0, sampler, "noise", "NOISE")
-    g.link(guider, 0, sampler, "guider", "GUIDER")
-    g.link(samp, 0, sampler, "sampler", "SAMPLER")
-    if not split_at:
-        # With a split, SplitSigmas sits between these two and the link is
-        # made below. This writer has no re-link, so a link made here would
-        # be left dangling on the input it no longer owns.
-        if _pdd_sigmas:
-            g.link(lora_node, 1, sampler, "sigmas", "SIGMAS")
-        else:
-            g.link(manual_node or sched, 0, sampler, "sigmas", "SIGMAS")
-    latent_src, latent_slot = sampler, 0
-
-    if split_at:
-        # See the matching note in build_api. ONE BasicScheduler feeds
-        # SplitSigmas, so both halves sample the same curve -- that shared
-        # schedule is the precondition, and it is why both stages must carry
-        # the same shift.
-        split = g.add("SplitSigmas", (400, 250), size=(300, 90),
-                      widgets=[split_at],
-                      inputs=[_in("sigmas", "SIGMAS")],
-                      outputs=[_out("high_sigmas", "SIGMAS"),
-                               _out("low_sigmas", "SIGMAS")],
-                      title=f"Split the schedule at step {split_at}")
-        g.link(sched, 0, split, "sigmas", "SIGMAS")
-        g.link(split, 0, sampler, "sigmas", "SIGMAS")
-        stage2_src = plain_src if split_base_last else model_src
-        guider2 = g.add("BasicGuider", (400, 420), size=(300, 70),
-                        inputs=[_in("model", "MODEL"), _in("conditioning", "CONDITIONING")],
-                        outputs=[_out("GUIDER", "GUIDER")],
-                        title="Stage 2 guider")
-        g.link(stage2_src, 0, guider2, "model", "MODEL")
-        g.link(pre, 0, guider2, "conditioning", "CONDITIONING")
-        nonoise = g.add("DisableNoise", (400, 520), size=(300, 60),
-                        outputs=[_out("NOISE", "NOISE")],
-                        title="Stage 2 adds no noise")
-        sampler2 = g.add("SamplerCustomAdvanced", (760, 250), size=(320, 150),
-                         inputs=[_in("noise", "NOISE"), _in("guider", "GUIDER"),
-                                 _in("sampler", "SAMPLER"), _in("sigmas", "SIGMAS"),
-                                 _in("latent_image", "LATENT")],
-                         outputs=[_out("output", "LATENT"),
-                                  _out("denoised_output", "LATENT")],
-                         title="Stage 2: finish")
-        g.link(nonoise, 0, sampler2, "noise", "NOISE")
-        g.link(guider2, 0, sampler2, "guider", "GUIDER")
-        g.link(samp, 0, sampler2, "sampler", "SAMPLER")
-        g.link(split, 1, sampler2, "sigmas", "SIGMAS")
-        g.link(sampler, 0, sampler2, "latent_image", "LATENT")
-        latent_src, latent_slot = sampler2, 0
-    if stamp:
-        # Bench only. Inline between the sampler and both decoders so it has a
-        # real data dependency on the sampler -- ComfyUI orders by dependency,
-        # not graph position, and without that edge it can legally run BEFORE
-        # sampling and record pre-render state. SIGMAS is what makes n_sparse
-        # computable; nothing else exposes it.
-        stampn = g.add("MiniMaxH3ProvenanceStamp", (780, 240), size=(330, 130),
-                       widgets=[f"bench {task}"],
-                       inputs=[_in("latent", "LATENT"), _in("model", "MODEL"),
-                               _in("sigmas", "SIGMAS", optional=True)],
-                       outputs=[_out("latent", "LATENT")])
-        g.link(sampler, 0, stampn, "latent", "LATENT")
-        g.link(model_src, 0, stampn, "model", "MODEL")
-        _sig_node = manual_node or (lora_node if _pdd_sigmas else sched)
-        _sig_slot = 1 if (_pdd_sigmas and not manual_node) else 0
-        g.link(_sig_node, _sig_slot, stampn, "sigmas", "SIGMAS")
-        latent_src, latent_slot = stampn, 0
-    # Link ORDER is preserved exactly as it was before the single-frame path
-    # existed, including the two audio links sitting between the video decode
-    # and the save. Link ids are assigned in call order, so reordering these
-    # renumbers every link in all 24 UI graphs -- a 50-file diff that says
-    # nothing, over a working tree other sessions are also editing.
-    g.link(latent_src, latent_slot, vdec, "samples", "LATENT")
-    g.link(vvae, 0, vdec, "vae", "VAE")
-    if adec is not None:
-        g.link(latent_src, latent_slot, adec, "samples", "LATENT")
-        g.link(avae, 0, adec, "vae", "VAE")
-    g.link(vdec, 0, save, "images", "IMAGE")
-    if adec is not None:
-        g.link(adec, 0, save, "audio", "AUDIO")
-    elif freeze is not None:
-        g.link(freeze, 1, save, "audio", "AUDIO")
-
-    # Guidance in the graph rather than in a doc nobody opens next to it.
-    # MarkdownNote is in _UI_ONLY, so these never reach the API form and
-    # cannot desync it.
-    g.add("MarkdownNote", (-2180, 0), size=(620, 620), widgets=[_NOTE_GEOMETRY],
-          title="Canvas + length: what is actually selectable")
-    g.add("MarkdownNote", (-2180, 660), size=(620, 560), widgets=[_NOTE_NODES],
-          title="Which nodes, and the order that matters")
-    # Sized to the content: the sizing note grew the two-budget tables and
-    # the short_edge ladder on 2026-08-28, and a note that needs
-    # scrolling is a note nobody reads to the end of.
-    g.add("MarkdownNote", (-2860, 0), size=(700, 1560), widgets=[_NOTE_SIZING],
-          title="Resolution, references, and reading the preflight")
-    if variant_note is not None:
-        g.add("MarkdownNote", (-2180, 1280), size=(620, 760),
-              widgets=[variant_note], title="What this graph is probing")
-
-    return g.dump(title or f"h3-{task}-sage")
 
 
 # --------------------------------------------------------------------------
@@ -6258,13 +3548,37 @@ def validate_api(graph: dict, oi: dict, label: str) -> list[str]:
             # rejects is worse than no validator: it is a green light for a
             # graph that cannot run. Caught by `bench/smoke_h3.py` against a
             # live server, which is the only thing here that actually submits.
+            #
+            # A member of the option the graph selects is graded against its
+            # own spec, so `extent.seconds` and `size_policy.*` get the type,
+            # option and range checks a top-level input gets. Until 2026-09-14
+            # every member was registered with no spec and graded on nothing.
+            # A member of an option not selected stays known and ungraded.
+            chosen = node["inputs"].get(parent)
             for option in (meta.get("options") or []):
                 inner = (option.get("inputs") or {}) if isinstance(option, dict) else {}
+                selected = isinstance(option, dict) and option.get("key") == chosen
                 for section in ("required", "optional"):
-                    for name in (inner.get(section) or {}):
-                        known.setdefault(f"{parent}.{name}", None)
+                    for name, inner_spec in (inner.get(section) or {}).items():
+                        if selected:
+                            known[f"{parent}.{name}"] = inner_spec
+                        else:
+                            known.setdefault(f"{parent}.{name}", None)
 
         given = node["inputs"]
+        # A DynamicCombo member must come after its parent in `inputs`: the
+        # editor rebuilds every member when it sets the parent, so a member set
+        # first is dropped when the file is loaded. Read from the frontend's
+        # `core/graph/widgets/dynamicWidgets.ts` (comfyui_frontend_package
+        # 1.52.7), not measured. Autogrow sockets are a different mechanism.
+        earlier = set()
+        for name in given:
+            parent = name.split(".", 1)[0]
+            if ("." in name and parent not in earlier
+                    and (known.get(parent) or [None])[0] != "COMFY_AUTOGROW_V3"):
+                e(f"node {nid} ({ct}): {name!r} comes before its parent {parent!r}, "
+                  f"which the editor drops on load")
+            earlier.add(name)
         for name in req:
             if req[name][0] == "COMFY_AUTOGROW_V3":
                 continue
@@ -6293,6 +3607,18 @@ def validate_api(graph: dict, oi: dict, label: str) -> list[str]:
                       f"does not match {want}")
                 continue
             if s is None:
+                continue
+            # The value's type, as the input's widget holds it. The executor
+            # casts a `True` into an INT without a word, so only this refuses
+            # it. As lenient as the UI validator it replaces: a FLOAT takes an int.
+            want = s[0] if isinstance(s[0], str) else "COMBO"
+            fits = {"BOOLEAN": isinstance(val, bool),
+                    "INT": isinstance(val, int) and not isinstance(val, bool),
+                    "FLOAT": isinstance(val, (int, float)) and not isinstance(val, bool),
+                    "STRING": isinstance(val, str),
+                    "COMBO": isinstance(val, (str, int, float, bool))}.get(want, True)
+            if not fits:
+                e(f"node {nid} ({ct}).{name}: {val!r} is not a {want} value")
                 continue
             opts = _combo_options(s)
             if opts is not None and val not in opts and not _annotated_path(ct, name, val):
@@ -6349,371 +3675,6 @@ def validate_api(graph: dict, oi: dict, label: str) -> list[str]:
     return errs
 
 
-# --------------------------------------------------------------------------
-# What widget values a saved UI graph is allowed to carry
-# --------------------------------------------------------------------------
-#
-# The widget list `/object_info` implies for a node is derived in exactly one
-# place, `bench/check_workflow_schema.py`, and imported from there. Loaded by
-# path for the same reason `_resolution_widgets` loads `resolution.py` that
-# way: `bench/` is not a package, and this script runs without ComfyUI
-# importable.
-#
-# It is imported rather than re-derived because this file's own derivation was
-# the weaker of the two twice, and both escapes were the same defect wearing
-# different clothes -- a widget value with no widget behind it:
-#
-#   2026-08-10 (d3691a9)  `tau_profile` is `force_input=True`, so it is a
-#                         SOCKET and owns no widget value. This file counted
-#                         it as a widget, so the Sol node shipped a 13th value
-#                         on a 12-widget node. Caught by the then-new
-#                         `check_workflow_schema.py`, never by the generator.
-#   2026-08-27 (e6e527e)  `vendor_tokens` left `MiniMaxH3Conditioning`'s
-#                         schema and this generator kept emitting its `True`.
-#                         24 shipped UI graphs carried it. Caught by
-#                         `check_workflow_schema.py` again.
-#
-# d3691a9 fixed its instance by correcting the widget LIST and left the surplus
-# allowance standing -- "allow a surplus but never a shortfall" -- which is
-# precisely what made the second one invisible here. So the allowance is now
-# narrow and NAMED: a surplus is a failure unless the exact node class and
-# widget are listed below.
-
-
-def _load_widget_schema():
-    import importlib.util
-
-    src = HERE.parent / "bench" / "check_workflow_schema.py"
-    spec = importlib.util.spec_from_file_location(
-        "_h3_widget_schema_for_build", src)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
-
-
-_WIDGET_SCHEMA = _load_widget_schema()
-
-#: Trailing widget values the FRONTEND adds and `/object_info` does not
-#: declare, by node class -> the extras it appends, in order, each as
-#: (widget name, the value written there, why it exists).
-#:
-#: Deliberately NOT derived from the schema flag that produces it
-#: (`LoadImage.image` carries `image_upload: true`). A derived rule would
-#: silently extend this allowance to the next node that sets the flag, which
-#: is the blanket allowance again in a smaller box. Anything new is red until
-#: somebody writes down which widget it is.
-#:
-#: `check_workflow_schema.py::EXTRA_WIDGETS` is the counterpart for graphs
-#: this generator did not write -- it takes a COUNT, because a hand-saved
-#: graph may legitimately hold any of them. This table takes the name and the
-#: value because everything it grades was emitted a few lines up in this file.
-_FRONTEND_EXTRA_WIDGETS = {
-    "LoadImage": (
-        ("upload", "image",
-         "the 'choose file to upload' button the frontend adds to any combo "
-         "declaring image_upload; it is a button, not an input, so no schema "
-         "reports it"),
-    ),
-}
-
-#: Every entry above must be NECESSARY: an allowance nothing used is an
-#: allowance covering something nobody can see. Same rule, and the same
-#: failure mode, as `bench/check_attention_defaults.py::SOL_EXEMPT_STEMS`.
-_EXTRA_WIDGETS_SEEN = {(cls, extra[0]): False
-                       for cls, extras in _FRONTEND_EXTRA_WIDGETS.items()
-                       for extra in extras}
-
-
-def unused_widget_allowances() -> list[str]:
-    """Named frontend-widget allowances that no generated graph needed."""
-    return [f"_FRONTEND_EXTRA_WIDGETS allows {cls}.{name!r} a trailing widget "
-            f"value, and no graph this build wrote used it. Either nothing "
-            f"emits {cls} any more or the frontend stopped writing that "
-            f"widget -- remove the entry rather than leaving it to cover the "
-            f"next surplus."
-            for (cls, name), seen in _EXTRA_WIDGETS_SEEN.items() if not seen]
-
-
-def validate_ui(wf: dict, oi: dict, label: str) -> list[str]:
-    """Self-consistency only. No server validates a UI graph, so this checks
-    what the frontend would choke on: dangling links and slot mismatches."""
-    errs = []
-
-    def e(msg):
-        errs.append(f"{label}: {msg}")
-
-    by_id = {n["id"]: n for n in wf["nodes"]}
-    declared = {l[0] for l in wf["links"]}
-    for lid, src, ss, dst, ds, t in wf["links"]:
-        if src not in by_id or dst not in by_id:
-            e(f"link {lid}: endpoint missing")
-            continue
-        s, d = by_id[src], by_id[dst]
-        if ss >= len(s["outputs"]):
-            e(f"link {lid}: output slot {ss} out of range on {s['type']}")
-        elif lid not in (s["outputs"][ss]["links"] or []):
-            e(f"link {lid}: not listed on {s['type']} output {ss}")
-        if ds >= len(d["inputs"]):
-            e(f"link {lid}: input slot {ds} out of range on {d['type']}")
-        elif d["inputs"][ds].get("link") != lid:
-            e(f"link {lid}: not recorded on {d['type']} input {ds}")
-    for n in wf["nodes"]:
-        # Frontend-only nodes have no backend class, so they are absent from
-        # /object_info by design. Rejecting them would be the validator being
-        # confidently wrong rather than the graph being broken.
-        if n["type"] in _FRONTEND_ONLY:
-            continue
-        if n["type"] not in oi:
-            e(f"node {n['id']}: unknown type {n['type']!r}")
-            continue
-        for i, inp in enumerate(n["inputs"]):
-            if inp.get("link") is not None and inp["link"] not in declared:
-                e(f"node {n['id']} ({n['type']}) input {inp['name']}: dangling link")
-            if inp.get("link") is None and inp.get("shape") != 7 and "widget" not in inp:
-                e(f"node {n['id']} ({n['type']}): required input {inp['name']} unconnected")
-        # widgets_values must match the widget list EXACTLY: every widget the
-        # node declares, in order, and NOTHING after them. Values map to
-        # widgets positionally, so a value with no widget behind it shifts
-        # nothing today and shifts every widget after it the day one is
-        # inserted. The derivation is imported -- see the two escapes recorded
-        # above `_FRONTEND_EXTRA_WIDGETS`, both of which were exactly that.
-        node_spec = oi[n["type"]]
-        values = n.get("widgets_values")
-        if isinstance(values, dict):
-            # Keyed form, used by nodes whose widget set depends on another
-            # widget: VHS_VideoCombine appends the chosen format's own widgets
-            # (pix_fmt, crf, ...) after `format`, so positions cannot address
-            # them. Here a surplus is a KEY naming no widget rather than a
-            # value past the end, so it is checked by name.
-            wants = _WIDGET_SCHEMA.widget_inputs(node_spec)
-            known = ({w[0] for w in wants}
-                     | {w[0] for w in _WIDGET_SCHEMA.format_widgets(
-                         node_spec, values.get("format"))}
-                     # a DOM widget the frontend stores; no schema declares it
-                     | {"videopreview"})
-            for key in values:
-                if key not in known:
-                    e(f"node {n['id']} ({n['type']}): widget {key!r} is not an "
-                      f"input of this node, nor a widget of format "
-                      f"{values.get('format')!r}")
-            for name, _t, _c in wants:
-                if name not in values:
-                    e(f"node {n['id']} ({n['type']}): widget {name!r} is "
-                      f"missing from widgets_values")
-            continue
-        vals = values or []
-        wants = _WIDGET_SCHEMA.widget_inputs(node_spec)
-        if vals:
-            wants = _WIDGET_SCHEMA.expand_dynamic_combo(node_spec, wants, vals)
-        names = [w[0] for w in wants]
-        extras = _FRONTEND_EXTRA_WIDGETS.get(n["type"], ())
-        if len(vals) < len(wants):
-            e(f"node {n['id']} ({n['type']}): {len(vals)} widget values for "
-              f"{len(wants)} widgets {names}")
-        elif len(vals) > len(wants) + len(extras):
-            allowed = (f" plus the named frontend widget(s) "
-                       f"{[x[0] for x in extras]}" if extras else "")
-            e(f"node {n['id']} ({n['type']}): {len(vals)} widget values for "
-              f"{len(wants)} widgets {names}{allowed} -- SURPLUS "
-              f"{vals[len(wants) + len(extras):]!r}. Either this node stopped "
-              f"declaring an input and the generator kept emitting its value, "
-              f"or the frontend really does add a widget here -- in which case "
-              f"name it in _FRONTEND_EXTRA_WIDGETS. A surplus is not allowed "
-              f"on the grounds that some other node has one.")
-        else:
-            # Each value must be TYPE-COMPATIBLE with the widget it lands on.
-            # The length check above is not enough and that gap cost a real
-            # defect: on 2026-08-29 `MiniMaxH3PDDLoRA` declared
-            # [..., patch_heads, nfe, steps, head_strength] while the generator
-            # emitted [..., head_strength, patch_heads, nfe, steps]. Six values
-            # for six widgets, so the count agreed and this validator passed --
-            # while every loaded graph read `patch_heads` as 1.0, `nfe` as True
-            # and `steps` as 0. What noticed was `check_distill_settings.py`
-            # reporting an `nfe` of True, three sessions later.
-            #
-            # Types are the observable that separates the two orders. Kept
-            # deliberately lenient: FLOAT accepts an int (a 1 for a 1.0 is how
-            # JSON round-trips), and anything fed by a socket is skipped, so
-            # this fires on a genuine positional shift rather than on
-            # formatting.
-            for (wname, wtype, _wcfg), got in zip(wants, vals):
-                if isinstance(got, (list, dict)) or got is None:
-                    continue          # linked widget or a nested combo payload
-                ok = True
-                if wtype == "BOOLEAN":
-                    ok = isinstance(got, bool)
-                elif wtype == "INT":
-                    ok = isinstance(got, int) and not isinstance(got, bool)
-                elif wtype == "FLOAT":
-                    ok = (isinstance(got, (int, float))
-                          and not isinstance(got, bool))
-                elif wtype == "STRING":
-                    ok = isinstance(got, str)
-                elif isinstance(wtype, list):
-                    ok = isinstance(got, (str, int, float, bool))
-                if not ok:
-                    e(f"node {n['id']} ({n['type']}): widget {wname!r} is "
-                      f"{wtype} but got {got!r} ({type(got).__name__}). "
-                      f"widgets_values maps POSITIONALLY, so this is a shifted "
-                      f"list, not a bad value -- the generator's widget order "
-                      f"disagrees with the schema's {names}")
-            for (wname, wvalue, _why), got in zip(extras, vals[len(wants):]):
-                _EXTRA_WIDGETS_SEEN[(n["type"], wname)] = True
-                if got != wvalue:
-                    e(f"node {n['id']} ({n['type']}): trailing frontend widget "
-                      f"{wname!r} holds {got!r}, and the allowance in "
-                      f"_FRONTEND_EXTRA_WIDGETS is for {wvalue!r}")
-    return errs
-
-
-# --------------------------------------------------------------------------
-
-# Nodes that are browser affordances rather than computation, so their
-# absence from the API form is intentional and not drift.
-#
-# `ModelPreviewOverrideKJ` (the taeh3 live preview) sat here until
-# 2026-09-14, when the owner dropped it from every graph: its decodes cost
-# GPU time on the renders it previewed.
-#
-# `PreviewImage` is kept in this set although nothing emits one: it is a stock
-# node somebody may add to a UI graph by hand, and stripping it from the API
-# form is right whether or not this generator produces it.
-_UI_ONLY = {"MarkdownNote", "Note", "Reroute", "PrimitiveNode", "PreviewImage"}
-
-# Rendered entirely by the frontend, so they have no entry in /object_info.
-# Subset of _UI_ONLY: PreviewImage is a real backend node that we exclude
-# from the API form by choice, not by necessity.
-_FRONTEND_ONLY = {"MarkdownNote", "Note", "Reroute", "PrimitiveNode"}
-
-
-def _ui_settings(wf):
-    """{class_type: widgets} for a UI graph, ignoring bypassed nodes."""
-    return {n["type"]: n.get("widgets_values")
-            for n in wf["nodes"]
-            if n["type"] not in _UI_ONLY and n.get("mode", 0) == 0}
-
-
-def _api_settings(wf):
-    """{class_type: non-link inputs} for an API graph."""
-    return {n["class_type"]: {k: v for k, v in n["inputs"].items()
-                              if not isinstance(v, list)}
-            for n in wf.values()}
-
-
-def cross_check(written):
-    """Report where a task's UI and API graphs disagree.
-
-    Compares which node counts are present and, for the ones carrying settings we
-    pin, that the pinned values match. Widget *order* differs between the two
-    formats by design (UI is positional, API is keyed), so this checks the
-    node set plus the Sol-Attn and MiniMaxH3SageAttention values explicitly
-    rather than trying to align every widget by index.
-    """
-    by_task = {}
-    for task, fmt, p, wf in written:
-        by_task.setdefault(task, {})[fmt] = (p.name, wf)
-
-    errs = []
-    for task, forms in sorted(by_task.items()):
-        if len(forms) < 2:
-            continue
-        ui_name, ui = forms["ui"]
-        api_name, api = forms["api"]
-        ui_s, api_s = _ui_settings(ui), _api_settings(api)
-
-        ui_counts = Counter(n["type"] for n in ui["nodes"]
-                            if n["type"] not in _UI_ONLY
-                            and n.get("mode", 0) == 0)
-        api_counts = Counter(n["class_type"] for n in api.values())
-        for cls in sorted(set(ui_counts) | set(api_counts)):
-            if ui_counts[cls] != api_counts[cls]:
-                errs.append(
-                    f"{task}: {cls} count differs -- {ui_name} has "
-                    f"{ui_counts[cls]}, {api_name} has {api_counts[cls]}")
-
-        # Nodes whose values are compared, not just their presence. UI widgets
-        # are positional in schema order; API inputs are keyed, so each entry
-        # is the schema order of the widgets we care about.
-        #
-        # The Sol-Attn node is here because its settings have actually drifted.
-        # UNETLoader and LoraLoaderModelOnly joined it the moment `unet` and
-        # `lora` became free builder parameters: before that the checkpoint
-        # was derived from `task` inside both builders and the two formats
-        # could not disagree about it, and now they can. Which checkpoint a
-        # graph loads is exactly the class of difference this function exists
-        # to catch, and the node-set check above cannot see it -- both formats
-        # carry a UNETLoader either way.
-        #
-        # The Sol node's widget order depends on its own `selection` value, so
-        # it is read back out of the UI graph rather than assumed. Position 0
-        # is the selector; the option's inputs follow it, and they are the
-        # entries whose API key is dotted -- comparing `tau` against a keyed
-        # `tau` would find nothing, because the API form no longer has one.
-        sol_order = []
-        sol_ui = ui_s.get(SOL_NODE)
-        if sol_ui:
-            selected = sol_ui[0]
-            nested = SOL_SELECTION_INPUTS.get(selected)
-            if nested is None:
-                errs.append(f"{task}: {SOL_NODE} selection is {selected!r} in "
-                            f"{ui_name}, which is not a declared option")
-            else:
-                sol_order = (["selection"] + [f"selection.{k}" for k in nested]
-                             + list(SOL_TAIL_WIDGETS))
-
-        for cls, order in (
-            # Derived from the same tables the builder emits from rather than
-            # repeated, so the drift check cannot itself drift from what the
-            # builder emits -- a check comparing the generator to a stale copy
-            # of the generator passes for the wrong reason.
-            (SOL_NODE, sol_order),
-            ("UNETLoader", ["unet_name"]),
-            ("LoraLoaderModelOnly", ["lora_name", "strength_model"]),
-            # The scheduler and step count joined on 2026-08-20, when a
-            # scheduler other than `simple` first shipped in a graph. Nothing
-            # else in the repo reads the scheduler, and a graph sampling the
-            # wrong grid renders cleanly.
-            ("BasicScheduler", ["scheduler", "steps"]),
-            # The shifts are here for the same reason as the checkpoint: they
-            # are a free builder value that the two formats can now disagree
-            # about, and a graph sampling off the wrong schedule renders
-            # cleanly rather than failing.
-            ("MiniMaxH3SigmaShift", ["shift_video", "shift_audio"]),
-        ):
-            if cls not in ui_s or cls not in api_s:
-                continue
-            widgets = ui_s[cls] or []
-            for i, key in enumerate(order):
-                if i >= len(widgets) or key not in api_s[cls]:
-                    continue
-                if widgets[i] != api_s[cls][key]:
-                    errs.append(
-                        f"{task}: {cls}.{key} is {widgets[i]!r} in "
-                        f"{ui_name} but {api_s[cls][key]!r} in {api_name}")
-
-        # VAELoader is compared as a SET of filenames rather than through the
-        # keyed dicts above, and it has to be: every graph loads two VAEs, and
-        # `_ui_settings`/`_api_settings` key by CLASS NAME, so the second
-        # VAELoader silently overwrites the first and whichever survives is an
-        # accident of iteration order. Adding "VAELoader" to the list above
-        # would compare one arbitrary loader against another.
-        #
-        # It is here for the same reason UNETLoader is: `vae_name` became a
-        # free builder value when the single-frame path introduced the image
-        # VAE, so the two formats can now disagree about which decoder a graph
-        # loads. That difference renders cleanly and looks wrong only in the
-        # pixels -- a video graph on the one-frame VAE, or the reverse.
-        ui_vaes = sorted(
-            str((n.get("widgets_values") or [None])[0]) for n in ui["nodes"]
-            if n["type"] == "VAELoader" and n.get("mode", 0) == 0)
-        api_vaes = sorted(str(n["inputs"].get("vae_name")) for n in api.values()
-                          if isinstance(n, dict) and n.get("class_type") == "VAELoader")
-        if ui_vaes != api_vaes:
-            errs.append(f"{task}: the two forms load different VAEs -- "
-                        f"{ui_name} has {ui_vaes}, {api_name} has {api_vaes}")
-    return errs
-
-
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -6748,7 +3709,7 @@ def main():
 
     # The ones you actually open in ComfyUI. Named for what they do, not for
     # the task abbreviation the code uses internally.
-    # `label` keys the UI/API cross-check and has to be unique; `task` is what
+    # `label` names the graph in the build and has to be unique; `task` is what
     # the builder dispatches on. They are separate because a task can have more
     # than one graph, differing only in model source.
     #
@@ -6774,15 +3735,13 @@ def main():
         # belongs to step 2 and needs a bank entry.
         ("h3_text_to_video_audio_freeze.json", "t2v-audio-freeze", "t2v",
          LONG_T2V_PROMPT,
-         dict(freeze_audio=True, out_prefix="Video/h3_t2v_audio_freeze",
-              variant_note=_NOTE_AUDIO_FREEZE),
+         dict(freeze_audio=True, out_prefix="Video/h3_t2v_audio_freeze"),
          "text + a frozen audio track -> video, the track muxed as given"),
         # First-frame twin (plan step 5): the same node on the i2v chain, so
         # a window can be anchored on a frame. Canvas from the keyframe as
         # the shipped i2v graph does.
         ("h3_first_frame_to_video_audio_freeze.json", "i2v-audio-freeze", "i2v", None,
-         dict(freeze_audio=True, out_prefix="Video/h3_i2v_audio_freeze",
-              variant_note=_NOTE_AUDIO_FREEZE),
+         dict(freeze_audio=True, out_prefix="Video/h3_i2v_audio_freeze"),
          "first frame + text + a frozen audio track -> video"),
         # The whole-track node (owner, 2026-09-12 evening: "if there's a way
         # to make it not manual"). The reframed dancer prompt on every
@@ -6810,18 +3769,7 @@ def main():
               lora=(PDD_FL2VA_STRIPPED_LORA, PDD_STRENGTH), steps=PDD_STEPS,
               freeze_song=True, freeze_song_seconds=None, freeze_song_mode="random",
               freeze_mask=0.25, freeze_context=39, length=LONG_LENGTH,
-              out_prefix="Video/h3_t2v_audio_freeze_song_pdd8",
-              variant_note=_NOTE_SONG + (
-                  "\n\n**This graph: a whole song on PDD8.** `extent` is the "
-                  "whole track; windows are 345 frames with a 39-frame context; "
-                  "`audio_mask` 0.25 (the loose mask, which read slightly better "
-                  "than frozen on the dancer at two seeds, "
-                  "`bench/results/2026-09-12_audio_freeze_step2_verdict.json`); "
-                  "`prompt_mode` random, so with several blocks each window "
-                  "draws one from the seed and every shot recurs. The sampler "
-                  "runs the PDD8 schedule at its own eight evaluations on the "
-                  "baked checkpoint. Context 90 and random window lengths are "
-                  "untested; this is the best-supported start, not a verdict.")),
+              out_prefix="Video/h3_t2v_audio_freeze_song_pdd8"),
          "a whole song on PDD8: 345-frame windows, 39 context, loose mask, blocks drawn per window"),
         # The PDD8 song graph with the subject anchored by a reference still
         # (owner, 2026-09-14): fl2va takes references, and a fixed still is
@@ -6837,16 +3785,7 @@ def main():
               freeze_song=True, freeze_song_seconds=None, freeze_song_mode="random",
               freeze_song_refs=next(s for t, _p, s in REFVIEW2_SCENES if t == "dancer"),
               freeze_mask=0.25, freeze_context=39, length=LONG_LENGTH,
-              out_prefix="Video/h3_t2v_audio_freeze_song_ref_pdd8",
-              variant_note=_NOTE_SONG + (
-                  "\n\n**This graph: a whole song on PDD8 with the subject anchored by a "
-                  "reference still.** Everything is the PDD8 song graph's except "
-                  "`references`: the dancer scene's still and its reference prompt "
-                  "(`h3_config.REFVIEW2_SCENES`, `dancer`), which names her as "
-                  "`<Subject 1>` from `<Picture 1>`. The still goes with every "
-                  "window's prompt and is encoded once with it. References on fl2va "
-                  "work (owner, 2026-09-14); whether a reference holds identity across "
-                  "a whole song has not been judged.")),
+              out_prefix="Video/h3_t2v_audio_freeze_song_ref_pdd8"),
          "a whole song on PDD8 with the subject anchored by a reference still"),
         # The PDD8 song graph with prompt lists, the shipped example of
         # `__name__` placeholders (owner, 2026-09-14), on the owner's track
@@ -6865,19 +3804,7 @@ def main():
               freeze_song=True, freeze_song_seconds=None, freeze_song_mode="random",
               freeze_song_lists=_SONG_FLICKER_LISTS, freeze_track="just-a-flicker.mp3",
               freeze_mask=0.25, freeze_context=39, length=LONG_LENGTH,
-              out_prefix="Video/h3_t2v_audio_freeze_song_lists_pdd8",
-              variant_note=_NOTE_SONG + (
-                  "\n\n**This graph: a whole song on PDD8 with two prompt lists.** "
-                  "The track is `just-a-flicker.mp3` from the input folder. One prompt "
-                  "for every window: a close-up, then a medium shot of her `__place__`, "
-                  "`__motion__`, then a close-up again, so each window opens and closes "
-                  "on her face whatever place the window before drew. `place` is five "
-                  "places, shuffled; `motion` is four movements, in order. Edit the values "
-                  "on the list nodes, or remove a list node and put `place.txt` in the "
-                  "`wildcards` folder. A window is shorter than a section of this song, "
-                  "so a new place arrives where a window ends, not where the song turns. "
-                  "Everything else is the PDD8 song graph's. No render "
-                  "of it has been judged.")),
+              out_prefix="Video/h3_t2v_audio_freeze_song_lists_pdd8"),
          "a whole song on PDD8 with two prompt lists filling the middle shot of every window"),
         # The PDD8 freeze with the audio attention gain node in front of the
         # guider, inert as shipped; bench arms patch key_gain / value_gain.
@@ -6886,8 +3813,7 @@ def main():
          dict(pdd=True, sampler_name="euler",
               unet=MODELS["unet_fl2va_pdd8_baked"],
               lora=(PDD_FL2VA_STRIPPED_LORA, PDD_STRENGTH), steps=PDD_STEPS,
-              freeze_audio=True, freeze_gain=True, api_only=True,
-              out_prefix="Video/h3_candidate_t2v_pdd8_baked_audio_freeze_gain"),
+              freeze_audio=True, freeze_gain=True, out_prefix="Video/h3_candidate_t2v_pdd8_baked_audio_freeze_gain"),
          "CANDIDATE the PDD8 freeze with the audio attention gain knob, inert as shipped"),
         # The loop's first seam (plan step 6), API only: two windows of the
         # track, the second window's head frozen to the first window's tail
@@ -6896,21 +3822,19 @@ def main():
         # track's span. The seam is the thing to look at.
         ("h3_text_to_video_audio_freeze_2windows.json", "t2v-audio-freeze-2windows", "t2v",
          LONG_T2V_PROMPT,
-         dict(freeze_windows=2, freeze_context=39, api_only=True,
-              out_prefix="Video/h3_t2v_audio_freeze_2windows"),
+         dict(freeze_windows=2, freeze_context=39, out_prefix="Video/h3_t2v_audio_freeze_2windows"),
          "text + a frozen audio track -> two windows joined at a 39-frame frozen seam"),
         ("h3_image_ref_plus_text_to_video.json", "r2v", "r2v", _ref_prompt(images=True), {},
          "reference image(s) + text -> video + audio"),
         ("h3_first_frame_to_video.json", "i2v", "i2v", None, {},
-         "first frame + text -> video + audio (via MiniMaxH3KeyframeCanvas)"),
+         "first frame + text -> video + audio (the conditioner takes its canvas from the keyframe)"),
 
         # fl2va: the same node, the same task string, one more LoadImage.
         # `last_frame` is what separates them, which is why the task stays
         # "i2v" -- inventing a fourth task value would fork the geometry and
         # canvas logic that both modes share exactly.
         ("h3_first_last_frame_to_video.json", "fl2v", "i2v", None,
-         dict(last_frame=True, variant_note=_NOTE_FL2V,
-              out_prefix="Video/h3_fl2v", **FL2V_CANVAS),
+         dict(last_frame=True, out_prefix="Video/h3_fl2v", **FL2V_CANVAS),
          "first frame + last frame + text -> video + audio"),
 
         # l2va: last frame ONLY, and the mode base_en names that this repo had
@@ -6928,21 +3852,7 @@ def main():
         # placeholders literally until the same day.
         ("h3_last_frame_to_video.json", "l2v", "i2v", None,
          dict(last_frame=True, first_frame=False,
-              out_prefix="Video/h3_l2v", **FL2V_CANVAS,
-              variant_note=(
-                  "**The `width` and `height` widgets on the conditioner are "
-                  "INERT on this graph, and the render is not the size they "
-                  "show.** `canvas` is `from_keyframe`, so the canvas is "
-                  "derived from the keyframe through `adapt_canvas` and the "
-                  "widgets are carried but unread -- a 1024x1024 keyframe "
-                  "renders 768x768, not the 1152x768 the widgets say. That is "
-                  "correct behaviour for the mode: the lone closing frame is "
-                  "the only geometry the model is given, so it anchors the "
-                  "canvas rather than being cropped into one chosen elsewhere. "
-                  "Noted here because the widgets sit right beside the value "
-                  "they do not set, which reads as a bug and is the class of "
-                  "thing that costs somebody an hour. Set `canvas` to "
-                  "`explicit` if you want the widgets to own the geometry.")),
+              out_prefix="Video/h3_l2v", **FL2V_CANVAS),
          "last frame + text -> video + audio (the closing frame is the anchor)"),
 
         # **`h3_first_last_frame_to_video_turbo_4step_768p` was here and is gone
@@ -6967,8 +3877,7 @@ def main():
         # choice it is describing.
         ("h3_text_to_video_turbo.json", "t2v-turbo", "t2v", LONG_T2V_PROMPT,
          dict(lora=(TURBO_LORA, TURBO_LORA_STRENGTH), steps=TURBO_STEPS,
-              shift=TURBO_SHIFT, variant_note=_NOTE_TURBO,
-              out_prefix="Video/h3_t2v_turbo_8step"),
+              shift=TURBO_SHIFT, out_prefix="Video/h3_t2v_turbo_8step"),
          "text -> video + audio, via the 8-step turbo LoRA"),
 
         # **`h3_text_to_video_turbo_4step_768p` was here and is gone as of
@@ -6998,8 +3907,7 @@ def main():
          dict(lora=(TURBO_768P_LORA, TURBO_OWNER_STRENGTH),
               steps=TURBO_768P_STEPS, shift=TURBO_768P_SHIFT,
               sampler_name=TURBO_SAMPLER, scheduler_name=TURBO_OWNER_SCHEDULER,
-              out_prefix="Video/h3_probe_turbo_768p_owner",
-              variant_note=_NOTE_TURBO_OWNER),
+              out_prefix="Video/h3_probe_turbo_768p_owner"),
          f"the 768p turbo LoRA at the owner's recipe: euler, beta, "
          f"{TURBO_768P_STEPS} steps, strength {TURBO_768P_STRENGTH:g}"),
 
@@ -7011,33 +3919,7 @@ def main():
          LONG_T2V_PROMPT,
          dict(lora=(TURBO_SLA_LORA, TURBO_LORA_STRENGTH),
               steps=TURBO_SLA_STEPS, shift=TURBO_SLA_SHIFT,
-              out_prefix="Video/h3_probe_turbo_768p_sla",
-              variant_note=_probe_note(
-                  "whether a LoRA distilled under sparse attention survives a "
-                  "different sparse attention",
-                  "h3_probe_turbo_768p_owner.json",
-                  "the LoRA file: lightx2v's Turbo-SLA 4-step v0.1 768p instead "
-                  f"of the Turbo {turbo_label(TURBO_768P_LORA)}. Same shift (6/3), same steps, "
-                  "same rank, alpha, base and tensor keys -- the file differs in "
-                  "what the student saw during distillation. The SLA student's "
-                  "attention ran a top-k block router that keeps 15% of key "
-                  "blocks per query block (reported from the model card and "
-                  "LightX2V's config for it; the training code is not in any "
-                  "checkout here). This graph runs it under Sol-Attn, a "
-                  "threshold router with a dense fallback, because that is "
-                  "the repo default and the only sparse kernel on this box.",
-                  "Whether it renders a coherent clip at all, first. Then the "
-                  "same things as any turbo arm: motion, texture, audio. There "
-                  "is no kernel here that reproduces the router it was trained "
-                  "under, so this is not a test of SLA -- it is a test of "
-                  "whether SLA's LoRA transfers to a router it never saw.",
-                  "Unknown in both directions. The SLA paper's claim is that a "
-                  "fine-tuned model under its sparse router matches the dense "
-                  "original; it says nothing about that model under another "
-                  "router or under dense attention. If this arm degrades "
-                  "relative to its twin, the candidate cause is the router "
-                  "mismatch and the control is the same pair with Sol "
-                  "bypassed, which nothing here has rendered either.")),
+              out_prefix="Video/h3_probe_turbo_768p_sla"),
          "the 768p turbo graph with lightx2v's SLA-distilled LoRA swapped in"),
 
         # The router arm was RETIRED 2026-08-28 by owner decision ("we don't
@@ -7061,18 +3943,7 @@ def main():
          dict(lora=(TURBO_SLA_LORA, TURBO_LORA_STRENGTH),
               steps=TURBO_SLA_STEPS, shift=TURBO_SLA_SHIFT,
               sol_on=False,
-              out_prefix="Video/h3_probe_turbo_768p_sla_dense",
-              variant_note=_probe_note(
-                  "whether the SLA LoRA needs sparse attention at all",
-                  "h3_probe_turbo_768p_sla.json",
-                  "Sol-Attn absent: sage only, the repo's dense-baseline "
-                  "convention (`workflows/bench/*_stamped_api.json`). Every "
-                  "block the student learned to do without is back.",
-                  "Coherence and sampler cost against the Sol and router twins.",
-                  "Unknown; the SLA paper's claim is about the fine-tuned "
-                  "model under its sparse router, not under dense attention. "
-                  "Not a discharge of `docs/open_experiments.md` #9, which is "
-                  "stock torch attention with no sage either.")),
+              out_prefix="Video/h3_probe_turbo_768p_sla_dense"),
          "the SLA LoRA with Sol-Attn absent: sage only"),
 
         # First graph in this repo to wire a reference VIDEO. Everything about
@@ -7084,22 +3955,19 @@ def main():
         # sockets and a prompt naming one that is not there fails silently.
         ("h3_ref_video_to_video.json", "r2v-video", "r2v",
          _ref_prompt(images=True, video=True, video_audio=True),
-         dict(**REF_VIDEO_BUDGET, ref_video=True, out_prefix="Video/h3_r2v_video",
-              variant_note=_NOTE_REF_VIDEO),
+         dict(**REF_VIDEO_BUDGET, ref_video=True, out_prefix="Video/h3_r2v_video"),
          "images + reference video + its soundtrack -> video + audio"),
 
         ("h3_ref_video_only.json", "r2v-video-only", "r2v",
          _ref_prompt(images=False, video=True),
          dict(**REF_VIDEO_BUDGET, ref_video=True, ref_video_audio=False, ref_images_on=False,
-              out_prefix="Video/h3_r2v_video_only",
-              variant_note=_note_ref_matrix("a reference video and nothing else")),
+              out_prefix="Video/h3_r2v_video_only"),
          "reference video only, silent clip"),
 
         ("h3_ref_video_audio.json", "r2v-video-audio", "r2v",
          _ref_prompt(images=False, video=True, video_audio=True),
          dict(**REF_VIDEO_BUDGET, ref_video=True, ref_images_on=False,
-              out_prefix="Video/h3_r2v_video_audio",
-              variant_note=_note_ref_matrix("a reference video with its own soundtrack")),
+              out_prefix="Video/h3_r2v_video_audio"),
          "reference video + its soundtrack, no images"),
 
         # One named two-stage policy, not two independently switchable fixes.
@@ -7111,33 +3979,18 @@ def main():
          _ref_prompt(images=False, video=True, video_audio=True),
          dict(**REF_VIDEO_BUDGET, ref_video=True, ref_images_on=False,
               ref_video_policy="release",
-              out_prefix="Video/h3_probe_release_video_policy",
-              variant_note=_probe_note(
-                  "what release-matched two-stage reference-video preparation changes",
-                  "h3_ref_video_audio.json",
-                  "only `video_policy`: release instead of comfy. The local "
-                  "compiler upscales the full-rate VAE view to the release "
-                  "canvas and independently runs the raw 2 fps Qwen samples "
-                  "through the release's duration-aware processor.",
-                  "Preflight's VAE/Qwen geometry block and the `[h3] reference "
-                  "video ... policy=release` server line before judging the clip.",
-                  "More VAE reference rows than the comfy twin, while Qwen "
-                  "lands on its own duration-budgeted grid rather than blindly "
-                  "sharing the upscaled frames. This is an opt-in local parity "
-                  "policy over native-open ComfyUI gaps, not an upstream fix.")),
+              out_prefix="Video/h3_probe_release_video_policy"),
          "reference video on the atomic release VAE/Qwen preparation policy"),
 
         ("h3_ref_image_audio.json", "r2v-image-audio", "r2v",
          _ref_prompt(images=True, audio=True),
-         dict(ref_audio=True, out_prefix="Video/h3_r2v_image_audio",
-              variant_note=_note_ref_matrix("reference images and a standalone audio clip")),
+         dict(ref_audio=True, out_prefix="Video/h3_r2v_image_audio"),
          "reference images + standalone audio"),
 
         ("h3_ref_image_video_audio.json", "r2v-all", "r2v",
          _ref_prompt(images=True, video=True, video_audio=True, audio=True),
          dict(**REF_VIDEO_BUDGET, ref_video=True, ref_audio=True,
-              out_prefix="Video/h3_r2v_all",
-              variant_note=_note_ref_matrix("every reference type at once")),
+              out_prefix="Video/h3_r2v_all"),
          "images + video + its soundtrack + standalone audio"),
 
         # A CAPTURE target, not a render target. It exists so `h3_capture.py`
@@ -7146,7 +3999,7 @@ def main():
         # prose in a README on the share, which is why nothing about it could
         # be reproduced from this repo.
         #
-        # Sol-Attn is absent, as in every UI graph, and that is a REQUIREMENT
+        # Sol-Attn is off on this graph, and that is a REQUIREMENT
         # here rather than the usual default. Dense attention is
         # permutation-equivariant, so one capture serves every token ordering
         # at every block; a capture taken with Sol on is a slice of a
@@ -7167,8 +4020,7 @@ def main():
          # It was previously done by hand-editing the emitted `_api.json` to
          # route past the Sol node, which CLAUDE.md forbids and which the next
          # regeneration silently reverted -- putting Sol back into the capture
-         # chain with nothing going red. Declaring it here survives regeneration
-         # and fixes the UI twin in the same move.
+         # chain with nothing going red. Declaring it here survives regeneration.
          dict(**REF_VIDEO_BUDGET, ref_images=CAPTURE_REF_IMAGES,
               sol_on=False,
               out_prefix="Video/h3_probe_capture_ref3"),
@@ -7220,8 +4072,7 @@ def main():
                   lora=(TURBO_768P_LORA, TURBO_768P_STRENGTH),
                   steps=TURBO_768P_STEPS, shift=TURBO_768P_SHIFT,
                   sampler_name=TURBO_SAMPLER,
-                  out_prefix=f"Video/h3_probe_ref_turbo768p_{tag}",
-                  variant_note=_note_ref_transfer(label, what)),
+                  out_prefix=f"Video/h3_probe_ref_turbo768p_{tag}"),
              f"the capture request on {label} with the 4-step 768p turbo LoRA")
             for tag, key, label, what in (
                 ("fl2va", "unet_fl2va", "fl2va",
@@ -7271,19 +4122,7 @@ def main():
              _bank_prompt(prompt_id),
              dict(length=LONG_LENGTH, ref_image_count=len(stills),
                   ref_images=stills,
-                  out_prefix=f"Video/h3_probe_refview2_{tag}",
-                  variant_note=_probe_note(
-                      "which copy of a still each tower should see",
-                      "h3_image_ref_plus_text_to_video_dialogue.json",
-                      "built at the node defaults; the arms are the patches "
-                      "in bench/refview2_arms.json (upscale off, a separate "
-                      "encoder copy at 512 / 1024 / 2048).",
-                      "identity of every referenced subject across cuts, and "
-                      "which mouth each line comes out of, blind, over seeds.",
-                      "each scene carries a different still count and "
-                      "aspect, so the arms are read per scene before they "
-                      "are read together.",
-                      held="same prompt, same stills, same canvas")),
+                  out_prefix=f"Video/h3_probe_refview2_{tag}"),
              f"reference-view ablation scene: {prompt_id}")
             for tag, prompt_id, stills in REFVIEW2_SCENES
         ],
@@ -7319,8 +4158,7 @@ def main():
              _ref_prompt(images=("character", "garment", "environment")),
              dict(**REF_VIDEO_BUDGET, ref_images=CAPTURE_REF_IMAGES,
                   ref_latents=latents, **more,
-                  out_prefix=f"Video/h3_probe_ref_pathway_{tag}",
-                  variant_note=note),
+                  out_prefix=f"Video/h3_probe_ref_pathway_{tag}"),
              what)
             for tag, latents, more, what, note in (
                 ("typed_both", True, {},
@@ -7336,10 +4174,10 @@ def main():
                  "reference rows in the DiT. Judged blind against "
                  "`typed_both` on matched seeds; what survives is what the "
                  "encoder pathway carries on its own."),
-                ("native_both", True, dict(native_ref=True, api_only=True),
+                ("native_both", True, dict(native_ref=True),
                  "reference pathway arm: core's node, ref2va, encoder and DiT rows",
                  None),
-                ("native_encoder", False, dict(native_ref=True, api_only=True),
+                ("native_encoder", False, dict(native_ref=True),
                  "reference pathway arm: core's node, ref2va, encoder only",
                  None),
                 ("fl2va_encoder", False, dict(unet=MODELS["unet_fl2va"]),
@@ -7357,15 +4195,13 @@ def main():
         ("h3_ref_video_edit.json", "r2v-edit", "r2v",
          _ref_prompt(images=False, video=True, video_audio=True, video_role="edit"),
          dict(**REF_VIDEO_BUDGET, ref_video=True, ref_images_on=False,
-              out_prefix="Video/h3_r2v_edit",
-              variant_note=_note_ref_relationship("edit")),
+              out_prefix="Video/h3_r2v_edit"),
          "edit a source video -- the closest thing H3 has to inpainting"),
 
         ("h3_ref_video_image_edit.json", "r2v-edit-combo", "r2v",
          _ref_prompt(images=True, video=True, video_audio=True, video_role="edit"),
          dict(**REF_VIDEO_BUDGET, ref_video=True,
-              out_prefix="Video/h3_r2v_edit_combo",
-              variant_note=_note_ref_relationship("edit")),
+              out_prefix="Video/h3_r2v_edit_combo"),
          "edit a source video, with images supplying what replaces what"),
 
         # The twin of h3_ref_video_image_edit: same sockets, same budget, a
@@ -7374,28 +4210,24 @@ def main():
          _ref_prompt(images=True, video=True, video_audio=True,
                      video_role="swap", audio_role="copy"),
          dict(**REF_VIDEO_BUDGET, ref_video=True, ref_image_count=1,
-              out_prefix="Video/h3_r2v_swap",
-              variant_note=_note_ref_relationship("swap")),
+              out_prefix="Video/h3_r2v_swap"),
          "replace a character in a source video with one from an image"),
 
         ("h3_ref_video_continue.json", "r2v-continue", "r2v",
          _ref_prompt(images=False, video=True, video_audio=True, video_role="continue"),
          dict(**REF_VIDEO_BUDGET, ref_video=True, ref_images_on=False,
-              out_prefix="Video/h3_r2v_continue",
-              variant_note=_note_ref_relationship("continue")),
+              out_prefix="Video/h3_r2v_continue"),
          "continue from the end of a source video"),
 
         ("h3_ref_video_motion.json", "r2v-motion", "r2v",
          _ref_prompt(images=True, video=True, video_role="motion"),
          dict(**REF_VIDEO_BUDGET, ref_video=True, ref_video_audio=False,
-              out_prefix="Video/h3_r2v_motion",
-              variant_note=_note_ref_relationship("motion")),
+              out_prefix="Video/h3_r2v_motion"),
          "transfer motion from a video onto a subject from an image"),
 
         ("h3_ref_audio_voice.json", "r2v-voice", "r2v",
          _ref_prompt(images=True, audio=True, audio_role="voice"),
-         dict(ref_audio=True, out_prefix="Video/h3_r2v_voice",
-              variant_note=_note_ref_relationship("voice")),
+         dict(ref_audio=True, out_prefix="Video/h3_r2v_voice"),
          "reference a speaker's voice timbre for generated speech"),
 
         # --- probes: pairs, one variable, run against the named twin ---
@@ -7404,39 +4236,21 @@ def main():
          LONG_T2V_PROMPT,
          dict(lora=(TURBO_LORA, TURBO_LORA_STRENGTH), steps=TURBO_STEPS,
               shift=TURBO_SHIFT, split_at=SPLIT_AT, split_base_last=True,
-              out_prefix="Video/h3_probe_split_baselast",
-              variant_note=_note_split(True)),
+              out_prefix="Video/h3_probe_split_baselast"),
          "distilled high-noise, plain base model finishes"),
 
         ("h3_probe_split_base_first.json", "t2v-split-basefirst", "t2v",
          LONG_T2V_PROMPT,
          dict(lora=(TURBO_LORA, TURBO_LORA_STRENGTH), steps=TURBO_STEPS,
               shift=TURBO_SHIFT, split_at=SPLIT_AT, split_base_last=False,
-              out_prefix="Video/h3_probe_split_basefirst",
-              variant_note=_note_split(False)),
+              out_prefix="Video/h3_probe_split_basefirst"),
          "plain base high-noise, distilled finish (the Krea 2 ordering)"),
 
         ("h3_probe_turbo_home_canvas.json", "t2v-turbo-544p", "t2v",
          LONG_T2V_PROMPT,
          dict(lora=(TURBO_LORA, TURBO_LORA_STRENGTH), steps=TURBO_STEPS,
               shift=TURBO_SHIFT, **TURBO_HOME_CANVAS,
-              out_prefix="Video/h3_probe_turbo_544p",
-              variant_note=_probe_note(
-                  "whether a 544p LoRA would rather have its own canvas",
-                  "h3_text_to_video_turbo.json",
-                  "960x544 instead of 1344x768. Same LoRA, same steps, same "
-                  "shift, same seed and prompt -- only the canvas moved, onto "
-                  "the resolution the 8-step v1.0 was actually distilled at.",
-                  "Whether the output is better, not whether it is faster. It "
-                  "will be faster: 510 tokens/frame against 1008, i.e. 0.26x "
-                  "the attention. That is not the question.",
-                  "Unknown, and that is the point. You cannot satisfy both "
-                  "distributions at once: at 1344x768 the base model is home "
-                  "and the LoRA is stretched to roughly twice the sequence it "
-                  "was distilled on; at 960x544 the LoRA is home and the base "
-                  "model is below H3's own 768 short edge, outside the canvas "
-                  "family it was trained on. The vendor's own graph ships "
-                  "960x544, which is their answer, not a measurement.")),
+              out_prefix="Video/h3_probe_turbo_544p"),
          "the 8-step turbo LoRA at the 544p it was distilled at"),
 
         # The equal-cost shape control. 21:9, 16:9 and 9:16 are all
@@ -7446,52 +4260,17 @@ def main():
         # these two change shape with cost held exactly constant, which is the
         # only way to ask whether the model is actually shape-neutral.
         ("h3_probe_canvas_ultrawide.json", "t2v-21by9", "t2v", LONG_T2V_PROMPT,
-         dict(width=1536, height=672, out_prefix="Video/h3_probe_21by9",
-              variant_note=_probe_note(
-                  "shape at constant cost, the long way",
-                  "h3_text_to_video.json",
-                  "1536x672 instead of 1344x768. Both are 1008 tokens/frame, "
-                  "so the sequence length, the attention cost and the render "
-                  "time are the same by construction. The long edge went from "
-                  "1344 to 1536. **1536 is not the end of that axis**: the "
-                  "legal 1:4..4:1 family holds eight canvases at exactly 1008 "
-                  "tokens/frame -- 1344x768, 1536x672, 1792x576 and 2016x512, "
-                  "plus each of those transposed -- so the equal-cost run goes "
-                  "to a 3.94:1 frame. This probe takes one step along it, not "
-                  "the last one.",
-                  "Composition and coherence across the wide axis, not speed. "
-                  "Preflight's sequence length should be IDENTICAL to the "
-                  "twin's -- if it is not, one of the two canvases is not "
-                  "what this note claims.",
-                  "Unknown. Every number in this repo was taken at 16:9, so "
-                  "whether the model handles a 2.29:1 frame as well as a "
-                  "1.75:1 one has never been asked. Cost cannot explain any "
-                  "difference you see, which is what makes this worth "
-                  "running.")),
+         dict(width=1536, height=672, out_prefix="Video/h3_probe_21by9"),
          "21:9, the same cost as the default canvas"),
 
         ("h3_probe_canvas_portrait.json", "t2v-9by16", "t2v", LONG_T2V_PROMPT,
-         dict(width=768, height=1344, out_prefix="Video/h3_probe_9by16",
-              variant_note=_probe_note(
-                  "shape at constant cost, the tall way",
-                  "h3_text_to_video.json",
-                  "768x1344 instead of 1344x768. Packed rows are "
-                  "(w//32)*(h//32), which is symmetric, so portrait and "
-                  "landscape of a ratio cost exactly the same: 1008 "
-                  "tokens/frame either way.",
-                  "Whether the model is orientation-neutral. 16:9 against "
-                  "9:16 is a quality question here, never a speed one.",
-                  "Unknown, and the symmetry is the point: if portrait looks "
-                  "worse it is the training distribution talking, not the "
-                  "geometry. Run this against the ultrawide probe and the "
-                  "default and you have three shapes at one price.")),
+         dict(width=768, height=1344, out_prefix="Video/h3_probe_9by16"),
          "9:16 portrait, the same cost as the default canvas"),
 
         ("h3_probe_ref2v_turbo.json", "r2v-turbo", "r2v", _ref_prompt(images=True),
          dict(lora=(TURBO_LORA, TURBO_LORA_STRENGTH), steps=TURBO_STEPS,
               shift=TURBO_SHIFT,
-              out_prefix="Video/h3_probe_r2v_turbo",
-              variant_note=_NOTE_REF2V_TURBO),
+              out_prefix="Video/h3_probe_r2v_turbo"),
          "ref2v with an fl2v turbo LoRA -- deliberately out of distribution"),
         # The twin of the arm above, and the only difference that matters is
         # WHICH turbo LoRA. That one is an fl2v distill touching 208 modules,
@@ -7574,19 +4353,7 @@ def main():
          dict(sampler_name="euler",
               lora=(TURBO_REF2VA_LORA, 1.0), steps=TURBO_REF2VA_STEPS,
               shift=TURBO_REF2VA_SHIFT,
-              out_prefix="Video/h3_r2v_turbo_4step",
-              variant_note=_probe_note(
-                  "does PDD beat the turbo distill it is pitched against",
-                  "h3_image_ref_plus_text_to_video_pdd_4step.json",
-                  "the lightx2v ref2v turbo instead of the PDD LoRA, at the "
-                  "same 4 evaluations and the same 12/3 shift.",
-                  "identity on the reference subject and texture late in the "
-                  "clip, which is where PDD's fused heads differ most from the "
-                  "base and where the turbo LoRAs touch nothing.",
-                  "PDD perturbs the backbone about 20x harder than the 8-step "
-                  "turbo and moves the modulation path the turbos leave "
-                  "alone; this is where that shows or does not. NOTE the "
-                  "turbo was distilled at 544p and this renders 768p.")),
+              out_prefix="Video/h3_r2v_turbo_4step"),
          "the ref2v turbo at 4 steps, matched to the PDD 4-step arm"),
 
         # --- the market scene as ref2va, base and both PDD step counts ------
@@ -7712,32 +4479,13 @@ def main():
         # frame", which does not name a duration.
         ("h3_text_to_video_dialogue.json", "t2v-dialogue", "t2v",
          DIALOGUE_T2V_PROMPT,
-         dict(length=LONG_LENGTH, out_prefix="Video/h3_t2v_dialogue",
-              variant_note=_probe_note(
-                  "does the dialogue marker survive at speed",
-                  "h3_image_ref_plus_text_to_video_dialogue.json",
-                  "no references: both speakers are described in prose.",
-                  "whether either voice speaks the marker or the word "
-                  "English aloud, and whether the seven turn boundaries land "
-                  "on the right mouth.",
-                  "the ref2v twin runs the same eight lines from two stills, "
-                  "so the two are readable against each other.")),
+         dict(length=LONG_LENGTH, out_prefix="Video/h3_t2v_dialogue"),
          "two speakers, eight clipped lines, dialogue markers throughout"),
 
         ("h3_image_ref_plus_text_to_video_dialogue.json", "r2v-dialogue", "r2v",
          DIALOGUE_REF2V_PROMPT,
          dict(length=LONG_LENGTH, ref_image_count=2, ref_images=DIALOGUE_REF_IMAGES,
-              out_prefix="Video/h3_r2v_dialogue",
-              variant_note=_probe_note(
-                  "does reference identity hold across seven turn changes",
-                  "h3_text_to_video_dialogue.json",
-                  "the same eight lines, with both speakers supplied as "
-                  "stills instead of described.",
-                  "identity on each cut -- the two references are far apart in "
-                  "age, dress and palette, so a blend shows in one frame.",
-                  "socket order is the label: <Picture 1> is the man and "
-                  "<Picture 2> is the woman, so swapping them swaps who "
-                  "speaks which lines.")),
+              out_prefix="Video/h3_r2v_dialogue"),
          "the same exchange, both speakers from reference stills"),
 
         # The triple. Every PAIR of {references, dialogue, distill} shipped and
@@ -7757,19 +4505,6 @@ def main():
               lora=(PDD_REF2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS_FAST,
               length=LONG_LENGTH, ref_image_count=2, ref_images=DIALOGUE_REF_IMAGES,
               out_prefix="Video/h3_r2v_dialogue_pdd_4step",
-              variant_note=_probe_note(
-                  "does speaker attribution survive references and a distill",
-                  "h3_image_ref_plus_text_to_video_dialogue.json",
-                  "the ref2va PDD LoRA at 4 evaluations on euler, against the "
-                  "companion's 16 steps on er_sde. One axis, several widgets: "
-                  "a distill moves the sampler and the step count with it.",
-                  "which mouth each of the eight lines comes out of, before "
-                  "anything else. Identity across the three cuts second.",
-                  "a swap is legible without a companion, because the prompt "
-                  "numbers its own bindings. A pass confirms attribution "
-                  "holds; it does not establish WHY, and the cause is the "
-                  "encoder lane's layer-50 bounds pair.",
-                  held="same prompt, same canvas, same two references"),
               ),
          "the same stairwell exchange from two stills, at 4 steps via PDD"),
 
@@ -7797,15 +4532,7 @@ def main():
         ("h3_text_to_video_pdd.json", "texttovideopdd", "t2v", LONG_T2V_PROMPT,
          dict(pdd=True, sampler_name="euler",
               lora=(PDD_FL2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS,
-              out_prefix="Video/text_to_video_pdd",
-              variant_note=_probe_note(
-                  "text to video at 8 steps via PDD",
-                  "h3_text_to_video_pdd_4step.json",
-                  "the PDD LoRA at 8 evaluations, sage AND Sol on.",
-                  "identity and texture in the last third, where this "
-                  "schedule takes its largest jump.",
-                  "one converted file serves both step counts; the heads "
-                  "are fused at load for whichever is asked.")),
+              out_prefix="Video/text_to_video_pdd"),
          "text -> video + audio at 8 steps via PDD, sage on"),
 
         # **The PDD ladder's own rungs, added 2026-09-04.** The 2026-09-03
@@ -7825,85 +4552,26 @@ def main():
          dict(turbo_pack=True, dense_attn="sage",
               lora=(TURBO_PACK_LORA, TURBO_PACK_STRENGTH),
               steps=TURBO_PACK_RUNG_STEPS, scheduler_name=TURBO_PACK_SCHEDULER,
-              out_prefix="Video/h3_probe_t2v_turbo_v4_sage",
-              variant_note=_probe_note(
-                  "the larryvrh v4 step-600 EMA at six steps under sage "
-                  "alone: the turbo rung's pack arm",
-                  "workflows/bench/h3_text_to_video_stamped_api.json (the "
-                  "sage 16-step floor)",
-                  "the LoRA (the pack's v4 step-600 EMA through its own "
-                  "loader, bypass injection, strength 1.0, scheduler simple) "
-                  "and the step count (six against sixteen). Shift stays at "
-                  "the base 12/3. sage on every step; no Sol.",
-                  "prompt adherence apart from rendering quality, per the "
-                  "2026-09-05 judging section of docs/eval_comparison.md; "
-                  "then texture, on-screen text, lighting, framing, and the "
-                  "audio on the pair; the predictions are in the manifest, "
-                  "written before any render.",
-                  "bench/turbo_rung_arms.json renders it on the five ladder "
-                  "scenes at two seeds beside the lightx2v arm and the floor.")),
+              out_prefix="Video/h3_probe_t2v_turbo_v4_sage"),
          "text -> video + audio at six steps via the larryvrh v4 turbo pack, sage alone"),
 
         ("h3_probe_t2v_turbo_lx12_sage.json", "t2v-turbo-lx12-sage", "t2v", LONG_T2V_PROMPT,
          dict(dense_attn="sage",
               lora=(TURBO_768P_V12_LORA, TURBO_LORA_STRENGTH),
               steps=TURBO_768P_V12_STEPS, shift=TURBO_768P_SHIFT,
-              out_prefix="Video/h3_probe_t2v_turbo_lx12_sage",
-              variant_note=_probe_note(
-                  "the lightx2v fl2v turbo v1.2 768p at the vendor's four "
-                  "steps under sage alone: the turbo rung's lightx2v arm",
-                  "workflows/bench/h3_text_to_video_stamped_api.json (the "
-                  "sage 16-step floor)",
-                  "the LoRA (lightx2v's v1.2 768p 4-step file through the "
-                  "stock loader at the vendor's strength 1.0), the step count "
-                  "(four against sixteen) and the shift (6/3, the schedule "
-                  "the student was distilled at, so two things move at once "
-                  "as they must for this file). sage on every step; no Sol.",
-                  "the same properties as the pack arm, and the 4-step "
-                  "count's own signature: fine detail and text first.",
-                  "bench/turbo_rung_arms.json renders it beside the pack arm "
-                  "and the floor at two seeds.")),
+              out_prefix="Video/h3_probe_t2v_turbo_lx12_sage"),
          "text -> video + audio at four steps via lightx2v turbo v1.2 768p, sage alone"),
 
         ("h3_probe_t2v_pdd8_sage.json", "t2v-pdd8-sage", "t2v", LONG_T2V_PROMPT,
          dict(pdd=True, dense_attn="sage", sampler_name="euler",
               lora=(PDD_FL2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS,
-              out_prefix="Video/h3_probe_t2v_pdd8_sage",
-              variant_note=_probe_note(
-                  "PDD8 under sage alone: the rung the 2026-09-03 ladder "
-                  "did not have",
-                  "h3_text_to_video_pdd.json",
-                  "Sol is ABSENT; sage auto runs every one of the eight "
-                  "steps. The shipped twin runs sage plus Sol at the "
-                  "PDD-specific window, sparse on four of the eight.",
-                  "the defects the owner named blind on the shipped rung: "
-                  "brightness, compressed skin texture, melted on-screen "
-                  "text, shaky framing. Gone here, and Sol on the coarse "
-                  "schedule is the suspect; still here, and the schedule or "
-                  "the merge is.",
-                  "bench/pdd_ladder_arms.json renders this beside the dense "
-                  "twin, the shipped rung and a narrower Sol window, on the "
-                  "ladder's scenes at the ladder's seed.")),
+              out_prefix="Video/h3_probe_t2v_pdd8_sage"),
          "text -> video + audio at 8 steps via PDD, sage alone, Sol absent"),
 
         ("h3_probe_t2v_pdd8_dense.json", "t2v-pdd8-dense", "t2v", LONG_T2V_PROMPT,
          dict(pdd=True, dense_attn=True, sampler_name="euler",
               lora=(PDD_FL2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS,
-              out_prefix="Video/h3_probe_t2v_pdd8_dense",
-              variant_note=_probe_note(
-                  "PDD8 under stock attention: the PDD ladder's own baseline",
-                  "h3_probe_t2v_pdd8_sage.json",
-                  "neither sage nor Sol is wired: ComfyUI's stock attention "
-                  "on every step, the vendor's reference configuration for "
-                  "this schedule. Slow, because dense attention at this "
-                  "sequence length costs more per step than sage plus Sol "
-                  "(docs/h3_pdd.md).",
-                  "whether the sage-alone twin differs from it at all. A "
-                  "control, not a candidate.",
-                  "not a rung of bench/pdd_ladder_arms.json: under the "
-                  "owner's 2026-09-04 decision that sage is always on, the "
-                  "sage-alone graph is the PDD floor and this one is rendered "
-                  "only when the question is what the model itself does.")),
+              out_prefix="Video/h3_probe_t2v_pdd8_dense"),
          "text -> video + audio at 8 steps via PDD, stock attention, the PDD ladder's baseline"),
 
         # **The bake pair's arm, added 2026-09-05.** Identical to
@@ -7917,23 +4585,7 @@ def main():
          dict(pdd=True, dense_attn="sage", sampler_name="euler",
               unet=MODELS["unet_fl2va_pdd8_baked"],
               lora=(PDD_FL2VA_STRIPPED_LORA, PDD_STRENGTH), steps=PDD_STEPS,
-              out_prefix="Video/h3_probe_t2v_pdd8_baked_sage",
-              variant_note=_probe_note(
-                  "PDD8 on the baked checkpoint under sage alone: the "
-                  "merged-versus-baked pair's arm",
-                  "h3_probe_t2v_pdd8_sage.json",
-                  "the checkpoint is the fl2va PDD8 backbone bake and the "
-                  "sidecar is the stripped one; everything else is the twin. "
-                  "No backbone patch is applied at load and nothing "
-                  "requantises; the node refuses any other pairing.",
-                  "the defects the owner named blind on the shipped PDD8 rung "
-                  "(brightness, compressed skin texture, melted on-screen "
-                  "text) against the merged twin at the same seed: gone here "
-                  "and the requantised merge was the cause; still here and "
-                  "the schedule is (docs/roadmap.md, the bake paragraph).",
-                  "bench/pdd_bake_arms.json renders this on the PDD ladder's "
-                  "scenes at the ladder's seed and blinds it against the "
-                  "ladder's pdd8sage and sage clips.")),
+              out_prefix="Video/h3_probe_t2v_pdd8_baked_sage"),
          "text -> video + audio at 8 steps via PDD on the baked checkpoint, sage alone"),
 
         # **The description-length pair.** Same PDD 4-step settings as the other
@@ -7998,15 +4650,7 @@ def main():
         ("h3_text_to_video_pdd_4step.json", "texttovideopdd4step", "t2v", LONG_T2V_PROMPT,
          dict(pdd=True, sampler_name="euler",
               lora=(PDD_FL2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS_FAST,
-              out_prefix="Video/text_to_video_pdd_4step",
-              variant_note=_probe_note(
-                  "text to video at 4 steps via PDD",
-                  "h3_text_to_video_pdd.json",
-                  "the PDD LoRA at 4 evaluations, sage AND Sol on.",
-                  "identity and texture in the last third, where this "
-                  "schedule takes its largest jump.",
-                  "one converted file serves both step counts; the heads "
-                  "are fused at load for whichever is asked.")),
+              out_prefix="Video/text_to_video_pdd_4step"),
          "text -> video + audio at 4 steps via PDD, sage on"),
 
         ("h3_text_to_video_pdd_manual_sigmas.json", "texttovideopddmanualsigmas",
@@ -8014,100 +4658,39 @@ def main():
          dict(pdd=True, sampler_name="euler",
               lora=(PDD_FL2VA_LORA, PDD_STRENGTH),
               manual_sigmas=PDD_MANUAL_SIGMAS, steps=PDD_MANUAL_EVALS,
-              out_prefix="Video/text_to_video_pdd_manual_sigmas",
-              variant_note=_probe_note(
-                  "text to video on an explicit tail-weighted PDD partition",
-                  "h3_text_to_video_pdd_4step.json",
-                  "[8,8,4,4,4,4] through ManualSigmas -- six evaluations, "
-                  "coarse blocks at the FRONT where the trajectory is nearly "
-                  "flat, and a 63.2% final step instead of the uniform "
-                  "4-evaluation arm's 80%.",
-                  "jagged edges and scratchy audio, which is what the uniform "
-                  "4-evaluation arm produced on a matched pair.",
-                  "NO step count is in the name on purpose: this runs SIX "
-                  "evaluations, and naming it 4step -- which the render "
-                  "filenames did -- made a 6-evaluation result read as a "
-                  "4-evaluation one. The schedule is in the ManualSigmas "
-                  "widget; read it there. The PDD node's own `steps` is 0 "
-                  "because ManualSigmas replaces the schedule it would emit, "
-                  "and 6 does not divide the 32-point grid so a non-zero value "
-                  "would be refused at load.")),
+              out_prefix="Video/text_to_video_pdd_manual_sigmas"),
          "text -> video + audio on a tail-weighted PDD partition, sage on"),
 
         ("h3_first_last_frame_to_video_pdd.json", "firstlastframetovideopdd", "i2v", None,
          dict(last_frame=True, **FL2V_CANVAS,
               pdd=True, sampler_name="euler",
               lora=(PDD_FL2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS,
-              out_prefix="Video/first_last_frame_to_video_pdd",
-              variant_note=_probe_note(
-                  "first+last frame to video at 8 steps via PDD",
-                  "h3_first_last_frame_to_video_pdd.json",
-                  "the PDD LoRA at 8 evaluations, sage AND Sol on.",
-                  "identity and texture in the last third, where this "
-                  "schedule takes its largest jump.",
-                  "one converted file serves both step counts; the heads "
-                  "are fused at load for whichever is asked.")),
+              out_prefix="Video/first_last_frame_to_video_pdd"),
          "first+last frame -> video + audio at 8 steps via PDD, sage on"),
 
         ("h3_first_last_frame_to_video_pdd_4step.json", "firstlastframetovideopdd4step", "i2v", None,
          dict(last_frame=True, **FL2V_CANVAS,
               pdd=True, sampler_name="euler",
               lora=(PDD_FL2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS_FAST,
-              out_prefix="Video/first_last_frame_to_video_pdd_4step",
-              variant_note=_probe_note(
-                  "first+last frame to video at 4 steps via PDD",
-                  "h3_first_last_frame_to_video_pdd.json",
-                  "the PDD LoRA at 4 evaluations, sage AND Sol on.",
-                  "identity and texture in the last third, where this "
-                  "schedule takes its largest jump.",
-                  "one converted file serves both step counts; the heads "
-                  "are fused at load for whichever is asked.")),
+              out_prefix="Video/first_last_frame_to_video_pdd_4step"),
          "first+last frame -> video + audio at 4 steps via PDD, sage on"),
 
         ("h3_image_ref_plus_text_to_video_pdd.json", "imagerefplustexttovideopdd", "r2v", _ref_prompt(images=True),
          dict(pdd=True, sampler_name="euler",
               lora=(PDD_REF2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS,
-              out_prefix="Video/image_ref_plus_text_to_video_pdd",
-              variant_note=_probe_note(
-                  "image references to video at 8 steps via PDD",
-                  "h3_image_ref_plus_text_to_video_pdd.json",
-                  "the PDD LoRA at 8 evaluations, sage AND Sol on.",
-                  "identity and texture in the last third, where this "
-                  "schedule takes its largest jump.",
-                  "one converted file serves both step counts; the heads "
-                  "are fused at load for whichever is asked.")),
+              out_prefix="Video/image_ref_plus_text_to_video_pdd"),
          "image references -> video + audio at 8 steps via PDD, sage on"),
 
         ("h3_image_ref_plus_text_to_video_pdd_4step.json", "imagerefplustexttovideopdd4step", "r2v", _ref_prompt(images=True),
          dict(pdd=True, sampler_name="euler",
               lora=(PDD_REF2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS_FAST,
-              out_prefix="Video/image_ref_plus_text_to_video_pdd_4step",
-              variant_note=_probe_note(
-                  "image references to video at 4 steps via PDD",
-                  "h3_image_ref_plus_text_to_video_pdd.json",
-                  "the PDD LoRA at 4 evaluations, sage AND Sol on.",
-                  "identity and texture in the last third, where this "
-                  "schedule takes its largest jump.",
-                  "one converted file serves both step counts; the heads "
-                  "are fused at load for whichever is asked.")),
+              out_prefix="Video/image_ref_plus_text_to_video_pdd_4step"),
          "image references -> video + audio at 4 steps via PDD, sage on"),
 
 
         ("h3_probe_ref2v_pdd.json", "r2v-pdd", "r2v", _ref_prompt(images=True),
          dict(pdd=True, dense_attn=True, sampler_name="euler", lora=(PDD_REF2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS,
-              length=243, out_prefix="Video/h3_probe_r2v_pdd",
-              variant_note=_probe_note(
-                  "does PDD hold ref2va identity at 8 steps",
-                  "h3_probe_ref2v_pdd_headfree.json",
-                  "the per-interval output heads are ON, which is the whole "
-                  "PDD mechanism; the twin runs the same backbone and adaln "
-                  "updates against the checkpoint's own heads.",
-                  "identity on the reference subject, and texture in the last "
-                  "third of the clip, where this schedule takes its biggest "
-                  "jumps and where the fused heads differ most from the base.",
-                  "if the two are indistinguishable, the heads are not what is "
-                  "doing the work and the backbone LoRA alone is the cheaper "
-                  "arm.")),
+              length=243, out_prefix="Video/h3_probe_r2v_pdd"),
          "ref2va at 8 steps via Parallel Decoding Distillation"),
 
         # The control for the arm above. The measured gap between a fused head
@@ -8118,15 +4701,7 @@ def main():
          _ref_prompt(images=True),
          dict(pdd=True, dense_attn=True, sampler_name="euler", pdd_heads=False,
               lora=(PDD_REF2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS,
-              length=243, out_prefix="Video/h3_probe_r2v_pdd_headfree",
-              variant_note=_probe_note(
-                  "is the parallel-head machinery worth its complexity",
-                  "h3_probe_ref2v_pdd.json",
-                  "`patch_heads` is OFF, so the backbone and adaln updates "
-                  "apply and the output heads stay the checkpoint's own.",
-                  "the same places as its twin.",
-                  "a visible loss here justifies the head machinery; no "
-                  "visible loss says the backbone LoRA is the whole story.")),
+              length=243, out_prefix="Video/h3_probe_r2v_pdd_headfree"),
          "PDD backbone only, the checkpoint's own output heads"),
 
         # Length sweep. The fused heads are indexed by time, not by call
@@ -8136,29 +4711,13 @@ def main():
         ("h3_probe_ref2v_pdd_345.json", "r2v-pdd-345", "r2v",
          _ref_prompt(images=True),
          dict(pdd=True, dense_attn=True, sampler_name="euler", lora=(PDD_REF2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS,
-              length=345, out_prefix="Video/h3_probe_r2v_pdd_345",
-              variant_note=_probe_note(
-                  "does PDD hold at the long end of the trained range",
-                  "h3_probe_ref2v_pdd.json",
-                  "345 frames instead of 243. Same schedule, more tokens.",
-                  "drift late in the clip, and whether the boundary-residual "
-                  "warning stays silent in the log.",
-                  "the head selection is keyed on time, so length should not "
-                  "move it at all; if it does, the keying is wrong.")),
+              length=345, out_prefix="Video/h3_probe_r2v_pdd_345"),
          "PDD ref2va at the long end of the trained frame range"),
 
         ("h3_probe_ref2v_pdd_8s.json", "r2v-pdd-8s", "r2v",
          _ref_prompt(images=True),
          dict(pdd=True, dense_attn=True, sampler_name="euler", lora=(PDD_REF2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS,
-              length=192, out_prefix="Video/h3_probe_r2v_pdd_8s",
-              variant_note=_probe_note(
-                  "PDD at eight seconds",
-                  "h3_probe_ref2v_pdd.json",
-                  "192 frames, which is exactly 8.0 s on the 17k+5 grid at "
-                  "24 fps, instead of 243.",
-                  "the same places as its twin.",
-                  "a length the grid hits exactly, so nothing is snapped and "
-                  "the comparison is clean.")),
+              length=192, out_prefix="Video/h3_probe_r2v_pdd_8s"),
          "PDD ref2va at exactly eight seconds"),
 
         ("h3_probe_ref2v_turbo_pack.json", "r2v-turbo-pack", "r2v",
@@ -8168,8 +4727,7 @@ def main():
               turbo_pack=True,
               lora=(TURBO_PACK_LORA, TURBO_PACK_STRENGTH),
               steps=TURBO_PACK_STEPS, scheduler_name=TURBO_PACK_SCHEDULER,
-              out_prefix="Video/h3_probe_r2v_turbo_pack",
-              variant_note=_NOTE_TURBO_PACK),
+              out_prefix="Video/h3_probe_r2v_turbo_pack"),
          "character swap on ref2va with the adaln-touching turbo LoRA"),
 
         # The variant with the better prior. If ref2va's divergence really is
@@ -8189,8 +4747,7 @@ def main():
               lora=(TURBO_PACK_LORA, TURBO_PACK_STRENGTH),
               steps=TURBO_PACK_STEPS, scheduler_name=TURBO_PACK_SCHEDULER,
               split_at=SPLIT_AT, split_base_last=False,
-              out_prefix="Video/h3_probe_r2v_split_turbo_pack",
-              variant_note=_NOTE_TURBO_PACK_SPLIT),
+              out_prefix="Video/h3_probe_r2v_split_turbo_pack"),
          "base establishes the references, the distill finishes the clip"),
 
         # INVERTED TWICE with the default. 2026-08-28 the default went off
@@ -8200,22 +4757,7 @@ def main():
         # and this is the graph that asks it; `bench/refview2_arms.json` is
         # the ablation that answers it across scenes.
         ("h3_probe_reference_upscale.json", "r2v-upscale", "r2v", _ref_prompt(images=True),
-         dict(ref_upscale=False, out_prefix="Video/h3_probe_ref_upscale",
-              variant_note=_probe_note(
-                  "does upscaling a small reference buy anything",
-                  "h3_image_ref_plus_text_to_video.json",
-                  "`allow_upscale` is OFF on both Append Picture nodes, so "
-                  "references arrive at their own size instead of being "
-                  "enlarged to the released pipeline's 2048 short edge.",
-                  "Preflight's `references` line and percentage, then the "
-                  "identity of the referenced subjects in the output. This arm "
-                  "saves the rows the shipped default now spends.",
-                  "Fewer rows here, and a shorter sequence, at the risk of "
-                  "less identity detail reaching the video model. Upscaling "
-                  "adds rows, not detail, and nobody has measured whether the "
-                  "checkpoint uses them on an already-small source -- which is "
-                  "why this arm is kept rather than the question being closed "
-                  "by the default flip.")),
+         dict(ref_upscale=False, out_prefix="Video/h3_probe_ref_upscale"),
          "same references, WITHOUT the reference pipeline's upscale"),
 
         # ---- FastVideo VSA, and its dense control ------------------------
@@ -8247,56 +4789,19 @@ def main():
          dict(width=1152, height=768, length=345, steps=4,
               unet=MODELS["unet_vsa"],
               vsa=(VSA_KEEP_PERCENT, False),
-              out_prefix="Video/h3_probe_vsa",
-              variant_note=_probe_note(
-                  "whether VSA runs at all on H3, and whether its gate is "
-                  "actually consumed",
-                  "h3_probe_vsa_dense.json",
-                  "MiniMaxH3VSAAttention replaces the 50 main DiT blocks: "
-                  "video tokens regrouped into 4x4x4 cubes one per 64-row "
-                  "kernel block, each block's learned `to_gate_compress` "
-                  "passed to the kernel as `coarse_gate`, no pooled tail. "
-                  "sage keeps the 2 token-refiner blocks, which have no gate.",
-                  "That it completes, and that the node did not refuse. The "
-                  "node refuses when no gate is present, which is what a "
-                  "silently-dropped gate looks like.",
-                  "Unknown, and deliberately unpredicted. The gate projection, "
-                  "the kernel call and the output reordering have never run "
-                  "under a real forward; the geometry is asserted statically "
-                  "by `bench/check_vsa_geometry.py` and that is all.")),
+              out_prefix="Video/h3_probe_vsa"),
          "FastVideo VSA -- EXPERIMENTAL, draft core PR, first run"),
 
         ("h3_probe_vsa_dense.json", "t2v-vsa-dense", "t2v", LONG_T2V_PROMPT,
          dict(width=1152, height=768, length=345, steps=4,
               unet=MODELS["unet_vsa"],
               dense_attn="sage",
-              out_prefix="Video/h3_probe_vsa_dense",
-              variant_note=_probe_note(
-                  "what the VSA checkpoint does with no sparse attention",
-                  "h3_probe_vsa.json",
-                  "The same checkpoint under sage alone. The gate weights are "
-                  "loaded and never read, which is what the dense forward does "
-                  "with them by design -- the draft PR's own comment says the "
-                  "gate is unused by it.",
-                  "That the checkpoint is a working H3 model independently of "
-                  "VSA, so a failure in its twin is attributable to the "
-                  "attention regime rather than to the weights.",
-                  "It renders. This is the control, not the experiment.")),
+              out_prefix="Video/h3_probe_vsa_dense"),
          "the VSA checkpoint under sage alone -- the control"),
 
         ("h3_probe_square_canvas.json", "t2v-1to1", "t2v", LONG_T2V_PROMPT,
          dict(width=768, height=768,
-              out_prefix="Video/h3_probe_square",
-              variant_note=_probe_note(
-                  "what an aspect ratio actually costs",
-                  "h3_text_to_video.json",
-                  "768x768 instead of 1344x768. Both are inside the trained "
-                  "family; only the shape changed.",
-                  "Preflight's sequence length on each, and render time. "
-                  "Attention is O(S^2) and dominates the step.",
-                  "About a third of the attention cost at the same frame "
-                  "count, which is the largest single lever in this pipeline "
-                  "-- larger than any kernel or sparsity setting.")),
+              out_prefix="Video/h3_probe_square"),
          "the same prompt on the cheapest legal canvas"),
 
         # TWO graphs turn Sol-Attn ON. Both are probes; everything else ships
@@ -8313,7 +4818,7 @@ def main():
         # silently reproduces v1's `(0, N)`. With references the sink is
         # thousands of rows, so the narrowing is tens of blocks and unmissable.
         #
-        # Paired with `h3_probe_sol_on.json` deliberately: same canvas, same
+        # Paired with `h3_text_to_video.json` deliberately: same canvas, same
         # length, same seed, same Sol settings, references the only variable.
         # Read the `conditioning sink` line from both.
         #
@@ -8326,50 +4831,14 @@ def main():
         # opposite of what this repo assumed for weeks. Do not read a slow
         # result here as Sol underperforming.
         ("h3_probe_sol_on_refs.json", "r2v-sol", "r2v", _ref_prompt(images=True),
-         dict(sol_on=True, out_prefix="Video/h3_probe_sol_on_refs",
-              variant_note=_probe_note(
-                  "whether Sol-Attn's conditioning sink behaves at reference load",
-                  "h3_probe_sol_on.json",
-                  "reference images, against a t2v twin. Sol settings, canvas, "
-                  "length and seed are identical; the sink grows from a few "
-                  "hundred rows to thousands.",
-                  "The `[sol_attn] conditioning sink` log line, with `verbose` "
-                  "on. Read the START of the dense query range, not the size "
-                  "of the change: a start of 0 means v2 did not engage, or the "
-                  "audio span was never published and it fell back to v1 "
-                  "silently. Then the video, for whether pinning references "
-                  "exact actually preserves them.",
-                  "KV blocks unchanged and the dense query range starting tens "
-                  "of blocks in, where the t2v twin starts at 4. NOT predicted: "
-                  "a speed win. References are exact rows Sol cannot sparsify, "
-                  "so this arm should be SLOWER per token than the t2v twin "
-                  "while still verifying the mechanism.")),
+         dict(sol_on=True, out_prefix="Video/h3_probe_sol_on_refs"),
          "reference images with Sol-Attn ON -- the sink at reference load"),
 
-        # The other Sol-Attn probe, and the older one. It exists so "is Sol
-        # worth what it changes" stays answerable from a shipped artifact
-        # rather than needing a hand-edit -- and that question is open in a way
-        # the speed numbers do not settle, because nobody has weighed its
-        # influence on the output against what it saves.
-        # Read against h3_text_to_video.json, which is now sage-only.
-        ("h3_probe_sol_on.json", "t2v-sol", "t2v", LONG_T2V_PROMPT,
-         dict(sol_on=True, out_prefix="Video/h3_probe_sol_on",
-              variant_note=_probe_note(
-                  "whether Sol-Attn earns its influence on the output",
-                  "h3_text_to_video.json",
-                  "Sol-Attn enabled, at SOL_RECOMMENDED_CUDA. Its twin is sage-only, "
-                  "which is what every shipped graph is now.",
-                  "Wall clock AND the video. Sol changes what the model "
-                  "computes -- it is sparse attention, not a faster exact "
-                  "kernel -- so a speed win that costs output quality is not a "
-                  "win. Watch motion and drift, the axes fp16-PV was chosen "
-                  "on, since those are where an approximation shows first.",
-                  "Faster, by an amount that grows with sequence length. What "
-                  "is NOT predicted is the output being indistinguishable: "
-                  "the sparse kernel skips blocks the exact one attends, and "
-                  "whether that is visible at H3's shapes is exactly what has "
-                  "never been judged here.")),
-         "Sol-Attn on, against the sage-only twin"),
+        # `h3_probe_sol_on` and `h3_probe_sol_on_i2v` stood here until
+        # 2026-09-14 (owner). Sol went on by default after they were written,
+        # so each matched `h3_text_to_video` or `h3_first_frame_to_video` in
+        # everything but its output name; those two are the text-only and
+        # keyframe Sol arms now.
 
         # Sol WITHOUT sage. The owner, 2026-09-04: "maybe it's better to try
         # without sage at all". Every other Sol graph chains Sol over sage, so
@@ -8381,22 +4850,7 @@ def main():
         # SageChainAssert here requires Sol's override and forbids sage's
         # forward patch; see `_assert_inputs`.
         ("h3_probe_t2v_sol_nosage.json", "t2v-sol-nosage", "t2v", LONG_T2V_PROMPT,
-         dict(dense_attn="sol", out_prefix="Video/h3_probe_t2v_sol_nosage",
-              variant_note=_probe_note(
-                  "Sol as shipped over stock attention, with NO sage node",
-                  "h3_text_to_video.json",
-                  "the five outer steps and the fallback run stock attention. "
-                  "The twin chains Sol over sage, so there the steps outside "
-                  "Sol's window and every call Sol declines run sage; here "
-                  "they run ComfyUI's own attention, and the Sol window, tau "
-                  "and sink are identical.",
-                  "whether removing sage from under Sol moves the clip at "
-                  "all, and which way; and wall clock, since stock attention "
-                  "is slower per dense step than sage. On an armed server the "
-                  "probe record measures Sol against stock attention directly.",
-                  "Slower than the twin by the dense steps' share. Whether the "
-                  "output is better, worse or the same is exactly the open "
-                  "question; the 2026-09-03 ladder never had this rung.")),
+         dict(dense_attn="sol", out_prefix="Video/h3_probe_t2v_sol_nosage"),
          "text -> video + audio, Sol as shipped, no sage: stock attention outside Sol"),
 
         # ComfyUI core's own Sol node against ours (2026-09-10, owner's ask:
@@ -8407,24 +4861,7 @@ def main():
         # only: it is driven by run_graph_arms (bench/sol_core_ab_arms.json),
         # and the UI builder draws no DynamicCombo for a core node.
         ("h3_probe_t2v_sol_core.json", "t2v-sol-core", "t2v", LONG_T2V_PROMPT,
-         dict(sol_impl="core", api_only=True,
-              out_prefix="Video/h3_probe_t2v_sol_core",
-              variant_note=_probe_note(
-                  "ComfyUI core's BlockSparseAttention at its own defaults, "
-                  "in place of our Sol node",
-                  "h3_text_to_video.json",
-                  "the Sol node is core's, at core's schema defaults: tau "
-                  "1.3, sparse to the last step, token routing on every "
-                  "eligible call, and its chunked producer that carries the "
-                  "previous step's K/V statistics. Sage, the window start and "
-                  "the sink mode are as in the twin.",
-                  "which node a stock ComfyUI user is better served by, as "
-                  "each ships; the policy half of that is read against ours "
-                  "re-set to core's values (the manifest's second pair), the "
-                  "implementation half on captured activations.",
-                  "Different clips from frame zero, as any Sol change gives; "
-                  "no record says which way. Slower than ours per sparse step "
-                  "by token routing on every block (kitchen's own claim).")),
+         dict(sol_impl="core", out_prefix="Video/h3_probe_t2v_sol_core"),
          "text -> video + audio, sage + core's BlockSparseAttention at its own defaults"),
 
         # **Candidates on trial, 2026-09-05.** The owner asked for canonical
@@ -8439,62 +4876,19 @@ def main():
         # bench/check_attention_defaults.py::DEVIATIONS.
         ("h3_candidate_t2v_sol_only.json", "t2v-candidate-sol-only", "t2v", LONG_T2V_PROMPT,
          dict(dense_attn="sol", sol_overrides={"start_percent": 0.0},
-              out_prefix="Video/h3_candidate_t2v_sol_only",
-              variant_note=_probe_note(
-                  "CANDIDATE: just Sol, on every step but the last, no sage",
-                  "h3_probe_t2v_sol_nosage.json",
-                  "start_percent 0.0: Sol routes from the first step; the "
-                  "shipped 0.2 keeps the first four dense. The last step "
-                  "stays stock (end_percent as shipped). No sage node.",
-                  "the fastest base-model arm on the table; whether the "
-                  "warm-up steps needed to be dense at all. Blinded as "
-                  "sol_nosage_2026-09-04 against the sage floor and Sol as "
-                  "shipped; the owner's verdict is what promotes or drops it.",
-                  "Reasoned cost from the ladder record: one stock step and "
-                  "fifteen Sol steps, roughly four times faster than a dense "
-                  "render and well ahead of sage alone.")),
+              out_prefix="Video/h3_candidate_t2v_sol_only"),
          "CANDIDATE text -> video + audio: Sol only, every step but the last"),
 
         ("h3_candidate_t2v_sol_allrows.json", "t2v-candidate-sol-allrows", "t2v", LONG_T2V_PROMPT,
          dict(sol_overrides={"sink_conditioning": "exact_kv_and_all_rows"},
-              out_prefix="Video/h3_candidate_t2v_sol_allrows",
-              variant_note=_probe_note(
-                  "CANDIDATE: the shipped chain with every conditioning "
-                  "query row dense",
-                  "h3_text_to_video.json",
-                  "sink_conditioning exact_kv_and_all_rows: the text rows "
-                  "run dense as well as the audio rows. On t2v that is a "
-                  "few hundred rows in a hundred thousand; on a reference "
-                  "graph with a video reference it would be the reference's "
-                  "rows, so this candidate is t2v only.",
-                  "the text segment's Sol-versus-sage disagreement, largest "
-                  "in every block of the probe records, collapses to the "
-                  "audio floor; the pixels move as far as dense-versus-sage "
-                  "does at one seed; whether that is visible is the open "
-                  "question, one pair away.",
-                  "Same speed as the shipped chain to within the rows it "
-                  "adds. Records: the 2026-09-04 subway probe pair in "
-                  "bench/results/.")),
+              out_prefix="Video/h3_candidate_t2v_sol_allrows"),
          "CANDIDATE text -> video + audio: sage + Sol, text rows dense too"),
 
         ("h3_candidate_t2v_pdd8_sol_narrow.json", "t2v-candidate-pdd8-sol-narrow", "t2v", LONG_T2V_PROMPT,
          dict(pdd=True, sampler_name="euler",
               lora=(PDD_FL2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS,
               sol_overrides={"start_percent": 0.3, "end_percent": 0.6},
-              out_prefix="Video/h3_candidate_t2v_pdd8_sol_narrow",
-              variant_note=_probe_note(
-                  "CANDIDATE: PDD8 with Sol on two of the eight steps",
-                  "h3_text_to_video_pdd.json",
-                  "start_percent 0.3 and end_percent 0.6: at shift 12 on the "
-                  "eight-step schedule Sol routes the two middle steps only; "
-                  "the shipped PDD window routes four. Sage on the rest, the "
-                  "PDD LoRA and heads as shipped.",
-                  "whether the defects the owner named on the shipped PDD8 "
-                  "rung (brightness, compressed texture, melted text) come "
-                  "from Sol on the coarse schedule; blinded as "
-                  "pdd_ladder_2026-09-04 beside PDD8 under sage alone.",
-                  "Reasoned cost: six sage steps and two Sol steps, between "
-                  "PDD8 under sage alone and the shipped PDD8 graph.")),
+              out_prefix="Video/h3_candidate_t2v_pdd8_sol_narrow"),
          "CANDIDATE text -> video + audio at 8 steps via PDD, Sol on two steps"),
 
         # The audio-freeze lane on the fast chain (owner, 2026-09-12: "worth
@@ -8509,15 +4903,7 @@ def main():
               unet=MODELS["unet_fl2va_pdd8_baked"],
               lora=(PDD_FL2VA_STRIPPED_LORA, PDD_STRENGTH), steps=PDD_STEPS,
               freeze_audio=True,
-              out_prefix="Video/h3_candidate_t2v_pdd8_baked_audio_freeze",
-              variant_note=_NOTE_AUDIO_FREEZE + (
-                  "\n\n**On the PDD8 baked chain.** Everything above holds; the "
-                  "sampler runs the 8-evaluation PDD schedule on the baked "
-                  "checkpoint with the stripped sidecar, exactly as "
-                  "`h3_candidate_t2v_pdd8_baked.json`. PDD's documented weakness "
-                  "is its audio (`docs/research/pdd/audio_under_pdd.md`); with "
-                  "the track frozen the audio rows are not PDD's to get right, "
-                  "so this is the fast-iteration chain for the lane.")),
+              out_prefix="Video/h3_candidate_t2v_pdd8_baked_audio_freeze"),
          "CANDIDATE text + a frozen audio track -> video at 8 steps via PDD"),
 
         # The same on the PDD8 chain with the track also anchored as guide
@@ -8529,30 +4915,14 @@ def main():
          dict(pdd=True, sampler_name="euler",
               unet=MODELS["unet_fl2va_pdd8_baked"],
               lora=(PDD_FL2VA_STRIPPED_LORA, PDD_STRENGTH), steps=PDD_STEPS,
-              freeze_audio=True, freeze_guide=True, api_only=True,
-              out_prefix="Video/h3_candidate_t2v_pdd8_baked_audio_freeze_guide"),
+              freeze_audio=True, freeze_guide=True, out_prefix="Video/h3_candidate_t2v_pdd8_baked_audio_freeze_guide"),
          "CANDIDATE text + a frozen audio track, also anchored as guide rows -> video at 8 steps via PDD"),
 
         ("h3_candidate_t2v_pdd8_baked.json", "t2v-candidate-pdd8-baked", "t2v", LONG_T2V_PROMPT,
          dict(pdd=True, sampler_name="euler",
               unet=MODELS["unet_fl2va_pdd8_baked"],
               lora=(PDD_FL2VA_STRIPPED_LORA, PDD_STRENGTH), steps=PDD_STEPS,
-              out_prefix="Video/h3_candidate_t2v_pdd8_baked",
-              variant_note=_probe_note(
-                  "CANDIDATE: the shipped PDD8 graph on the baked checkpoint",
-                  "h3_text_to_video_pdd.json",
-                  "only the checkpoint and the sidecar differ from the shipped "
-                  "twin: the PDD backbone is quantised once with the weights "
-                  "instead of merged and requantised at load. Sage and Sol at "
-                  "the PDD window as shipped, the heads and adaln from the "
-                  "stripped sidecar.",
-                  "whether the shipped PDD8 look improves with the merge noise "
-                  "gone; a candidate for the owner's own prompts once the "
-                  "sage-alone pair (h3_probe_t2v_pdd8_baked_sage) has been "
-                  "judged blind. Same speed as the shipped graph.",
-                  "The pair that decides it is rendered under sage alone so "
-                  "Sol is not in the comparison; this graph is the shipped "
-                  "configuration for use, not the arm.")),
+              out_prefix="Video/h3_candidate_t2v_pdd8_baked"),
          "CANDIDATE text -> video + audio at 8 steps via PDD on the baked checkpoint, sage and Sol as shipped"),
 
         # Sol-Attn ON at full reference load: images + a reference video + its
@@ -8570,22 +4940,7 @@ def main():
         ("h3_probe_sol_on_all_refs.json", "r2v-all-sol", "r2v",
          _ref_prompt(images=True, video=True, video_audio=True, audio=True),
          dict(**REF_VIDEO_BUDGET, ref_video=True, ref_audio=True, sol_on=True,
-              out_prefix="Video/h3_probe_sol_on_all_refs",
-              variant_note=_probe_note(
-                  "what Sol-Attn does when every reference type is present",
-                  "h3_ref_image_video_audio.json",
-                  "Sol-Attn enabled, at SOL_RECOMMENDED_CUDA. Its twin is the "
-                  "same references sage-only.",
-                  "The `[sol_attn] conditioning sink` line with `verbose` on, "
-                  "and then the video. Reference rows are exact keys at any "
-                  "tau, so what to watch is whether the SUBJECTS survive -- "
-                  "face and identity against the reference images, motion "
-                  "against the reference video, and the soundtrack.",
-                  "A large sink and a small dense-query span. NOT a speed win "
-                  "proportional to the token count: exact reference rows are "
-                  "work Sol cannot skip, so this arm should be slower per "
-                  "token than a text-only one while still being the case worth "
-                  "getting right.")),
+              out_prefix="Video/h3_probe_sol_on_all_refs"),
          "every reference type at once, with Sol-Attn ON"),
 
         # The step-caching arm. Same references, same Sol config, same budget
@@ -8597,22 +4952,7 @@ def main():
          _ref_prompt(images=True, video=True, video_audio=True, audio=True),
          dict(**REF_VIDEO_BUDGET, ref_video=True, ref_audio=True, sol_on=True,
               cache=CACHE_NODE,
-              out_prefix="Video/h3_probe_cache_easy",
-              variant_note=_probe_note(
-                  "whether TeaCache-family step reuse pays on H3 at 16 steps",
-                  "h3_probe_sol_on_all_refs.json",
-                  "identical except the EasyCache node between the attention "
-                  "chain and the sampler, at CACHE_NODE defaults.",
-                  "the EasyCache verbose lines in the server log -- how many "
-                  "of the 16 steps were reused. A run without that count is "
-                  "uninterpretable. Then the video, against the twin's.",
-                  "NVLabs' 4090 H3 runtime attributes 3.18x of its speedup "
-                  "to caching at 50 steps; at 16 steps with the first ~15% "
-                  "and last ~5% forced dense, at most 12 forwards are "
-                  "skippable, so expect far less. On er_sde the per-step "
-                  "re-noising inflates input deltas, so a zero-reuse result "
-                  "here is a sampler artifact until re-run on a "
-                  "deterministic sampler.")),
+              out_prefix="Video/h3_probe_cache_easy"),
          "the all-refs Sol arm plus EasyCache step reuse"),
 
         # The euler pair, owner-requested 2026-08-18. Same workload as the
@@ -8628,57 +4968,15 @@ def main():
          _ref_prompt(images=True, video=True, video_audio=True, audio=True),
          dict(**REF_VIDEO_BUDGET, ref_video=True, ref_audio=True, sol_on=True,
               sampler_name="euler",
-              out_prefix="Video/h3_probe_euler",
-              variant_note=_probe_note(
-                  "what the all-refs workload looks like on a deterministic "
-                  "sampler from the euler family",
-                  "h3_probe_sol_on_all_refs.json",
-                  "identical except KSamplerSelect: euler instead of er_sde.",
-                  "the clip, against the er_sde twin's -- sampler swaps "
-                  "cannot be pixel-compared, so the question is whether the "
-                  "brief survives, not whether frames match.",
-                  "same per-step cost (sampler choice measured speed-neutral "
-                  "2026-08-18); any difference is look, not wall time.")),
+              out_prefix="Video/h3_probe_euler"),
          "the all-refs workload on euler -- the deterministic-sampler arm"),
 
         ("h3_probe_euler_cache.json", "r2v-all-euler-cache", "r2v",
          _ref_prompt(images=True, video=True, video_audio=True, audio=True),
          dict(**REF_VIDEO_BUDGET, ref_video=True, ref_audio=True, sol_on=True,
               sampler_name="euler", cache=CACHE_NODE,
-              out_prefix="Video/h3_probe_euler_cache",
-              variant_note=_probe_note(
-                  "whether euler gets the deterministic-sampler cache payoff",
-                  "h3_probe_euler.json",
-                  "identical except the EasyCache node at CACHE_NODE "
-                  "defaults.",
-                  "the EasyCache verbose skip count in the server log, then "
-                  "the clip against the twin's -- this pair IS seed-pairable "
-                  "(same sampler, deterministic).",
-                  "if euler behaves like res_multistep, roughly 7 of 16 "
-                  "steps reused; a lower count is a finding about euler's "
-                  "trajectory, not a harness failure.")),
+              out_prefix="Video/h3_probe_euler_cache"),
          "the euler arm plus EasyCache -- the cache-payoff twin"),
-
-        # Sol-Attn ON with an input image rather than references. Keyframe
-        # `cond` rows land in the sink too, so this is the third sink shape:
-        # text-only, reference-heavy, and keyframe.
-        ("h3_probe_sol_on_i2v.json", "i2v-sol", "i2v", None,
-         dict(sol_on=True, out_prefix="Video/h3_probe_sol_on_i2v",
-              variant_note=_probe_note(
-                  "whether Sol-Attn preserves a supplied first frame",
-                  "h3_first_frame_to_video.json",
-                  "Sol-Attn enabled, at SOL_RECOMMENDED_CUDA. Its twin is the "
-                  "same first frame sage-only.",
-                  "Whether the opening frame still matches the image you "
-                  "supplied, and whether the clip drifts away from it faster "
-                  "than the sage-only twin does. The keyframe rows sit in the "
-                  "sink, so they are exact keys -- drift here would be the "
-                  "video losing them, not the conditioning being dropped.",
-                  "Close to the twin at the opening and diverging later, since "
-                  "that is where a block-sparse router has had the most steps "
-                  "to accumulate. Unmeasured: nobody has run Sol on a keyframe "
-                  "graph at all.")),
-         "first frame + text, with Sol-Attn ON"),
 
         # --- the single-frame image gen/edit path -------------------------
         #
@@ -8698,27 +4996,12 @@ def main():
         # **The single-frame image graphs are parked, 2026-08-27.** Not emitted,
         # not discovered, not graded; the last generated set is
         # `archive/workflows/image/` and the shim they need is
-        # `archive/single_frame.py`. `_image_graphs()` and everything it reaches
-        # is left intact rather than deleted so restoring the lane is
-        # un-parking this one line -- but nothing downstream may assume the
-        # directory exists while it is parked. See `docs/h3_image_editing.md`.
-        # *_image_graphs(),
+        # `archive/single_frame.py`. Their builder, `_image_graphs()`, left this
+        # file with the UI half on 2026-09-14, so restoring the lane starts
+        # from the archive and git history. See `docs/h3_image_editing.md`.
 
         ("h3_probe_head_chunks.json", "t2v-chunk4", "t2v", LONG_T2V_PROMPT,
-         dict(head_chunks=4, out_prefix="Video/h3_probe_chunk4",
-              variant_note=_probe_note(
-                  "trading launches for VRAM headroom",
-                  "h3_text_to_video.json",
-                  "`head_chunks` 4 on the SageAttention node instead of 1.",
-                  "Peak VRAM, and wall clock. Nothing about the output should "
-                  "change: chunking splits the heads, it does not alter the "
-                  "arithmetic.",
-                  "Peak attention drops from 2862 MiB to 2645 at the default "
-                  "canvas, because chunking rules out the v clone that only "
-                  "pays unchunked. It costs 4 kernel launches per call, "
-                  "measured at a ~2.6% wall-clock ceiling on a 24 GB 4090. "
-                  "Take it to fit a render that otherwise will not fit, not "
-                  "for speed.")),
+         dict(head_chunks=4, out_prefix="Video/h3_probe_chunk4"),
          "the same render with the heads in 4 groups"),
     )
 
@@ -8789,49 +5072,23 @@ def main():
     # on every workflow we use (except pure image single-frame workflows).
     # If a specific test needs to bypass it, it can be bypassed explicitly with sol_on=False,
     # but the canonical shipped default across all video workflows is ON.
+    # Every shipped graph is API format: the editor loads one by input name
+    # and arranges it, and every runner drives it over /prompt.
     for fname, label, task, prompt, extra, note in GRAPHS:
-        is_image = bool(extra.get("single_frame", False))
-        sage_on, sol_on, dense_mode, vsa_on = _attention_plan(extra)
-        if extra.get("api_only", False):
-            # No UI twin: `native_ref` graphs exist to be driven over
-            # /prompt by run_graph_arms, and the UI builder does not draw
-            # core's autogrow sockets. cross_check skips a lone format.
-            continue
-        rest = {k: v for k, v in extra.items()
-                if k not in ("sol_on", "dense_attn", "sol_overrides")}
-        wf = build_ui(task, sage=sage_on,
-                      sol=(_sol_with_overrides(extra)
-                           if not (is_image or dense_mode in ("none", "sage") or vsa_on)
-                           else None),
-                      sol_enabled=sol_on, prompt=prompt,
-                      title=f"h3-{label}-" + ("vsa" if vsa_on else
-                                              "dense" if dense_mode == "none" else
-                                              "sol-stock" if dense_mode == "sol" else
-                                              "sage" + ("-sol" if sol_on else "")),
-                      **{**rest, "length": graph_length(rest)})
-        p = _graph_dir(out, extra) / fname
-        written.append((label, "ui", p, wf))
-        print(f"  {p.name}: {note}")
-
-    # API-format copies of the same graphs, for driving a render over /prompt
-    # without a browser. Same builder inputs, so they cannot describe a
-    # different configuration than the set above.
-    for fname, label, task, prompt, extra, _note in GRAPHS:
         sage_on, sol_on, _dense_mode, _vsa_on = _attention_plan(extra)
         api_extra = {k: v for k, v in extra.items()
-                     if k not in ("variant_note", "sol_on", "dense_attn",
-                                  "api_only", "sol_overrides")}
+                     if k not in ("sol_on", "dense_attn", "sol_overrides")}
         wf = build_api(task, sage=sage_on,
                        prompt=prompt,
                        sol=(_sol_with_overrides(extra) if sol_on else None),
                        **{**api_extra, "length": graph_length(api_extra)})
         p = _graph_dir(out, extra) / fname.replace(".json", "_api.json")
-        written.append((label, "api", p, wf))
+        written.append((label, p, wf))
+        print(f"  {p.name}: {note}")
 
     # Bench copies carrying MiniMaxH3ProvenanceStamp. Deliberately NOT the
     # shipped graphs: the stamp reads another pack's closure internals, so it
     # breaks when that pack changes, and a bench is where breakage is cheap.
-    # API-only, so cross_check skips them (it needs both formats to compare).
     bench = out / "bench"
     bench.mkdir(parents=True, exist_ok=True)
     # The t2v bench pair renders BENCH_T2V_PROMPT, a bank scene chosen for
@@ -8861,7 +5118,7 @@ def main():
         wf = build_api(task, sage=sage, length=LONG_LENGTH,
                        sol=None, prompt=prompt, stamp=True)
         p = bench / fname
-        written.append((f"{task}-stamped", "api", p, wf))
+        written.append((f"{task}-stamped", p, wf))
 
     def flush():
         """Write every graph. Called only once nothing has objected.
@@ -8873,44 +5130,26 @@ def main():
         stayed corrupted: the failure was printed every time anyone
         regenerated, and the bad files were already written by then.
 
-        Nothing is written now until the cross-check, the validators and the
-        staleness verdict have all passed. A failed build leaves the tree
+        Nothing is written now until the validators and the staleness verdict
+        have both passed. A failed build leaves the tree
         exactly as it found it.
         """
-        for _t, _f, path, doc in written:
+        for _t, path, doc in written:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(json.dumps(doc, indent=2, ensure_ascii=False) + "\n")
             print(f"wrote {path.name}")
-
-    # Cross-check the two formats of each task describe the same graph. The
-    # per-format validators below only prove each is well-formed against
-    # object_info; nothing there would notice the UI graph carrying a
-    # the Sol node the API graph lacks, which is exactly the state this file
-    # was in before 2026-08-06.
-    drift = cross_check(written)
-    if drift:
-        print("\nUI/API DRIFT:")
-        for x in drift:
-            print("  " + x)
-        return 1
-    print("UI/API cross-check: same node counts and settings")
 
     if args.no_validate:
         flush()
         return 0
     oi = load_object_info(args.object_info)
     errs = []
-    for k in _EXTRA_WIDGETS_SEEN:
-        _EXTRA_WIDGETS_SEEN[k] = False
-    for task, fmt, p, wf in written:
-        errs += (validate_api if fmt == "api" else validate_ui)(wf, oi, p.name)
+    for _t, p, wf in written:
+        errs += validate_api(wf, oi, p.name)
     # The core-node probe carries core's defaults as a copy; read them back.
     if any(n.get("class_type") == SOL_CORE_NODE
-           for _t, fmt, _p, wf in written if fmt == "api" for n in wf.values()):
+           for _t, _p, wf in written for n in wf.values()):
         errs += core_sol_defaults_drift(oi)
-    # An allowance that covers nothing is an allowance waiting to cover the
-    # next defect, which is the whole history of the surplus rule above.
-    errs += unused_widget_allowances()
     if errs:
         print("\nvalidation FAILED -- NOTHING WRITTEN, the tree is unchanged:")
         for x in errs:
