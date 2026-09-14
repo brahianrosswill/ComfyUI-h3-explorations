@@ -29,7 +29,17 @@ own below the rule.
   `h3_first_frame_to_video` in everything but the output name.
   `h3_probe_sol_on_all_refs` stays: its references (a video with its soundtrack
   and a standalone clip) make it a different workload, and the EasyCache and
-  euler probes name it as their control.
+  euler probes name it as their control. **Not yet examined:**
+  `workflows/h3_probe_sol_on_refs_api.json`; diff it against the shipped
+  reference graph it mirrors, then retire it or record why it stays.
+- **API-only workflows: the editor side is unverified.** The editor loads an
+  API file by input name (read from the frontend source, not exercised). Done
+  when Export (API) from the editor diffs clean against the shipped file for
+  `h3_text_to_video_api.json` (Resolution and Sol members),
+  `h3_image_ref_plus_text_to_video_api.json` (reference chain, `size_policy`),
+  `h3_text_to_video_pdd_api.json` (the steps input, control `fixed`) and
+  `h3_text_to_video_audio_freeze_song_ref_pdd8_api.json` (`extent` members,
+  seed control `fixed`).
 - **Found, not fixed: two stale Sol readers.** (a)
   `bench/check_provenance_stamp.py` is red on `no_missing_knobs`:
   `sol_attn_h3.py`'s `token_aug_profile` is not recorded by `provenance.py`.
@@ -51,10 +61,16 @@ own below the rule.
   Lists' fixed `index`, the `timeline` and the `preview` switch. Preview, and a
   render of the first 30 seconds (three windows of two lengths, joined),
   exercised on the served example graph:
-  `bench/results/2026-09-14_audio_freeze_song_timeline_smoke.jsonl`. **Still
-  owed:** the full-length example render (a throwaway first run), resume on
-  the reference song graph, and one queue from the editor for the workflow
-  chunk; song graphs the owner saved from the editor need re-making.
+  `bench/results/2026-09-14_audio_freeze_song_timeline_smoke.jsonl` (`83d2633`).
+  In that render the third window, which starts inside the verse, kept the
+  medium shot it inherited instead of opening on the prompt's close-up; one
+  sample. **Still owed:** the full-length example render (a throwaway first
+  run; if most within-section seams do the same, the "each window opens on a
+  close-up" premise in the generator's comment on that graph is wrong), resume
+  on the reference song graph, one queue from the editor for the workflow
+  chunk, and the preview seen on the canvas's Preview as Text node; song graphs
+  the owner saved from the editor need re-making. Postmortem:
+  `internal/postmortems/2026-09-14_session_api-only-and-loop-simplification.md`.
 - **Frozen-audio loop, stage 1 of 4 built** (`audio_freeze_song.py`,
   `loop_output.py`, `workflows/h3_text_to_video_audio_freeze_song_ref_pdd8_api.json`):
   the track and each distinct prompt encoded before any window samples,
