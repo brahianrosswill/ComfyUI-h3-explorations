@@ -142,6 +142,19 @@
       "Output"
     ]
   },
+  "MiniMaxH3FillPromptLists": {
+    "inputs": [
+      "prompt",
+      "index",
+      "count",
+      "lists"
+    ],
+    "node_id": "MiniMaxH3FillPromptLists",
+    "outputs": [
+      "prompt",
+      "report"
+    ]
+  },
   "MiniMaxH3FreezeAudio": {
     "inputs": [
       "latent",

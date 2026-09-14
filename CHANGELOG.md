@@ -4,6 +4,45 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.106.0
+
+### Added
+
+- **Fill Prompt Lists** (`MiniMaxH3FillPromptLists`): fills `__name__`
+  placeholders for any prompt input, for a graph that loops by chaining nodes
+  or renders one clip per queue. `index` (from 1, moving on after each queue)
+  is which use of each list; `count` above 1 outputs that many filled prompts,
+  and the nodes they feed run once per prompt. Index N gives what window N of
+  a loop node gets when every window uses the name. Live, through Preview as
+  Text: index 2 and count 3 gave three prompts with the expected values, an
+  unchanged requeue was cached, and editing the wildcard file its fallback
+  read ran it again with new values.
+- **The prompt-list example graph**,
+  `workflows/h3_text_to_video_audio_freeze_song_lists_pdd8.json` and its API
+  twin: the PDD8 song graph on `just-a-flicker.mp3` with bank prompt
+  `t2va_song_flicker_lists`. Two lists, `place` (shuffled) and `motion` (in
+  order), fill the middle shot of every window between two close-ups, so a
+  seam lands on her face whatever place the window before drew. The lyrics
+  stay out of the text. Unjudged. Harness smoke over the first 27 seconds:
+  `bench/results/2026-09-14_audio_freeze_song_lists_example_smoke.jsonl`. Two
+  windows drew a train carriage and a side street with the first two
+  movements, the logged values matched the frames, and the second window
+  opened on a close-up that still carried the carriage behind her before
+  cutting to the street.
+
+### Changed
+
+- **One fill path for every loop node**: `prompt_lists.fill_windows`, which
+  the song node now calls. `bench/check_prompt_lists.py` fails a node in a
+  module importing `loop_output` or `loop_resume` that lacks a `lists` input,
+  the `fill_windows` call or a fingerprint through `wildcard_fingerprint`;
+  its controls remove each from a copy of the song node's source.
+- **An edited wildcard file runs a node again.** The song node, the list
+  node's file source and Fill Prompt Lists fingerprint the files they may read
+  by modification time and size; before, core's cache returned the old result
+  on a requeue.
+- The song graphs' note gains a Lists paragraph.
+
 ## 0.105.0
 
 ### Added

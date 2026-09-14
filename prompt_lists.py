@@ -22,6 +22,16 @@
   each queue for the same reason the song node does: a filled-in prompt that
   changes on every queue re-renders every window resume could have kept.
 
+**Every loop fills the same way.** A node that loops over windows inside
+itself takes a `lists` input, calls `fill_windows` while it plans, and
+fingerprints the wildcard files it may read (`wildcard_fingerprint`), so an
+edited file re-runs it. `bench/check_prompt_lists.py` fails a node that writes
+windows through `loop_output` or resumes through `loop_resume` without all
+three. A graph that loops by chaining nodes, or renders one clip per queue,
+uses `MiniMaxH3FillPromptLists`, whose `index` names the use. Value N of a list
+is a function of its values, order, seed and N alone, so both routes give the
+same values.
+
 **Wildcard files** live in `wildcards/` under ComfyUI's input directory
 (`register_wildcards_folder`, the `--input-directory` override included), and
 `extra_model_paths.yaml` can add more under the key `wildcards`. A `.txt` holds
@@ -194,15 +204,19 @@ class ListSequence:
         return self.plist.values[self.index(n)]
 
 
+def _require_lists(texts: list[str], lists) -> None:
+    missing = sorted({n for t in texts for n in placeholders(t)} - set(lists))
+    if missing:
+        raise ValueError(f"no list for {', '.join('__' + n + '__' for n in missing)}")
+
+
 def resolve_texts(texts: list[str], lists: dict[str, PromptList]) -> tuple[list[str], list[dict[str, str]]]:
     """Fill every text's placeholders; a list advances once for each text that uses it.
 
     Returns the filled texts and, per text, the value each name took. Raises
     naming every placeholder without a list.
     """
-    missing = sorted({n for t in texts for n in placeholders(t)} - set(lists))
-    if missing:
-        raise ValueError(f"no list for {', '.join('__' + n + '__' for n in missing)}")
+    _require_lists(texts, lists)
     sequences = {name: ListSequence(pl) for name, pl in lists.items()}
     uses = dict.fromkeys(lists, 0)
     filled, picks = [], []
@@ -222,6 +236,69 @@ def lists_for(texts: list[str], chain, find) -> dict[str, PromptList]:
     for name in sorted({n for t in texts for n in placeholders(t)} - set(lists)):
         lists[name] = wildcard_list(name, find)
     return lists
+
+
+def report_lines(picks: list[dict[str, str]], first: int = 1) -> list[str]:
+    """One line per text that used a list, numbered from `first`, as reports and the log show them."""
+    return [f"[{first + i}] " + ", ".join(f"__{name}__ = {value!r}" for name, value in chosen.items())
+            for i, chosen in enumerate(picks) if chosen]
+
+
+def fill_windows(texts: list[str], chain) -> tuple[list[str], list[str]]:
+    """What a loop node calls while it plans: each window's text filled, and the report lines.
+
+    Call it before anything is keyed or encoded, so resume and any encode
+    cache see the text a window renders. The lines are logged here and belong
+    in the node's report too.
+    """
+    filled, picks = resolve_texts(texts, lists_for(texts, chain, find_wildcard))
+    lines = report_lines(picks)
+    for line in lines:
+        logger.info("[h3]   %s", line)
+    return filled, lines
+
+
+def fill_at(text: str, lists: dict[str, PromptList], use: int) -> tuple[str, dict[str, str]]:
+    """`text` with each placeholder at its list's use `use`, counted from 0.
+
+    Window N of a loop whose every text uses a name takes that name's use
+    N - 1, so this agrees with `resolve_texts` there.
+    """
+    _require_lists([text], lists)
+    chosen = {name: ListSequence(lists[name]).value(int(use)) for name in placeholders(text)}
+    return PLACEHOLDER.sub(lambda m: chosen[m.group(1)], text), chosen
+
+
+def _wildcard_roots() -> list[str]:
+    try:
+        import folder_paths
+        return folder_paths.get_folder_paths("wildcards")
+    except (ImportError, KeyError):
+        return []
+
+
+def wildcard_fingerprint(text) -> tuple:
+    """What a node's `fingerprint_inputs` returns so an edited wildcard file runs it again.
+
+    Core caches a node on its inputs, and editing a file changes none of them.
+    Given the prompt as a string: the files its placeholders could read.
+    Anything else (a prompt that is not a literal string): every wildcard
+    file. Each as (path, modification time, size).
+    """
+    if isinstance(text, str):
+        paths = [find_wildcard(rel) for name in placeholders(text) for rel, _key in wildcard_candidates(name)]
+    else:
+        paths = [os.path.join(dirpath, f) for root in _wildcard_roots()
+                 for dirpath, _dirs, files in os.walk(root)
+                 for f in files if f.lower().endswith(WILDCARD_EXTENSIONS)]
+    out = []
+    for path in sorted({p for p in paths if p}):
+        try:
+            st = os.stat(path)
+        except OSError:
+            continue
+        out.append((path, st.st_mtime_ns, st.st_size))
+    return tuple(out)
 
 
 def register_wildcards_folder() -> str | None:
@@ -309,6 +386,16 @@ class MiniMaxH3PromptList(io.ComfyNode):
         )
 
     @classmethod
+    def fingerprint_inputs(cls, source=None, **kwargs):
+        # an edited wildcard file changes no input; its time and size do
+        rel = source.get("wildcard") if isinstance(source, dict) else kwargs.get("source.wildcard")
+        full = find_wildcard(rel) if isinstance(rel, str) and rel else None
+        if full is None:
+            return None
+        st = os.stat(full)
+        return (full, st.st_mtime_ns, st.st_size)
+
+    @classmethod
     def execute(cls, name, source, order, seed, lists=None) -> io.NodeOutput:
         name = clean_name(name)
         if order not in ORDERS:
@@ -338,3 +425,58 @@ class MiniMaxH3PromptList(io.ComfyNode):
         logger.info("[h3] prompt list __%s__: %d value(s) from %s, %s, seed %d",
                     name, len(values), where, order, int(seed))
         return io.NodeOutput(chain + (plist,))
+
+
+class MiniMaxH3FillPromptLists(io.ComfyNode):
+    """Placeholders for a graph that is not one loop node; the module docstring says how the routes agree."""
+
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="MiniMaxH3FillPromptLists",
+            display_name="MiniMax H3 Fill Prompt Lists",
+            category="MiniMaxH3",
+            description=(
+                "Fills __name__ placeholders in a prompt for any prompt input: a chain of window nodes, or "
+                "one clip per queue. index is which use of each list, from 1, so window N of a chain takes "
+                "index N and repeated queues walk the lists. count above 1 outputs that many filled prompts, "
+                "and the nodes they feed run once per prompt. A loop node with its own `lists` input fills "
+                "its windows itself."
+            ),
+            inputs=[
+                io.String.Input("prompt", multiline=True, default="",
+                                tooltip="Text with __name__ placeholders."),
+                # Increment, not fixed: outside a loop node, walking the lists
+                # one queue at a time is what this node is for. Pin it by
+                # setting the control to fixed or wiring a window number in.
+                io.Int.Input("index", default=1, min=1, max=1000000,
+                             control_after_generate=io.ControlAfterGenerate.increment,
+                             tooltip=("Which use of each list, from 1. Moves on by one after each queue, so "
+                                      "repeated queues take the next values; wire a window number in to pin it.")),
+                io.Int.Input("count", default=1, min=1, max=1000,
+                             tooltip=("How many filled prompts, at index, index + 1 and on. Above 1 the nodes "
+                                      "they feed run once per prompt.")),
+                H3PromptLists.Input("lists", optional=True,
+                                    tooltip=("Prompt List nodes, one per name. A placeholder with no list here "
+                                             "is read from the wildcards folder.")),
+            ],
+            outputs=[io.String.Output(display_name="prompt", is_output_list=True),
+                     io.String.Output(display_name="report")],
+        )
+
+    @classmethod
+    def fingerprint_inputs(cls, prompt=None, **_):
+        return wildcard_fingerprint(prompt)
+
+    @classmethod
+    def execute(cls, prompt, index, count, lists=None) -> io.NodeOutput:
+        found = lists_for([prompt], lists, find_wildcard)
+        filled, picks = [], []
+        for k in range(int(count)):
+            text, chosen = fill_at(prompt, found, int(index) - 1 + k)
+            filled.append(text)
+            picks.append(chosen)
+        lines = report_lines(picks, first=int(index))
+        for line in lines:
+            logger.info("[h3]   %s", line)
+        return io.NodeOutput(filled, "\n".join(lines) or "no placeholders")

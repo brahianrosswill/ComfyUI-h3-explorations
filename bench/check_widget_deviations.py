@@ -167,6 +167,20 @@ DECLARED: dict[tuple[str, str], tuple] = {
                 "(bench/results/2026-09-12_audio_freeze_step2_verdict.json); "
                 "the node default 0.0 is the frozen mask. Generator knob "
                 "`freeze_mask`."),
+    ("MiniMaxH3PromptList", "source.values"):
+        ("ARM", "the typed values of the prompt-list example graph, against the "
+                "node's empty default: a list node ships with no values of its "
+                "own. Generator knob `freeze_song_lists`, constant "
+                "`build_workflows._SONG_FLICKER_LISTS`."),
+    ("MiniMaxH3PromptList", "name"):
+        ("ARM", "the placeholders the example graph's prompt uses, `place` and "
+                "`motion`, against the node's illustrative default 'subject'. "
+                "Constant `build_workflows._SONG_FLICKER_LISTS`."),
+    ("MiniMaxH3PromptList", "order"):
+        ("ARM", "'in_order' on the example graph's `motion` list beside a "
+                "shuffled `place` list, so the one shipped example shows both "
+                "orders; the node default 'shuffled' is the owner's no-repeat "
+                "rule. Constant `build_workflows._SONG_FLICKER_LISTS`."),
     ("BasicScheduler", "steps"):
         ("ARM", "the arm's evaluation count; graded against the LoRA it loads "
                 "by bench/check_distill_settings.py"),

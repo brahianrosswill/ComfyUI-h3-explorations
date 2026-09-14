@@ -36,10 +36,15 @@ own below the rule.
   window uses its placeholder; wildcard `.txt` and JSON files from
   `<input>/wildcards/`, selectable on the node (`prompt_lists.py`,
   `bench/check_prompt_lists.py`; harness smoke
-  `bench/results/2026-09-14_audio_freeze_song_lists_smoke.jsonl`). Proposed by
-  the session and not yet confirmed by the owner: a placeholder with no list
-  node reads a wildcard file of its name directly, shuffled at seed 0; no
-  shipped graph carries a list node. Still owed on the loop: a full-length
+  `bench/results/2026-09-14_audio_freeze_song_lists_smoke.jsonl`). The owner
+  then agreed that a placeholder with no list node reads a wildcard file of
+  its name directly, shuffled at seed 0, and that lists serve every loop, not
+  the song alone: loop nodes fill through `prompt_lists.fill_windows`
+  (enforced by `bench/check_prompt_lists.py`), and `MiniMaxH3FillPromptLists`
+  fills any prompt input by index for chained or one-clip graphs. The example
+  is `workflows/h3_text_to_video_audio_freeze_song_lists_pdd8.json` on
+  `just-a-flicker.mp3`; its first full render is owed and a throwaway. Still
+  owed on the loop: a full-length
   song, resume on the reference graph, and an editor queue to exercise the
   workflow chunk in the finished file. The shot-per-window
   workflows and `MiniMaxH3JoinWindows` retired unrendered the same day.

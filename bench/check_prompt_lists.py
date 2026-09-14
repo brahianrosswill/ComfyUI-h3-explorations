@@ -18,7 +18,17 @@ a weaker implementation:
 5. **Wildcard files.** A `.txt` skips blank and `#` lines; a `.json` holds a
    list or named lists; a placeholder looks up `name.txt`, `name.json`, then
    `parent.json`'s list named for the last segment.
-6. **The node.** A typed list chains; a duplicate name and a bad name raise.
+6. **The node.** A typed list chains; a duplicate name and a bad name raise;
+   the file source reads a `.txt` and a `.json` list named for the node.
+7. **Every loop node fills the same way.** A pack module importing
+   `loop_output` or `loop_resume` defines loop nodes, and each must declare a
+   `lists` input, call `fill_windows` and fingerprint through
+   `wildcard_fingerprint`. The song node must be detected as one, since a
+   detector that finds nothing passes everything, and a copy of its source
+   with each of the three removed must fail.
+8. **Fill Prompt Lists agrees with a loop**: index N gives what window N of
+   a loop gets when every window uses the name, count gives consecutive uses,
+   and an edited wildcard file changes the fingerprint.
 
     CUDA_VISIBLE_DEVICES= <comfy venv python> bench/check_prompt_lists.py
 
@@ -29,6 +39,7 @@ CUDA, no server.
 
 from __future__ import annotations
 
+import ast
 import json
 import os
 import sys
@@ -248,6 +259,99 @@ def check_node(problems):
             pl.find_wildcard = real_find
 
 
+LOOP_MODULES = ("loop_output", "loop_resume")
+
+
+def loop_node_problems(source: str) -> tuple[list[str], list[str]]:
+    """(loop node class names, problems) in one pack module's source."""
+    tree = ast.parse(source)
+    is_loop_module = any(
+        isinstance(n, ast.ImportFrom) and n.level and (
+            (n.module or "") in LOOP_MODULES
+            or (n.module is None and any(a.name in LOOP_MODULES for a in n.names)))
+        for n in ast.walk(tree))
+    if not is_loop_module:
+        return [], []
+    found, problems = [], []
+    for cls in (n for n in tree.body if isinstance(n, ast.ClassDef)):
+        if not any("ComfyNode" in ast.unparse(b) for b in cls.bases):
+            continue
+        found.append(cls.name)
+        calls = [c for c in ast.walk(cls) if isinstance(c, ast.Call)]
+        if not any(isinstance(c.func, ast.Attribute) and c.func.attr == "Input"
+                   and ast.unparse(c.func.value) == "H3PromptLists"
+                   and c.args and isinstance(c.args[0], ast.Constant) and c.args[0].value == "lists"
+                   for c in calls):
+            problems.append(f"{cls.name}: no `lists` input (H3PromptLists)")
+        if not any(ast.unparse(c.func).split(".")[-1] == "fill_windows" for c in calls):
+            problems.append(f"{cls.name}: never calls fill_windows")
+        fp = next((f for f in cls.body if isinstance(f, ast.FunctionDef) and f.name == "fingerprint_inputs"), None)
+        if fp is None or "wildcard_fingerprint" not in ast.unparse(fp):
+            problems.append(f"{cls.name}: fingerprint_inputs does not go through wildcard_fingerprint")
+    return found, problems
+
+
+def check_loop_nodes(problems):
+    found = []
+    for path in sorted(REPO.glob("*.py")):
+        if path.stem in LOOP_MODULES:
+            continue
+        names, bad = loop_node_problems(path.read_text(encoding="utf-8"))
+        found += [f"{path.name}::{n}" for n in names]
+        problems += [f"loop nodes: {path.name}::{b}" for b in bad]
+    if "audio_freeze_song.py::MiniMaxH3AudioFreezeSong" not in found:
+        _fail(problems, f"loop nodes: the song node was not detected as one (found {found})")
+    song = (REPO / "audio_freeze_song.py").read_text(encoding="utf-8")
+    for label, old, new in (("its lists input", 'H3PromptLists.Input("lists"', 'H3PromptLists.Input("listz"'),
+                            ("its fill_windows call", "fill_windows(texts", "resolve_texts(texts"),
+                            ("its fingerprint", "return wildcard_fingerprint(prompt)", "return None")):
+        if song.count(old) != 1:
+            _fail(problems, f"loop nodes: the control for {label} lost its anchor {old!r}")
+        elif not loop_node_problems(song.replace(old, new))[1]:
+            _fail(problems, f"loop nodes: the song node with {label} removed still passed")
+    return found
+
+
+def check_fill(problems):
+    lists = {"x": pl.PromptList("x", tuple("abcde"), "shuffled", 5, "typed"),
+             "y": pl.PromptList("y", ("p", "q"), "in_order", 0, "typed")}
+    texts = ["__x__ and __y__"] * 12
+    looped, _ = pl.resolve_texts(texts, lists)
+    single = [pl.fill_at(texts[0], lists, n)[0] for n in range(12)]
+    if looped != single:
+        _fail(problems, f"fill: index N differs from window N of a loop ({single[:4]} against {looped[:4]})")
+    out = pl.MiniMaxH3FillPromptLists.execute("wear __y__", 2, 3, lists=(lists["y"],))
+    args = getattr(out, "args", out)
+    if list(args[0]) != ["wear q", "wear p", "wear q"] or not args[1].startswith("[2] "):
+        _fail(problems, f"fill: index 2, count 3 gave {args}")
+    try:
+        pl.fill_at("__nope__", lists, 0)
+        _fail(problems, "fill: a placeholder with no list was accepted")
+    except ValueError:
+        pass
+    real_find, real_roots = pl.find_wildcard, pl._wildcard_roots
+    with tempfile.TemporaryDirectory() as d:
+        path = Path(d, "verbs.txt")
+        path.write_text("a\n", encoding="utf-8")
+        pl.find_wildcard = lambda rel: str(Path(d, rel)) if Path(d, rel).is_file() else None
+        pl._wildcard_roots = lambda: [d]
+        try:
+            named, whole = pl.wildcard_fingerprint("__verbs__"), pl.wildcard_fingerprint(None)
+            listed = pl.MiniMaxH3PromptList.fingerprint_inputs(source={"source": "file", "wildcard": "verbs.txt"})
+            path.write_text("a\nb\n", encoding="utf-8")
+            if not named or pl.wildcard_fingerprint("__verbs__") == named:
+                _fail(problems, "fill: editing a wildcard file left the placeholder fingerprint unchanged")
+            if not whole or pl.wildcard_fingerprint(None) == whole:
+                _fail(problems, "fill: editing a wildcard file left the whole-folder fingerprint unchanged")
+            if not listed or pl.MiniMaxH3PromptList.fingerprint_inputs(
+                    source={"source": "file", "wildcard": "verbs.txt"}) == listed:
+                _fail(problems, "fill: editing a list node's file left its fingerprint unchanged")
+            if pl.wildcard_fingerprint("no placeholders") != ():
+                _fail(problems, "fill: a prompt without placeholders fingerprinted files")
+        finally:
+            pl.find_wildcard, pl._wildcard_roots = real_find, real_roots
+
+
 def main() -> int:
     problems: list[str] = []
     check_names(problems)
@@ -256,13 +360,16 @@ def main() -> int:
     check_resolve(problems)
     check_files(problems)
     check_node(problems)
+    loops = check_loop_nodes(problems)
+    check_fill(problems)
     if problems:
         print(f"  FAIL  {len(problems)} problem(s):")
         for p in problems:
             print(f"    - {p}")
         return 1
     print("  ok    names; shuffled uses a list up before repeating and its rejection rules bite; "
-          "in_order and random follow the seed; filling advances per use; wildcard files; the node")
+          "in_order and random follow the seed; filling advances per use; wildcard files; the node; "
+          f"{len(loops)} loop node(s) fill the same way and the controls bite; Fill Prompt Lists agrees with a loop")
     return 0
 
 

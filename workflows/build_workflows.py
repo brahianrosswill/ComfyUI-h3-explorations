@@ -75,7 +75,7 @@ _OUR_NODES = {
     "MiniMaxH3ReferenceFit", "MiniMaxH3Resolution", "MiniMaxH3Preflight",
     "MiniMaxH3ProvenanceStamp", "MiniMaxH3FreezeAudio", "MiniMaxH3FreezeAudioWindow",
     "MiniMaxH3EncodeTrack", "MiniMaxH3AudioAttentionGain",
-    "MiniMaxH3AudioFreezeSong",
+    "MiniMaxH3AudioFreezeSong", "MiniMaxH3PromptList",
 }
 
 # Model names, sampler settings, canvas geometry and the SolAttn knobs all
@@ -651,6 +651,31 @@ _REF_IMAGE_NODES = (("15", "24"), ("16", "25"), ("34", "35"),
 # eight. These ids are outside the long-standing 1-47 API graph allocation so
 # the migration does not renumber nodes that benches address directly.
 _REF_APPEND_NODES = tuple(str(i) for i in range(50, 58))
+
+# Prompt List ids on the song graphs, in chain order; nothing else here uses 90-97.
+_PROMPT_LIST_NODES = tuple(str(i) for i in range(90, 98))
+
+# The lists of the shipped prompt-list example (the owner asked for one,
+# 2026-09-14; the values are the session's), as (name, values one per line,
+# order, seed). The middle shot of `prompt_bank/t2va_song_flicker_lists.txt`
+# reads "a medium shot of her __place__, __motion__," and each value finishes
+# that clause. Different lengths and orders, so the two turn over at
+# different windows.
+_SONG_FLICKER_LISTS = (
+    ("place", "\n".join((
+        "standing at the rain-streaked window of a bare concrete apartment",
+        "leaning on the rail of a brutalist high-rise balcony above the city",
+        "sitting alone by the window of an empty late-night train carriage as city lights slide past",
+        "walking slowly down a wet, empty side street under a flickering sodium lamp",
+        "sitting on a stairwell landing beneath a flickering fluorescent tube",
+    )), "shuffled", 0),
+    ("motion", "\n".join((
+        "swaying slowly on the laid-back beat, eyes half closed",
+        "tilting her head on each soft backbeat, arms folded against the cold",
+        "turning slowly away from the camera, then glancing back over her shoulder",
+        "pulling her sleeves down over her hands and nodding gently in time",
+    )), "in_order", 0),
+)
 
 
 #: The named attention modes an entry's `dense_attn` may carry. A mode gets a
@@ -1489,6 +1514,7 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
               # Reference stills for the song node, one Append Ref Image each,
               # in <Picture N> order.
               freeze_song_refs: tuple[str, ...] | None = None,
+              freeze_song_lists: tuple[tuple[str, str, str, int], ...] | None = None,
               out_prefix: str | None = None, **canvas) -> dict:
     """API-format graph, submittable as {"prompt": <this>} to POST /prompt.
 
@@ -2232,8 +2258,19 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
                                                                ref_qwen_short_edge)}
                 chain = [append_id, 0]
             g["74"]["inputs"]["references"] = chain
-    elif freeze_song_refs:
-        raise SystemExit("freeze_song_refs needs freeze_song")
+        if freeze_song_lists:
+            # typed lists, chained in order into the song node's `lists`
+            chain = None
+            for list_id, (name, values, order, list_seed) in zip(_PROMPT_LIST_NODES, freeze_song_lists,
+                                                                  strict=False):
+                g[list_id] = {"class_type": "MiniMaxH3PromptList",
+                              "inputs": {"name": name, "source": "typed", "source.values": values,
+                                         "order": order, "seed": list_seed,
+                                         **({"lists": chain} if chain is not None else {})}}
+                chain = [list_id, 0]
+            g["74"]["inputs"]["lists"] = chain
+    elif freeze_song_refs or freeze_song_lists:
+        raise SystemExit("freeze_song_refs and freeze_song_lists need freeze_song")
 
     return g
 
@@ -4424,6 +4461,14 @@ window's prompt is presented with those stills, encoded once per distinct
 prompt. Write the prompt in the reference format, naming each still as
 `<Picture N>`.
 
+**Lists.** Write `__name__` in the prompt and chain a Prompt List node of
+that name into `lists`: each window that uses the name takes the list's next
+value, and a list uses every value once before any repeats unless its order is
+`random`. Values are typed on the node or read from a `.txt` or `.json` in the
+`wildcards` folder under ComfyUI's input directory; a name with no list node is
+read from `name.txt` there. Each list's seed stays fixed, so resume keeps the
+windows whose filled-in text did not change.
+
 **`extent`** is the whole track, or its first N seconds; the shipped graph
 takes the quick look. The seed advances by one per window.
 
@@ -5170,10 +5215,13 @@ def build_ui(task: str, *, sage: bool = True, prompt: str | None = None,
              freeze_song: bool = False, freeze_song_seconds: float | None = 30.0,
              freeze_song_mode: str = "cycle",
              freeze_song_refs: tuple[str, ...] | None = None,
+             freeze_song_lists: tuple[tuple[str, str, str, int], ...] | None = None,
              **canvas) -> dict:
     ref = task == "r2v"
-    if freeze_song_refs and not freeze_song:
-        raise SystemExit("freeze_song_refs needs freeze_song")
+    if (freeze_song_refs or freeze_song_lists) and not freeze_song:
+        raise SystemExit("freeze_song_refs and freeze_song_lists need freeze_song")
+    if freeze_song_lists and len(freeze_song_lists) > len(_PROMPT_LIST_NODES):
+        raise SystemExit(f"at most {len(_PROMPT_LIST_NODES)} prompt lists")
     if freeze_gain:
         raise SystemExit("the audio-gain graph is API only (api_only=True on its GRAPHS entry)")
     if freeze_guide:
@@ -5798,6 +5846,21 @@ def build_ui(task: str, *, sage: bool = True, prompt: str | None = None,
                     g.link(chain, 0, append, "references", "MINIMAX_H3_REFERENCES")
                 chain = append
             g.link(chain, 0, song, "references", "MINIMAX_H3_REFERENCES")
+        if freeze_song_lists:
+            # Mirrors build_api: one typed list node per name, chained into `lists`.
+            chain = None
+            for i, (name, values, order, list_seed) in enumerate(freeze_song_lists):
+                # `source`: the selection, then its option's widget; `seed`
+                # takes the control slot after it, declared fixed on the node.
+                node = g.add("MiniMaxH3PromptList", (-1420 + 460 * i, -760), size=(440, 520),
+                             widgets=[name, "typed", values, order, list_seed, "fixed"],
+                             inputs=[_in("lists", "H3_PROMPT_LISTS", optional=True)],
+                             outputs=[_out("lists", "H3_PROMPT_LISTS")],
+                             title=f"Prompt list: __{name}__")
+                if chain is not None:
+                    g.link(chain, 0, node, "lists", "H3_PROMPT_LISTS")
+                chain = node
+            g.link(chain, 0, song, "lists", "H3_PROMPT_LISTS")
         g.add("MarkdownNote", (-2180, 0), size=(620, 620), widgets=[_NOTE_SONG],
               title="Whole track: how it works")
         return g.dump(title or f"h3-{task}-song")
@@ -6781,6 +6844,35 @@ def main():
                   "work (owner, 2026-09-14); whether a reference holds identity across "
                   "a whole song has not been judged.")),
          "a whole song on PDD8 with the subject anchored by a reference still"),
+        # The PDD8 song graph with prompt lists, the shipped example of
+        # `__name__` placeholders (owner, 2026-09-14), on the owner's track
+        # `just-a-flicker.mp3`. One prompt for every window; the lists fill
+        # only its middle shot, so each window opens and closes on a close-up
+        # that reads the same whatever place the previous window drew, and a
+        # seam lands on her face rather than between two rooms. The song's
+        # lead is a breathy female vocal over a slow lo-fi beat, per an
+        # analysis the owner supplied; the prompt leaves the lyrics out, the
+        # untold form the lane found works (`docs/h3_audio_freeze.md` step 4).
+        ("h3_text_to_video_audio_freeze_song_lists_pdd8.json", "t2v-audio-freeze-song-lists-pdd8", "t2v",
+         _bank_prompt("t2va_song_flicker_lists"),
+         dict(pdd=True, sampler_name="euler",
+              unet=MODELS["unet_fl2va_pdd8_baked"],
+              lora=(PDD_FL2VA_STRIPPED_LORA, PDD_STRENGTH), steps=PDD_STEPS,
+              freeze_song=True, freeze_song_seconds=None, freeze_song_mode="random",
+              freeze_song_lists=_SONG_FLICKER_LISTS, freeze_track="just-a-flicker.mp3",
+              freeze_mask=0.25, freeze_context=39, length=LONG_LENGTH,
+              out_prefix="Video/h3_t2v_audio_freeze_song_lists_pdd8",
+              variant_note=_NOTE_SONG + (
+                  "\n\n**This graph: a whole song on PDD8 with two prompt lists.** "
+                  "The track is `just-a-flicker.mp3` from the input folder. One prompt "
+                  "for every window: a close-up, then a medium shot of her `__place__`, "
+                  "`__motion__`, then a close-up again, so each window opens and closes "
+                  "on her face whatever place the window before drew. `place` is five "
+                  "places, shuffled; `motion` is four movements, in order. Edit the values "
+                  "on the list nodes, or remove a list node and put `place.txt` in the "
+                  "`wildcards` folder. Everything else is the PDD8 song graph's. No render "
+                  "of it has been judged.")),
+         "a whole song on PDD8 with two prompt lists filling the middle shot of every window"),
         # The PDD8 freeze with the audio attention gain node in front of the
         # guider, inert as shipped; bench arms patch key_gain / value_gain.
         ("h3_candidate_t2v_pdd8_baked_audio_freeze_gain.json", "t2v-candidate-pdd8-baked-audio-freeze-gain",

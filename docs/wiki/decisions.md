@@ -17,6 +17,17 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-14
 
+- **Prompt lists serve every loop, not the song node** (owner: "I should be
+  able to use this for any type of looping workflow we build here"; agreed
+  the approach the same day). A node that loops inside itself fills through
+  `prompt_lists.fill_windows`, takes `lists` and fingerprints the wildcard
+  files it may read, and `bench/check_prompt_lists.py` fails one that does
+  not. A graph that loops by chaining nodes, or one clip per queue, uses
+  `MiniMaxH3FillPromptLists` by index; value N of a list depends only on the
+  list and N, so both routes agree. The fallback stays: a placeholder with no
+  list node reads a wildcard file of its name, shuffled at seed 0 (the
+  option the session recommended over always raising, or a seed widget for
+  it, and the owner agreed).
 - **No live preview node in generated graphs** (owner: it wastes GPU).
   `ModelPreviewOverrideKJ` with taeh3 left every UI graph and the generator's
   `preview` path. What the prose used to claim: the generator's node note and

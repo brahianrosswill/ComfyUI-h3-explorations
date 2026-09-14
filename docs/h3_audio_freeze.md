@@ -231,8 +231,11 @@ in order and rendering starts at the first that has. Prompt lists followed
 (`prompt_lists.py`, `MiniMaxH3PromptList`): a `__name__` in the prompt takes
 one value per window that uses it, from a list chained into the node's
 `lists` or a file in `wildcards/` under the input directory, without repeats
-until the list is used up unless the list says `random`. The module docstring
-holds the rules; `docs/wiki/next_steps.md` holds what is still owed.
+until the list is used up unless the list says `random`. Every loop node
+fills through the same call, and a graph built from separate nodes uses
+Fill Prompt Lists by index; the example graph is
+`workflows/h3_text_to_video_audio_freeze_song_lists_pdd8.json`, on
+`just-a-flicker.mp3`. The module docstring holds the rules; `docs/wiki/next_steps.md` holds what is still owed.
 
 **Next, in order.**
 

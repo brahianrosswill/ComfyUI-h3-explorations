@@ -8,10 +8,10 @@
       ]
     }
   },
-  "id": "c3e6fa86-d17d-5fca-b4da-ecc7c5949afe",
+  "id": "9ea810a7-ab1c-5b23-b253-1889c3ac8017",
   "revision": 0,
-  "last_node_id": 22,
-  "last_link_id": 18,
+  "last_node_id": 25,
+  "last_link_id": 20,
   "nodes": [
     {
       "id": 1,
@@ -41,7 +41,7 @@
         "Node name for S&R": "UNETLoader"
       },
       "widgets_values": [
-        "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+        "minimax_h3_fl2va_pruned_int8_convrot_pdd8_baked_s1.safetensors",
         "default"
       ]
     },
@@ -143,23 +143,55 @@
     },
     {
       "id": 5,
-      "type": "MiniMaxH3SigmaShift",
+      "type": "MarkdownNote",
       "pos": [
         -1500,
-        700
+        -660
       ],
       "size": [
-        360,
-        110
+        560,
+        480
       ],
       "flags": {},
       "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "MarkdownNote"
+      },
+      "widgets_values": [
+        "## What this node does that the UI does not show\n\n**The step count comes in on the `steps` socket, and this node emits the\nschedule.** The `PDD steps` PrimitiveInt on the canvas is the one number that\nsets the arm; SIGMAS runs from this node's second output straight into\n`SamplerCustomAdvanced`. There is no `BasicScheduler` in a PDD graph to change\n-- this note used to say there was, which described the topology before this\nnode emitted SIGMAS. (The `manual_sigmas` graph is the exception: its schedule\ncomes from `ManualSigmas` and the socket is 0.)\n\n**`nfe` stays 0, and 0 is not an evaluation count.** It is a mode: 0 means\n\"take the count from `steps`\", and a non-zero value overrides it. That is the\nfalsy-sentinel shape this repo is migrating away from -- a numeric widget\nshould mean the quantity it names -- and it is carried as accepted debt in\n`bench/check_literal_widgets.py::SENTINELS` rather than fixed, because\nconverting a number to a combo re-points every later widget value in every\nsaved graph.\n\n**There is no sigma-shift node either, and that is deliberate.** This node\nbuilds its schedule from the shift its file was fused at, and the fused heads\nare a function of that same shift, so `check_shift` REFUSES a render whose\nshift disagrees -- a raise at step 0, not a warning. At the checkpoint's own\n12/3 a `ModelSamplingMiniMaxH3` node would patch the model into what it\nalready is, so it is omitted here rather than left sitting as a knob that only\nbreaks things. With it absent, `check_shift` compares against the model's\nclass default instead, which is the same 12/3.\n\n**Three surfaces are patched, and only one is a normal LoRA:**\n\n- backbone attention and MLP weights\n- the adaln modulation update, pre-solved into this checkpoint's curve basis\n- the two output projections in `final_layer`\n\n**The output heads are swapped every sampling step.** The file carries a\n32-interval bank; the block a step spans is fused on first use and cached.\n\n**It refuses rather than renders** when the file was converted against the\nother partition -- fl2va and ref2va share every tensor name, so a mismatch\nwould otherwise load with nothing unmatched and simply be wrong -- or when\nanother node already owns the output heads.\n\n`patch_heads` off applies the backbone and adaln updates against the\ncheckpoint's own heads. That is the control arm for whether the head\nmachinery is what is doing the work.\n"
+      ],
+      "title": "PDD LoRA: what runs that the widgets do not show"
+    },
+    {
+      "id": 6,
+      "type": "MiniMaxH3PDDLoRA",
+      "pos": [
+        -1500,
+        560
+      ],
+      "size": [
+        560,
+        170
+      ],
+      "flags": {},
+      "order": 13,
       "mode": 0,
       "inputs": [
         {
           "name": "model",
           "type": "MODEL",
           "link": 1
+        },
+        {
+          "name": "steps",
+          "type": "INT",
+          "link": 2,
+          "widget": {
+            "name": "steps"
+          }
         }
       ],
       "outputs": [
@@ -167,21 +199,68 @@
           "name": "MODEL",
           "type": "MODEL",
           "links": [
+            3
+          ]
+        },
+        {
+          "name": "SIGMAS",
+          "type": "SIGMAS",
+          "links": [
+            18
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MiniMaxH3PDDLoRA"
+      },
+      "widgets_values": [
+        "h3/minimax_h3_fl2va_pdd_8step_stripped_comfy.safetensors",
+        1.0,
+        true,
+        0,
+        8,
+        -1.0,
+        "",
+        -1.0,
+        ""
+      ],
+      "title": "PDD LoRA (strength 1.0, 8 steps -> SIGMAS)"
+    },
+    {
+      "id": 7,
+      "type": "PrimitiveInt",
+      "pos": [
+        -1500,
+        780
+      ],
+      "size": [
+        300,
+        60
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "INT",
+          "type": "INT",
+          "links": [
             2
           ]
         }
       ],
       "properties": {
-        "Node name for S&R": "MiniMaxH3SigmaShift"
+        "Node name for S&R": "PrimitiveInt"
       },
       "widgets_values": [
-        12.0,
-        3.0
+        8,
+        "fixed"
       ],
-      "title": "Sigma shift (video 12, audio 3)"
+      "title": "PDD steps (8)"
     },
     {
-      "id": 6,
+      "id": 8,
       "type": "MiniMaxH3SageAttention",
       "pos": [
         -880,
@@ -192,13 +271,13 @@
         110
       ],
       "flags": {},
-      "order": 5,
+      "order": 14,
       "mode": 0,
       "inputs": [
         {
           "name": "model",
           "type": "MODEL",
-          "link": 2
+          "link": 3
         }
       ],
       "outputs": [
@@ -206,7 +285,7 @@
           "name": "MODEL",
           "type": "MODEL",
           "links": [
-            3
+            4
           ]
         }
       ],
@@ -220,7 +299,7 @@
       ]
     },
     {
-      "id": 7,
+      "id": 9,
       "type": "MarkdownNote",
       "pos": [
         -880,
@@ -244,7 +323,7 @@
       "title": "Sol-Attn: what runs that the widgets do not show"
     },
     {
-      "id": 8,
+      "id": 10,
       "type": "MiniMaxH3SolAttn",
       "pos": [
         -880,
@@ -255,13 +334,13 @@
         330
       ],
       "flags": {},
-      "order": 7,
+      "order": 15,
       "mode": 0,
       "inputs": [
         {
           "name": "model",
           "type": "MODEL",
-          "link": 3
+          "link": 4
         }
       ],
       "outputs": [
@@ -269,7 +348,7 @@
           "name": "MODEL",
           "type": "MODEL",
           "links": [
-            6
+            7
           ]
         }
       ],
@@ -293,7 +372,7 @@
       "title": "Patch Sol-Attn"
     },
     {
-      "id": 9,
+      "id": 11,
       "type": "MiniMaxH3Resolution",
       "pos": [
         -1900,
@@ -304,7 +383,7 @@
         200
       ],
       "flags": {},
-      "order": 8,
+      "order": 7,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -355,7 +434,7 @@
       "title": "Resolution: shape, and what it costs"
     },
     {
-      "id": 12,
+      "id": 14,
       "type": "KSamplerSelect",
       "pos": [
         40,
@@ -366,7 +445,7 @@
         60
       ],
       "flags": {},
-      "order": 9,
+      "order": 8,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -382,50 +461,11 @@
         "Node name for S&R": "KSamplerSelect"
       },
       "widgets_values": [
-        "er_sde"
+        "euler"
       ]
     },
     {
-      "id": 13,
-      "type": "BasicScheduler",
-      "pos": [
-        40,
-        250
-      ],
-      "size": [
-        300,
-        130
-      ],
-      "flags": {},
-      "order": 13,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "model",
-          "type": "MODEL",
-          "link": 7
-        }
-      ],
-      "outputs": [
-        {
-          "name": "SIGMAS",
-          "type": "SIGMAS",
-          "links": [
-            18
-          ]
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "BasicScheduler"
-      },
-      "widgets_values": [
-        "simple",
-        16,
-        1.0
-      ]
-    },
-    {
-      "id": 19,
+      "id": 20,
       "type": "SageChainAssert",
       "pos": [
         -480,
@@ -436,13 +476,13 @@
         130
       ],
       "flags": {},
-      "order": 10,
+      "order": 16,
       "mode": 0,
       "inputs": [
         {
           "name": "model",
           "type": "MODEL",
-          "link": 6
+          "link": 7
         }
       ],
       "outputs": [
@@ -450,7 +490,6 @@
           "name": "model",
           "type": "MODEL",
           "links": [
-            7,
             12
           ]
         }
@@ -469,7 +508,7 @@
       "title": "Assert the attention chain composed"
     },
     {
-      "id": 20,
+      "id": 21,
       "type": "LoadAudio",
       "pos": [
         -460,
@@ -480,7 +519,7 @@
         130
       ],
       "flags": {},
-      "order": 11,
+      "order": 9,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -496,12 +535,12 @@
         "Node name for S&R": "LoadAudio"
       },
       "widgets_values": [
-        "4th-ninja-Breathless_Heights.mp3"
+        "just-a-flicker.mp3"
       ],
       "title": "The track"
     },
     {
-      "id": 21,
+      "id": 22,
       "type": "MiniMaxH3AudioFreezeSong",
       "pos": [
         -60,
@@ -512,7 +551,7 @@
         760
       ],
       "flags": {},
-      "order": 14,
+      "order": 17,
       "mode": 0,
       "inputs": [
         {
@@ -559,7 +598,7 @@
         {
           "name": "lists",
           "type": "H3_PROMPT_LISTS",
-          "link": null,
+          "link": 20,
           "shape": 7
         }
       ],
@@ -584,20 +623,19 @@
         "Node name for S&R": "MiniMaxH3AudioFreezeSong"
       },
       "widgets_values": [
-        "integrated_multimodal_description: [Shot 1] Live-action, cinematic, a medium shot frames a dancer from the waist up in a bare rehearsal studio across the fourteen-second take, one mirrored wall behind her, a portable speaker on the floor at the edge of frame playing a fast, dry drum-machine pulse. She is in her twenties in a grey vest, hair tied back, face sharp and well lit, and she produces no vocal sound. She moves to the beat: sharp isolations of the shoulders and head on every hit, chin snapping to the lens on the downbeats, both arms punching out and folding back in time. The camera holds a static shot as her groove builds and her expression stays locked on the lens. [Shot 2] At 00:06.316, the shot cuts to a close-up of her face and shoulders from the mirror side, her reflection sharing the frame, as she turns on the beat and hits a pose, then rolls her shoulders in a step sequence that lands on every fourth hit. Her lips stay closed throughout. The camera pushes in slowly at small amplitude until her face fills the frame and she stops square to the lens on a final hit and holds still, breathing hard.\n\noverall_soundscape: Bare feet squeak and slap on the sprung floor, fabric rustles with each turn, and her breath comes in short controlled bursts between hits, under the dry room tone of an empty studio.\n\nnon_diegetic_music: N/A\n",
+        "integrated_multimodal_description: [Shot 1] Live-action, cinematic, a close-up frames a woman in her late twenties with dark shoulder-length hair and an oversized charcoal knit sweater across the fourteen-second take, her face sharp and softly lit, everything behind her lost to a shallow grey blur. She is on-screen, with a breathy, warm mid-register voice and a relaxed, intimate delivery (S1), and she sings softly with the song, her lips following the vocal line and resting still whenever the vocal pauses, her eyes drifting past the lens. The camera holds a static shot. [Shot 2] At 00:04.500, the shot cuts to a medium shot of her __place__, __motion__, still singing quietly with the track. The camera trucks left with small amplitude at slow speed. [Shot 3] At 00:10.000, the shot cuts back to a close-up of her face, the background falling away to soft blur again, as she carries the phrase through, lowers her gaze and looks back up into the lens. The camera pushes in with small amplitude at slow speed.\n\noverall_soundscape: Quiet room tone sits under the scene, the knit of her sweater brushes softly as she moves, and her breath is audible between phrases.\n\nnon_diegetic_music: A slow, laid-back lo-fi pop beat with a pillowy drum-machine kick, a dry rimshot on the backbeat, softly ticking hi-hats, a warm sliding sub-bass and melancholic electric piano chords under light vinyl crackle.\n",
         1344,
         768,
         345,
         39,
-        "first_seconds",
-        30.0,
+        "whole",
         730451892,
         "fixed",
-        0.0,
+        0.25,
         "clip_guard",
-        "Video/h3_t2v_audio_freeze_song",
+        "Video/h3_t2v_audio_freeze_song_lists_pdd8",
         19,
-        "uniform",
+        "random",
         "uniform",
         true,
         true,
@@ -606,7 +644,95 @@
       "title": "Whole track: windows planned from the song"
     },
     {
-      "id": 22,
+      "id": 23,
+      "type": "MiniMaxH3PromptList",
+      "pos": [
+        -1420,
+        -760
+      ],
+      "size": [
+        440,
+        520
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "lists",
+          "type": "H3_PROMPT_LISTS",
+          "link": null,
+          "shape": 7
+        }
+      ],
+      "outputs": [
+        {
+          "name": "lists",
+          "type": "H3_PROMPT_LISTS",
+          "links": [
+            19
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MiniMaxH3PromptList"
+      },
+      "widgets_values": [
+        "place",
+        "typed",
+        "standing at the rain-streaked window of a bare concrete apartment\nleaning on the rail of a brutalist high-rise balcony above the city\nsitting alone by the window of an empty late-night train carriage as city lights slide past\nwalking slowly down a wet, empty side street under a flickering sodium lamp\nsitting on a stairwell landing beneath a flickering fluorescent tube",
+        "shuffled",
+        0,
+        "fixed"
+      ],
+      "title": "Prompt list: __place__"
+    },
+    {
+      "id": 24,
+      "type": "MiniMaxH3PromptList",
+      "pos": [
+        -960,
+        -760
+      ],
+      "size": [
+        440,
+        520
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "lists",
+          "type": "H3_PROMPT_LISTS",
+          "link": 19,
+          "shape": 7
+        }
+      ],
+      "outputs": [
+        {
+          "name": "lists",
+          "type": "H3_PROMPT_LISTS",
+          "links": [
+            20
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MiniMaxH3PromptList"
+      },
+      "widgets_values": [
+        "motion",
+        "typed",
+        "swaying slowly on the laid-back beat, eyes half closed\ntilting her head on each soft backbeat, arms folded against the cold\nturning slowly away from the camera, then glancing back over her shoulder\npulling her sleeves down over her hands and nodding gently in time",
+        "in_order",
+        0,
+        "fixed"
+      ],
+      "title": "Prompt list: __motion__"
+    },
+    {
+      "id": 25,
       "type": "MarkdownNote",
       "pos": [
         -2180,
@@ -635,17 +761,17 @@
       1,
       1,
       0,
-      5,
+      6,
       0,
       "MODEL"
     ],
     [
       2,
-      5,
+      7,
       0,
       6,
-      0,
-      "MODEL"
+      1,
+      "INT"
     ],
     [
       3,
@@ -656,26 +782,26 @@
       "MODEL"
     ],
     [
-      6,
+      4,
       8,
       0,
-      19,
+      10,
       0,
       "MODEL"
     ],
     [
       7,
-      19,
+      10,
       0,
-      13,
+      20,
       0,
       "MODEL"
     ],
     [
       12,
-      19,
+      20,
       0,
-      21,
+      22,
       0,
       "MODEL"
     ],
@@ -683,7 +809,7 @@
       13,
       2,
       0,
-      21,
+      22,
       1,
       "CLIP"
     ],
@@ -691,7 +817,7 @@
       14,
       3,
       0,
-      21,
+      22,
       2,
       "VAE"
     ],
@@ -699,33 +825,49 @@
       15,
       4,
       0,
-      21,
+      22,
       3,
       "VAE"
     ],
     [
       16,
-      20,
-      0,
       21,
+      0,
+      22,
       4,
       "AUDIO"
     ],
     [
       17,
-      12,
+      14,
       0,
-      21,
+      22,
       5,
       "SAMPLER"
     ],
     [
       18,
-      13,
-      0,
-      21,
+      6,
+      1,
+      22,
       6,
       "SIGMAS"
+    ],
+    [
+      19,
+      23,
+      0,
+      24,
+      0,
+      "H3_PROMPT_LISTS"
+    ],
+    [
+      20,
+      24,
+      0,
+      22,
+      8,
+      "H3_PROMPT_LISTS"
     ]
   ],
   "groups": [],
