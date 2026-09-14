@@ -5,9 +5,9 @@
 
 `docs/checks.md`'s standing audit carried this row: *"Sol-Attn is on by default
 in every shipped video workflow"* — enforced by **one graph, by accident**.
-`check_bench_matches_shipped.py` compares the bench harness against
-`h3_probe_sol_on_api.json`, so stripping Sol from that one file turns it red
-while stripping it from any other goes unnoticed. That was measured by
+`check_bench_matches_shipped.py` compared the bench harness against
+`h3_probe_sol_on_api.json` (retired 2026-09-14), so stripping Sol from that one
+file turned it red while stripping it from any other went unnoticed. That was measured by
 deliberate violation on 2026-08-17, not inferred.
 
 It does **not** replace `check_bench_matches_shipped.py`, and the distinction is
@@ -37,8 +37,9 @@ backwards, so a node nothing consumes never executes. An ACTIVE
 entirely normal — measured on 2026-08-18 at a real cost, in
 `bench/results/2026-08-18_attention_defaults.json`.
 
-Bypass (`mode=4`) is how the shipped graphs disable Sol **deliberately**, and is
-not a defect. Only an active-but-unreachable node is.
+The shipped graphs are API form, where a node that is off is simply absent, so
+omission is how a graph disables Sol **deliberately**, and is not a defect. Only
+a present-but-unreachable node is.
 
 ## Why the exemption list cannot rot
 
@@ -85,7 +86,6 @@ _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO / "workflows"))
 
 import h3_config  # noqa: E402
-from build_workflows import SOL_SELECTION_INPUTS, sol_widget_order  # noqa: E402
 
 WORKFLOWS = _REPO / "workflows"
 # Ours since 2026-08-30, replacing the vendored `SolAttnMiniMax`. One name,
@@ -94,11 +94,6 @@ WORKFLOWS = _REPO / "workflows"
 # which is a finding for this check rather than a second case to accept.
 SOL = "MiniMaxH3SolAttn"
 SAGE = "MiniMaxH3SageAttention"
-
-# `h3_config` states that SAGE_NODE's key order IS the node's declared input
-# order, because a UI graph maps widget values positionally. Derived rather than
-# repeated, so a reordering there cannot leave a stale copy here.
-SAGE_WIDGET_ORDER = tuple(h3_config.SAGE_NODE)
 
 OUTPUT_TYPES = {"VHS_VideoCombine", "SaveImage", "PreviewImage", "SaveAudio",
                 "SaveAnimatedWEBP", "SaveWEBM", "SaveVideo", "PreviewAny",
@@ -198,27 +193,15 @@ def load(path):
     return json.loads(path.read_text())
 
 
-def is_ui(g):
-    return isinstance(g.get("nodes"), list)
-
-
 def reachable(g):
-    """Node ids that feed an output node. Both graph formats."""
-    if is_ui(g):
-        nodes = {n["id"]: n for n in g["nodes"]}
-        edges = {}
-        for link in g.get("links", []):
-            if isinstance(link, list) and len(link) >= 5:
-                edges.setdefault(link[3], set()).add(link[1])
-        seeds = [i for i, n in nodes.items() if n.get("type") in OUTPUT_TYPES]
-    else:
-        nodes = {i: n for i, n in g.items() if isinstance(n, dict)}
-        edges = {}
-        for i, n in nodes.items():
-            for val in (n.get("inputs") or {}).values():
-                if isinstance(val, list) and len(val) == 2:
-                    edges.setdefault(i, set()).add(str(val[0]))
-        seeds = [i for i, n in nodes.items() if n.get("class_type") in OUTPUT_TYPES]
+    """Node ids that feed an output node."""
+    nodes = {i: n for i, n in g.items() if isinstance(n, dict)}
+    edges = {}
+    for i, n in nodes.items():
+        for val in (n.get("inputs") or {}).values():
+            if isinstance(val, list) and len(val) == 2:
+                edges.setdefault(i, set()).add(str(val[0]))
+    seeds = [i for i, n in nodes.items() if n.get("class_type") in OUTPUT_TYPES]
     seen, stack = set(), list(seeds)
     while stack:
         cur = stack.pop()
@@ -229,59 +212,29 @@ def reachable(g):
     return seen
 
 
-def _sol_ui_order(widgets):
-    """Widget ids for a UI-form Sol node, whose order depends on its own
-    `selection` value (widget 0).
-
-    An unrecognised selection returns the selector alone rather than guessing
-    an order: pairing the remaining values against the wrong names would
-    invent settings the graph does not have. The lone `selection` entry is
-    enough for the comparison against h3_config to report the real problem.
-    """
-    selected = widgets[0] if widgets else None
-    if selected not in SOL_SELECTION_INPUTS:
-        return ("selection",)
-    return sol_widget_order({"selection": selected})
-
-
 def attn_nodes(g, want):
     """[(node_id, values_by_name, state)] for every `want` node in `g`.
 
-    state is `live`, `orphaned` (ACTIVE and unreachable -- the defect),
-    `bypassed` or `muted`.
+    state is `live` or `orphaned` (present and unreachable -- the defect). A
+    node that is off is absent from an API graph, so it never appears here.
     """
     live = reachable(g)
     out = []
-    if is_ui(g):
-        for n in g["nodes"]:
-            if n.get("type") != want:
-                continue
-            widgets = n.get("widgets_values") or []
-            if want == SOL:
-                order = _sol_ui_order(widgets)
-            else:
-                order = SAGE_WIDGET_ORDER
-            vals = dict(zip(order, widgets))
-            mode = n.get("mode", 0)
-            state = ("bypassed" if mode == 4 else "muted" if mode == 2
-                     else "live" if n["id"] in live else "orphaned")
-            out.append((n["id"], vals, state))
-    else:
-        for i, n in g.items():
-            if not isinstance(n, dict) or n.get("class_type") != want:
-                continue
-            vals = {k: v for k, v in (n.get("inputs") or {}).items()
-                    if not isinstance(v, list)}
-            if want == SOL:
-                # The API form keys the selected option's inputs under the
-                # combo (`selection.tau`). Strip the prefix so both forms are
-                # graded in h3_config's vocabulary -- left dotted, `tau` is
-                # simply absent from `vals`, every `if k in vals` comparison
-                # below skips it, and the check goes green having graded
-                # nothing about the knob it exists for.
-                vals = {k.split(".", 1)[1] if k.startswith("selection.") else k: v
-                        for k, v in vals.items()}
-            out.append((i, vals, "live" if i in live else "orphaned"))
+    for i, n in g.items():
+        if not isinstance(n, dict) or n.get("class_type") != want:
+            continue
+        vals = {k: v for k, v in (n.get("inputs") or {}).items()
+                if not isinstance(v, list)}
+        if want == SOL:
+            # The API form keys the selected option's inputs under the combo
+            # (`selection.tau`). Strip the prefix so the values are graded in
+            # h3_config's vocabulary -- left dotted, `tau` is simply absent
+            # from `vals`, every `if k in vals` comparison below skips it, and
+            # the check goes green having graded nothing about the knob it
+            # exists for.
+            vals = {k.split(".", 1)[1] if k.startswith("selection.") else k: v
+                    for k, v in vals.items()}
+        out.append((i, vals, "live" if i in live else "orphaned"))
     return out
 
 
@@ -304,11 +257,8 @@ def wires_sage(graph) -> bool:
     runs stock attention and carries neither sage nor Sol; a canonical arm runs
     the repo default and carries both.
     """
-    nodes = (graph.get("nodes") if isinstance(graph.get("nodes"), list)
-             else graph.values())
-    return any(isinstance(n, dict)
-               and (n.get("type") or n.get("class_type")) == "MiniMaxH3SageAttention"
-               for n in nodes)
+    return any(isinstance(n, dict) and n.get("class_type") == SAGE
+               for n in graph.values())
 
 
 def _steps_of(graph):
@@ -339,18 +289,14 @@ def loads_pdd(graph) -> bool:
     necessity assertion still applies -- an exempt graph with live Sol is a
     failure, not a pass.
     """
-    nodes = (graph.get("nodes") if isinstance(graph.get("nodes"), list)
-             else graph.values())
-    for node in nodes:
-        if not isinstance(node, dict):
-            continue
-        if (node.get("type") or node.get("class_type")) == "MiniMaxH3PDDLoRA":
-            return True
-    return False
+    return any(isinstance(n, dict) and n.get("class_type") == "MiniMaxH3PDDLoRA"
+               for n in graph.values())
 
 
 def main() -> int:
-    paths = h3_config.graph_paths(WORKFLOWS)
+    # API form only: this reads `class_type`/`inputs`, and a graph in another
+    # form would read as one with no Sol at all.
+    paths = h3_config.graph_paths(WORKFLOWS, "*_api.json")
     img_dirs = single_frame_dirs()
     problems, checked = [], {"sol": 0, "sage": 0, "graphs": 0, "single_frame": 0}
     exempt_seen = {k: False for k in SOL_EXEMPT_STEMS}
@@ -388,10 +334,10 @@ def main() -> int:
         for nid, _vals, state in sol + sage:
             if state == "orphaned":
                 problems.append(
-                    f"{p.relative_to(_REPO)}: node {nid} is an ACTIVE node whose "
-                    f"MODEL output nothing consumes. ComfyUI walks backwards from "
-                    f"the output nodes, so it never executes. To disable it on "
-                    f"purpose, bypass it (mode=4).")
+                    f"{p.relative_to(_REPO)}: node {nid} is present but its MODEL "
+                    f"output nothing consumes. ComfyUI walks backwards from the "
+                    f"output nodes, so it never executes. To disable it on "
+                    f"purpose, leave it out of the graph.")
 
         live_sol = [n for n in sol if n[2] == "live"]
 

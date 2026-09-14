@@ -115,12 +115,14 @@ def offered(oi: dict, cls: str) -> set[str]:
     **Two declaration forms coexist and both have to be read.** The legacy one
     puts the options in slot 0 (`[["a.safetensors", ...], {...}]`); the v3 one
     puts the string `"COMBO"` there and the options under `options` in the spec
-    dict. On this install 196 inputs use the second form, `tiny_vae` on
-    `ModelPreviewOverrideKJ` among them -- and the first version of this check
-    read only the first form, so it reported 55 shipped graphs naming a
-    `taeh3.safetensors` the server "does not offer" while the server was
-    offering it. A check that cries wolf over correct state is worse than no
-    check, so this reads both and the fixture below pins it.
+    dict. The first version of this check read only the first form, so it
+    reported shipped graphs naming a `taeh3.safetensors` the server "does not
+    offer" while the server was offering it, through the v3 `tiny_vae` combo
+    on the live-preview node `ModelPreviewOverrideKJ`. That node has since left
+    the shipped graphs, so `taeh3` is no longer a reference this check sees;
+    the lesson does not depend on it. A check that cries wolf over correct
+    state is worse than no check, so this reads both and the fixture below
+    pins it.
     """
     spec = oi.get(cls)
     if spec is None:
@@ -139,18 +141,9 @@ def offered(oi: dict, cls: str) -> set[str]:
 
 
 def names_in_graph(g: dict) -> list[tuple[str, str, str]]:
-    """(node_id, class, filename) for every model-looking widget value."""
+    """(node_id, class, filename) for every model-looking input value."""
     found = []
-    nodes = g.get("nodes") if isinstance(g.get("nodes"), list) else None
-    if nodes is not None:                                   # UI format
-        for n in nodes:
-            vals = n.get("widgets_values") or []
-            vals = vals.values() if isinstance(vals, dict) else vals
-            for v in vals:
-                if isinstance(v, str) and v.endswith(".safetensors"):
-                    found.append((str(n.get("id")), n.get("type", "?"), v))
-        return found
-    for nid, node in g.items():                             # API format
+    for nid, node in g.items():
         if not isinstance(node, dict) or "class_type" not in node:
             continue
         for v in (node.get("inputs") or {}).values():
@@ -207,7 +200,10 @@ def main() -> int:
         return 2
 
     items = []
-    for p in graph_paths(WORKFLOWS, include_bench=True):
+    # API form only: `names_in_graph` reads `class_type`/`inputs`, and a graph
+    # in another form would contribute no references and still be counted.
+    paths = graph_paths(WORKFLOWS, "*_api.json", include_bench=True)
+    for p in paths:
         for nid, cls, name in names_in_graph(json.loads(p.read_text())):
             items.append((f"{p.relative_to(WORKFLOWS.parent)}#{nid}", cls, name))
     for key, cls in CONSTANT_CLASS.items():
@@ -218,7 +214,7 @@ def main() -> int:
 
     failures = grade(items, oi) + grade_format_owner(items)
     print(f"{len(items)} model reference(s) from "
-          f"{len(graph_paths(WORKFLOWS, include_bench=True))} graph(s) "
+          f"{len(paths)} graph(s) "
           f"(shipped and bench) and h3_config")
 
     both_forms = {"X": {"input": {

@@ -18,7 +18,7 @@ records the result: it "reported eleven correctly-wired graphs as wrong". The
 escaped instance is the same shape both times -- the value is present and
 unambiguous, the reader cannot see where it comes from, and the check blames
 the graph. No existing gate could have caught the link form, because every
-shipped graph writes these widgets as literals and every check is green today.
+shipped graph then wrote these widgets as literals and every check was green.
 `check_graph_discovery.py` prints the boundary itself: it "covers WHICH FILES a
 scan sees, never which FIELDS it reads", and records that a scan reading only
 `inputs` and missing every UI graph's `widgets_values` happened on 2026-08-27
@@ -51,8 +51,10 @@ shipped graph that names a step count is read twice: once as it ships, and once
 through a copy whose `steps` widget has been rewired to a `PrimitiveInt`
 carrying the same number. The expectation is the graph's own answer, never a
 number written here, and the population is every graph rather than one fixture.
-No shipped graph links a widget today, which is exactly why the linked arm has
-to be synthesised -- and exactly why it is cheap to get right now.
+No shipped graph links `BasicScheduler.steps`, which is exactly why the linked
+arm has to be synthesised. The PDD graphs do link their node's `steps` from a
+`PrimitiveInt`; they carry no `BasicScheduler`, so they are outside this
+population, and `check_pdd_sigmas.py` reads theirs through the resolver.
 
 ## What this asserts, i.e. what breaks if a case is deleted
 
@@ -62,23 +64,17 @@ to be synthesised -- and exactly why it is cheap to get right now.
                            executor applies, which is how a link gets read as a
                            literal (or the reverse) with nothing said
   output map matches       every `OUTPUT_SOURCES` row agrees with an
-                           independent declaration on slot count, on the
-                           pass-through input's name, and on its widget index.
-                           Delete it and a node that appends an output turns
+                           independent declaration on slot count and on the
+                           pass-through input's name. Delete it and a node that appends an output turns
                            every link past the old end into MALFORMED
   literal and link agree   `graph_schedule` returns the identical
-                           `(steps, scheduler)` for a shipped graph and for the
-                           same graph with `steps` fed from a constant node, in
-                           BOTH graph forms. Delete it and the resolver can
-                           stop following links while every other case here
-                           still passes -- this is the one that grades the
-                           defect
-  ui link beats widget     a linked UI widget leaves a STALE literal in
-                           `widgets_values`, and the shipped reference graphs
-                           are full of them. Delete it and a reader may return
-                           the stale number, which is worse than returning
-                           nothing because it is confidently wrong
-  states are distinct      COMPUTED, OPAQUE and MALFORMED are reported for the
+                           `(steps, scheduler)` for a shipped API graph and for
+                           the same graph with `steps` fed from a constant
+                           node, and refuses to pass on an empty set. Delete it
+                           and the resolver can stop following links while
+                           every other case here still passes -- this is the
+                           one that grades the defect
+  states are distinct     COMPUTED, OPAQUE and MALFORMED are reported for the
                            things they name, and none of them is RESOLVED. Each
                            mutation is judged against the SAME graph unmutated,
                            so a case that never reached the resolver reads as a
@@ -211,11 +207,6 @@ def case_output_map_matches_declarations():
     A row for a class NEITHER source knows is a failure rather than a skip: an
     unverifiable row is the state this file exists to prevent, and a silent
     skip is indistinguishable from a pass.
-
-    The widget index is derived, not compared to a constant: it is the position
-    of the pass-through input among the class's declared inputs. That
-    derivation is only exact while every declared input is a widget, so a row
-    whose class declares more than one input is refused rather than guessed at.
     """
     manifest = json.loads(MANIFEST.read_text())
     by_node_id = {v["node_id"]: v for v in manifest.values()}
@@ -246,20 +237,6 @@ def case_output_map_matches_declarations():
                 problems.append(
                     f"{class_type} slot {i} passes through "
                     f"{slot.input_name!r}, which {source} does not declare")
-                continue
-            if slot.ui_widget is None:
-                continue
-            if len(inputs) != 1:
-                problems.append(
-                    f"{class_type} slot {i} pins ui_widget="
-                    f"{slot.ui_widget} on a class with {len(inputs)} inputs; "
-                    f"the index cannot be derived, so it cannot be graded")
-                continue
-            if slot.ui_widget != inputs.index(slot.input_name):
-                problems.append(
-                    f"{class_type} slot {i} pins ui_widget="
-                    f"{slot.ui_widget}; {source} puts {slot.input_name!r} at "
-                    f"{inputs.index(slot.input_name)}")
     assert not problems, "; ".join(problems[:4])
     assert graded, "OUTPUT_SOURCES is empty, so this case asserts nothing"
     return f"{len(graded)} row(s) graded"
@@ -272,11 +249,6 @@ def case_output_map_matches_declarations():
 def _api_graphs():
     return [p for p in cfg.graph_paths(WORKFLOWS, include_bench=True)
             if p.name.endswith("_api.json")]
-
-
-def _ui_graphs():
-    return [p for p in cfg.graph_paths(WORKFLOWS, include_bench=True)
-            if not p.name.endswith("_api.json")]
 
 
 def _free_api_id(graph):
@@ -305,38 +277,6 @@ def _link_api_steps(graph):
     return None
 
 
-def _link_ui_steps(graph):
-    """The same rewiring in UI form, with the stale widget left in place.
-
-    Leaving `widgets_values[1]` alone is the point: that is what the frontend
-    does, and a reader that prefers it to the link reads a value the graph no
-    longer uses.
-    """
-    out = copy.deepcopy(graph)
-    for node in out.get("nodes", []):
-        if not isinstance(node, dict) or node.get("type") != "BasicScheduler":
-            continue
-        widgets = node.get("widgets_values")
-        if not isinstance(widgets, list) or len(widgets) < 2:
-            continue
-        if not isinstance(widgets[1], int):
-            continue
-        new_id = max(n.get("id", 0) for n in out["nodes"]) + 1
-        new_link = max([row[0] for row in out.get("links", [])] or [0]) + 1
-        out["nodes"].append({
-            "id": new_id, "type": "PrimitiveInt", "inputs": [],
-            "outputs": [{"name": "INT", "type": "INT", "links": [new_link]}],
-            "widgets_values": [widgets[1]],
-        })
-        out.setdefault("links", []).append(
-            [new_link, new_id, 0, node["id"], len(node.get("inputs") or []), "INT"])
-        node.setdefault("inputs", []).append(
-            {"name": "steps", "type": "INT", "link": new_link,
-             "widget": {"name": "steps"}})
-        return out
-    return None
-
-
 def case_literal_and_link_agree():
     """A linked `steps` reads as the same schedule the literal did.
 
@@ -346,74 +286,26 @@ def case_literal_and_link_agree():
     in the tree rather than over one fixture, so a reader that works on the
     shape of one graph and not another has nowhere to hide.
 
-    Both forms are exercised because they take different paths: the API form
-    resolves a named `[id, slot]`, the UI form resolves a link id through the
-    link table and must beat the stale widget beside it.
+    Because the expectation moves with the graph, editing a shipped step count
+    cannot turn this red; a resolver that stops following links can, and so
+    can an empty population, which is refused rather than read as agreement.
     """
-    problems, pairs = [], {"api": 0, "ui": 0}
+    problems, pairs = [], 0
     for path in _api_graphs():
         graph = json.loads(path.read_text())
         linked = _link_api_steps(graph)
         if linked is None:
             continue
-        pairs["api"] += 1
+        pairs += 1
         want, got = cfg.graph_schedule(graph), cfg.graph_schedule(linked)
         if want != got:
-            problems.append(f"{path.name} (api): literal reads {want}, "
-                            f"linked reads {got}")
-    for path in _ui_graphs():
-        graph = json.loads(path.read_text())
-        linked = _link_ui_steps(graph)
-        if linked is None:
-            continue
-        pairs["ui"] += 1
-        want, got = cfg.graph_schedule(graph), cfg.graph_schedule(linked)
-        if want != got:
-            problems.append(f"{path.name} (ui): literal reads {want}, "
+            problems.append(f"{path.name}: literal reads {want}, "
                             f"linked reads {got}")
     assert not problems, "; ".join(problems[:4])
-    assert pairs["api"] and pairs["ui"], (
-        f"nothing was rewired ({pairs}); the case compared a graph with itself")
-    return f"{pairs['api']} api + {pairs['ui']} ui graph(s) agree either way"
-
-
-def case_ui_link_beats_stale_widget():
-    """A UI widget fed by a link is read from the link, not from the widget.
-
-    The control is shipped, not synthesised: every reference graph wires
-    `width`/`height`/`length` into its conditioner from `MiniMaxH3Resolution`
-    and still carries the numbers in `widgets_values`. Those numbers are what a
-    positional reader returns and they are not what the graph computes -- the
-    resolution node parses its DynamicCombo label at run time, so the honest
-    answer is COMPUTED.
-
-    A resolver that ignored links here would return an int and look right,
-    which is why this is a separate case from the equivalence above: that one
-    can only see a reader that returns NOTHING, and this one sees a reader that
-    returns something plausible.
-    """
-    seen, problems = 0, []
-    for path in _ui_graphs():
-        graph = json.loads(path.read_text())
-        for node in graph.get("nodes", []):
-            if not isinstance(node, dict):
-                continue
-            entry = cfg._ui_input_entry(node, "width")
-            if entry is None or entry.get("link") is None:
-                continue
-            widgets = node.get("widgets_values") or []
-            stale = [w for w in widgets if isinstance(w, int)]
-            got = cfg.resolve_widget(graph, node, "width",
-                                     stale[0] if stale else None)
-            seen += 1
-            if got.state == cfg.RESOLVED:
-                problems.append(
-                    f"{path.name} node {node.get('id')}: read a linked width "
-                    f"as the literal {got.value!r}")
-    assert not problems, "; ".join(problems[:4])
-    assert seen, ("no shipped UI graph links a `width` widget, so this case "
-                  "compared nothing")
-    return f"{seen} linked width widget(s), none read from the stale value"
+    assert pairs, (
+        "no API graph carries a literal BasicScheduler `steps`, so nothing "
+        "was rewired and the case compared nothing")
+    return f"{pairs} api graph(s) agree either way"
 
 
 # --------------------------------------------------------------------------
@@ -573,7 +465,10 @@ print("GRAPH VALUES output: a reader that can follow a linked widget")
 check("link rule matches core", case_link_rule_matches_core)
 check("output map matches declarations", case_output_map_matches_declarations)
 check("literal and link agree", case_literal_and_link_agree)
-check("ui link beats stale widget", case_ui_link_beats_stale_widget)
+# `ui link beats stale widget` was retired 2026-09-14, with the UI arm of
+# `literal and link agree`. Both graded the UI form, whose linked widgets leave
+# a stale literal in `widgets_values`; the shipped graphs are API form only, so
+# there is no stale widget left to beat. `git log -S` on the case name finds it.
 check("states are distinct", case_states_are_distinct)
 check("cycle terminates", case_cycle_terminates)
 

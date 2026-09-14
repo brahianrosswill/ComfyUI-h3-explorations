@@ -4,8 +4,8 @@
 Verification comes from the log lines, not the video.
 
     [h3] ... sage routed a 2048-token probe on fp16_cuda      always
-    [sol_attn] chaining onto an existing attention override   Sol graphs only
-    [sol_attn] sparse (1, ..., 56, 128) tau=...               Sol graphs only
+    [h3-sol] chaining onto an existing attention override     Sol graphs only
+    [h3-sol] sparse (1, ..., 56, 128) tau=...                 Sol graphs only
 
 Line 1 says sage engaged. Line 3 says sparse engaged at the configured tau.
 **Line 2 is the order check** -- it prints only when Sol-Attn finds sage's
@@ -40,12 +40,12 @@ on {kernel}"`. So the one line that is supposed to appear on *every* run
 could not be found on any run, and nobody noticed because the default path
 (no `--log`) returns 0 with a disclaimer and never evaluates it.
 
-**And the two Sol lines were asserted unconditionally.** Sol-Attn ships OFF --
-derived from the graphs, not from a doc: every UI graph carries the node at
-`mode=4` (bypass) and every API graph omits it. `docs/SOLATTN.md` is the
-authority for Sol's knobs. This
-smoke renders `h3_text_to_video_api.json`, so those lines are *correctly*
-absent, and asserting them made a fully compliant run report failure. That is
+**And the two Sol lines were asserted unconditionally.** Sol-Attn shipped OFF
+when this was written (the UI graphs carried the node bypassed and the API
+graphs omitted it); it has been on by default since, per CLAUDE.md. On a graph
+without the node those lines are *correctly* absent, and asserting them made a
+fully compliant run report failure. `docs/SOLATTN.md` is the authority for
+Sol's knobs. That is
 the third-case trap CLAUDE.md names -- when something gains an "off" state,
 every assertion about it inherits a new case, and "correctly absent" is not
 "broken".
@@ -129,8 +129,8 @@ def main() -> int:
     base = f"http://{args.host}"
 
     # A path with a separator is taken as-is, so a scratch graph can be smoked
-    # without being written into workflows/ where check_workflow_schema.py and
-    # the generator would both have opinions about it.
+    # without being written into workflows/, where the generator and the graph
+    # checks would have opinions about it.
     wf_path = Path(args.workflow) if "/" in args.workflow else WF / args.workflow
     if not wf_path.is_file():
         print(f"no such workflow: {wf_path}")
@@ -240,9 +240,9 @@ def main() -> int:
         return 1
     if skipped:
         print("\nThe Sol lines were not checked, because the graph has no Sol")
-        print("node -- which is the shipped default. Exit 2, not 0: this run")
+        print("node, which every shipped video graph carries. Exit 2, not 0: this run")
         print("verified sage and the render, not the composition seam.")
-        print("Point --workflow at a Sol graph (h3_probe_sol_on.json) to check it.")
+        print("Point --workflow at a Sol graph (h3_text_to_video_api.json) to check it.")
         return 2
     return 0
 

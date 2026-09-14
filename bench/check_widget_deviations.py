@@ -7,7 +7,7 @@ was `-1.0`, the sentinel meaning "follow `strength`". Identical behaviour at
 `strength` 1.0 and silently divergent the moment anyone edited it -- a shipped
 graph and a freshly dragged-in node disagreeing. Every existing gate was green:
 `check_literal_widgets.py` and `check_pdd_head_selection.py` read the NODE,
-`check_pdd_sigmas.py`'s ui/api case compares the STEP COUNT only, and nothing
+`check_pdd_sigmas.py`'s ui/api case compared the STEP COUNT only, and nothing
 compared a graph's widget values against the node's own defaults. Two sessions
 found it by hand, on the owner's rule that a workflow's values should not differ
 from the node's without a reason.
@@ -37,27 +37,19 @@ deviation and would otherwise be silently fine); a `HOUSE` row with no pinned
 value; a declared row that no longer deviates anywhere (the fix landed and the
 row is now a lie); and a stem naming a step count the graph does not run.
 
-**What it does NOT cover, and it is a real boundary rather than a caveat: the
-UI graphs.** This reads `*_api.json` exclusively. A deviation present in a UI
-graph and absent from its API twin is INVISIBLE here -- demonstrated by an
-independent red proof on 2026-08-31 that put the `head_strength` defect in the
-UI form only and got green. Both forms come from one generator so they normally
-agree, but "normally" is already doing work: `h3_text_to_video_pdd_manual_sigmas`
-carries `steps` 6 in the UI and 0 in the API, legitimately. Teaching this check
-to read UI graphs is the wrong fix -- `widgets_values` is POSITIONAL and the
-DynamicCombo resolution below is name-based, so it would mean rebuilding the
-frontend's widget-order mapping. **Enforced by nothing today.** The two
-candidates, neither built: assert UI and API agree on every widget value rather
-than only the step count (`bench/check_pdd_sigmas.py` does the narrow version),
-or regenerate into a temp tree and diff, which would also catch the generator
-having been edited without a rebuild -- an instance of which occurred on
-2026-08-31, when `build_workflows.py` emitted `head_strength: -1.0` while all 20
-shipped graphs still carried `1.0`.
+**It reads `*_api.json`, which since 2026-09-14 is every shipped graph.** Until
+then UI twins shipped beside the API graphs, and a deviation present only in a
+UI twin was invisible here (an independent red proof on 2026-08-31 put the
+`head_strength` defect in the UI form only and got green). The twins went with
+the API-only conversion, so that boundary went with them. What it still does
+not catch is the generator edited without a rebuild -- an instance of which
+occurred on 2026-08-31, when `build_workflows.py` emitted `head_strength: -1.0`
+while the shipped graphs still carried `1.0`.
 
     python bench/check_widget_deviations.py
     python bench/check_widget_deviations.py --object-info /tmp/oi.json
 
-Exit codes follow `check_workflow_schema.py`'s convention, and the distinction
+Exit codes follow the three-verdict convention, and the distinction
 is the point:
 
     0   graphs were checked and every deviation is declared

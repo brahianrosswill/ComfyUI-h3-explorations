@@ -39,15 +39,14 @@ Claims, i.e. what breaks if a case is deleted:
                         TURBO_SHIFT triple is one of the legal rows. This is
                         what the generator writes into every graph, so it is
                         the single upstream point where a mismatch is born
-  graphs are consistent  EVERY shipped graph, not just the turbo ones. A
+  graphs are consistent  EVERY shipped API graph, not just the turbo ones. A
                         graph with a turbo LoRA must match that LoRA's row; a
                         graph without one must sit at the base checkpoint's
                         own 12/3. Skipping the base graphs is how "every
                         shipped graph" quietly becomes "the two with a LoRA".
-                        The UI and API forms are then paired and compared:
-                        they are generated separately and have already
-                        diverged once (the ref `_api` graphs hardcode length),
-                        so checking one does not check the other
+                        It prints how many of each it graded and FAILS if
+                        either population is empty: a walk that matches no
+                        file grades nothing, and nothing reads as a pass
   unknown lora is caught a lora whose filename matches no known row fails
                         rather than passing unexamined. Includes the prefix
                         trap: `turbo_8step_v1.0_768p` must NOT resolve to the
@@ -55,7 +54,8 @@ Claims, i.e. what breaks if a case is deleted:
                         a prefix of it. Names are parsed structurally, not by
                         substring, for exactly this reason
 
-No CUDA, no model, no ComfyUI import. Reads JSON and a config module.
+No CUDA, no model, no ComfyUI import. Reads API-form JSON (`*_api.json`,
+{node_id: {class_type, inputs}}) and a config module.
 
 Exit codes: 0 all cases passed, 1 a case failed, 2 passed but a control was
 skipped (coderef/ absent).
@@ -83,7 +83,7 @@ VENDOR_README = REPO / "coderef" / "Minimax-H3-Turbo" / "README.md"
 # directory `GRAPH_DIRS` routes to -- as `workflows/image/` was from 2026-08-16
 # until the single-frame lane was parked on 2026-08-27. See h3_config.GRAPH_DIRS.
 from h3_config import (LORA_LOADER_CLASSES, graph_paths, graph_schedule,  # noqa: E402
-                        resolve_link, turbo_label)
+                        resolve_link)
 
 
 class Row(NamedTuple):
@@ -97,7 +97,7 @@ class Found(NamedTuple):
     shift: tuple[float, float] | None
     steps: int | None
     # Read here, graded nowhere in this file. `check_distill_grid.py` imports
-    # these readers rather than growing a second graph walk, and the scheduler
+    # this reader rather than growing a second graph walk, and the scheduler
     # is the field it needs: a LoRA loaded at the right shift and step count is
     # still off its distillation grid if the scheduler places the steps
     # somewhere else.
@@ -225,29 +225,6 @@ PACK_STEPS = (4, 8)
 PACK_SHIFT = (12.0, 3.0)
 
 
-#: The two places a generated note claims a version FOR THE GRAPH IT IS ON.
-#: Notes legitimately name other LoRAs -- the comparison table lists all five --
-#: so a blanket "no note may mention another version" would be red on correct
-#: state. These two phrasings are the ones that are about *this* graph, and
-#: they are the ones that go stale when `TURBO_768P_LORA` moves.
-_THIS_GRAPH_CLAIMS = (
-    re.compile(r"This graph loads the \*\*([^*]+?)\*\* LoRA"),
-    re.compile(r"\|\s*([^|]+?)\s*\(this graph\)\s*\|"),
-)
-
-
-def note_versions(doc) -> list[str]:
-    """Every version label a UI graph's notes claim for itself."""
-    out = []
-    for node in doc.get("nodes", []):
-        if node.get("type") != "MarkdownNote":
-            continue
-        text = " ".join(str(w) for w in (node.get("widgets_values") or []))
-        for pattern in _THIS_GRAPH_CLAIMS:
-            out.extend(m.strip() for m in pattern.findall(text))
-    return out
-
-
 # Parallel Decoding Distillation, converted by bench/convert_pdd_lora.py.
 # Graded differently from every turbo row and deliberately so: PDD carries no
 # shift of its own to inherit, because its block boundaries ARE the base
@@ -272,28 +249,12 @@ def _manual_knots(doc, grid):
     import torch
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     from pdd_math import schedule_knots
-    # `doc` arrives as a UI dict, an API dict, or an already-unpacked list
-    # depending on the caller. Normalise rather than assume.
-    if isinstance(doc, list):
-        nodes = doc
-    elif isinstance(doc.get("nodes"), list):
-        nodes = doc["nodes"]
-    else:
-        nodes = list(doc.values())
-    for n in nodes:
-        if not isinstance(n, dict):
+    # `doc` is an API graph, {node_id: {class_type, inputs}}.
+    for n in doc.values():
+        if not isinstance(n, dict) or n.get("class_type") != "ManualSigmas":
             continue
-        if (n.get("type") or n.get("class_type")) != "ManualSigmas":
-            continue
-        # Branch on the FORM, not on whether a key is present: a UI node also
-        # has `inputs`, but as a LIST of slot dicts rather than a value map,
-        # so `"inputs" in n` picks the wrong reader on every UI graph.
         ins = n.get("inputs")
-        if isinstance(ins, dict):
-            raw = ins.get("sigmas")
-        else:
-            w = n.get("widgets_values")
-            raw = w[0] if isinstance(w, list) and w else None
+        raw = ins.get("sigmas") if isinstance(ins, dict) else None
         if not isinstance(raw, str):
             return None
         try:
@@ -396,7 +357,7 @@ def is_turbo(lora_name):
 
 
 # --------------------------------------------------------------------------
-# graph readers -- the two shipped forms store the same graph differently
+# graph reader -- API form, the only form this file reads
 # --------------------------------------------------------------------------
 
 def _literal(doc, value):
@@ -458,39 +419,6 @@ def read_api(doc) -> Found:
     # scheduler node at all -- `MiniMaxH3PDDLoRA` emits SIGMAS -- and reading
     # only `BasicScheduler` reported "could not read the sampler's step count"
     # on every PDD graph, which this file treats as a failure.
-    steps, scheduler = graph_schedule(doc)
-    return Found(loras, shift, steps, scheduler, tuple(shifts), strengths, pdd_nfe)
-
-
-def read_ui(doc) -> Found:
-    """UI form: widgets_values positionally. LoraLoaderModelOnly is
-    [name, strength]; MiniMaxH3SigmaShift is [video, audio]; BasicScheduler
-    is [scheduler, steps, denoise]."""
-    loras: list[str] = []
-    shift: tuple[float, float] | None = None
-    steps: int | None = None
-    scheduler: str | None = None
-    shifts: list[tuple[float, float]] = []
-    strengths: dict[str, float] = {}
-    pdd_nfe: int | None = None
-    for node in doc.get("nodes", []):
-        t, w = node.get("type"), node.get("widgets_values") or []
-        if t in LORA_LOADER_CLASSES and w:
-            loras.append(w[0])
-            if len(w) >= 2 and isinstance(w[1], (int, float)):
-                strengths[str(w[0])] = float(w[1])
-            # MiniMaxH3PDDLoRA widgets:
-            #   [name, strength, patch_heads, nfe, steps]
-            # `steps` was appended 2026-08-28. Kept accurate because the
-            # next person inserting a widget reads THIS list, and
-            # check_pdd_sigmas::case_ui_and_api_agree exists to catch
-            # exactly the mis-index that follows from trusting a stale one.
-            if t == "MiniMaxH3PDDLoRA" and len(w) >= 4 and isinstance(w[3], int):
-                pdd_nfe = w[3] or None
-        elif t == "MiniMaxH3SigmaShift" and len(w) >= 2:
-            shift = (float(w[0]), float(w[1]))
-            shifts.append(shift)
-    # See the matching note in `read_api`.
     steps, scheduler = graph_schedule(doc)
     return Found(loras, shift, steps, scheduler, tuple(shifts), strengths, pdd_nfe)
 
@@ -746,12 +674,12 @@ def main():
 
     check("h3_config turbo triples are legal", config_is_consistent)
 
-    # ---- every shipped graph, both forms ---------------------------------
+    # ---- every shipped API graph -----------------------------------------
     def graphs_are_consistent():
         turbo_graphs, base_graphs = {}, {}
-        for path in graph_paths(WORKFLOWS):
+        for path in graph_paths(WORKFLOWS, "*_api.json"):
             doc = json.loads(path.read_text(encoding="utf-8"))
-            found = read_api(doc) if "nodes" not in doc else read_ui(doc)
+            found = read_api(doc)
             turbo = [l for l in found.loras if is_turbo(l) or classify_pdd(l)]
 
             if not turbo:
@@ -916,30 +844,17 @@ def main():
                     f"graph has {got_strength:g}"
                     + (f" ({recipe['why']})" if recipe else ""))
 
-        assert turbo_graphs, "no shipped graph loads a turbo LoRA; this check saw nothing"
-        assert base_graphs, "no shipped base graph was examined; the base arm is unpoliced"
-
-        # The UI and API forms are generated separately and have already
-        # diverged once (the ref _api graphs hardcode `length`). Checking one
-        # is not checking the other, so pair them explicitly.
-        paired = 0
-        for name, (found, turbo) in turbo_graphs.items():
-            if name.endswith("_api.json"):
-                continue
-            sibling = name[:-5] + "_api.json"
-            assert sibling in turbo_graphs, (
-                f"{name} loads a turbo LoRA but {sibling} does not; the two "
-                "forms of one graph disagree about the arm they run")
-            other, other_turbo = turbo_graphs[sibling]
-            assert (found.shift, found.steps, sorted(turbo)) == \
-                   (other.shift, other.steps, sorted(other_turbo)), (
-                f"{name} and {sibling} disagree: "
-                f"{found.shift}/{found.steps}/{sorted(turbo)} vs "
-                f"{other.shift}/{other.steps}/{sorted(other_turbo)}")
-            paired += 1
-        assert paired, "no UI/API pair was compared"
-        print(f"        ({len(turbo_graphs)} turbo, {len(base_graphs)} base, "
-              f"{paired} UI/API pair(s))")
+        # Printed before the empty-set guards, so a red on an empty walk still
+        # says which population came back empty. An assertion that fires
+        # first on the loop above cannot reach here; that is fine, because it
+        # names the graph instead.
+        print(f"        ({len(turbo_graphs)} turbo/distilled, "
+              f"{len(base_graphs)} base API graph(s) graded)")
+        assert turbo_graphs, (
+            "no shipped API graph loads a turbo or PDD LoRA; this check saw "
+            "nothing, and grading an empty set is not a pass")
+        assert base_graphs, (
+            "no shipped base API graph was examined; the base arm is unpoliced")
 
     check("every shipped graph sits at the right shift and steps", graphs_are_consistent)
 
@@ -992,54 +907,6 @@ def main():
             "v1.1's row is inherited, not attested. If a vendor source now "
             "carries it, drop the UNATTESTED entry -- do not silently keep "
             "grading it against its filename")
-
-    # ---- the note against the file it sits beside -------------------------
-    def notes_match_the_lora():
-        """A graph cannot load one version while its own note names another.
-
-        The generated help text and the `lora_name` widget were independent
-        strings until 2026-08-23. `TURBO_768P_LORA` moved to v1.1 and sixteen
-        graphs went on loading v1.1 under notes that still read v1.0 -- correct
-        file, wrong instructions, and nothing in the suite looked at the note
-        at all. `h3_config.turbo_label()` now derives the displayed label from
-        the same filename the graph loads; this is what keeps them derived.
-
-        Only claims a note makes about ITS OWN graph are graded. The comparison
-        table naming the other four LoRAs is correct and must stay green.
-        """
-        graded = skipped_pack = 0
-        problems = []
-        for path in graph_paths(WORKFLOWS):
-            doc = json.loads(path.read_text(encoding="utf-8"))
-            if not isinstance(doc.get("nodes"), list):
-                continue  # the API form carries no notes
-            found = read_ui(doc)
-            turbo = [n for n in found.loras if is_turbo(n)]
-            if not turbo:
-                continue
-            want = turbo_label(turbo[0])
-            if not want:
-                # The third-party pack's `turbo_v4_step600_ema` family has no
-                # N-step-vX.Y label. Counted, not silently passed.
-                skipped_pack += 1
-                continue
-            claimed = note_versions(doc)
-            if not claimed:
-                continue
-            graded += 1
-            wrong = sorted({c for c in claimed if c != want})
-            if wrong:
-                problems.append(
-                    f"{path.relative_to(REPO)} loads {want!r} but its note "
-                    f"claims {wrong} for this graph")
-        assert graded, (
-            "no graph paired a turbo LoRA with a self-describing note; this "
-            "case would pass on an empty set, so it has lost its subject")
-        assert not problems, "; ".join(problems)
-        print(f"        ({graded} graph(s) with a self-describing note, "
-              f"{skipped_pack} pack graph(s) with no parseable label)")
-
-    check("notes match the lora they sit beside", notes_match_the_lora)
 
     check("an unknown turbo checkpoint is not classified", unknown_lora_is_caught)
 

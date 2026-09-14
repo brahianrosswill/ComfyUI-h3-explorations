@@ -55,11 +55,11 @@ from pathlib import Path
 _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO / "workflows"))
 
-# The shipped graphs to compare against. The API form of the plain t2v graph
-# omits Sol by policy (Sol ships OFF), so the Sol comparison uses the one
-# graph that exists precisely to keep that question answerable.
+# The shipped graphs to compare against. Sol has been on by default since this
+# was written, so the plain t2v graph carries both; the Sol comparison read
+# `h3_probe_sol_on_api.json` until that duplicate retired on 2026-09-14.
 SAGE_GRAPH = "h3_text_to_video_api.json"
-SOL_GRAPH = "h3_probe_sol_on_api.json"
+SOL_GRAPH = "h3_text_to_video_api.json"
 
 failures = []
 

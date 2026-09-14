@@ -11,9 +11,8 @@ check can see, the owner's live graphs outside it.
 ## Why nothing caught this before
 
 **Every existing guard derives its expectation from the thing it is checking.**
-`bench/check_workflow_schema.py` validates the saved graphs against a live
-`/object_info`; both come from the schema. `workflows/build_workflows.py`
-regenerates all 89 graphs from the schema. So renaming a `node_id` and
+`workflows/build_workflows.py` regenerates every graph from the schema and
+validates each against a live `/object_info`; both come from the schema. So renaming a `node_id` and
 regenerating leaves every artifact internally consistent, every fast check
 green, and only the owner's external graphs broken -- silently, which is the
 exact failure mode `docs/comfy_notes.md` describes.

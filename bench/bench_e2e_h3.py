@@ -472,7 +472,7 @@ ARMS = {
     "kj+sol+int8": ("kj", {"int8_qk": True, "int8_pv": True}),
     "sol":       (False, {}),
     "sage+sol":  (True, {}),
-    # Exactly what workflows/h3_text_to_video.json runs. This is the arm to
+    # Exactly what workflows/h3_text_to_video_api.json runs. This is the arm to
     # quote a render time from, because it is the only one whose settings
     # are the ones you would actually open. Everything else here is a probe
     # that isolates one knob against the 124-frame baseline.

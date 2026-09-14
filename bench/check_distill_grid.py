@@ -85,9 +85,9 @@ Claims, i.e. what breaks if a case is deleted:
                          strictly nearest at its own step count, which is the
                          part of the grid claim that survives the recipe
   graphs on grid         every shipped graph loading a turbo LoRA reproduces its
-                         own (shift, steps) grid exactly. Both graph forms, and
-                         they are read through `check_distill_settings`'s
-                         readers rather than a second walk of the same JSON
+                         own (shift, steps) grid exactly. API graphs only
+                         (`*_api.json`), read through `check_distill_settings`'s
+                         `read_api` rather than a second walk of the same JSON
   exemptions necessary   an exempt graph that stops deviating is a FAILURE, not
                          a pass. Exemption implies coverage; a stale one covers
                          a graph nobody is reading anymore
@@ -131,7 +131,7 @@ from pdd_lora import envelope_partition  # noqa: E402
 from check_distill_settings import (  # noqa: E402
     LEGAL, OWNER_RECIPE, PACK_STEPS, classify, classify_pack, classify_pdd,
     pdd_grid, pdd_nfe, pdd_block_size, is_turbo,
-    read_api, read_ui,
+    read_api,
 )
 
 #: The closed form is exact only where the discrete table lands on the step
@@ -386,9 +386,9 @@ def main() -> int:
     graded = []           # (path, stem, shift, scheduler, steps)
     unreadable = []       # graphs whose arm could not be resolved statically
     split_disagree = []   # graphs whose two shift nodes do not match
-    for path in graph_paths(WORKFLOWS):
+    for path in graph_paths(WORKFLOWS, "*_api.json"):
         doc = json.loads(path.read_text())
-        found = read_ui(doc) if isinstance(doc.get("nodes"), list) else read_api(doc)
+        found = read_api(doc)
         if not any(is_turbo(name) for name in found.loras):
             continue
         if found.shift is None or found.steps is None or found.scheduler is None:
@@ -402,6 +402,8 @@ def main() -> int:
         for why in grade_shift_nodes(found.shifts):
             split_disagree.append(f"{path.relative_to(REPO)} {why}")
         key = classify(next(n for n in found.loras if is_turbo(n)))
+        # The `_api` suffix is stripped because GRID_EXEMPT_STEMS is keyed by
+        # the bare graph name; keeping it would make every exemption stale.
         graded.append((path, path.stem[:-4] if path.stem.endswith("_api")
                        else path.stem, found.shift, found.scheduler,
                        found.steps, key))
@@ -594,9 +596,9 @@ def main() -> int:
         filename, so every one of these graphs was skipped there.
         """
         bad, seen = [], 0
-        for path in graph_paths(WORKFLOWS):
+        for path in graph_paths(WORKFLOWS, "*_api.json"):
             doc = json.loads(path.read_text())
-            found = read_ui(doc) if isinstance(doc.get("nodes"), list) else read_api(doc)
+            found = read_api(doc)
             names = [n for n in found.loras if classify_pdd(n)]
             if not names:
                 continue
@@ -710,9 +712,10 @@ def main() -> int:
         # shipped, so zero here means the scanner stopped recognising the
         # loader -- which is how `is_turbo` silently excluded these graphs from
         # every case above until 2026-08-26.
-        assert seen, ("no graph was recognised as loading a PDD LoRA, so this "
-                      "case graded nothing and passed. Check that read_api / "
-                      "read_ui still see MiniMaxH3PDDLoRA.")
+        assert seen, ("no API graph was recognised as loading a PDD LoRA, so "
+                      "this case graded nothing and passed. Check that the "
+                      "walk still matches `*_api.json` and that read_api "
+                      "still sees MiniMaxH3PDDLoRA.")
         return f"{seen} PDD graph(s), exact on both streams"
 
     check("pdd graphs on their fused grid", pdd_graphs_on_their_fused_grid)

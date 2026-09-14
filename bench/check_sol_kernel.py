@@ -253,8 +253,8 @@ VENDORED_SOL_NODE = "SolAttnMiniMax"
 # and must not drift back: both nodes are valid, both load, both render, and a
 # graph wiring the Triton one would run a DIFFERENT KERNEL while every pinned
 # setting, every doc and every measurement in this repo describes the CUDA one.
-# Nothing else catches it -- check_workflow_schema.py validates against
-# /object_info, where SolAttnPatch is a perfectly legal node.
+# Nothing else catches it -- the generator validates against /object_info,
+# where SolAttnPatch is a perfectly legal node.
 TRITON_SOL_NODE = "SolAttnPatch"
 
 # What `internal/refs/sol_attn_minimax.py` actually passes. `_run()` calls the

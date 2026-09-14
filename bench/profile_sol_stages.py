@@ -59,7 +59,7 @@ filter by kernel name or profile a bounded range of launches, and say which.
 - **Exact branch is a small share of the four kernels** -> Track B matters
   less than assumed, and routing is where to look instead.
 
-    python bench/profile_sol_stages.py --workflow h3_probe_sol_on_api.json
+    python bench/profile_sol_stages.py --workflow h3_text_to_video_api.json
     python bench/profile_sol_stages.py --workflow h3_probe_sol_on_refs_api.json
 """
 
@@ -115,7 +115,7 @@ def summarize(rows):
 
 def main():
     ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n")[0])
-    ap.add_argument("--workflow", default="h3_probe_sol_on_api.json",
+    ap.add_argument("--workflow", default="h3_text_to_video_api.json",
                     help="t2v by default. Run the refs graph too -- reference "
                          "rows are pinned exact, so they change the exact "
                          "branch's share, which is the quantity being measured.")
