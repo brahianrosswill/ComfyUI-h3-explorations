@@ -112,7 +112,7 @@ into runs rather than tagging it wholesale.
 | Load Diffusion Model (`UNETLoader`) | `fl2va` checkpoint for t2v/i2v, and it takes reference images too (owner, 2026-09-14); `ref2va` for reference-to-video |
 | `CLIPLoader` | Qwen3-VL-32B text encoder, type `minimax`, for a native Comfy H3-format artifact. This pack's generated graphs wire `MiniMaxH3EncoderLoader` instead (below), which is the same load plus the guards core lacks; `h3_config.MODELS["clip"]` names the file |
 | `VAELoader` x2 | video VAE and audio VAE are separate loaders |
-| `MiniMaxH3ImageToVideo` | t2v **and** i2v — `first_frame`/`last_frame` are optional, so no image wired is text-to-video |
+| `MiniMaxH3ImageToVideo` | t2v **and** i2v — `first_frame`/`last_frame` are optional, so no image wired is text-to-video. This pack's generated graphs wire `MiniMaxH3Conditioning` instead (`conditioning.py`), which replaces it on the t2va and keyframe paths |
 | `MiniMaxH3ReferenceToVideo` | reference images / video / audio → conditioning |
 | `RandomNoise` → `KSamplerSelect` → `BasicScheduler` → `BasicGuider` → `SamplerCustomAdvanced` | standard custom-sampler stack |
 | `VAEDecode` + `VAEDecodeAudio` → `CreateVideo` → `SaveVideo` | video and audio decode separately |

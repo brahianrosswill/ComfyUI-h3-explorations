@@ -1,33 +1,29 @@
 """Drop a song and a prompt; the windows come from the track.
 
 `docs/h3_audio_freeze.md` section 4 step 6, the loop: the LTX pack's
-music-video mode on H3. One prompt (or a few, separated by `---`), one track,
-and the node plans the windows from the track's length, runs them one after
-another inside itself, writes each window's new frames to a file as it goes,
-and joins the files with the full track at the end. Nothing here holds more
-than one window of frames. The shot-per-window workflows that chained window
-nodes by hand retired unrendered on 2026-09-14; prompt blocks with `frames:`
-lines do what they did.
+music-video mode on H3. One prompt, one track, and the node plans the windows
+from the track's length, runs them one after another inside itself, writes
+each window's new frames to a file as it goes, and joins the files with the
+full track at the end. Nothing here holds more than one window of frames.
 
-**The plan.** Windows are `window_frames` long with `context_frames` of the
-previous window frozen at their head, so each adds `window - context` frames.
-The last window is the smallest length on both clocks (141, 192, 243, 294,
-345 frames) that reaches the end of the track; if the track runs out inside
-it, the freeze pads silence and the report says how much. `extent` is the
-whole track, or its first N seconds for a quick look.
+**The plan, the timeline and the prompt** are `loop_plan.py`'s: windows at
+most `window_frames` long with `context_frames` frozen at each head, an
+optional `mm:ss label` timeline the windows line up with, and one prompt or
+one `--- label` block per label. `extent` is the whole track, or its first N
+seconds for a quick look; if the track runs out inside the last window, the
+freeze pads silence and the report says how much.
 
-**The prompt.** One block is used for every window (`uniform`). Several
-blocks separated by a line of `---` are used in order with the last one
-repeating (`cycle`, the default when there are several), or one is drawn per
-window from the seed (`random`); a block may start with a line `frames: N` to
-set that window's length (on both clocks).
-
-**Lists.** A `__name__` in the prompt takes a value per window from a Prompt
-List chained into `lists`, or from a wildcard file of that name, through
-`prompt_lists.fill_windows`, the call every loop node makes (`prompt_lists.py`
-holds the owner's rules). A list advances only for a
-window whose text uses the name, and filling happens during planning, so every
+**Lists.** A `__name__` in the prompt takes a value from a Prompt List chained
+into `lists`, through `prompt_lists.fill_windows`, the call every loop node
+makes (`prompt_lists.py` holds the owner's rules): once per timeline entry, or
+once per window with no timeline. Filling happens during planning, so every
 key and encode below sees the filled-in text.
+
+**Preview.** `preview` on plans, fills and reports every window's time range,
+entry, filled prompt and whether resume would reuse it, and stops. The model,
+encoder, VAEs, sampler, sigmas and references are lazy inputs this node does
+not ask for in preview (`check_lazy_status`), so core never runs the loaders
+behind them. The shipped graphs show the report on a Preview as Text.
 
 **Everything is encoded before anything samples.** The track once, and each
 distinct prompt once. A window's conditioning is a function of its text and
@@ -36,9 +32,9 @@ continuity reaches the next window as the previous window's latent tail frozen
 in, never through the encoder. So Qwen3-VL and the DiT trade places on the
 card once per run rather than once per window, and a song on one prompt
 encodes one prompt. With references the frame count joins the key: the
-reference compiler is handed it, and a shorter last window costs at most one
-more encode. With resume, only the windows that render are encoded for, and a
-run that reuses every window never loads the encoder.
+reference compiler is handed it, and a shorter window costs at most one more
+encode. With resume, only the windows that render are encoded for, and a run
+that reuses every window never loads the encoder.
 
 **References.** `references` takes an Append Ref Image chain and presents it
 with every window's prompt through `MiniMaxH3ReferenceConditioning`'s own
@@ -73,11 +69,10 @@ import contextlib
 import logging
 import math
 import os
-import random
 import subprocess
 
 import torch
-from comfy_api.latest import io
+from comfy_api.latest import io, ui
 
 import comfy.model_management
 import comfy.sample
@@ -86,68 +81,17 @@ import latent_preview
 from comfy_extras.nodes_custom_sampler import Guider_Basic
 from comfy_extras.nodes_minimax_h3 import FPS, _empty_av_latent
 
-from .audio_freeze import (MiniMaxH3EncodeTrack, MiniMaxH3FreezeAudioWindow,
-                           _ffmpeg, _stereo, audio_grid)
+from .audio_freeze import MiniMaxH3EncodeTrack, MiniMaxH3FreezeAudioWindow, _ffmpeg, _stereo
 from .conditioning import MiniMaxH3Conditioning
-from . import loop_resume
-from .prompt_lists import H3PromptLists, fill_windows, wildcard_fingerprint
+from . import loop_plan, loop_resume
+from .prompt_lists import H3PromptLists, fill_windows
 from .loop_output import join_and_mux, saved_outputs, window_dir, write_metadata_png
 from .reference_conditioning import H3References, MiniMaxH3ReferenceConditioning
 
 logger = logging.getLogger(__name__)
 
-# Lengths on both clocks: video runs (17k + 5) whose frame count is a multiple
-# of 3, so the audio slice is whole latent steps. 39 + 51k.
-CHAIN_LENGTHS = (141, 192, 243, 294, 345)
-
-
-def plan_windows(total_frames: int, window_frames: int, context_frames: int, rng=None) -> list[int]:
-    """Frame counts per window covering `total_frames`, each on both clocks.
-
-    With `rng`, every window but the last draws its length from the lengths
-    on both clocks at or below `window_frames` (and longer than the context),
-    so the same prompt can be tested under uniform and non-uniform windows.
-    """
-    if window_frames not in CHAIN_LENGTHS:
-        raise ValueError(f"window_frames {window_frames} is not on both clocks; use one of {CHAIN_LENGTHS}")
-    if context_frames % 17 != 5 or (context_frames * 5) % 3 != 0 or context_frames >= window_frames:
-        raise ValueError(f"context_frames {context_frames} must be 39, 90 or 141 and shorter than the window")
-    if total_frames <= 0:
-        raise ValueError("the track is empty")
-    choices = [n for n in CHAIN_LENGTHS if n <= window_frames and n > context_frames]
-    first = rng.choice(choices) if rng is not None else window_frames
-    plan = [first]
-    covered = first
-    while covered < total_frames:
-        remaining = total_frames - covered
-        fit = [n for n in CHAIN_LENGTHS if n > context_frames and n - context_frames >= remaining]
-        if fit:
-            n = min(fit)
-        elif rng is not None:
-            n = rng.choice(choices)
-        else:
-            n = window_frames
-        plan.append(n)
-        covered += n - context_frames
-    return plan
-
-
-def parse_prompt_blocks(text: str) -> list[tuple[int | None, str]]:
-    """Blocks separated by a `---` line; an optional leading `frames: N` line per block."""
-    blocks = []
-    for raw in text.replace("\r\n", "\n").split("\n---\n"):
-        body = raw.strip("\n")
-        if not body.strip():
-            continue
-        frames = None
-        first, _, rest = body.partition("\n")
-        if first.strip().lower().startswith("frames:"):
-            frames = int(first.split(":", 1)[1].strip())
-            body = rest
-        blocks.append((frames, body.strip("\n")))
-    if not blocks:
-        raise ValueError("the prompt is empty")
-    return blocks
+#: The inputs a preview does not ask for: every one runs a loader or a model.
+LAZY = ("model", "clip", "vae", "audio_vae", "sampler", "sigmas", "references")
 
 
 def _write_frames_mp4(path: str, images: torch.Tensor, crf: int) -> int:
@@ -185,24 +129,35 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                 "sequence with the previous window's tail frozen as context and the track's slice "
                 "frozen in each, writes each window's new frames to <prefix>_windows/ as it goes, "
                 "and joins the files with the full track, reusing unchanged windows from the last "
-                "run. One prompt for every window, or blocks "
-                "separated by a `---` line; optional reference stills go with every window. "
+                "run. An optional timeline lines the windows up with sections of the track, one "
+                "prompt block per label; preview reports the plan without loading a model. "
                 "docs/h3_audio_freeze.md."
             ),
+            # The order was reset on 2026-09-14, when prompt_mode and window_mode
+            # went (owner): shipped graphs carry inputs by name, and a song graph
+            # saved from the editor before then needs re-making. Append from here.
             inputs=[
-                io.Model.Input("model"),
-                io.Clip.Input("clip"),
-                io.Vae.Input("vae", tooltip="Video VAE."),
-                io.Vae.Input("audio_vae"),
+                io.Model.Input("model", lazy=True),
+                io.Clip.Input("clip", lazy=True),
+                io.Vae.Input("vae", lazy=True, tooltip="Video VAE."),
+                io.Vae.Input("audio_vae", lazy=True),
                 io.Audio.Input("audio", tooltip="The whole track."),
-                io.Sampler.Input("sampler"),
-                io.Sigmas.Input("sigmas"),
+                io.Sampler.Input("sampler", lazy=True),
+                io.Sigmas.Input("sigmas", lazy=True),
                 io.String.Input("prompt", multiline=True, dynamic_prompts=True,
-                                tooltip="One prompt for every window, or blocks separated by a line of ---; a block may start with `frames: N`."),
+                                tooltip=("One prompt for every window; with a timeline, optionally one block per "
+                                         "label, each opened by a line `--- label`.")),
+                io.String.Input("timeline", multiline=True, default="",
+                                tooltip=("Optional `mm:ss label` lines, the first at 00:00, e.g. `00:32 chorus`. "
+                                         "Windows line up with each time, and lists move on once per line.")),
+                io.Boolean.Input("preview", default=False,
+                                 tooltip=("Report every window's time range, timeline entry, filled prompt and "
+                                          "whether it would be reused, then stop: no model loads, nothing renders.")),
                 io.Int.Input("width", default=1344, min=32, max=16384, step=32),
                 io.Int.Input("height", default=768, min=32, max=16384, step=32),
                 io.Int.Input("window_frames", default=345, min=141, max=345, step=51,
-                             tooltip="Frames per window, on both clocks: 141, 192, 243, 294 or 345."),
+                             tooltip=("The longest window, on both clocks: 141, 192, 243, 294 or 345. Windows "
+                                      "that end a timeline entry or the track may be shorter.")),
                 io.Int.Input("context_frames", default=39, min=39, max=141, step=51,
                              tooltip="Frames of the previous window frozen at the head of the next: 39, 90 or 141."),
                 # A DynamicCombo, not a Float whose 0 meant "the whole track":
@@ -222,27 +177,16 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                              "quick look at the seams before committing to the whole song.")),
                 # control_after_generate declared, not left to the frontend: it
                 # draws a control widget for any INT named `seed` whether or not
-                # the schema asks (`useIntWidget.ts`), and until 2026-09-14 the
-                # shipped UI graphs wrote no value for it, shifting every widget
-                # after this one. Fixed, not the frontend's randomize: a new seed
-                # after every queue would re-render every window, which resume
-                # (`reuse_windows`) exists to avoid (owner, 2026-09-14).
+                # the schema asks (`useIntWidget.ts`). Fixed, not the frontend's
+                # randomize: a new seed after every queue would re-render every
+                # window, which resume (`reuse_windows`) exists to avoid
+                # (owner, 2026-09-14).
                 io.Int.Input("seed", default=0, min=0, max=0xffffffffffffffff,
                              control_after_generate=io.ControlAfterGenerate.fixed),
                 io.Float.Input("audio_mask", default=0.0, min=0.0, max=1.0, step=0.01),
                 io.Combo.Input("level", options=["clip_guard", "peak", "none"], default="clip_guard"),
                 io.String.Input("filename_prefix", default="Video/h3_song"),
                 io.Int.Input("crf", default=19, min=0, max=51),
-                io.Combo.Input("prompt_mode", options=["cycle", "uniform", "random"], default="cycle",
-                               tooltip=("How prompt blocks map to windows. cycle: in order, the last repeating. "
-                                        "uniform: the first block for every window. random: one block per window, "
-                                        "drawn from the seed. With one block all three are the same.")),
-                io.Combo.Input("window_mode", options=["uniform", "random"], default="uniform",
-                               tooltip=("uniform: every window is window_frames (the last sized to reach the end). "
-                                        "random: each window's length drawn from the seed among the lengths on both "
-                                        "clocks at or below window_frames, so one prompt can be tested under "
-                                        "uniform and non-uniform windows.")),
-                # Appended from here on: saved graphs address inputs by position.
                 io.Boolean.Input("save_metadata_png", default=True,
                                  tooltip=("Also write <prefix>_NNNNN.png, the first frame carrying the prompt and "
                                           "workflow, beside the video. The video carries both either way.")),
@@ -250,7 +194,7 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                                  tooltip=("Keep this run's window files (the videos and the latents resume reads) "
                                           "in <prefix>_windows/ after the join. Off removes them, so the next run "
                                           "renders every window.")),
-                H3References.Input("references", optional=True,
+                H3References.Input("references", optional=True, lazy=True,
                                    tooltip=("Reference stills from an Append Ref Image chain, presented with every "
                                             "window's prompt and encoded once per distinct prompt. The prompt then "
                                             "names them as <Picture N>.")),
@@ -259,9 +203,8 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                                           "render from the first that has. Off renders every window: use it after "
                                           "replacing a model, LoRA or reference file under the same name.")),
                 H3PromptLists.Input("lists", optional=True,
-                                    tooltip=("Prompt List nodes filling __name__ placeholders in the prompt, one "
-                                             "value per window that uses the name. A placeholder with no list here "
-                                             "is read from the wildcards folder under the input directory.")),
+                                    tooltip=("Prompt List nodes filling __name__ placeholders in the prompt: one "
+                                             "value per timeline entry, or per window with no timeline.")),
             ],
             outputs=[
                 io.String.Output(display_name="path"),
@@ -272,15 +215,17 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
         )
 
     @classmethod
-    def fingerprint_inputs(cls, prompt=None, **_):
-        # a wildcard file edited on disk changes no input (prompt_lists.wildcard_fingerprint)
-        return wildcard_fingerprint(prompt)
+    def check_lazy_status(cls, preview=False, **kwargs):
+        # None is a connected input core has not run yet; an unconnected
+        # optional input is absent. A preview asks for nothing.
+        if preview:
+            return []
+        return [name for name in LAZY if name in kwargs and kwargs[name] is None]
 
     @classmethod
-    def execute(cls, model, clip, vae, audio_vae, audio, sampler, sigmas, prompt, width, height,
-                window_frames, context_frames, extent, seed, audio_mask, level,
-                filename_prefix, crf, prompt_mode="cycle", window_mode="uniform",
-                save_metadata_png=True, keep_windows=True, references=None,
+    def execute(cls, model, clip, vae, audio_vae, audio, sampler, sigmas, prompt, timeline, preview,
+                width, height, window_frames, context_frames, extent, seed, audio_mask, level,
+                filename_prefix, crf, save_metadata_png=True, keep_windows=True, references=None,
                 reuse_windows=True, lists=None) -> io.NodeOutput:
         import folder_paths
         # A DynamicCombo arrives as one nested dict (the selection under its own
@@ -296,28 +241,18 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
         if max_seconds is not None:
             seconds = min(seconds, max_seconds)
         total_frames = int(math.ceil(seconds * FPS))
-        rng = random.Random(int(seed))
-        plan = plan_windows(total_frames, int(window_frames), int(context_frames),
-                            rng=rng if window_mode == "random" else None)
-        blocks = parse_prompt_blocks(prompt)
-        if prompt_mode == "uniform":
-            pick = [0] * len(plan)
-        elif prompt_mode == "random":
-            pick = [rng.randrange(len(blocks)) for _ in plan]
-        else:
-            pick = [min(i, len(blocks) - 1) for i in range(len(plan))]
-        # a block's own `frames:` wins for its window; the plan's last window still must reach the end
-        frames_per_window = [blocks[pick[i]][0] or n for i, n in enumerate(plan)]
-        texts = [blocks[pick[i]][1] for i in range(len(plan))]
+        context_frames = int(context_frames)
+        plan = loop_plan.plan_song(total_frames, int(window_frames), context_frames, prompt, timeline)
         # filled before anything is keyed or encoded: resume and the encode
         # cache see the text a window renders, never its placeholders
-        texts, list_lines = fill_windows(texts, lists)
-        n_windows = len(frames_per_window)
+        texts, list_lines = fill_windows(plan.uses, lists)
+        windows = loop_plan.place_windows(plan, texts, context_frames)
+        entries = plan.entries
+        n_windows = len(windows)
 
         out_dir = folder_paths.get_output_directory()
         full_out, filename, counter, subfolder, _ = folder_paths.get_save_image_path(filename_prefix, out_dir)
         work_dir = window_dir(full_out, filename)
-        os.makedirs(work_dir, exist_ok=True)
         stem = f"{filename}_{counter:05d}"
         graph = getattr(cls.hidden, "prompt", None)
         extra = getattr(cls.hidden, "extra_pnginfo", None)
@@ -329,41 +264,65 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
             loop_resume.graph_signature(graph, getattr(cls.hidden, "unique_id", None),
                                         skip=loop_resume.SONG_PER_WINDOW),
             loop_resume.track_hash(waveform, rate))
-        reused, keys, start = [], [], 0.0
+        keys, reused = [], []
+        if root is not None:
+            for w in windows:
+                keys.append(loop_resume.window_key(root, w.number, w.text, w.frames, w.start,
+                                                   int(seed) + w.number - 1, keys[-1] if keys else None))
         if reuse_windows and root is not None:
-            for i, frames in enumerate(frames_per_window):
-                key = loop_resume.window_key(root, i + 1, texts[i], frames, start, int(seed) + i,
-                                             keys[-1] if keys else None)
-                stored = loop_resume.read_window(work_dir, filename, i + 1)
-                if stored is None or stored["key"] != key:
+            for w in windows:
+                stored = loop_resume.read_window(work_dir, filename, w.number)
+                if stored is None or stored["key"] != keys[w.number - 1]:
                     break
                 reused.append(stored)
-                keys.append(key)
-                start = stored["next_start"]
         first = len(reused)
 
+        clock = loop_plan.clock
+        total = sum(w.frames for w in windows) - context_frames * (n_windows - 1)
+        lines = [f"{n_windows} windows {[w.frames for w in windows]} with {context_frames}-frame context, "
+                 f"{total} frames ({total / FPS:.2f}s) over {seconds:.2f}s of track"]
+        for i, (at, label) in enumerate(entries):
+            mine = [w for w in windows if w.entry == i]
+            lines.append(f"{label} at {clock(at)}: " + (
+                f"windows {mine[0].number}-{mine[-1].number}, starting at {clock(mine[0].first_frame / FPS)} "
+                f"({mine[0].first_frame / FPS - at:+.2f}s)" if mine else "past what this run covers"))
+        for w in windows:
+            end = w.first_frame + w.frames - (context_frames if w.number > 1 else 0)
+            lines.append(f"[{w.number}] {clock(w.first_frame / FPS)}-{clock(end / FPS)}, {w.frames} frames"
+                         + (f", {entries[w.entry][1]}" if w.entry is not None else "")
+                         + (", reused" if w.number <= first else ", renders"))
+            if preview:
+                lines.append("    " + w.text.replace("\n", "\n    "))
+        lines += list(list_lines)
+
+        if preview:
+            report = "preview, nothing rendered: " + "\n".join(lines)
+            logger.info("[h3] MiniMaxH3AudioFreezeSong: %s", report.splitlines()[0])
+            return io.NodeOutput("", report, (True, []), ui=ui.PreviewText(report))
+
+        os.makedirs(work_dir, exist_ok=True)
         # Every rendering window's conditioning before any window samples; see
         # the module docstring for why the key is the text (and, with
         # references, the frame count) and nothing else.
         track_latent, conds, cond_keys = None, {}, {}
-        reports = list(list_lines)
+        reports = list(lines)
         if first < n_windows:
             enc = MiniMaxH3EncodeTrack.execute(audio_vae, audio, level)
             enc = getattr(enc, "args", enc)
             track_latent = enc[0]
             reports.append(enc[1])
-            for i in range(first, n_windows):
-                ck = (texts[i], int(frames_per_window[i]) if references is not None else None)
-                cond_keys[i] = ck
+            for w in windows[first:]:
+                ck = (w.text, w.frames if references is not None else None)
+                cond_keys[w.number] = ck
                 if ck in conds:
                     continue
                 comfy.model_management.throw_exception_if_processing_interrupted()
                 if references is None:
-                    out = MiniMaxH3Conditioning.execute(clip, vae, texts[i], width, height,
-                                                        frames_per_window[i], canvas="explicit")
+                    out = MiniMaxH3Conditioning.execute(clip, vae, w.text, width, height, w.frames,
+                                                        canvas="explicit")
                 else:
-                    out = MiniMaxH3ReferenceConditioning.execute(clip, references, texts[i], width, height,
-                                                                frames_per_window[i], vae=vae, audio_vae=audio_vae)
+                    out = MiniMaxH3ReferenceConditioning.execute(clip, references, w.text, width, height,
+                                                                w.frames, vae=vae, audio_vae=audio_vae)
                 conds[ck] = getattr(out, "args", out)[0]
         reports.append((f"reused windows 1-{first} of {n_windows}" if first else "no stored window reused")
                        + (f"; {len(conds)} conditioning(s) encoded for {n_windows - first} rendered window(s)"
@@ -373,23 +332,23 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
         files = [s["video"] for s in reused]
         stored_latents = [s["latent"] for s in reused]
         prev = loop_resume.load_window_latent(reused[-1]["latent"]) if reused and first < n_windows else None
-        for i in range(first, n_windows):
-            frames = frames_per_window[i]
+        for w in windows[first:]:
+            i = w.number - 1
             comfy.model_management.throw_exception_if_processing_interrupted()
-            latent, _count = _empty_av_latent(width, height, frames)
+            latent, _count = _empty_av_latent(width, height, w.frames)
             # Always the real value: the window node freezes nothing when
             # `previous` is None and keeps the widget for what the NEXT window
             # takes. Passing 0 for the first window was the zero-as-mode this
             # session removed, and it raised on the first run after (2026-09-13).
             win = MiniMaxH3FreezeAudioWindow.execute(
-                latent, audio_vae, audio, start, int(context_frames),
+                latent, audio_vae, audio, w.start, context_frames,
                 previous=prev, audio_mask=audio_mask, level=level, track_latent=track_latent)
             win = getattr(win, "args", win)
             wlatent, _clip_audio, _span, trim, next_start, wreport, _new_audio = win
-            reports.append(f"[{i + 1}] {wreport}")
+            reports.append(f"[{w.number}] {wreport}")
 
             guider = Guider_Basic(model)
-            guider.set_conds(conds[cond_keys[i]])
+            guider.set_conds(conds[cond_keys[w.number]])
             latent_image = comfy.sample.fix_empty_latent_channels(model, wlatent["samples"])
             noise = comfy.sample.prepare_noise(latent_image, int(seed) + i)
             x0_output = {}
@@ -405,22 +364,18 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
             if images.ndim == 5:
                 images = images.reshape(-1, *images.shape[-3:])
             images = images[int(trim):]
-            video_path, latent_path = loop_resume.window_paths(work_dir, filename, i + 1)
+            video_path, latent_path = loop_resume.window_paths(work_dir, filename, w.number)
             # the old latent goes first: a latent on disk must mean its video finished
             with contextlib.suppress(FileNotFoundError):
                 os.remove(latent_path)
             written = _write_frames_mp4(video_path, images, crf)
             files.append(video_path)
             if root is not None:
-                key = loop_resume.window_key(root, i + 1, texts[i], frames, start, int(seed) + i,
-                                             keys[-1] if keys else None)
-                keys.append(key)
-                stored_latents.append(loop_resume.save_window(work_dir, filename, i + 1, key, samples,
+                stored_latents.append(loop_resume.save_window(work_dir, filename, w.number, keys[i], samples,
                                                               trim, next_start))
-            reports.append(f"[{i + 1}] wrote {written} frames to {os.path.basename(video_path)}")
+            reports.append(f"[{w.number}] wrote {written} frames to {os.path.basename(video_path)}")
             del images
             comfy.model_management.soft_empty_cache()
-            start = float(next_start)
 
         # join, and mux the whole track cut to the video
         out_path = os.path.join(full_out, stem + ".mp4")
@@ -435,11 +390,7 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                 os.rmdir(work_dir)
             except OSError:
                 pass  # windows from a longer earlier run are still there; they are that run's
-        total = sum(frames_per_window) - int(context_frames) * (n_windows - 1)
-        report = (f"{n_windows} windows {frames_per_window} with {context_frames}-frame context, "
-                  f"prompt blocks {[p + 1 for p in pick]} ({prompt_mode}), windows {window_mode}, "
-                  f"{total} frames ({total / FPS:.2f}s) over {seconds:.2f}s of track, "
-                  f"{first} reused -> {out_path}\n" + "\n".join(reports))
+        report = f"{first} reused -> {out_path}; " + "\n".join(reports)
         logger.info("[h3] MiniMaxH3AudioFreezeSong: %s", report.splitlines()[0])
-        filenames, preview = saved_outputs(out_path, subfolder, png_path)
-        return io.NodeOutput(out_path, report, filenames, ui=preview)
+        filenames, preview_ui = saved_outputs(out_path, subfolder, png_path)
+        return io.NodeOutput(out_path, report, filenames, ui=preview_ui)

@@ -147,12 +147,12 @@ DECLARED: dict[tuple[str, str], tuple] = {
         ("ARM", "'first_seconds' on the shipped song graph, a quick look at "
                 "the seams; the node default 'whole' plans every window to the "
                 "end of the track. Generator knob `freeze_song_seconds`."),
-    ("MiniMaxH3AudioFreezeSong", "prompt_mode"):
-        ("ARM", "'uniform' on the shipped song graph (one prompt for every "
-                "window) and 'random' on the PDD8 song graphs (each window draws "
-                "a block from the seed, so every shot recurs across a long "
-                "song), against the node default 'cycle'; generator knob "
-                "`freeze_song_mode`."),
+    ("MiniMaxH3AudioFreezeSong", "timeline"):
+        ("ARM", "the section starts of `just-a-flicker.mp3` on the prompt-list "
+                "example graph, against the node's empty default (no timeline, "
+                "the whole track one part): a timeline belongs to one track. "
+                "Generator knob `freeze_song_timeline`, constant "
+                "`build_workflows._SONG_FLICKER_TIMELINE`."),
     ("MiniMaxH3AudioFreezeSong", "audio_mask"):
         ("ARM", "0.25 on the PDD8 song graphs, the loose mask, which read "
                 "slightly better than frozen on the dancer at two seeds "

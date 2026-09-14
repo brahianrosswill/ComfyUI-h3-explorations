@@ -602,10 +602,10 @@ _PROMPT_LIST_NODES = tuple(str(i) for i in range(90, 98))
 
 # The lists of the shipped prompt-list example (the owner asked for one,
 # 2026-09-14; the values are the session's), as (name, values one per line,
-# order, seed). The middle shot of `prompt_bank/t2va_song_flicker_lists.txt`
+# order, shuffle). The second shot of `prompt_bank/t2va_song_flicker_lists.txt`
 # reads "a medium shot of her __place__, __motion__," and each value finishes
 # that clause. Different lengths and orders, so the two turn over at
-# different windows.
+# different sections.
 _SONG_FLICKER_LISTS = (
     ("place", "\n".join((
         "standing at the rain-streaked window of a bare concrete apartment",
@@ -621,6 +621,14 @@ _SONG_FLICKER_LISTS = (
         "pulling her sleeves down over her hands and nodding gently in time",
     )), "in_order", 0),
 )
+
+# The example's timeline: the section starts of `just-a-flicker.mp3` from the
+# analysis the owner supplied (2026-09-14), so the place changes where the
+# song changes section rather than where a window ends.
+_SONG_FLICKER_TIMELINE = "\n".join((
+    "00:00 intro", "00:10 verse", "00:32 chorus", "00:53 verse",
+    "01:14 chorus", "01:35 bridge", "01:57 chorus", "02:18 outro",
+))
 
 
 #: The named attention modes an entry's `dense_attn` may carry. A mode gets a
@@ -1402,9 +1410,11 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
               # The whole-track node in place of the conditioner, sampler,
               # decoders and muxer: windows planned from the track. The
               # shipped graph caps the plan at `freeze_song_seconds` so a
-              # first run is a quick look; 0 covers the whole track.
+              # first run is a quick look; None covers the whole track.
               freeze_song: bool = False, freeze_song_seconds: float | None = 30.0,
-              freeze_song_mode: str = "cycle",
+              # `mm:ss label` lines the song node lines its windows up with;
+              # "" is no timeline.
+              freeze_song_timeline: str = "",
               # Reference stills for the song node, one Append Ref Image each,
               # in <Picture N> order.
               freeze_song_refs: tuple[str, ...] | None = None,
@@ -2135,9 +2145,12 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
                               "seed": seed,
                               "audio_mask": freeze_mask, "level": "clip_guard",
                               "filename_prefix": out_prefix or "Video/h3_song", "crf": 19,
-                              "prompt_mode": freeze_song_mode, "window_mode": "uniform",
+                              "timeline": freeze_song_timeline, "preview": False,
                               "save_metadata_png": True, "keep_windows": True,
                               "reuse_windows": True}}
+        # The node's report on a Preview as Text, so the plan a `preview` run
+        # prints shows on the canvas in the editor.
+        g["75"] = {"class_type": "PreviewAny", "inputs": {"source": ["74", 1]}}
         if freeze_song_refs:
             # The song node compiles its references itself, once per distinct
             # prompt, so only the conditioner differs from a reference graph:
@@ -2157,10 +2170,10 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
             if len(freeze_song_lists) > len(_PROMPT_LIST_NODES):
                 raise SystemExit(f"at most {len(_PROMPT_LIST_NODES)} prompt lists")
             chain = None
-            for list_id, (name, values, order, list_seed) in zip(_PROMPT_LIST_NODES, freeze_song_lists):
+            for list_id, (name, values, order, shuffle) in zip(_PROMPT_LIST_NODES, freeze_song_lists):
                 g[list_id] = {"class_type": "MiniMaxH3PromptList",
                               "inputs": {"name": name, "source": "typed", "source.values": values,
-                                         "order": order, "seed": list_seed,
+                                         "order": order, "shuffle": shuffle,
                                          **({"lists": chain} if chain is not None else {})}}
                 chain = [list_id, 0]
             g["74"]["inputs"]["lists"] = chain
@@ -3748,7 +3761,7 @@ def main():
         # window, a 30-second look by default.
         ("h3_text_to_video_audio_freeze_song.json", "t2v-audio-freeze-song", "t2v",
          _bank_prompt("t2va_studio_dancer_close"),
-         dict(freeze_song=True, freeze_song_seconds=30.0, freeze_song_mode="uniform",
+         dict(freeze_song=True, freeze_song_seconds=30.0,
               freeze_context=39, out_prefix="Video/h3_t2v_audio_freeze_song",
               length=LONG_LENGTH),
          "a whole track from one node: windows planned from the song, one prompt throughout"),
@@ -3758,19 +3771,18 @@ def main():
         # the seam read better than either single window), the whole track,
         # the loose mask (read slightly better than frozen on the dancer at
         # two seeds; music, no speech), PDD8 at its own eight evaluations
-        # (five forced an envelope tiling nothing has judged), prompt blocks
-        # drawn per window from the seed so more than one shot recurs across
-        # a long song. Ships one bank prompt; paste your own blocks separated
-        # by a `---` line, with an optional leading `frames: N` per block.
+        # (five forced an envelope tiling nothing has judged). Ships one bank
+        # prompt and no timeline; paste a timeline and one `--- label` block
+        # per label to line the windows up with the song's sections.
         ("h3_text_to_video_audio_freeze_song_pdd8.json", "t2v-audio-freeze-song-pdd8", "t2v",
          _bank_prompt("t2va_studio_dancer_close"),
          dict(pdd=True, sampler_name="euler",
               unet=MODELS["unet_fl2va_pdd8_baked"],
               lora=(PDD_FL2VA_STRIPPED_LORA, PDD_STRENGTH), steps=PDD_STEPS,
-              freeze_song=True, freeze_song_seconds=None, freeze_song_mode="random",
+              freeze_song=True, freeze_song_seconds=None,
               freeze_mask=0.25, freeze_context=39, length=LONG_LENGTH,
               out_prefix="Video/h3_t2v_audio_freeze_song_pdd8"),
-         "a whole song on PDD8: 345-frame windows, 39 context, loose mask, blocks drawn per window"),
+         "a whole song on PDD8: 345-frame windows, 39 context, loose mask"),
         # The PDD8 song graph with the subject anchored by a reference still
         # (owner, 2026-09-14): fl2va takes references, and a fixed still is
         # the anchor a long song wants, not the previous window's last frame,
@@ -3782,30 +3794,32 @@ def main():
          dict(pdd=True, sampler_name="euler",
               unet=MODELS["unet_fl2va_pdd8_baked"],
               lora=(PDD_FL2VA_STRIPPED_LORA, PDD_STRENGTH), steps=PDD_STEPS,
-              freeze_song=True, freeze_song_seconds=None, freeze_song_mode="random",
+              freeze_song=True, freeze_song_seconds=None,
               freeze_song_refs=next(s for t, _p, s in REFVIEW2_SCENES if t == "dancer"),
               freeze_mask=0.25, freeze_context=39, length=LONG_LENGTH,
               out_prefix="Video/h3_t2v_audio_freeze_song_ref_pdd8"),
          "a whole song on PDD8 with the subject anchored by a reference still"),
         # The PDD8 song graph with prompt lists, the shipped example of
         # `__name__` placeholders (owner, 2026-09-14), on the owner's track
-        # `just-a-flicker.mp3`. One prompt for every window; the lists fill
-        # only its middle shot, so each window opens and closes on a close-up
-        # that reads the same whatever place the previous window drew, and a
-        # seam lands on her face rather than between two rooms. The song's
-        # lead is a breathy female vocal over a slow lo-fi beat, per an
-        # analysis the owner supplied; the prompt leaves the lyrics out, the
-        # untold form the lane found works (`docs/h3_audio_freeze.md` step 4).
+        # `just-a-flicker.mp3`, with the song's sections as the timeline. One
+        # prompt for every section; the lists fill its second shot and move on
+        # once per section, so every window of a section shares a place and
+        # the place changes where the song does. Each window opens on a
+        # close-up with the background lost to blur, so a seam into a new
+        # place lands on her face. The song's lead is a breathy female vocal
+        # over a slow lo-fi beat, per an analysis the owner supplied; the
+        # prompt leaves the lyrics out, the untold form the lane found works
+        # (`docs/h3_audio_freeze.md` step 4).
         ("h3_text_to_video_audio_freeze_song_lists_pdd8.json", "t2v-audio-freeze-song-lists-pdd8", "t2v",
          _bank_prompt("t2va_song_flicker_lists"),
          dict(pdd=True, sampler_name="euler",
               unet=MODELS["unet_fl2va_pdd8_baked"],
               lora=(PDD_FL2VA_STRIPPED_LORA, PDD_STRENGTH), steps=PDD_STEPS,
-              freeze_song=True, freeze_song_seconds=None, freeze_song_mode="random",
+              freeze_song=True, freeze_song_seconds=None, freeze_song_timeline=_SONG_FLICKER_TIMELINE,
               freeze_song_lists=_SONG_FLICKER_LISTS, freeze_track="just-a-flicker.mp3",
               freeze_mask=0.25, freeze_context=39, length=LONG_LENGTH,
               out_prefix="Video/h3_t2v_audio_freeze_song_lists_pdd8"),
-         "a whole song on PDD8 with two prompt lists filling the middle shot of every window"),
+         "a whole song on PDD8 on the song's sections, two prompt lists moving on once per section"),
         # The PDD8 freeze with the audio attention gain node in front of the
         # guider, inert as shipped; bench arms patch key_gain / value_gain.
         ("h3_candidate_t2v_pdd8_baked_audio_freeze_gain.json", "t2v-candidate-pdd8-baked-audio-freeze-gain",

@@ -17,7 +17,7 @@ produced the window:
 - the previous window's key, because a window's head is the previous
   window's tail.
 
-The song node's prompt text, `extent`, window length, seed and modes are
+The song node's prompt text, timeline, `extent`, window length and seed are
 deliberately not in the root. They reach each window through its own text,
 frames, start and seed, so editing a later prompt block or covering more of
 the track leaves the earlier windows' keys alone.
@@ -46,11 +46,12 @@ import comfy.utils
 
 #: Song-node inputs that reach a window only through that window's own text,
 #: frames, start and seed, or that change files beside the windows and not the
-#: windows. `lists` fills the text, so a changed list moves only the windows
-#: whose filled-in text changed. Reasoned, from `MiniMaxH3AudioFreezeSong.execute`.
-SONG_PER_WINDOW = ("prompt", "extent", "extent.seconds", "window_frames", "seed",
-                   "prompt_mode", "window_mode", "filename_prefix", "save_metadata_png",
-                   "keep_windows", "reuse_windows", "lists")
+#: windows. `lists` fills the text and `timeline` places the windows, so a
+#: change to either moves only the windows whose text, length or start moved;
+#: `preview` renders nothing, so a preview and the render after it share keys.
+#: Reasoned, from `MiniMaxH3AudioFreezeSong.execute`.
+SONG_PER_WINDOW = ("prompt", "timeline", "preview", "extent", "extent.seconds", "window_frames", "seed",
+                   "filename_prefix", "save_metadata_png", "keep_windows", "reuse_windows", "lists")
 
 
 def _is_link(value) -> bool:

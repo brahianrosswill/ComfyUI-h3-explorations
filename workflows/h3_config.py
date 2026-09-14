@@ -998,13 +998,6 @@ CACHE_NODE = dict(reuse_threshold=0.2, start_percent=0.15, end_percent=0.95,
 # the row, the vendor case FAILS if a LEGAL row is neither found in a source
 # nor declared there, and it fails again if a vendor source later carries the
 # row and the declaration is left standing.
-#
-# The version a note SHOWS is derived from the filename below via
-# `turbo_label()`, never typed. They were independent strings until
-# 2026-08-23 and drifted the moment this constant moved: sixteen graphs loaded
-# v1.1 under help text still saying v1.0. The notes, and
-# `check_distill_settings.py::notes_match_the_lora` that graded them, went
-# with the UI workflows on 2026-09-14.
 SIGMA_SHIFT = dict(shift_video=12.0, shift_audio=3.0)
 
 # The turbo graph. This is the 8-step v1.0; the others are listed in the
@@ -1089,27 +1082,6 @@ TURBO_768P_STRENGTH = 0.75
 TURBO_768P_SHIFT = dict(shift_video=6.0, shift_audio=3.0)
 
 
-def turbo_label(lora_path: str) -> str:
-    """`minimax_h3_fl2v_turbo_4step_v1.1_768p_...` -> `4-step v1.1 768p`.
-
-    Every note that names a LoRA version derives it from here, so the string a
-    graph SHOWS and the file it LOADS come from one place. They were typed
-    independently until 2026-08-23 and drifted the moment `TURBO_768P_LORA`
-    moved to v1.1: sixteen graphs loaded v1.1 while their own help text said
-    v1.0, and nothing looked. Those notes lived only in the UI workflows and
-    went with them on 2026-09-14, and so did
-    `check_distill_settings.py::notes_match_the_lora`, which graded them.
-
-    Returns "" for a filename this cannot parse, so a caller writing a note
-    gets an obviously empty label rather than a confident wrong one.
-    """
-    import re as _re
-    name = str(lora_path).rsplit("/", 1)[-1]
-    m = _re.search(r"(\d+)step_(v\d+\.\d+)(?:_(\d+p))?", name)
-    if not m:
-        return ""
-    steps, version, res = m.groups()
-    return f"{steps}-step {version}" + (f" {res}" if res else "")
 
 # The SLA release (lightx2v/Minimax-h3-Turbo-SLA, 2026-08-20). Same tensor
 # keys, rank, alpha and base as the 768p arm -- header read 2026-08-20

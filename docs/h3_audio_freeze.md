@@ -212,11 +212,11 @@ prompt id and seed. One line per clip into
 **Built the same evening, first run still owed** (a new tool's first run is
 a throwaway): the whole-track node `MiniMaxH3AudioFreezeSong`
 (`workflows/h3_text_to_video_audio_freeze_song_api.json`, a 30 s look by
-default, uniform or random window lengths, one prompt or blocks in cycle,
-uniform or random order); the shot-per-window chain
+default; its window-length and prompt-block modes went on 2026-09-14 for the
+timeline); the shot-per-window chain
 (`workflows/h3_text_to_video_audio_freeze_shots.json` and
 `..._shots_repeat.json`, retired unrendered on 2026-09-14: the song node's
-prompt blocks and `frames:` lines cover them);
+timeline and `--- label` blocks cover them);
 the audio attention gain knob (`MiniMaxH3AudioAttentionGain`,
 `bench/audio_freeze_gain_arms.json` renders key and value gains of two on the
 PDD8 chain). The first item tomorrow is one short run of the song graph.
@@ -229,13 +229,17 @@ and workflow in the finished file. Resume followed the same day
 (`loop_resume.py`): stored windows whose inputs have not changed are reused
 in order and rendering starts at the first that has. Prompt lists followed
 (`prompt_lists.py`, `MiniMaxH3PromptList`): a `__name__` in the prompt takes
-one value per window that uses it, from a list chained into the node's
-`lists` or a file in `wildcards/` under the input directory, without repeats
-until the list is used up unless the list says `random`. Every loop node
-fills through the same call, and a graph built from separate nodes uses
-Fill Prompt Lists by index; the example graph is
+a value from a Prompt List chained into the node's `lists`, typed or read from
+a file in `wildcards/` under the input directory, without repeats until the
+list is used up unless the list says `random`. Every loop node fills through
+the same call, and a graph built from separate nodes uses Fill Prompt Lists by
+index. Then the node was simplified (owner): a `timeline` of `mm:ss label`
+lines lines the windows up with the song's sections, a list moves on once per
+section, one `--- label` block per label is optional, and `preview` reports
+the plan without loading a model (`loop_plan.py`). The example graph is
 `workflows/h3_text_to_video_audio_freeze_song_lists_pdd8_api.json`, on
-`just-a-flicker.mp3`. The module docstring holds the rules; `docs/wiki/next_steps.md` holds what is still owed.
+`just-a-flicker.mp3` with its sections as the timeline. The module docstrings
+hold the rules; `docs/wiki/next_steps.md` holds what is still owed.
 
 **Next, in order.**
 

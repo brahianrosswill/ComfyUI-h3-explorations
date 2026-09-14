@@ -7,38 +7,44 @@
 - **A placeholder is `__name__`.** Not `{name}`, which the frontend's dynamic
   prompts rewrite before a node sees it, and not `[name]` or `<name>`, which
   H3 prompts already use (`[Shot 1]`, `<Subject 1>`). A name is letters and
-  digits with single `_`, `-` or `/` separators, so `__dance/verbs__` names a
-  file in a subfolder. `PLACEHOLDER`.
-- **A list advances only when a window's prompt uses it**, and the same
-  placeholder twice in one prompt takes the same value. `resolve_texts`.
+  digits with single `_`, `-` or `/` separators. `PLACEHOLDER`.
+- **A list advances only when a use of the prompt needs it**, and the same
+  placeholder twice in one text takes the same value. `resolve_texts`. What a
+  use is belongs to the caller: a window, or a timeline entry of the song node.
 - **`shuffled` never repeats a value before the list is used up.** Each pass
   through the list is a fresh shuffle, never the same order as the pass
   before, and with three or more values the first value of a pass is never
   the last of the one before. With more values than uses, no value repeats at
   all. `next_pass`. `in_order` runs the list in order, pass after pass;
   `random` draws independently and may repeat, and is only ever chosen.
-- **The seed decides which shuffles, and it holds.** The same seed gives the
-  same sequence on every render. The list node declares its seed fixed after
-  each queue for the same reason the song node does: a filled-in prompt that
-  changes on every queue re-renders every window resume could have kept.
+- **`shuffle` picks which shuffles, and nothing moves it.** The same number
+  gives the same sequence on every render. It is not named `seed` because the
+  frontend draws a control that changes an INT named `seed` after each queue,
+  and a filled-in prompt that changes on every queue re-renders every window
+  resume could have kept (owner, 2026-09-14).
+
+**Every list comes from a list node.** A placeholder with no Prompt List of its
+name is refused, and so is a list a loop connects that none of its texts uses:
+both are a typo in a name. (Until 2026-09-14 a placeholder with no list read
+`name.txt` or `name.json` from the wildcards folder by itself; the owner cut
+that fallback with its path and named-list lookups.)
 
 **Every loop fills the same way.** A node that loops over windows inside
-itself takes a `lists` input, calls `fill_windows` while it plans, and
-fingerprints the wildcard files it may read (`wildcard_fingerprint`), so an
-edited file re-runs it. `bench/check_prompt_lists.py` fails a node that writes
-windows through `loop_output` or resumes through `loop_resume` without all
-three. A graph that loops by chaining nodes, or renders one clip per queue,
-uses `MiniMaxH3FillPromptLists`, whose `index` names the use. Value N of a list
-is a function of its values, order, seed and N alone, so both routes give the
+itself takes a `lists` input and calls `fill_windows` while it plans.
+`bench/check_prompt_lists.py` fails a node that writes windows through
+`loop_output` or resumes through `loop_resume` without both. A graph that loops
+by chaining nodes, or renders one clip per queue, uses
+`MiniMaxH3FillPromptLists`, whose `index` names the use. Value N of a list is a
+function of its values, order, shuffle and N alone, so both routes give the
 same values.
 
 **Wildcard files** live in `wildcards/` under ComfyUI's input directory
 (`register_wildcards_folder`, the `--input-directory` override included), and
-`extra_model_paths.yaml` can add more under the key `wildcards`. A `.txt` holds
-one value per line (blank lines and `#` lines skipped); a `.json` holds a list,
-or named lists as `{"name": [...]}`. A placeholder with no list node of its
-name is looked up there directly (`wildcard_candidates`), shuffled at seed 0;
-a list node chooses a file, an order and a seed explicitly.
+`extra_model_paths.yaml` can add more under the key `wildcards`. A list node
+with the `file` source reads one: a `.txt` holds one value per line (blank
+lines and `#` lines skipped), a `.json` holds one list of strings. The node
+fingerprints the file, so editing it runs the node and everything after it
+again.
 """
 
 from __future__ import annotations
@@ -70,7 +76,7 @@ class PromptList:
     name: str
     values: tuple[str, ...]
     order: str
-    seed: int
+    shuffle: int
     source: str  # "typed", or the wildcard file the values came from
 
 
@@ -104,53 +110,20 @@ def parse_values(text: str) -> tuple[str, ...]:
     return tuple(out)
 
 
-def values_from_file(path: str, key: str | None) -> tuple[str, ...]:
-    """A wildcard file's values; `key` picks a named list out of a JSON object."""
+def values_from_file(path: str) -> tuple[str, ...]:
+    """A wildcard file's values: a `.txt` one per line, a `.json` one list of strings."""
     if path.lower().endswith(".json"):
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
-        if isinstance(data, dict):
-            if key not in data:
-                raise ValueError(f"{os.path.basename(path)} has no list named {key!r}; it has {sorted(data)}")
-            data = data[key]
         if not isinstance(data, list) or not all(isinstance(v, str) for v in data):
-            raise ValueError(f"{os.path.basename(path)}: a list must be an array of strings")
+            raise ValueError(f"{os.path.basename(path)}: a JSON wildcard file holds one list of strings")
         values = tuple(v.strip() for v in data if v.strip())
     else:
         with open(path, encoding="utf-8") as f:
             values = parse_values(f.read())
     if not values:
-        raise ValueError(f"{os.path.basename(path)} holds no values" + (f" for {key!r}" if key else ""))
+        raise ValueError(f"{os.path.basename(path)} holds no values")
     return values
-
-
-def wildcard_candidates(name: str) -> list[tuple[str, str | None]]:
-    """(relative file, JSON key) a placeholder resolves to, in the order tried.
-
-    `a/b` tries `a/b.txt`, then `a/b.json` (a list, or an object with a list
-    named `b`), then `a.json` holding a list named `b`.
-    """
-    base = name.rpartition("/")[2]
-    out: list[tuple[str, str | None]] = [(name + ".txt", None), (name + ".json", base)]
-    if "/" in name:
-        head, _, tail = name.rpartition("/")
-        out.append((head + ".json", tail))
-    return out
-
-
-def wildcard_list(name: str, find) -> PromptList:
-    """The list a placeholder with no list node reads straight from the wildcard folder.
-
-    `find(relative_file)` returns a full path or None. Shuffled at seed 0.
-    """
-    tried = []
-    for rel, key in wildcard_candidates(name):
-        full = find(rel)
-        tried.append(rel)
-        if full is not None:
-            return PromptList(name, values_from_file(full, key), "shuffled", 0, rel)
-    raise ValueError(f"__{name}__ has no list: connect a Prompt List named {name!r} to the song node's "
-                     f"`lists`, or add one of {tried} to the wildcards folder")
 
 
 def next_pass(rng, values: tuple[str, ...], previous: list[int] | None) -> list[int]:
@@ -176,7 +149,7 @@ def next_pass(rng, values: tuple[str, ...], previous: list[int] | None) -> list[
 
 
 class ListSequence:
-    """The values a list gives, in order of use; a function of (name, values, order, seed) alone."""
+    """The values a list gives, in order of use; a function of (name, values, order, shuffle) alone."""
 
     def __init__(self, plist: PromptList):
         if plist.order not in ORDERS:
@@ -184,7 +157,9 @@ class ListSequence:
         if not plist.values:
             raise ValueError(f"list {plist.name!r} holds no values")
         self.plist = plist
-        self._rng = random.Random(f"{int(plist.seed)}:{plist.name}")
+        # the same string the list node's `seed` fed until 2026-09-14, so a
+        # renamed input gives the values it gave before
+        self._rng = random.Random(f"{int(plist.shuffle)}:{plist.name}")
         self._drawn: list[int] = []
         self._last_pass: list[int] | None = None
 
@@ -204,10 +179,16 @@ class ListSequence:
         return self.plist.values[self.index(n)]
 
 
+def as_dict(chain) -> dict[str, PromptList]:
+    """The lists a `lists` input carries, by name."""
+    return {pl.name: pl for pl in (chain or ())}
+
+
 def _require_lists(texts: list[str], lists) -> None:
     missing = sorted({n for t in texts for n in placeholders(t)} - set(lists))
     if missing:
-        raise ValueError(f"no list for {', '.join('__' + n + '__' for n in missing)}")
+        raise ValueError(f"no list for {', '.join('__' + n + '__' for n in missing)}: connect a Prompt List "
+                         f"named {', '.join(repr(n) for n in missing)} to `lists`")
 
 
 def resolve_texts(texts: list[str], lists: dict[str, PromptList]) -> tuple[list[str], list[dict[str, str]]]:
@@ -230,14 +211,6 @@ def resolve_texts(texts: list[str], lists: dict[str, PromptList]) -> tuple[list[
     return filled, picks
 
 
-def lists_for(texts: list[str], chain, find) -> dict[str, PromptList]:
-    """The lists `texts` need: the connected chain first, the wildcard folder for the rest."""
-    lists = {pl.name: pl for pl in (chain or ())}
-    for name in sorted({n for t in texts for n in placeholders(t)} - set(lists)):
-        lists[name] = wildcard_list(name, find)
-    return lists
-
-
 def report_lines(picks: list[dict[str, str]], first: int = 1) -> list[str]:
     """One line per text that used a list, numbered from `first`, as reports and the log show them."""
     return [f"[{first + i}] " + ", ".join(f"__{name}__ = {value!r}" for name, value in chosen.items())
@@ -245,13 +218,21 @@ def report_lines(picks: list[dict[str, str]], first: int = 1) -> list[str]:
 
 
 def fill_windows(texts: list[str], chain) -> tuple[list[str], list[str]]:
-    """What a loop node calls while it plans: each window's text filled, and the report lines.
+    """What a loop node calls while it plans: each use's text filled, and the report lines.
 
+    `texts` is one text per use, in order (a window, or a timeline entry).
     Call it before anything is keyed or encoded, so resume and any encode
-    cache see the text a window renders. The lines are logged here and belong
+    cache see the text a window renders. Raises on a placeholder with no list
+    and on a connected list no text uses. The lines are logged here and belong
     in the node's report too.
     """
-    filled, picks = resolve_texts(texts, lists_for(texts, chain, find_wildcard))
+    lists = as_dict(chain)
+    used = {n for t in texts for n in placeholders(t)}
+    unused = sorted(set(lists) - used)
+    if unused:
+        raise ValueError(f"the list(s) {', '.join(repr(n) for n in unused)} are connected but no prompt uses "
+                         f"{', '.join('__' + n + '__' for n in unused)}")
+    filled, picks = resolve_texts(texts, lists)
     lines = report_lines(picks)
     for line in lines:
         logger.info("[h3]   %s", line)
@@ -267,38 +248,6 @@ def fill_at(text: str, lists: dict[str, PromptList], use: int) -> tuple[str, dic
     _require_lists([text], lists)
     chosen = {name: ListSequence(lists[name]).value(int(use)) for name in placeholders(text)}
     return PLACEHOLDER.sub(lambda m: chosen[m.group(1)], text), chosen
-
-
-def _wildcard_roots() -> list[str]:
-    try:
-        import folder_paths
-        return folder_paths.get_folder_paths("wildcards")
-    except (ImportError, KeyError):
-        return []
-
-
-def wildcard_fingerprint(text) -> tuple:
-    """What a node's `fingerprint_inputs` returns so an edited wildcard file runs it again.
-
-    Core caches a node on its inputs, and editing a file changes none of them.
-    Given the prompt as a string: the files its placeholders could read.
-    Anything else (a prompt that is not a literal string): every wildcard
-    file. Each as (path, modification time, size).
-    """
-    if isinstance(text, str):
-        paths = [find_wildcard(rel) for name in placeholders(text) for rel, _key in wildcard_candidates(name)]
-    else:
-        paths = [os.path.join(dirpath, f) for root in _wildcard_roots()
-                 for dirpath, _dirs, files in os.walk(root)
-                 for f in files if f.lower().endswith(WILDCARD_EXTENSIONS)]
-    out = []
-    for path in sorted({p for p in paths if p}):
-        try:
-            st = os.stat(path)
-        except OSError:
-            continue
-        out.append((path, st.st_mtime_ns, st.st_size))
-    return tuple(out)
 
 
 def register_wildcards_folder() -> str | None:
@@ -347,7 +296,7 @@ class MiniMaxH3PromptList(io.ComfyNode):
             description=(
                 "A list of values for a __name__ placeholder: typed one per line, or read from a file in "
                 "the wildcards folder under ComfyUI's input directory. Chain several, one per name, into "
-                "the song node's `lists`. shuffled uses every value once before any repeats and reshuffles "
+                "a loop node's `lists`. shuffled uses every value once before any repeats and reshuffles "
                 "each pass; in_order runs the list in order; random may repeat."
             ),
             inputs=[
@@ -362,11 +311,11 @@ class MiniMaxH3PromptList(io.ComfyNode):
                         ]),
                         io.DynamicCombo.Option("file", [
                             io.Combo.Input("wildcard", options=_wildcard_files(),
-                                           tooltip=("A .txt (one value per line) or .json (a list, or named "
-                                                    "lists where this node's name picks one) in the wildcards "
-                                                    "folder. A file added while ComfyUI runs appears after "
-                                                    "refreshing node definitions (R in the editor), no restart; "
-                                                    "on a network share it can take a moment longer.")),
+                                           tooltip=("A .txt (one value per line) or .json (one list of "
+                                                    "strings) in the wildcards folder. A file added while "
+                                                    "ComfyUI runs appears after refreshing node definitions "
+                                                    "(R in the editor), no restart; on a network share it can "
+                                                    "take a moment longer.")),
                         ]),
                     ],
                     tooltip="Where the values come from."),
@@ -374,12 +323,9 @@ class MiniMaxH3PromptList(io.ComfyNode):
                                tooltip=("shuffled: every value once before any repeats, a fresh order each "
                                         "pass. in_order: the list in order, pass after pass. random: an "
                                         "independent draw each time; repeats allowed.")),
-                # Fixed after each queue, as the song node's seed: a list that
-                # reshuffles on every queue changes every filled-in prompt, and
-                # resume can reuse nothing (owner, 2026-09-14).
-                io.Int.Input("seed", default=0, min=0, max=0xffffffffffffffff,
-                             control_after_generate=io.ControlAfterGenerate.fixed,
-                             tooltip="Which shuffles. The same seed gives the same sequence every render."),
+                io.Int.Input("shuffle", default=0, min=0, max=0xffffffffffffffff,
+                             tooltip=("Which shuffles, for shuffled and random. The same number gives the same "
+                                      "sequence on every render; change it by hand for a different one.")),
                 H3PromptLists.Input("lists", optional=True, tooltip="Lists chained before this one."),
             ],
             outputs=[H3PromptLists.Output(display_name="lists")],
@@ -396,7 +342,7 @@ class MiniMaxH3PromptList(io.ComfyNode):
         return (full, st.st_mtime_ns, st.st_size)
 
     @classmethod
-    def execute(cls, name, source, order, seed, lists=None) -> io.NodeOutput:
+    def execute(cls, name, source, order, shuffle, lists=None) -> io.NodeOutput:
         name = clean_name(name)
         if order not in ORDERS:
             raise ValueError(f"unknown order {order!r}; one of {ORDERS}")
@@ -414,16 +360,16 @@ class MiniMaxH3PromptList(io.ComfyNode):
             full = find_wildcard(rel) if rel else None
             if full is None:
                 raise ValueError(f"list {name!r}: no wildcard file {rel!r} in the wildcards folder")
-            values = values_from_file(full, name)
+            values = values_from_file(full)
             where = rel
         else:
             raise ValueError(f"unknown source {choice!r}")
         chain = tuple(lists or ())
         if any(pl.name == name for pl in chain):
             raise ValueError(f"two lists are named {name!r}")
-        plist = PromptList(name, values, order, int(seed), where)
-        logger.info("[h3] prompt list __%s__: %d value(s) from %s, %s, seed %d",
-                    name, len(values), where, order, int(seed))
+        plist = PromptList(name, values, order, int(shuffle), where)
+        logger.info("[h3] prompt list __%s__: %d value(s) from %s, %s, shuffle %d",
+                    name, len(values), where, order, int(shuffle))
         return io.NodeOutput(chain + (plist,))
 
 
@@ -439,44 +385,30 @@ class MiniMaxH3FillPromptLists(io.ComfyNode):
             description=(
                 "Fills __name__ placeholders in a prompt for any prompt input: a chain of window nodes, or "
                 "one clip per queue. index is which use of each list, from 1, so window N of a chain takes "
-                "index N and repeated queues walk the lists. count above 1 outputs that many filled prompts, "
-                "and the nodes they feed run once per prompt. A loop node with its own `lists` input fills "
-                "its windows itself."
+                "index N. A loop node with its own `lists` input fills its windows itself."
             ),
             inputs=[
                 io.String.Input("prompt", multiline=True, default="",
                                 tooltip="Text with __name__ placeholders."),
-                # Increment, not fixed: outside a loop node, walking the lists
-                # one queue at a time is what this node is for. Pin it by
-                # setting the control to fixed or wiring a window number in.
+                # Fixed by default (owner, 2026-09-14): a prompt that moves on
+                # its own after a queue is the footgun the list node's rename
+                # removed. Set the control to increment to walk the lists one
+                # queue at a time.
                 io.Int.Input("index", default=1, min=1, max=1000000,
-                             control_after_generate=io.ControlAfterGenerate.increment,
-                             tooltip=("Which use of each list, from 1. Moves on by one after each queue, so "
-                                      "repeated queues take the next values; wire a window number in to pin it.")),
-                io.Int.Input("count", default=1, min=1, max=1000,
-                             tooltip=("How many filled prompts, at index, index + 1 and on. Above 1 the nodes "
-                                      "they feed run once per prompt.")),
+                             control_after_generate=io.ControlAfterGenerate.fixed,
+                             tooltip=("Which use of each list, from 1. Wire a window number in, or set the "
+                                      "control to increment so repeated queues take the next values.")),
                 H3PromptLists.Input("lists", optional=True,
-                                    tooltip=("Prompt List nodes, one per name. A placeholder with no list here "
-                                             "is read from the wildcards folder.")),
+                                    tooltip="Prompt List nodes, one per name the prompt uses."),
             ],
-            outputs=[io.String.Output(display_name="prompt", is_output_list=True),
+            outputs=[io.String.Output(display_name="prompt"),
                      io.String.Output(display_name="report")],
         )
 
     @classmethod
-    def fingerprint_inputs(cls, prompt=None, **_):
-        return wildcard_fingerprint(prompt)
-
-    @classmethod
-    def execute(cls, prompt, index, count, lists=None) -> io.NodeOutput:
-        found = lists_for([prompt], lists, find_wildcard)
-        filled, picks = [], []
-        for k in range(int(count)):
-            text, chosen = fill_at(prompt, found, int(index) - 1 + k)
-            filled.append(text)
-            picks.append(chosen)
-        lines = report_lines(picks, first=int(index))
+    def execute(cls, prompt, index, lists=None) -> io.NodeOutput:
+        text, chosen = fill_at(prompt, as_dict(lists), int(index) - 1)
+        lines = report_lines([chosen], first=int(index))
         for line in lines:
             logger.info("[h3]   %s", line)
-        return io.NodeOutput(filled, "\n".join(lines) or "no placeholders")
+        return io.NodeOutput(text, "\n".join(lines) or "no placeholders")

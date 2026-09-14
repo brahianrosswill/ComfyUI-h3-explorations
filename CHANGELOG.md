@@ -4,6 +4,76 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.108.0
+
+The frozen-audio loop, simplified before extending (owner, 2026-09-14, after
+reviewing its footguns). **Song, Prompt List and Fill Prompt Lists graphs
+saved from the editor before this need re-making**: inputs were removed and
+regrouped, which `docs/comfy_notes.md` now allows when the owner accepts it.
+
+### Added
+
+- **A timeline on `MiniMaxH3AudioFreezeSong`**: `timeline` takes `mm:ss label`
+  lines, the first at 00:00, pasted from an analysis of the track. Windows
+  line up with each entry's time within half a grid step (`loop_plan.GRID`),
+  aiming at each entry's own time so no error carries forward; a list moves on
+  once per entry, so the windows of one section share a place; and the prompt
+  may carry one `--- label` block per label. Refused before anything loads: an
+  entry too short for one window, a label with no block, a block with no
+  label, and an `At mm:ss` cut at or past the end of a window it lands in. The
+  example graph `h3_text_to_video_audio_freeze_song_lists_pdd8_api.json`
+  ships the song's sections from the owner's analysis.
+- **`preview` on the song node**: plans, fills and reports every window's time
+  range, entry, filled prompt and whether resume would reuse it, then stops.
+  The model, encoder, VAEs, sampler, sigmas and references are lazy inputs the
+  node does not ask for in preview, so their loaders never run. The song
+  graphs show the report on a Preview as Text node.
+- **`loop_plan.py`**: the planner, timeline and prompt blocks, importing
+  nothing from the pack, so `bench/check_audio_freeze.py` tests it directly
+  and the next loop node plans the same way.
+
+### Changed
+
+- **Window lengths.** Each part of the track (the whole track with no
+  timeline) gets the fewest windows that end it nearest its target, longest
+  first; `window_frames` is the longest window. It replaced every window at
+  `window_frames` with a last one sized to reach the end.
+- **The Prompt List's `seed` is `shuffle`**, with no control widget, so nothing
+  moves it after a queue; the same number gives the values the same seed gave.
+- **Fill Prompt Lists' `index` control is `fixed` by default** (it was
+  `increment`), and its `prompt` output is one string.
+- **`fill_windows` refuses a connected list no text uses**, as a typo in a
+  name, beside the placeholder with no list it already refused.
+- **The example prompt `t2va_song_flicker_lists` is two shots**, a close-up
+  then the list-filled medium shot at 00:04.500: windows now differ in length,
+  and its third shot at 00:10.000 would not have fit the shorter ones.
+- **`bench/node_id_manifest.json`** regenerated for the three nodes above;
+  `bench/check_node_ids.py` and `docs/comfy_notes.md` say when that is allowed.
+- **`bench/check_audio_freeze.py`** tests the plan: timeline alignment on the
+  example song and across a sweep of part lengths (a planner of full windows
+  only is the control), the refusals, one list use per entry, resume keys
+  unmoved by a timeline edit or the preview switch, and the lazy inputs, with
+  a copy of the node missing one refused. **`bench/check_prompt_lists.py`**
+  follows the cuts below.
+
+### Removed
+
+- **`prompt_mode`, `window_mode` and `frames:` lines** from the song node
+  (owner: the timeline replaces them).
+- **The implicit wildcard fallback.** A placeholder with no list node no longer
+  reads `name.txt` or `name.json` by itself; `wildcard_candidates`,
+  `wildcard_list`, `lists_for` and `wildcard_fingerprint` went with it, a JSON
+  wildcard file holds one list, and the loop contract no longer asks for a
+  fingerprint. A list node's `file` source still reads the wildcards folder.
+- **Fill Prompt Lists' `count`.**
+- **`h3_config.turbo_label()`**, uncalled since the in-graph notes went.
+
+### Fixed
+
+- **`docs/h3_geometry_and_nodes.md`** listed `MiniMaxH3ImageToVideo` as the
+  t2v/i2v node without saying this pack's graphs wire `MiniMaxH3Conditioning`
+  in its place.
+
 ## 0.107.0
 
 ### Added

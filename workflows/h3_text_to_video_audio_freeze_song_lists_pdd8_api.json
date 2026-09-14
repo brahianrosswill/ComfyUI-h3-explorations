@@ -147,7 +147,7 @@
         "18",
         1
       ],
-      "prompt": "integrated_multimodal_description: [Shot 1] Live-action, cinematic, a close-up frames a woman in her late twenties with dark shoulder-length hair and an oversized charcoal knit sweater across the fourteen-second take, her face sharp and softly lit, everything behind her lost to a shallow grey blur. She is on-screen, with a breathy, warm mid-register voice and a relaxed, intimate delivery (S1), and she sings softly with the song, her lips following the vocal line and resting still whenever the vocal pauses, her eyes drifting past the lens. The camera holds a static shot. [Shot 2] At 00:04.500, the shot cuts to a medium shot of her __place__, __motion__, still singing quietly with the track. The camera trucks left with small amplitude at slow speed. [Shot 3] At 00:10.000, the shot cuts back to a close-up of her face, the background falling away to soft blur again, as she carries the phrase through, lowers her gaze and looks back up into the lens. The camera pushes in with small amplitude at slow speed.\n\noverall_soundscape: Quiet room tone sits under the scene, the knit of her sweater brushes softly as she moves, and her breath is audible between phrases.\n\nnon_diegetic_music: A slow, laid-back lo-fi pop beat with a pillowy drum-machine kick, a dry rimshot on the backbeat, softly ticking hi-hats, a warm sliding sub-bass and melancholic electric piano chords under light vinyl crackle.\n",
+      "prompt": "integrated_multimodal_description: [Shot 1] Live-action, cinematic, a close-up frames a woman in her late twenties with dark shoulder-length hair and an oversized charcoal knit sweater, her face sharp and softly lit, everything behind her lost to a shallow grey blur. She is on-screen, with a breathy, warm mid-register voice and a relaxed, intimate delivery (S1), and she sings softly with the song, her lips following the vocal line and resting still whenever the vocal pauses, her eyes drifting past the lens. The camera holds a static shot. [Shot 2] At 00:04.500, the shot cuts to a medium shot of her __place__, __motion__, still singing quietly with the track, lowering her gaze and looking back up into the lens as she carries the phrase through. The camera trucks left with small amplitude at slow speed.\n\noverall_soundscape: Quiet room tone sits under the scene, the knit of her sweater brushes softly as she moves, and her breath is audible between phrases.\n\nnon_diegetic_music: A slow, laid-back lo-fi pop beat with a pillowy drum-machine kick, a dry rimshot on the backbeat, softly ticking hi-hats, a warm sliding sub-bass and melancholic electric piano chords under light vinyl crackle.\n",
       "width": 1344,
       "height": 768,
       "window_frames": 345,
@@ -158,14 +158,23 @@
       "level": "clip_guard",
       "filename_prefix": "Video/h3_t2v_audio_freeze_song_lists_pdd8",
       "crf": 19,
-      "prompt_mode": "random",
-      "window_mode": "uniform",
+      "timeline": "00:00 intro\n00:10 verse\n00:32 chorus\n00:53 verse\n01:14 chorus\n01:35 bridge\n01:57 chorus\n02:18 outro",
+      "preview": false,
       "save_metadata_png": true,
       "keep_windows": true,
       "reuse_windows": true,
       "lists": [
         "91",
         0
+      ]
+    }
+  },
+  "75": {
+    "class_type": "PreviewAny",
+    "inputs": {
+      "source": [
+        "74",
+        1
       ]
     }
   },
@@ -176,7 +185,7 @@
       "source": "typed",
       "source.values": "standing at the rain-streaked window of a bare concrete apartment\nleaning on the rail of a brutalist high-rise balcony above the city\nsitting alone by the window of an empty late-night train carriage as city lights slide past\nwalking slowly down a wet, empty side street under a flickering sodium lamp\nsitting on a stairwell landing beneath a flickering fluorescent tube",
       "order": "shuffled",
-      "seed": 0
+      "shuffle": 0
     }
   },
   "91": {
@@ -186,7 +195,7 @@
       "source": "typed",
       "source.values": "swaying slowly on the laid-back beat, eyes half closed\ntilting her head on each soft backbeat, arms folded against the cold\nturning slowly away from the camera, then glancing back over her shoulder\npulling her sleeves down over her hands and nodding gently in time",
       "order": "in_order",
-      "seed": 0,
+      "shuffle": 0,
       "lists": [
         "90",
         0

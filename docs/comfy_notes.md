@@ -286,7 +286,13 @@ grouping is the instinct that breaks this. (Cost a real bug on 2026-08-10:
 `patch_token_refiner=False` on an INT with `min=1`.)
 
 Shipped workflows are API format and carry inputs by name, so this rule now
-protects the owner's editor-saved graphs, not anything in `workflows/`.
+protects the owner's editor-saved graphs, not anything in `workflows/`. That
+makes a removal or a reorder the owner's call rather than a forbidden change:
+when the owner accepts re-making their saved graphs of a node, its inputs may
+be removed and regrouped, the manifest below is regenerated in the same
+commit, and the CHANGELOG names the node whose saved graphs need re-making.
+First used 2026-09-14, when `MiniMaxH3AudioFreezeSong` lost `prompt_mode` and
+`window_mode` and the list nodes lost `seed` and `count`.
 
 **`bench/check_node_ids.py` catches the rename rule**, against
 `bench/node_id_manifest.json` — a committed baseline that is *not* regenerated

@@ -917,8 +917,8 @@
       "mode": "t2va",
       "frames": 345,
       "donor": null,
-      "brief": "One prompt for every window of a whole-song render with two prompt lists: a close-up, a medium shot whose place and movement come from __place__ and __motion__, a close-up again, so each window opens and closes on her face; a singer whose lips follow the frozen vocal with no lyrics in the text",
-      "tests": "the shipped prompt-list example on just-a-flicker.mp3: whether a list-driven middle shot changes place per window while the close-up bookends keep the seams readable"
+      "brief": "One prompt for every section of a whole-song render with two prompt lists: a close-up with the background lost to blur, then a medium shot whose place and movement come from __place__ and __motion__, so each window opens on her face; two shots, the cut early enough for the shortest window a section ends on; a singer whose lips follow the frozen vocal with no lyrics in the text",
+      "tests": "the shipped prompt-list example on just-a-flicker.mp3 with the song's sections as its timeline: whether the place changes where the song changes section, and whether a seam into a new place reads through the opening close-up"
     },
     {
       "id": "t2va_none_of_this_is_real_moving",

@@ -17,6 +17,21 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-14
 
+- **The frozen-audio loop simplified before extending** (owner, after the
+  footguns were listed: "simplifying is the only way to avoid that"; the
+  worry was a new place starting where a window ends, not where the song
+  changes section). `prompt_mode`, random window lengths, `frames:` lines, the
+  implicit wildcard fallback and Fill Prompt Lists' `count` went; the list
+  node's `seed` became `shuffle`; the song node gained `timeline` and
+  `preview`, planned by `loop_plan.py` (CHANGELOG 0.108.0). Prose that lost,
+  and what it claimed: the shot-workflow bullet below said the song node's
+  prompt blocks and `frames:` lines do what those workflows did (the timeline
+  and `--- label` blocks do now); `prompt_lists.py` said a placeholder with no
+  list node reads `name.txt` or `name.json` from the wildcards folder;
+  `docs/comfy_notes.md` and `bench/check_node_ids.py` said an input may only
+  ever be appended (removal is the owner's call now that shipped graphs are
+  API format); `docs/h3_geometry_and_nodes.md` gave `MiniMaxH3ImageToVideo`
+  as the t2v/i2v node without saying the pack wires `MiniMaxH3Conditioning`.
 - **Shipped workflows are API format only** (owner: "If I dont need a layout,
   node titles, bypassed nodes (we dont even use those), or notes in workflows,
   why dont we just simplify all of them to API json workflows?"). The UI twins,

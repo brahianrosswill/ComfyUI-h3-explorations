@@ -12,23 +12,22 @@ a weaker implementation:
    first of a pass is never the last of the previous. The two rejection rules
    are driven by a scripted shuffle that offers the forbidden pass first, so
    an implementation that accepts its first draw goes red here.
-3. **In order cycles, random draws, and both are a function of the seed.**
+3. **In order cycles, random draws, and both are a function of `shuffle`.**
 4. **Filling advances a list only when a text uses it**, and the same name
-   twice in one text takes one value. A name with no list is refused by name.
-5. **Wildcard files.** A `.txt` skips blank and `#` lines; a `.json` holds a
-   list or named lists; a placeholder looks up `name.txt`, `name.json`, then
-   `parent.json`'s list named for the last segment.
+   twice in one text takes one value. A name with no list is refused by name,
+   and so is a list a loop connects that no text uses.
+5. **Wildcard files.** A `.txt` skips blank and `#` lines; a `.json` holds one
+   list of strings, and a JSON object is refused.
 6. **The node.** A typed list chains; a duplicate name and a bad name raise;
-   the file source reads a `.txt` and a `.json` list named for the node.
+   the file source reads a `.txt` and a `.json`, refuses a missing file, and
+   its fingerprint moves when the file is edited.
 7. **Every loop node fills the same way.** A pack module importing
    `loop_output` or `loop_resume` defines loop nodes, and each must declare a
-   `lists` input, call `fill_windows` and fingerprint through
-   `wildcard_fingerprint`. The song node must be detected as one, since a
-   detector that finds nothing passes everything, and a copy of its source
-   with each of the three removed must fail.
+   `lists` input and call `fill_windows`. The song node must be detected as
+   one, since a detector that finds nothing passes everything, and a copy of
+   its source with either removed must fail.
 8. **Fill Prompt Lists agrees with a loop**: index N gives what window N of
-   a loop gets when every window uses the name, count gives consecutive uses,
-   and an edited wildcard file changes the fingerprint.
+   a loop gets when every window uses the name.
 
     CUDA_VISIBLE_DEVICES= <comfy venv python> bench/check_prompt_lists.py
 
@@ -41,7 +40,6 @@ from __future__ import annotations
 
 import ast
 import json
-import os
 import sys
 import tempfile
 from pathlib import Path
@@ -69,6 +67,15 @@ class ScriptedRng:
         seq[:] = self.perms.pop(0)
 
 
+def _refused(problems, label, call, needle=None):
+    try:
+        call()
+        _fail(problems, f"{label} was accepted")
+    except ValueError as exc:
+        if needle is not None and needle not in str(exc):
+            _fail(problems, f"{label}: the refusal did not name {needle!r} ({exc})")
+
+
 def check_names(problems):
     found = pl.placeholders("a __dance_moves__, __dance/verbs__ and __v2-beat__ then __dance_moves__ again")
     if found != ["dance_moves", "dance/verbs", "v2-beat"]:
@@ -79,11 +86,7 @@ def check_names(problems):
     if pl.clean_name("__verbs__") != "verbs" or pl.clean_name(" verbs ") != "verbs":
         _fail(problems, "names: clean_name did not strip the underscores or spaces")
     for bad in ("two words", "__", "a__b", ""):
-        try:
-            pl.clean_name(bad)
-            _fail(problems, f"names: {bad!r} was accepted as a list name")
-        except ValueError:
-            pass
+        _refused(problems, f"names: {bad!r} as a list name", lambda bad=bad: pl.clean_name(bad))
 
 
 def check_shuffled(problems):
@@ -101,10 +104,10 @@ def check_shuffled(problems):
             _fail(problems, f"shuffled: pass {i} starts with the value the pass before ended on")
     again = pl.ListSequence(pl.PromptList("x", values, "shuffled", 7, "typed"))
     if [again.index(n) for n in range(k * 6)] != drawn:
-        _fail(problems, "shuffled: the same seed gave a different sequence")
+        _fail(problems, "shuffled: the same shuffle number gave a different sequence")
     other = pl.ListSequence(pl.PromptList("x", values, "shuffled", 8, "typed"))
     if [other.index(n) for n in range(k * 6)] == drawn:
-        _fail(problems, "shuffled: a different seed gave the same sequence")
+        _fail(problems, "shuffled: a different shuffle number gave the same sequence")
     few = pl.ListSequence(pl.PromptList("x", values, "shuffled", 7, "typed"))
     if len({few.index(n) for n in range(5)}) != 5:
         _fail(problems, "shuffled: five uses of seven values repeated one")
@@ -135,14 +138,11 @@ def check_orders(problems):
     b = pl.ListSequence(pl.PromptList("x", tuple("abc"), "random", 11, "typed"))
     draws = [a.index(n) for n in range(40)]
     if draws != [b.index(n) for n in range(40)]:
-        _fail(problems, "random: the same seed gave different draws")
+        _fail(problems, "random: the same shuffle number gave different draws")
     if not any(draws[i] == draws[i + 1] for i in range(len(draws) - 1)):
         _fail(problems, "random: forty draws of three values never repeated back to back; is it shuffling?")
-    try:
-        pl.ListSequence(pl.PromptList("x", ("a",), "sideways", 0, "typed"))
-        _fail(problems, "orders: an unknown order was accepted")
-    except ValueError:
-        pass
+    _refused(problems, "orders: an unknown order",
+             lambda: pl.ListSequence(pl.PromptList("x", ("a",), "sideways", 0, "typed")))
 
 
 def check_resolve(problems):
@@ -152,55 +152,41 @@ def check_resolve(problems):
         _fail(problems, f"resolve: filled {filled}")
     if picks != [{"x": "p"}, {}, {"x": "q"}]:
         _fail(problems, f"resolve: picks {picks}")
-    try:
-        pl.resolve_texts(["a __x__ __y__"], lists)
-        _fail(problems, "resolve: a placeholder with no list was accepted")
-    except ValueError as exc:
-        if "__y__" not in str(exc):
-            _fail(problems, f"resolve: the refusal did not name the placeholder ({exc})")
+    _refused(problems, "resolve: a placeholder with no list", lambda: pl.resolve_texts(["a __x__ __y__"], lists),
+             "__y__")
     if pl.resolve_texts(["plain text"], {})[0] != ["plain text"]:
         _fail(problems, "resolve: a text without placeholders changed")
     tricky = {"x": pl.PromptList("x", (r"a\1 b",), "in_order", 0, "typed")}
     if pl.resolve_texts(["__x__"], tricky)[0] != [r"a\1 b"]:
         _fail(problems, "resolve: a value with a backslash was rewritten")
 
+    # the loop route: a placeholder with no list, and a connected list no text uses
+    chain = (lists["x"], pl.PromptList("place", ("studio",), "in_order", 0, "typed"))
+    _refused(problems, "fill_windows: a placeholder with no list", lambda: pl.fill_windows(["__nope__"], ()),
+             "__nope__")
+    _refused(problems, "fill_windows: a connected list no text uses",
+             lambda: pl.fill_windows(["a __x__", "b __x__"], chain), "'place'")
+    texts, lines = pl.fill_windows(["a __x__ in the __place__", "b __x__ in the __place__"], chain)
+    if texts != ["a p in the studio", "b q in the studio"] or len(lines) != 2:
+        _fail(problems, f"fill_windows: filled {texts} with lines {lines}")
+
 
 def check_files(problems):
     with tempfile.TemporaryDirectory() as d:
-        def put(rel, text):
-            path = os.path.join(d, rel)
-            os.makedirs(os.path.dirname(path), exist_ok=True)
-            Path(path).write_text(text, encoding="utf-8")
-
-        put("verbs.txt", "spinning\n\n# a comment\n  leaping  \n")
-        put("dance/moves.json", json.dumps(["pop", "lock"]))
-        put("scene.json", json.dumps({"outfits": ["grey vest", "red jacket"], "rooms": ["studio"]}))
-
-        def find(rel):
-            path = os.path.join(d, rel)
-            return path if os.path.isfile(path) else None
-
-        got = {n: pl.wildcard_list(n, find) for n in ("verbs", "dance/moves", "scene/outfits")}
-        if got["verbs"].values != ("spinning", "leaping"):
-            _fail(problems, f"files: verbs.txt read as {got['verbs'].values}")
-        if got["dance/moves"].values != ("pop", "lock"):
-            _fail(problems, f"files: dance/moves.json read as {got['dance/moves'].values}")
-        if got["scene/outfits"].values != ("grey vest", "red jacket") or got["scene/outfits"].source != "scene.json":
-            _fail(problems, f"files: scene/outfits read as {got['scene/outfits']}")
-        try:
-            pl.wildcard_list("scene/shoes", find)
-            _fail(problems, "files: a missing named list was accepted")
-        except ValueError:
-            pass
-        try:
-            pl.wildcard_list("nothing", find)
-            _fail(problems, "files: a placeholder with no file was accepted")
-        except ValueError as exc:
-            if "nothing.txt" not in str(exc):
-                _fail(problems, f"files: the refusal did not say where it looked ({exc})")
-        lists = pl.lists_for(["__verbs__ and __x__"], (pl.PromptList("x", ("q",), "in_order", 0, "typed"),), find)
-        if set(lists) != {"verbs", "x"} or lists["x"].source != "typed":
-            _fail(problems, f"files: lists_for gave {lists}")
+        txt = Path(d, "verbs.txt")
+        txt.write_text("spinning\n\n# a comment\n  leaping  \n", encoding="utf-8")
+        listed = Path(d, "moves.json")
+        listed.write_text(json.dumps(["pop", "lock"]), encoding="utf-8")
+        named = Path(d, "scene.json")
+        named.write_text(json.dumps({"outfits": ["grey vest"]}), encoding="utf-8")
+        empty = Path(d, "empty.txt")
+        empty.write_text("# nothing\n", encoding="utf-8")
+        if pl.values_from_file(str(txt)) != ("spinning", "leaping"):
+            _fail(problems, f"files: verbs.txt read as {pl.values_from_file(str(txt))}")
+        if pl.values_from_file(str(listed)) != ("pop", "lock"):
+            _fail(problems, f"files: moves.json read as {pl.values_from_file(str(listed))}")
+        _refused(problems, "files: a JSON object of named lists", lambda: pl.values_from_file(str(named)))
+        _refused(problems, "files: a file with no values", lambda: pl.values_from_file(str(empty)))
 
 
 def check_node(problems):
@@ -210,8 +196,8 @@ def check_node(problems):
     second = pl.MiniMaxH3PromptList.execute("verb", {"source": "typed", "values": "spinning"}, "in_order", 0,
                                             lists=chain)
     chain = getattr(second, "args", second)[0]
-    if [(p.name, p.values, p.order) for p in chain] != [("subject", ("detective", "man"), "shuffled"),
-                                                        ("verb", ("spinning",), "in_order")]:
+    if [(p.name, p.values, p.order, p.shuffle) for p in chain] != [
+            ("subject", ("detective", "man"), "shuffled", 3), ("verb", ("spinning",), "in_order", 0)]:
         _fail(problems, f"node: the chain is {chain}")
     for label, call in (
             ("a duplicate name", lambda: pl.MiniMaxH3PromptList.execute(
@@ -220,19 +206,14 @@ def check_node(problems):
                 "two words", {"source": "typed", "values": "x"}, "shuffled", 0)),
             ("an empty list", lambda: pl.MiniMaxH3PromptList.execute(
                 "empty", {"source": "typed", "values": "\n# nothing\n"}, "shuffled", 0))):
-        try:
-            call()
-            _fail(problems, f"node: {label} was accepted")
-        except ValueError:
-            pass
+        _refused(problems, f"node: {label}", call)
 
     # The file source, with the folder lookup pointed at a temp dir: the real
     # `folder_paths` lookup is observed live, not depended on here.
     real_find = pl.find_wildcard
     with tempfile.TemporaryDirectory() as d:
         Path(d, "outfits.txt").write_text("grey vest\n# no\n\nred jacket\n", encoding="utf-8")
-        Path(d, "scene.json").write_text(json.dumps({"outfit": ["track top"], "room": ["studio"]}),
-                                         encoding="utf-8")
+        Path(d, "rooms.json").write_text(json.dumps(["studio", "rooftop"]), encoding="utf-8")
         pl.find_wildcard = lambda rel: str(Path(d, rel)) if Path(d, rel).is_file() else None
         try:
             txt = getattr(pl.MiniMaxH3PromptList.execute(
@@ -240,21 +221,20 @@ def check_node(problems):
             txt = txt[0][0] if txt else None
             if txt is None or (txt.values, txt.source) != (("grey vest", "red jacket"), "outfits.txt"):
                 _fail(problems, f"node: the .txt file source gave {txt}")
-            js = pl.MiniMaxH3PromptList.execute("outfit", {"source": "file", "wildcard": "scene.json"},
+            js = pl.MiniMaxH3PromptList.execute("room", {"source": "file", "wildcard": "rooms.json"},
                                                 "in_order", 0)
             js = getattr(js, "args", js)[0][0]
-            if js.values != ("track top",):
-                _fail(problems, f"node: the .json file source did not pick the list named for the node ({js})")
+            if js.values != ("studio", "rooftop"):
+                _fail(problems, f"node: the .json file source gave {js}")
             for label, source in (("a missing file", {"source": "file", "wildcard": "absent.txt"}),
-                                  ("no file chosen", {"source": "file"}),
-                                  ("a JSON with no list of the node's name",
-                                   {"source": "file", "wildcard": "scene.json"})):
-                try:
-                    pl.MiniMaxH3PromptList.execute("shoes" if "JSON" in label else "outfit", source,
-                                                   "in_order", 0)
-                    _fail(problems, f"node: {label} was accepted")
-                except ValueError:
-                    pass
+                                  ("no file chosen", {"source": "file"})):
+                _refused(problems, f"node: {label}",
+                         lambda source=source: pl.MiniMaxH3PromptList.execute("outfit", source, "in_order", 0))
+            source = {"source": "file", "wildcard": "outfits.txt"}
+            before = pl.MiniMaxH3PromptList.fingerprint_inputs(source=source)
+            Path(d, "outfits.txt").write_text("grey vest\nred jacket\ntrack top\n", encoding="utf-8")
+            if not before or pl.MiniMaxH3PromptList.fingerprint_inputs(source=source) == before:
+                _fail(problems, "node: editing a list node's file left its fingerprint unchanged")
         finally:
             pl.find_wildcard = real_find
 
@@ -285,9 +265,6 @@ def loop_node_problems(source: str) -> tuple[list[str], list[str]]:
             problems.append(f"{cls.name}: no `lists` input (H3PromptLists)")
         if not any(ast.unparse(c.func).split(".")[-1] == "fill_windows" for c in calls):
             problems.append(f"{cls.name}: never calls fill_windows")
-        fp = next((f for f in cls.body if isinstance(f, ast.FunctionDef) and f.name == "fingerprint_inputs"), None)
-        if fp is None or "wildcard_fingerprint" not in ast.unparse(fp):
-            problems.append(f"{cls.name}: fingerprint_inputs does not go through wildcard_fingerprint")
     return found, problems
 
 
@@ -303,8 +280,7 @@ def check_loop_nodes(problems):
         _fail(problems, f"loop nodes: the song node was not detected as one (found {found})")
     song = (REPO / "audio_freeze_song.py").read_text(encoding="utf-8")
     for label, old, new in (("its lists input", 'H3PromptLists.Input("lists"', 'H3PromptLists.Input("listz"'),
-                            ("its fill_windows call", "fill_windows(texts", "resolve_texts(texts"),
-                            ("its fingerprint", "return wildcard_fingerprint(prompt)", "return None")):
+                            ("its fill_windows call", "fill_windows(plan.uses", "resolve_texts(plan.uses")):
         if song.count(old) != 1:
             _fail(problems, f"loop nodes: the control for {label} lost its anchor {old!r}")
         elif not loop_node_problems(song.replace(old, new))[1]:
@@ -320,36 +296,14 @@ def check_fill(problems):
     single = [pl.fill_at(texts[0], lists, n)[0] for n in range(12)]
     if looped != single:
         _fail(problems, f"fill: index N differs from window N of a loop ({single[:4]} against {looped[:4]})")
-    out = pl.MiniMaxH3FillPromptLists.execute("wear __y__", 2, 3, lists=(lists["y"],))
+    out = pl.MiniMaxH3FillPromptLists.execute("wear __y__", 2, lists=(lists["y"],))
     args = getattr(out, "args", out)
-    if list(args[0]) != ["wear q", "wear p", "wear q"] or not args[1].startswith("[2] "):
-        _fail(problems, f"fill: index 2, count 3 gave {args}")
-    try:
-        pl.fill_at("__nope__", lists, 0)
-        _fail(problems, "fill: a placeholder with no list was accepted")
-    except ValueError:
-        pass
-    real_find, real_roots = pl.find_wildcard, pl._wildcard_roots
-    with tempfile.TemporaryDirectory() as d:
-        path = Path(d, "verbs.txt")
-        path.write_text("a\n", encoding="utf-8")
-        pl.find_wildcard = lambda rel: str(Path(d, rel)) if Path(d, rel).is_file() else None
-        pl._wildcard_roots = lambda: [d]
-        try:
-            named, whole = pl.wildcard_fingerprint("__verbs__"), pl.wildcard_fingerprint(None)
-            listed = pl.MiniMaxH3PromptList.fingerprint_inputs(source={"source": "file", "wildcard": "verbs.txt"})
-            path.write_text("a\nb\n", encoding="utf-8")
-            if not named or pl.wildcard_fingerprint("__verbs__") == named:
-                _fail(problems, "fill: editing a wildcard file left the placeholder fingerprint unchanged")
-            if not whole or pl.wildcard_fingerprint(None) == whole:
-                _fail(problems, "fill: editing a wildcard file left the whole-folder fingerprint unchanged")
-            if not listed or pl.MiniMaxH3PromptList.fingerprint_inputs(
-                    source={"source": "file", "wildcard": "verbs.txt"}) == listed:
-                _fail(problems, "fill: editing a list node's file left its fingerprint unchanged")
-            if pl.wildcard_fingerprint("no placeholders") != ():
-                _fail(problems, "fill: a prompt without placeholders fingerprinted files")
-        finally:
-            pl.find_wildcard, pl._wildcard_roots = real_find, real_roots
+    if args[0] != "wear q" or not args[1].startswith("[2] "):
+        _fail(problems, f"fill: index 2 gave {args}")
+    plain = getattr(pl.MiniMaxH3FillPromptLists.execute("no names here", 1), "args", None)
+    if plain is None or tuple(plain) != ("no names here", "no placeholders"):
+        _fail(problems, f"fill: a prompt with no placeholders gave {plain}")
+    _refused(problems, "fill: a placeholder with no list", lambda: pl.fill_at("__nope__", lists, 0), "__nope__")
 
 
 def main() -> int:
@@ -368,8 +322,9 @@ def main() -> int:
             print(f"    - {p}")
         return 1
     print("  ok    names; shuffled uses a list up before repeating and its rejection rules bite; "
-          "in_order and random follow the seed; filling advances per use; wildcard files; the node; "
-          f"{len(loops)} loop node(s) fill the same way and the controls bite; Fill Prompt Lists agrees with a loop")
+          "in_order and random follow shuffle; filling advances per use and refuses a missing or unused "
+          f"list; wildcard files; the node; {len(loops)} loop node(s) fill the same way and the controls "
+          "bite; Fill Prompt Lists agrees with a loop")
     return 0
 
 

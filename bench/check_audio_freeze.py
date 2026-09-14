@@ -26,6 +26,15 @@ things here, each a way the freeze could look present and not be:
    window's key depends on the previous window's; and a stored window reads
    back with its key, trim, next start and latent, and not at all once its
    video is gone.
+5. **The plan lines windows up with the timeline.** `loop_plan.py`: on the
+   example song's timeline every entry after the first starts within half a
+   `GRID` step of its time, and so does every interior part length in a sweep,
+   against a control planner of full windows only, which misses; windows run
+   longest first; entries past the covered length drop; a too-short entry, a
+   bad timeline line, a label with no block, a block with no label and a cut
+   past its window's end are refused; lists get one use per entry, or one per
+   window with no timeline; and every input a preview skips is declared lazy
+   on the song node, with a copy missing one refused.
 
 The encoder is faked (zeros of the right shape) so this runs with no model,
 no CUDA and no server; the real audio VAE is exercised by
@@ -357,6 +366,8 @@ def check_resume(problems):
             ("a seed change", setter("74", "seed", 6), True),
             ("a filename change", setter("74", "filename_prefix", "Video/y"), True),
             ("an extent change", setter("74", "extent", "first_seconds"), True),
+            ("a timeline edit", setter("74", "timeline", "00:00 intro"), True),
+            ("the preview switch", setter("74", "preview", True), True),
             ("the reuse switch", setter("74", "reuse_windows", False), True)):
         g = copy.deepcopy(base)
         edit(g)
@@ -400,6 +411,134 @@ def check_resume(problems):
             _fail(problems, "resume: a latent whose video is gone read as a finished window")
 
 
+#: The example song's sections (`build_workflows._SONG_FLICKER_TIMELINE`) and
+#: its length in frames, rounded up from ffprobe's duration of
+#: `just-a-flicker.mp3` (read 2026-09-14): a fixture, not a claim about the file.
+FLICKER_TIMELINE = "00:00 intro\n00:10 verse\n00:32 chorus\n00:53 verse\n01:14 chorus\n01:35 bridge\n01:57 chorus\n02:18 outro"
+FLICKER_FRAMES = 3908
+
+
+def _refused(problems, label, call, needle=None):
+    try:
+        call()
+        _fail(problems, f"{label} was accepted")
+    except ValueError as exc:
+        if needle is not None and needle not in str(exc):
+            _fail(problems, f"{label}: the refusal did not name {needle!r} ({exc})")
+
+
+def lazy_problems(source: str) -> list[str]:
+    """Names in the song node's LAZY that its schema does not declare lazy=True, and LAZY itself missing."""
+    import ast
+    tree = ast.parse(source)
+    lazy = next((ast.literal_eval(n.value) for n in tree.body if isinstance(n, ast.Assign)
+                 and any(isinstance(t, ast.Name) and t.id == "LAZY" for t in n.targets)), None)
+    if not lazy:
+        return ["no LAZY tuple"]
+    declared = {c.args[0].value for c in ast.walk(tree)
+                if isinstance(c, ast.Call) and isinstance(c.func, ast.Attribute) and c.func.attr == "Input"
+                and c.args and isinstance(c.args[0], ast.Constant)
+                and any(k.arg == "lazy" and isinstance(k.value, ast.Constant) and k.value.value is True
+                        for k in c.keywords)}
+    return [f"{name} is in LAZY but not declared lazy" for name in lazy if name not in declared]
+
+
+def check_song_plan(problems):
+    import math
+    import loop_plan as lp
+
+    grid, half, ctx = lp.GRID, lp.GRID // 2, 39
+    entries = lp.parse_timeline(FLICKER_TIMELINE)
+    plan = lp.plan_windows(FLICKER_FRAMES, 345, ctx, entries)
+    if [i for i, _l in plan] != list(range(len(entries))):
+        _fail(problems, f"plan: the example song kept entries {[i for i, _l in plan]}")
+    covered = 0
+    for i, lengths in plan:
+        want = int(round(entries[i][0] * lp.FPS))
+        if i and abs(covered - want) > half:
+            _fail(problems, f"plan: {entries[i][1]} at {entries[i][0]}s starts at frame {covered}, not within "
+                            f"{half} of {want}")
+        if any(n not in lp.CHAIN_LENGTHS or n > 345 for n in lengths) or lengths != sorted(lengths, reverse=True):
+            _fail(problems, f"plan: {entries[i][1]} got windows {lengths}")
+        covered += sum(n - (0 if covered == 0 and j == 0 else ctx) for j, n in enumerate(lengths))
+    if not FLICKER_FRAMES <= covered < FLICKER_FRAMES + grid:
+        _fail(problems, f"plan: the example song's windows cover {covered} frames of {FLICKER_FRAMES}")
+
+    # every interior part length lands within half a step; a planner of full
+    # windows only is the control that shows the bound can fail
+    def adds(lengths):
+        return sum(n - ctx for n in lengths)
+
+    worst = max(abs(adds(lp.segment_lengths(t, False, False, 345, ctx)) - t) for t in range(102, 2500))
+    naive = max(abs(adds([345] * max(1, round(t / (345 - ctx)))) - t) for t in range(102, 2500))
+    if worst > half:
+        _fail(problems, f"plan: an interior part landed {worst} frames off its target")
+    if naive <= half:
+        _fail(problems, "plan: the full-windows control also landed within half a step; the sweep proves nothing")
+
+    whole = lp.plan_windows(3000, 345, ctx)
+    whole_frames = sum(n - (0 if j == 0 else ctx) for j, n in enumerate(whole[0][1]))
+    if len(whole) != 1 or whole[0][1][0] != 345 or not 3000 <= whole_frames < 3000 + grid:
+        _fail(problems, f"plan: with no timeline a 3000-frame track got {whole}")
+    short = lp.plan_windows(math.ceil(30 * lp.FPS), 345, ctx, entries)
+    if [i for i, _l in short] != [0, 1]:
+        _fail(problems, f"plan: a 30-second extent kept entries {[i for i, _l in short]}, not the first two")
+    _refused(problems, "plan: an entry too short for one window",
+             lambda: lp.plan_windows(2000, 345, ctx, lp.parse_timeline("00:00 a\n00:10 b\n00:12 c")), "'b'")
+    for label, text in (("a timeline not starting at 00:00", "00:05 a"),
+                        ("a timeline going backwards", "00:00 a\n00:00 b"),
+                        ("a timeline line with no label", "00:00"),
+                        ("a timeline line that is not mm:ss", "0:5 a")):
+        _refused(problems, f"timeline: {label}", lambda text=text: lp.parse_timeline(text))
+
+    if lp.parse_prompt_blocks("plain prompt") != {None: "plain prompt"}:
+        _fail(problems, "blocks: a prompt with no --- line was not one block")
+    two = lp.parse_prompt_blocks("--- verse\nV\n--- chorus\nC")
+    if two != {"verse": "V", "chorus": "C"}:
+        _fail(problems, f"blocks: labelled blocks read as {two}")
+    for label, text in (("text before the first label", "intro\n--- verse\nV"),
+                        ("a --- line with no label", "---\nV"),
+                        ("two blocks with one label", "--- a\nX\n--- a\nY"),
+                        ("an empty block", "--- a\n\n--- b\nY")):
+        _refused(problems, f"blocks: {label}", lambda text=text: lp.parse_prompt_blocks(text))
+    labelled = lp.parse_prompt_blocks("--- intro\nI\n--- verse\nV")
+    _refused(problems, "blocks: labelled blocks with no timeline", lambda: lp.texts_for_entries(labelled, []))
+    _refused(problems, "blocks: a timeline label with no block",
+             lambda: lp.texts_for_entries(labelled, lp.parse_timeline("00:00 intro\n00:10 chorus")), "chorus")
+    _refused(problems, "blocks: a block matching no timeline label",
+             lambda: lp.texts_for_entries(labelled, lp.parse_timeline("00:00 intro")), "verse")
+
+    song = lp.plan_song(FLICKER_FRAMES, 345, ctx, "one prompt", FLICKER_TIMELINE)
+    if len(song.uses) != len(entries):
+        _fail(problems, f"lists: {len(song.uses)} uses for {len(entries)} timeline entries")
+    windows = lp.place_windows(song, [f"text {i}" for i in range(len(entries))], ctx)
+    for w in windows:
+        if w.text != f"text {w.entry}":
+            _fail(problems, f"lists: window {w.number} of entry {w.entry} took {w.text!r}")
+    for a, b in zip(windows, windows[1:]):
+        if abs(b.start - (a.start + (a.frames - ctx) / lp.FPS)) > 1e-9 or \
+                b.first_frame != a.first_frame + a.frames - (ctx if a.number > 1 else 0):
+            _fail(problems, f"lists: window {b.number} starts at {b.start}s, frame {b.first_frame}")
+            break
+    plain = lp.plan_song(3000, 345, ctx, "one prompt", "")
+    if len(plain.uses) != len(plain.segments[0][1]):
+        _fail(problems, f"lists: with no timeline {len(plain.uses)} uses for {len(plain.segments[0][1])} windows")
+    cut = lp.plan_song(600, 345, ctx, "At 00:13.000, the shot cuts", "")
+    _refused(problems, "cuts: a cut past a window's end",
+             lambda: lp.place_windows(cut, ["At 00:13.000, the shot cuts"] * len(cut.uses), ctx), "window 2")
+    early = lp.plan_song(600, 345, ctx, "At 00:04.500, the shot cuts", "")
+    lp.place_windows(early, ["At 00:04.500, the shot cuts"] * len(early.uses), ctx)
+
+    source = (REPO / "audio_freeze_song.py").read_text(encoding="utf-8")
+    for p in lazy_problems(source):
+        _fail(problems, f"preview: {p}")
+    anchor = 'io.Model.Input("model", lazy=True)'
+    if source.count(anchor) != 1:
+        _fail(problems, f"preview: the control lost its anchor {anchor!r}")
+    elif not lazy_problems(source.replace(anchor, 'io.Model.Input("model")')):
+        _fail(problems, "preview: a song node whose model input is not lazy still passed")
+
+
 def main() -> int:
     problems: list[str] = []
     check_slice(problems)
@@ -407,6 +546,7 @@ def main() -> int:
     check_execute(problems)
     check_window_geometry(problems)
     check_resume(problems)
+    check_song_plan(problems)
     n, frozen = check_graphs(problems)
     print(f"  {n} api graphs walked, {frozen} carry {FREEZE}, none carry {STOCK_MASK}"
           if not any(STOCK_MASK in p for p in problems) else
@@ -417,7 +557,8 @@ def main() -> int:
             print(f"    - {pr}")
         return 1
     print("  ok    slice on the grid and exact; nested mask survives the sampler's "
-          "reshape and a flat one is refused; every freeze graph is wired end to end")
+          "reshape and a flat one is refused; every freeze graph is wired end to end; "
+          "resume keys; the loop plan lines up with its timeline and its refusals and controls bite")
     return 0
 
 

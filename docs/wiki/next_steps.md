@@ -37,16 +37,15 @@ own below the rule.
   `0a2380f`. Stage 3, prompt lists and wildcard files: `1270a2d`, `3fb743b`.
   One fill path for every loop node, `MiniMaxH3FillPromptLists` and the example
   `workflows/h3_text_to_video_audio_freeze_song_lists_pdd8_api.json`: `eac1a6f`.
-  Song graphs' own notes and the API list guard: `e07c462`. **Agreed next and
-  not started** (owner, after reviewing the footguns): simplify before
-  extending. (1) Cut `prompt_mode`, random window lengths, `frames:` lines,
-  the implicit wildcard fallback with its path and JSON lookups, and Fill
-  Prompt Lists' `count`; rename the list node's `seed` to `shuffle` and fix
-  Fill Prompt Lists' `index` by default. (2) An optional timeline on the node
-  (`mm:ss label` lines, one prompt block per label) that lines windows up with
-  the given times, a list moving to its next value per timeline entry. (3) A
-  preview switch that reports each window's time range and filled prompt
-  without rendering or loading models.
+  Song graphs' own notes and the API list guard: `e07c462`. **The simplification
+  the owner agreed, built the same day** (CHANGELOG 0.108.0,
+  `git log -- loop_plan.py`): the cuts, the list node's `shuffle`, Fill Prompt
+  Lists' fixed `index`, the `timeline` and the `preview` switch. Preview
+  exercised on the served example graph:
+  `bench/results/2026-09-14_audio_freeze_song_timeline_smoke.jsonl`. **Still
+  owed:** the full-length example render (a throwaway first run), resume on
+  the reference song graph, and one queue from the editor for the workflow
+  chunk; song graphs the owner saved from the editor need re-making.
 - **Frozen-audio loop, stage 1 of 4 built** (`audio_freeze_song.py`,
   `loop_output.py`, `workflows/h3_text_to_video_audio_freeze_song_ref_pdd8_api.json`):
   the track and each distinct prompt encoded before any window samples,

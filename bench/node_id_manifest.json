@@ -68,6 +68,8 @@
       "sampler",
       "sigmas",
       "prompt",
+      "timeline",
+      "preview",
       "width",
       "height",
       "window_frames",
@@ -78,8 +80,6 @@
       "level",
       "filename_prefix",
       "crf",
-      "prompt_mode",
-      "window_mode",
       "save_metadata_png",
       "keep_windows",
       "references",
@@ -159,7 +159,6 @@
     "inputs": [
       "prompt",
       "index",
-      "count",
       "lists"
     ],
     "node_id": "MiniMaxH3FillPromptLists",
@@ -273,7 +272,7 @@
       "name",
       "source",
       "order",
-      "seed",
+      "shuffle",
       "lists"
     ],
     "node_id": "MiniMaxH3PromptList",

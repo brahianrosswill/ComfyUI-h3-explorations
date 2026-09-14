@@ -32,7 +32,10 @@ point: a diff to this file in a pull request is the review prompt.
 
 **If this check goes red, the default answer is to revert the rename, not to
 update the manifest.** Update it only when adding a node, or appending an input
-or output at the END, which are the two changes `docs/comfy_notes.md` permits.
+or output at the END, which are the two changes `docs/comfy_notes.md` permits,
+or when the owner has accepted re-making their saved graphs of a node whose
+inputs are removed or regrouped (the same section, since shipped graphs went
+API-only on 2026-09-14).
 
 ## Running it
 

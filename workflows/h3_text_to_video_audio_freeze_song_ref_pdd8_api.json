@@ -158,14 +158,23 @@
       "level": "clip_guard",
       "filename_prefix": "Video/h3_t2v_audio_freeze_song_ref_pdd8",
       "crf": 19,
-      "prompt_mode": "random",
-      "window_mode": "uniform",
+      "timeline": "",
+      "preview": false,
       "save_metadata_png": true,
       "keep_windows": true,
       "reuse_windows": true,
       "references": [
         "50",
         0
+      ]
+    }
+  },
+  "75": {
+    "class_type": "PreviewAny",
+    "inputs": {
+      "source": [
+        "74",
+        1
       ]
     }
   },
