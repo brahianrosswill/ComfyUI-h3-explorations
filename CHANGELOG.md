@@ -6,6 +6,27 @@ artifact.
 
 ## 0.107.0
 
+### Added
+
+- **`MiniMaxH3ChannelBalance`** (`channel_balance.py`): rebalances q/k
+  channels on the transformer blocks whose `k_norm.weight` is lopsided, folded
+  into the norm weights through `ModelPatcher.add_patches`, so INT8 attention
+  (sage and Sol) quantizes those blocks with less error at zero render-time
+  cost. Combo `balance`, **off by default**; "loud blocks (from weights)"
+  selects 45, 48, 49 on the shipped checkpoint; "named blocks" takes
+  `dense_blocks` syntax. An experiment under `docs/SOLATTN.md`'s decision
+  standard, wired by no workflow. `bench/check_channel_balance.py` pins the
+  fold; `bench/grade_channel_balance.py` grades the Sol kernel's INT8 term
+  plain against balanced on a capture. Why: `docs/research/2026-09-14_block49_quant_error.md`.
+- **`docs/research/2026-09-14_block49_quant_error.md`**: the mechanism behind
+  block 49's INT8 error (loud K-norm channels under a shared quantization
+  scale, amplified by the block's peaky attention), the weights ranking of
+  all fifty blocks, and the measured fold.
+- **`docs/SOLATTN.md`, "The defaults, re-read against the sage-side error
+  records, 2026-09-14"**: the shipped Sol defaults knob by knob against the
+  sage fork's records, labelled by which error term each rests on.
+  `dense_blocks="0-1"` decided against (`docs/wiki/decisions.md`).
+
 ### Removed
 
 - **UI-format workflows.** Every UI twin in `workflows/` is gone; shipped

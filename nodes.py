@@ -15,6 +15,7 @@ from .keyframe_canvas import MiniMaxH3KeyframeCanvas
 from .marker_arms import MiniMaxH3MarkerArm
 from .conditioning import MiniMaxH3Conditioning
 from .exact_blocks import MiniMaxH3ExactBlocks
+from .channel_balance import MiniMaxH3ChannelBalance
 from .h3_encoder_loader import MiniMaxH3EncoderLoader
 from .pdd_lora import MiniMaxH3PDDLoRA
 from .audio_carry_probe import MiniMaxH3AudioCarryProbe
@@ -278,7 +279,9 @@ class H3ExplorationsExtension(ComfyExtension):
                 MiniMaxH3EncodeTrack,
                 MiniMaxH3AudioAttentionGain, MiniMaxH3AudioFreezeSong,
                 MiniMaxH3ReferenceReport, MiniMaxH3PromptList,
-                MiniMaxH3FillPromptLists]
+                MiniMaxH3FillPromptLists,
+                # appended 2026-09-14; insertion anywhere earlier would move what follows
+                MiniMaxH3ChannelBalance]
 
 
 async def comfy_entrypoint() -> H3ExplorationsExtension:

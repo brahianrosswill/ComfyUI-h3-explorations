@@ -58,6 +58,7 @@ under `docs/` that no link from `CLAUDE.md` or this wiki reaches.
 | [`docs/research/official_weights_metadata.md`](../../docs/research/official_weights_metadata.md) | what the release declares against what ComfyUI assumes. Read before using a marker |
 | [`docs/research/h3_partition_distance.md`](../../docs/research/h3_partition_distance.md) | how far apart fl2va and ref2va are, per component |
 | [`docs/research/merge_requantisation.md`](../../docs/research/merge_requantisation.md) | what happens to a LoRA merged onto an int8 module. Stored weights only |
+| [`docs/research/2026-09-14_block49_quant_error.md`](../../docs/research/2026-09-14_block49_quant_error.md) | why the last block's INT8 attention error is five times block 0's (loud K-norm channels under a shared scale, amplified by peaky attention), which blocks share it (45, 48 from the weights), and the free fold that recovers part of it (`MiniMaxH3ChannelBalance`, off by default) |
 | [`docs/research/quant_levers.md`](../../docs/research/quant_levers.md) | what can be changed about H3's quantisation and which levers are closed |
 | [`docs/research/h3_dit_implementations.md`](../../docs/research/h3_dit_implementations.md) | the DiT across every implementation available here; diffusers is the reference of record |
 | [`docs/research/comfyui_h3_t2va_trace.md`](../../docs/research/comfyui_h3_t2va_trace.md) | what ComfyUI's own code does, call by call, for one t2va render |

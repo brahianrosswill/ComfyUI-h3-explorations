@@ -2305,22 +2305,30 @@ block-49 K balancing into the norm weights.** As an EXPERIMENT under this
 page's decision standard, not a default. Steps, cheapest first, none of
 them a render:
 
-1. Rank all 50 blocks for loud channels from `k_norm.weight` alone (the
-   attribution says the peaks are a weights property, identical in fl2va
-   and ref2va to ~0.3%). No card. Blocks 41-48 were never captured, and
-   this is the only way to know whether 49 is alone.
-2. Fold a pair-equal a=0.5 `s` into block 49's q/k norm weights at load,
-   gated per block. Bit-identical routing is the expected result; check
-   `blk_cnt` under `H3_SOL_OBSERVE` on one armed render if the
-   invariance argument is doubted.
-3. Grade with `bench/analyze_sol_error.py` on the surviving captures:
-   `quant_l2` at block 49 should drop by roughly a fifth if Sol's kernel
-   quantizes K with a shared channel scale the way sage does; if it does
-   not move, the kernel's scale granularity differs and the fold helps
-   only the sage steps (the dense window, and every `dense_blocks`
-   entry).
+1. ~~Rank all 50 blocks for loud channels from `k_norm.weight` alone.~~
+   **Done 2026-09-14**, `bench/check_channel_balance.py` prints it: top-4
+   K-norm energy share 70% at block 49, 31% at 45, 25% at 48, 4-6% at every
+   other block. 49 is not alone; 45 and 48 were never captured.
+2. ~~Fold a pair-equal a=0.5 `s` into the q/k norm weights at load, gated
+   per block.~~ **Built 2026-09-14**: `MiniMaxH3ChannelBalance`
+   (`channel_balance.py`), combo `balance` off by default, factor from the
+   checkpoint's own norm weights so no capture is needed. The per-channel
+   (head-shared) factor gets about half the per-head gain measured in the
+   sage fork and is exactly neutral on a flat block;
+   `docs/research/2026-09-14_block49_quant_error.md` has the table.
+   Routing invariance is asserted by `bench/grade_channel_balance.py`
+   (eager Sol plain against balanced) before it reports anything.
+3. ~~Grade with `bench/grade_channel_balance.py`.~~ **Done 2026-09-14**,
+   `bench/results/2026-09-14_channel_balance_{b49_s15,b0_s15}.json`: Sol's
+   INT8 term at block 49 falls from 0.0265 to 0.0231 (-12.9%) with the
+   weights-derived factor, sage's on the same heads from 0.0487 to 0.0453;
+   block 0 is neutral on both; routing is unchanged (the eager reference
+   moves by exactly the bf16 re-rounding of the inputs and no more). The
+   kernel source agrees (`sol_layout.cuh`, `quant_k_rows`: per key row,
+   mean-centred, one scale across the row's channels), see the research
+   page. The fold helps every step, dense window and routed alike.
 4. Only then the blind multi-scene comparison this page requires of any
-   shipped default.
+   shipped default. No workflow wires the node until then.
 
 What this cannot claim: that a fifth less INT8 error at the last block is
 visible. Nothing in the sage records is perceptual.

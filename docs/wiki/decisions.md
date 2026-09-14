@@ -172,6 +172,23 @@ Older history lives elsewhere and is not copied here:
   The same section gains the second ceiling, the CUDA v-side `uint32` wrap in
   the sage fork's `csrc/fused/fused.cu`, from the fork's own CHANGELOG.
 
+## 2026-09-14
+
+- **`dense_blocks="0-1"` decided against.** The roadmap's open call since
+  2026-08-16. Two instruments that share no code agree the first blocks carry
+  the least error on both terms; `dense_blocks` stays `""`. Reasoning in
+  `docs/roadmap.md` under the original item and `docs/SOLATTN.md`, "The
+  defaults, re-read against the sage-side error records, 2026-09-14".
+- **`MiniMaxH3ChannelBalance` added, off by default, an experiment.** Folds a
+  per-channel q/k rebalancing into the norm weights of the blocks whose
+  K-norm is lopsided (45, 48, 49 on the shipped checkpoint). No workflow
+  wires it; no default changed. Why the blocks are lopsided and what the fold
+  buys: `docs/research/2026-09-14_block49_quant_error.md`.
+- **Corrected: "K offset predicts `smooth_k`'s benefit."** The sage fork's
+  real-activation spike printed that inference; graded across ten cells the
+  benefit tracks block depth and error magnitude, not the offset, and the
+  line is removed there. `smooth_k` stays off.
+
 ## 2026-09-12
 
 - **PDD reopened for the audio-freeze lane only** (owner: "worth testing if
