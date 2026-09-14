@@ -4,6 +4,61 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.101.0
+
+### Added
+
+- **`workflows/h3_text_to_video_audio_freeze_song_ref_pdd8.json`**: the PDD8
+  whole-song graph with the subject anchored by a reference still (owner's
+  ask, 2026-09-14). The dancer scene's still and reference prompt from
+  `h3_config.REFVIEW2_SCENES` feed the song node's new `references` input
+  through an Append Ref Image. References on fl2va work (owner); whether a
+  reference holds identity across a whole song has not been judged.
+- **`MiniMaxH3AudioFreezeSong.references`**, an optional socket appended last:
+  reference stills presented with every window's prompt through
+  `MiniMaxH3ReferenceConditioning`'s own execute.
+- **`save_metadata_png`** on `MiniMaxH3AudioFreezeSong` and
+  `MiniMaxH3JoinWindows`, and **`keep_windows`** on the song node, both
+  appended last and on by default. `bench/node_id_manifest.json` records the
+  appended inputs.
+- **`loop_output.py`**: the file writer both nodes share (window paths, the
+  join and mux, the embedded metadata, the PNG, the preview).
+
+### Changed
+
+- **The song node encodes before it samples**: the track once, then each
+  distinct prompt once (with references, each distinct prompt and frame
+  count), then every window. It used to call the conditioner inside the
+  window loop, running Qwen3-VL for every window. Continuity between windows
+  is still the previous window's frozen latent tail; nothing per window
+  reaches the encoder.
+- **Both nodes embed the prompt and workflow in the finished mp4** as a
+  `comment` tag in VHS's format, write a first-frame PNG carrying the same
+  when `save_metadata_png` is on, and show a preview. Before, neither wrote
+  any metadata or showed a preview.
+- **The song node's window files moved** from `<prefix>_NNNNN_wNN.mp4` beside
+  the finished file to `<prefix>_windows/<prefix>_window_N.mp4`, overwritten
+  in place by the next run of the graph.
+- **The generator spells an Append Ref Image once**, `_append_image_inputs`
+  and `_append_image_widgets`, for the reference graphs and the song graph
+  alike.
+
+### Fixed
+
+- **The song UI graphs loaded with every widget after `seed` one slot late.**
+  The frontend draws a control widget for any INT named `seed`
+  (`useIntWidget.ts`, `control_after_generate ?? name in ('seed',
+  'noise_seed')`); the node declared none and the generator wrote no value for
+  it, so a copy saved from the editor read `clip_guard` as `audio_mask`, the
+  filename prefix as `level`, and so on. The node now declares
+  `control_after_generate`, the generator writes `randomize` (the frontend's
+  default for it), and `bench/check_workflow_schema.py::widget_inputs` budgets
+  the slot by the frontend's name rule, so the next undeclared `seed` goes
+  red. Found by a subagent comparing the UI and API workflow forms.
+- **`bench/check_ref_prompt_labels.py` and
+  `bench/check_prompt_guide_conformance.py` read the song node's prompt**; a
+  song graph with references is graded as a reference graph.
+
 ## 0.100.0
 
 ### Added

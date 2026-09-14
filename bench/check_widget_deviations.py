@@ -157,12 +157,12 @@ DECLARED: dict[tuple[str, str], tuple] = {
                 "end of the track. Generator knob `freeze_song_seconds`."),
     ("MiniMaxH3AudioFreezeSong", "prompt_mode"):
         ("ARM", "'uniform' on the shipped song graph (one prompt for every "
-                "window) and 'random' on the PDD8 song graph (each window draws "
+                "window) and 'random' on the PDD8 song graphs (each window draws "
                 "a block from the seed, so every shot recurs across a long "
                 "song), against the node default 'cycle'; generator knob "
                 "`freeze_song_mode`."),
     ("MiniMaxH3AudioFreezeSong", "audio_mask"):
-        ("ARM", "0.25 on the PDD8 song graph, the loose mask, which read "
+        ("ARM", "0.25 on the PDD8 song graphs, the loose mask, which read "
                 "slightly better than frozen on the dancer at two seeds "
                 "(bench/results/2026-09-12_audio_freeze_step2_verdict.json); "
                 "the node default 0.0 is the frozen mask. Generator knob "

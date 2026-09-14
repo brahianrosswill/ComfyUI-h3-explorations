@@ -92,6 +92,10 @@ sys.path.insert(0, str(REPO))
 from h3_config import GRAPH_DIRS, graph_paths  # noqa: E402
 
 REF_NODES = ("MiniMaxH3ReferenceToVideo", "MiniMaxH3ReferenceConditioning")
+#: Nodes that compile a `references` chain themselves and carry the prompt
+#: that names it. A ref graph only when the chain is wired: an unwired song
+#: node has no labels for its prompt to agree with.
+REF_WHEN_WIRED = ("MiniMaxH3AudioFreezeSong",)
 
 
 def wired_labels(inputs, graph=None):
@@ -137,7 +141,10 @@ def main():
     for path in graph_paths(WORKFLOWS, "*_api.json"):
         doc = json.loads(path.read_text(encoding="utf-8"))
         for node in doc.values():
-            if isinstance(node, dict) and node.get("class_type") in REF_NODES:
+            if isinstance(node, dict) and (
+                    node.get("class_type") in REF_NODES
+                    or (node.get("class_type") in REF_WHEN_WIRED
+                        and "references" in (node.get("inputs") or {}))):
                 # the whole doc rides along: an ordered graph's plan lives
                 # in the append chain, not in this node's inputs
                 graphs.append((path.name, node["inputs"], doc))

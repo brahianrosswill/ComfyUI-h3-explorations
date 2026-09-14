@@ -61,7 +61,6 @@ import logging
 import math
 import os
 import shutil
-import subprocess
 import wave
 from collections.abc import Mapping
 
@@ -635,6 +634,11 @@ class MiniMaxH3JoinWindows(io.ComfyNode):
         ]
         for i in range(2, 13):
             inputs.append(io.Custom("VHS_FILENAMES").Input(f"window_{i}", optional=True))
+        # appended last: saved graphs address inputs by position
+        inputs.append(io.Boolean.Input(
+            "save_metadata_png", default=True,
+            tooltip=("Also write <prefix>_NNNNN.png, the first frame carrying the prompt and workflow, "
+                     "beside the video. The video carries both either way.")))
         return io.Schema(
             node_id="MiniMaxH3JoinWindows",
             is_output_node=True,
@@ -649,11 +653,14 @@ class MiniMaxH3JoinWindows(io.ComfyNode):
             inputs=inputs,
             outputs=[io.Custom("VHS_FILENAMES").Output(display_name="Filenames"),
                      io.String.Output(display_name="path")],
+            hidden=[io.Hidden.prompt, io.Hidden.extra_pnginfo],
         )
 
     @classmethod
-    def execute(cls, audio, filename_prefix, window_1, **windows) -> io.NodeOutput:
+    def execute(cls, audio, filename_prefix, window_1, save_metadata_png=True, **windows) -> io.NodeOutput:
         import folder_paths
+        # imported here: loop_output imports this module's ffmpeg and wav helpers
+        from .loop_output import join_and_mux, saved_outputs, write_metadata_png
         files = []
         for key in ["window_1"] + [f"window_{i}" for i in range(2, 13)]:
             val = window_1 if key == "window_1" else windows.get(key)
@@ -667,22 +674,16 @@ class MiniMaxH3JoinWindows(io.ComfyNode):
         full_out, filename, counter, subfolder, _ = folder_paths.get_save_image_path(filename_prefix, out_dir)
         os.makedirs(full_out, exist_ok=True)
         stem = f"{filename}_{counter:05d}"
-        list_path = os.path.join(full_out, stem + "_concat.txt")
-        wav_path = os.path.join(full_out, stem + "_track.wav")
         out_path = os.path.join(full_out, stem + ".mp4")
-        with open(list_path, "w") as f:
-            for p in files:
-                f.write("file '" + p.replace("'", "'\\''") + "'\n")
         waveform, rate, _ = _stereo(audio)
-        _write_wav(wav_path, waveform, rate)
-        cmd = [_ffmpeg(), "-y", "-v", "error", "-f", "concat", "-safe", "0", "-i", list_path,
-               "-i", wav_path, "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy", "-c:a", "aac",
-               "-b:a", "192k", "-shortest", out_path]
-        subprocess.run(cmd, check=True, capture_output=True)
-        os.remove(list_path)
-        os.remove(wav_path)
+        graph = getattr(cls.hidden, "prompt", None)
+        extra = getattr(cls.hidden, "extra_pnginfo", None)
+        join_and_mux(files, waveform, rate, out_path, full_out, stem, prompt=graph, extra_pnginfo=extra)
+        png_path = (write_metadata_png(os.path.join(full_out, stem + ".png"), out_path, graph, extra)
+                    if save_metadata_png else None)
+        filenames, preview = saved_outputs(out_path, subfolder, png_path)
         logger.info("[h3] MiniMaxH3JoinWindows: %d windows -> %s", len(files), out_path)
-        return io.NodeOutput((True, [out_path]), out_path)
+        return io.NodeOutput(filenames, out_path, ui=preview)
 
 
 def _parse_blocks(text: str, count: int = 50):

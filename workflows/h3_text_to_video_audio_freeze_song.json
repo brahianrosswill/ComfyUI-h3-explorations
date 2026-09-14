@@ -598,6 +598,12 @@
           "name": "sigmas",
           "type": "SIGMAS",
           "link": 19
+        },
+        {
+          "name": "references",
+          "type": "MINIMAX_H3_REFERENCES",
+          "link": null,
+          "shape": 7
         }
       ],
       "outputs": [
@@ -629,12 +635,15 @@
         "first_seconds",
         30.0,
         730451892,
+        "randomize",
         0.0,
         "clip_guard",
         "Video/h3_t2v_audio_freeze_song",
         19,
         "uniform",
-        "uniform"
+        "uniform",
+        true,
+        true
       ],
       "title": "Whole track: windows planned from the song"
     },
@@ -658,7 +667,7 @@
         "Node name for S&R": "MarkdownNote"
       },
       "widgets_values": [
-        "## A whole track from one node\n\n`MiniMax H3 Audio Freeze Song` plans the windows from the track's length\n(`window_frames` long, `context_frames` of the previous window frozen at\neach head, the last window the smallest length on both clocks that reaches\nthe end), encodes the track once, and renders the windows one after another\ninside itself: each window's conditioning from the prompt, the track's slice\nfrozen in its audio rows, the previous window's tail frozen as context, its\nnew frames written to a file at once. At the end the files are joined\nwithout re-encoding and the full track muxed over them. Nothing holds more\nthan one window of frames, so the track's length is not a memory question.\n\n**Prompt.** One block for every window, or blocks separated by a line of\n`---`: `cycle` uses them in order (the last repeating), `uniform` uses the\nfirst everywhere, `random` draws one per window from the seed. A block may\nstart with `frames: N` to set that window's length (141, 192, 243, 294 or\n345).\n\n**`extent`** is the whole track, or its first N seconds; the shipped graph\ntakes the quick look. The seed advances by one per window.\n\n**Cost.** Attention is quadratic in a window's packed sequence\n(`bench/preflight_graph.py` prices one), so shorter windows are cheaper per\nsecond of song, at the price of more seams. Sage and Sol on the model apply\ninside each window as on any graph.\n\nThe first run of this node on 2026-09-12 had not happened when it shipped;\ntreat it as a throwaway and read the report. `docs/h3_audio_freeze.md`.\n"
+        "## A whole track from one node\n\n`MiniMax H3 Audio Freeze Song` plans the windows from the track's length\n(`window_frames` long, `context_frames` of the previous window frozen at\neach head, the last window the smallest length on both clocks that reaches\nthe end), encodes the track and every distinct prompt once before anything\nsamples, and renders the windows one after another inside itself: the\ntrack's slice frozen in each window's audio rows, the previous window's tail\nfrozen as context, its new frames written to `<prefix>_windows/` at once. At\nthe end the files are joined without re-encoding and the full track muxed\nover them. Nothing holds more than one window of frames, so the track's\nlength is not a memory question.\n\n**Prompt.** One block for every window, or blocks separated by a line of\n`---`: `cycle` uses them in order (the last repeating), `uniform` uses the\nfirst everywhere, `random` draws one per window from the seed. A block may\nstart with `frames: N` to set that window's length (141, 192, 243, 294 or\n345). Each distinct block is encoded once, however many windows use it.\n\n**References.** Wire an Append Ref Image chain to `references` and every\nwindow's prompt is presented with those stills, encoded once per distinct\nprompt. Write the prompt in the reference format, naming each still as\n`<Picture N>`.\n\n**`extent`** is the whole track, or its first N seconds; the shipped graph\ntakes the quick look. The seed advances by one per window.\n\n**Files.** The finished `<prefix>_NNNNN.mp4` carries the prompt and the\nworkflow; `save_metadata_png` also writes its first frame as a PNG carrying\nthe same, which loads back into ComfyUI. Window files stay in\n`<prefix>_windows/` and the next run of the graph overwrites them;\n`keep_windows` off removes this run's after the join.\n\n**Cost.** Attention is quadratic in a window's packed sequence\n(`bench/preflight_graph.py` prices one), so shorter windows are cheaper per\nsecond of song, at the price of more seams; reference stills add rows to\nevery window. Sage and Sol on the model apply inside each window as on any\ngraph.\n\nThe encode-first order, references and the window folder are new on\n2026-09-14: treat the first run as a throwaway and read the report.\n`docs/h3_audio_freeze.md`.\n"
       ],
       "title": "Whole track: how it works"
     }

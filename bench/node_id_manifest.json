@@ -79,7 +79,10 @@
       "filename_prefix",
       "crf",
       "prompt_mode",
-      "window_mode"
+      "window_mode",
+      "save_metadata_png",
+      "keep_windows",
+      "references"
     ],
     "node_id": "MiniMaxH3AudioFreezeSong",
     "outputs": [
@@ -191,7 +194,8 @@
       "window_9",
       "window_10",
       "window_11",
-      "window_12"
+      "window_12",
+      "save_metadata_png"
     ],
     "node_id": "MiniMaxH3JoinWindows",
     "outputs": [

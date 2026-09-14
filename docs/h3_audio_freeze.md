@@ -1,6 +1,6 @@
 # Freezing a known audio track: audio-driven video on MiniMax H3
 
-last updated: 2026-09-12
+last updated: 2026-09-14
 
 **The owner of this lane.** Opened 2026-09-12 by the owner: drop a song of any
 length, keep it exactly, and have the picture move to it, the way the owner's
@@ -220,11 +220,23 @@ the audio attention gain knob (`MiniMaxH3AudioAttentionGain`,
 `bench/audio_freeze_gain_arms.json` renders key and value gains of two on the
 PDD8 chain). The first item tomorrow is one short run of the song graph.
 
+**2026-09-14, the song node's second shape** (`audio_freeze_song.py`,
+`loop_output.py`): it encodes the track and each distinct prompt once
+before any window samples, takes reference stills with every window's
+prompt, writes its window files to `<prefix>_windows/`, and embeds the prompt
+and workflow in the finished file. The stages after it (resume, prompt
+lists and wildcard files, the chain's own writer) are in
+`docs/wiki/next_steps.md`.
+
 **Next, in order.**
 
 5. **First-frame keyframe**: the LTX pack's init-image pattern, one graph
-   change on the freeze graph. Needed before the loop, because the loop
-   anchors each window on a frame.
+   change on the freeze graph, for a first window
+   (`workflows/h3_first_frame_to_video_audio_freeze.json`). **Corrected
+   2026-09-14:** this said the keyframe was needed before the loop because
+   the loop anchors each window on a frame. The loop anchors on the previous
+   window's frozen latent tail, and no per-window image goes to the encoder
+   (`docs/wiki/decisions.md`).
 6. **The loop**: one shot per window (owner, 2026-09-12 evening), windows
    of different lengths allowed, each on both clocks (39 plus multiples of
    51 frames: 141, 192, 243, 294, 345), the context on the same grid, the
@@ -235,8 +247,11 @@ PDD8 chain). The first item tomorrow is one short run of the song graph.
    in the packed sequence (`bench/preflight_graph.py` prices it), a seam
    re-pays its context, and short windows sit inside the trained range.
    The two-window seam render at 345 frames is the first join to look at.
-   Expect identity drift across windows first; the fix is the ref2va
-   checkpoint with a per-window reference image.
+   Expect identity drift across windows first; the lever is a fixed
+   reference still presented with every window's prompt, which fl2va takes
+   (owner, 2026-09-14): the song node's `references` input and
+   `workflows/h3_text_to_video_audio_freeze_song_ref_pdd8.json`. Corrected
+   2026-09-14 from "the ref2va checkpoint with a per-window reference image".
 7. **Then the ideas in section 5**, ordered by what the verdicts so far
    suggest: the stem (once a separated stem is on disk), the hybrid and the
    ref2va-checkpoint freeze at the loop stage, guide audio and the ceiling

@@ -159,7 +159,9 @@
       "filename_prefix": "Video/h3_t2v_audio_freeze_song",
       "crf": 19,
       "prompt_mode": "uniform",
-      "window_mode": "uniform"
+      "window_mode": "uniform",
+      "save_metadata_png": true,
+      "keep_windows": true
     }
   }
 }

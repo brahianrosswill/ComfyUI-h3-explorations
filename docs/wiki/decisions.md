@@ -15,6 +15,41 @@ Older history lives elsewhere and is not copied here:
   decisions" and forward-plan sections.
 - `bench/results/`: the verdict records, each with its conditions.
 
+## 2026-09-14
+
+- **Frozen-audio loops take design decisions for four stages** (owner): the
+  song node keeps its window files in a per-graph working folder
+  (`<prefix>_windows/`) rather than a folder deleted after the join, so a
+  later stage can resume from the first changed window; the shot chain gets
+  its own window writer on the same layout; the prompt widgets lose frontend
+  dynamic prompts so `{name}` placeholders survive to a list node with its
+  own seed; wildcard files live in a registered `models/wildcards` folder.
+  Encoding comes before sampling: the track and each distinct prompt once.
+  `docs/wiki/next_steps.md` carries the stages; stage one is
+  `audio_freeze_song.py` and `loop_output.py`.
+- **A loop feeds the encoder no per-window image** (owner, after discussion).
+  A frame from the previous window would carry drift forward and force an
+  encode between windows; the anchor for identity is a fixed reference still.
+  `docs/h3_audio_freeze.md` step 5 said a first-frame keyframe was "needed
+  before the loop, because the loop anchors each window on a frame"; the loop
+  shipped anchored on the previous window's frozen latent tail. Corrected in
+  place.
+- **References work on the fl2va checkpoint** (owner: done often). Three
+  places said or implied otherwise and are corrected:
+  `MiniMaxH3ReferenceConditioning`'s description ("Use an H3 reference
+  checkpoint"), `docs/h3_geometry_and_nodes.md`'s node table (fl2va "for
+  t2v/i2v, ref2va for reference-to-video"), and `docs/h3_audio_freeze.md`
+  step 6 ("the fix is the ref2va checkpoint with a per-window reference
+  image").
+- **The song node's seed has a control widget.** The generator's comment said
+  "no control widget: the node's seed input declares none"; the frontend draws
+  one by name for any INT called `seed` (`useIntWidget.ts`), so the shipped
+  song UI graphs loaded shifted. The node declares it now
+  (`audio_freeze_song.py`, the `seed` input).
+- **The song node's docstring and graph note said its first run had not
+  happened.** `bench/results/2026-09-12_audio_freeze_song_smoke.jsonl` records
+  one. The docstring points there now.
+
 ## 2026-09-13
 
 - **The AWQ lane's code is deleted** (owner). The lane closed on 2026-08-27

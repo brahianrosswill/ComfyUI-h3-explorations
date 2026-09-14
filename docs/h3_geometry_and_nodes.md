@@ -1,6 +1,6 @@
 # MiniMax H3: valid geometry, and which nodes to use
 
-Last updated: 2026-09-08.
+Last updated: 2026-09-14.
 
 Everything here is read out of ComfyUI's own `comfy_extras/nodes_minimax_h3.py`
 or measured on a 4090, not inferred from community lore.
@@ -99,7 +99,7 @@ into runs rather than tagging it wholesale.
 
 | node | notes |
 |---|---|
-| Load Diffusion Model (`UNETLoader`) | `fl2va` checkpoint for t2v/i2v, `ref2va` for reference-to-video |
+| Load Diffusion Model (`UNETLoader`) | `fl2va` checkpoint for t2v/i2v, and it takes reference images too (owner, 2026-09-14); `ref2va` for reference-to-video |
 | `CLIPLoader` | Qwen3-VL-32B text encoder, type `minimax`, for a native Comfy H3-format artifact. This pack's generated graphs wire `MiniMaxH3EncoderLoader` instead (below), which is the same load plus the guards core lacks; `h3_config.MODELS["clip"]` names the file |
 | `VAELoader` x2 | video VAE and audio VAE are separate loaders |
 | `MiniMaxH3ImageToVideo` | t2v **and** i2v — `first_frame`/`last_frame` are optional, so no image wired is text-to-video |

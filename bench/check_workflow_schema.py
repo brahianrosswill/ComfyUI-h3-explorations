@@ -147,7 +147,16 @@ def widget_inputs(spec):
             if opts.get("forceInput"):
                 continue                       # force_input makes it a socket
             out.append((name, t, None))
-            if opts.get("control_after_generate"):
+            # The frontend's rule, not the schema's: an INT named `seed` or
+            # `noise_seed` gets a control widget unless the schema says
+            # otherwise (`src/renderer/extensions/vueNodes/widgets/composables/
+            # useIntWidget.ts`, `control_after_generate ?? name in (...)`), and
+            # `/object_info` omits an undeclared flag. Reading only the flag
+            # passed two song graphs whose widgets all loaded one slot late
+            # (2026-09-14).
+            control = opts.get("control_after_generate",
+                               t == "INT" and name in ("seed", "noise_seed"))
+            if control:
                 out.append((name + "/control", "CONTROL", None))
     return out
 

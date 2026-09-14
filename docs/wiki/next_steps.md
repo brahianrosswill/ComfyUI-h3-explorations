@@ -13,6 +13,29 @@ pointer goes; this list is stale the moment the roadmap disagrees with it.
 Items from the `mrpink` helper lane first; `evalman`'s render lane appends its
 own below the rule.
 
+**2026-09-14:**
+
+- **Frozen-audio loop, stage 1 of 4 built** (`audio_freeze_song.py`,
+  `loop_output.py`, `workflows/h3_text_to_video_audio_freeze_song_ref_pdd8.json`):
+  the track and each distinct prompt encoded before any window samples,
+  reference stills with every window's prompt, window files in
+  `<prefix>_windows/`, the prompt and workflow in the finished file plus an
+  optional PNG, and the seed control slot the song UI graphs were missing.
+  Its first full run is a throwaway. Still to build, in order: (2) window keys
+  and resume from the first changed window; (3) a prompt list node (`{name}`
+  placeholders, one list per node, in order or reshuffled each pass from its
+  own seed), wildcard `.txt` and JSON files from a registered
+  `models/wildcards`, frontend dynamic prompts off on the three prompt
+  widgets; (4) the shot chain's own window writer on the same layout, keyed
+  on whether its file exists. Decisions: [`decisions.md`](decisions.md),
+  2026-09-14.
+- **Why the workflows ship as UI and API twins**: a read-only subagent review
+  found no recorded reason; the API form is what every runner and most checks
+  read, and the UI form carries the notes, titles, layout and bypass state
+  that the frontend's deprecated API import does not rebuild. Open for the
+  owner: which graphs get opened in the editor, and whether the notes are
+  used. Nothing changed yet.
+
 **2026-09-13:**
 
 - **Reference-view ablation, second edition: rendered, awaiting the owner's

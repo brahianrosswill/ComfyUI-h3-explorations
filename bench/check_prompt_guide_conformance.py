@@ -106,8 +106,10 @@ REF_NODES = ("MiniMaxH3ReferenceToVideo",
              "MiniMaxH3ReferenceConditioning")
 
 # Every node carrying a prompt. `MiniMaxH3Conditioning` is this repo's own and
-# the fl2va path moved onto it on 2026-08-21.
-PROMPT_NODES = REF_NODES + ("MiniMaxH3Conditioning",)
+# the fl2va path moved onto it on 2026-08-21. `MiniMaxH3AudioFreezeSong`
+# conditions each window itself; its guide follows its `references` input
+# like any node's (2026-09-14).
+PROMPT_NODES = REF_NODES + ("MiniMaxH3Conditioning", "MiniMaxH3AudioFreezeSong")
 
 # Full-reference mode is the mode that wires reference labels, so the guide a
 # graph is graded against is read off its sockets, never off its filename.

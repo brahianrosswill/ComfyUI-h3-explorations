@@ -582,7 +582,8 @@
       "window_3": [
         "127",
         0
-      ]
+      ],
+      "save_metadata_png": true
     }
   }
 }

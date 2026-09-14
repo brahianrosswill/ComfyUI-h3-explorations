@@ -779,6 +779,84 @@ def _ref_image_slots(ref_images_on: bool, ref_image_count: int,
             "number of image positions in its typed append-id budget.")
     return [(ld, fit, f) for (ld, fit), f in zip(_REF_IMAGE_NODES, files)]
 
+
+def _append_image_inputs(load_id: str, chain, ref_upscale: bool, ref_qwen_short_edge: int) -> dict:
+    """API inputs of one `MiniMaxH3AppendRefImage`: its loader, the chain so far, its sizing.
+
+    One spelling for every graph that appends a still -- the reference graphs
+    and the song graph with references -- so the two cannot drift.
+
+    `size_policy` is a DynamicCombo since 2026-08-27, so its members are
+    spelled DOTTED in the API form -- `size_policy.dit_short_edge`, never the
+    flat `short_edge`, which the executor rejects. Same rule as
+    `MiniMaxH3Resolution`'s `shape.wide_resolution`. They exist only under
+    `max`; nothing emits them for `match`.
+
+    `qwen_view` is a DynamicCombo since 2026-08-31, replacing an Int whose 0
+    meant "no separate view". Dotted members again, and the size exists only
+    under `separate` -- emitting it under `shared` is what the old flat form
+    did and is exactly the unreachable-input state the combo removes. The
+    SELECTION is always written: any shared-view arm must state its choice
+    rather than inherit a node default that can move underneath it and
+    silently retune a comparison.
+    """
+    inputs = {"image": [load_id, 0], "size_policy": "max"}
+    if chain is not None:
+        inputs["references"] = chain
+    inputs["size_policy.dit_short_edge"] = _ref_short_edge()
+    inputs["size_policy.allow_upscale"] = ref_upscale
+    if ref_qwen_short_edge:
+        inputs["qwen_view"] = "separate"
+        inputs["qwen_view.qwen_short_edge"] = ref_qwen_short_edge
+    else:
+        inputs["qwen_view"] = "shared"
+    return inputs
+
+
+def _append_image_widgets(ref_upscale: bool, ref_qwen_short_edge: int) -> list:
+    """UI widgets_values of one `MiniMaxH3AppendRefImage`; the UI half of `_append_image_inputs`."""
+    # positional: size_policy, then the SELECTED
+    # DynamicCombo option's own widgets IN SCHEMA ORDER,
+    # then qwen_short_edge. `references` is a socket and
+    # consumes no widget slot.
+    #
+    # Under `max` the schema declares short_edge BEFORE
+    # allow_upscale, so that is the order here. This was
+    # wrong for one build on 2026-08-27: the API branch
+    # was converted to the dotted form and this one was
+    # left on the pre-DynamicCombo order, emitting
+    # ["max", True, 2048, 0] -- short_edge=True,
+    # allow_upscale=2048. Every validator passed, which
+    # is the finding: nothing here grades a
+    # DynamicCombo's sub-widget ORDER against the schema
+    # it came from, only that the graph is well-formed.
+    #
+    # `qwen_view` is a DynamicCombo since 2026-08-31,
+    # so the SELECTION occupies a slot and the size
+    # follows it ONLY under `separate`. Under `shared`
+    # there is no size widget at all -- emitting one
+    # would shift nothing here (it is last) but would
+    # not match the schema, and `check_workflow_schema`
+    # grades exactly that against the served node.
+    #
+    # The retired advice this replaces said to ALWAYS
+    # emit `qwen_short_edge`, even at 0, because the UI
+    # form matches BY POSITION and an omitted value
+    # shifts every later widget up one slot. That
+    # reasoning was right and is preserved by emitting
+    # the SELECTION unconditionally; what is gone is
+    # the value 0, which no longer exists on this node.
+    #
+    # This half was missed on the first pass of the
+    # rename: the API branch was converted and this one
+    # kept emitting the bare number, so 42 UI graphs
+    # carried `qwen_view = 512`. Same shape as the
+    # 2026-08-27 miss recorded above, and caught by the
+    # same check.
+    return (["max", _ref_short_edge(), ref_upscale, "separate", ref_qwen_short_edge]
+            if ref_qwen_short_edge else
+            ["max", _ref_short_edge(), ref_upscale, "shared"])
+
 T2V_PROMPT = _bank_prompt("t2va_lighthouse")
 
 I2V_PROMPT = _bank_prompt("i2va_lighthouse_keyframe")
@@ -1413,6 +1491,9 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
               # first run is a quick look; 0 covers the whole track.
               freeze_song: bool = False, freeze_song_seconds: float | None = 30.0,
               freeze_song_mode: str = "cycle",
+              # Reference stills for the song node, one Append Ref Image each,
+              # in <Picture N> order.
+              freeze_song_refs: tuple[str, ...] | None = None,
               out_prefix: str | None = None, **canvas) -> dict:
     """API-format graph, submittable as {"prompt": <this>} to POST /prompt.
 
@@ -1630,33 +1711,9 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
         # typed chain exists, so the append loop runs over nothing.
         for load_id, _fit_id, _fname in ([] if native_ref else slots):
             append_id = next(append_ids)
-            append_inputs = {"image": [load_id, 0], "size_policy": "max"}
-            if chain is not None:
-                append_inputs["references"] = chain
-            # `size_policy` is a DynamicCombo since 2026-08-27, so its members
-            # are spelled DOTTED in the API form -- `size_policy.dit_short_edge`,
-            # never the flat `short_edge`, which the executor rejects. Same
-            # rule as `MiniMaxH3Resolution`'s `shape.wide_resolution`. They
-            # exist only under `max`; nothing emits them for `match`.
-            append_inputs["size_policy.dit_short_edge"] = _ref_short_edge()
-            append_inputs["size_policy.allow_upscale"] = ref_upscale
-            # `qwen_view` is a DynamicCombo since 2026-08-31, replacing an
-            # Int whose 0 meant "no separate view". Dotted members again, and
-            # the size exists only under `separate` -- emitting it under
-            # `shared` is what the old flat form did and is exactly the
-            # unreachable-input state the combo removes.
-            #
-            # The SELECTION is always written, which preserves what the old
-            # comment here defended: any shared-view arm
-            # must state their choice rather than inherit a node default that
-            # can move underneath them and silently retune a comparison.
-            if ref_qwen_short_edge:
-                append_inputs["qwen_view"] = "separate"
-                append_inputs["qwen_view.qwen_short_edge"] = ref_qwen_short_edge
-            else:
-                append_inputs["qwen_view"] = "shared"
             g[append_id] = {"class_type": "MiniMaxH3AppendRefImage",
-                            "inputs": append_inputs}
+                            "inputs": _append_image_inputs(load_id, chain, ref_upscale,
+                                                           ref_qwen_short_edge)}
             chain = [append_id, 0]
         if ref_video:
             # There is NO fit node on this path, deliberately. The image path
@@ -2163,7 +2220,24 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
                               "seed": seed,
                               "audio_mask": freeze_mask, "level": "clip_guard",
                               "filename_prefix": out_prefix or "Video/h3_song", "crf": 19,
-                              "prompt_mode": freeze_song_mode, "window_mode": "uniform"}}
+                              "prompt_mode": freeze_song_mode, "window_mode": "uniform",
+                              "save_metadata_png": True, "keep_windows": True}}
+        if freeze_song_refs:
+            # The song node compiles its references itself, once per distinct
+            # prompt, so only the conditioner differs from a reference graph:
+            # the loaders and appends are theirs, same ids and same inputs.
+            chain = None
+            append_ids = iter(_REF_APPEND_NODES)
+            for load_id, _fit_id, fname in _ref_image_slots(True, len(freeze_song_refs), freeze_song_refs):
+                g[load_id] = {"class_type": "LoadImage", "inputs": {"image": fname}}
+                append_id = next(append_ids)
+                g[append_id] = {"class_type": "MiniMaxH3AppendRefImage",
+                                "inputs": _append_image_inputs(load_id, chain, ref_upscale,
+                                                               ref_qwen_short_edge)}
+                chain = [append_id, 0]
+            g["74"]["inputs"]["references"] = chain
+    elif freeze_song_refs:
+        raise SystemExit("freeze_song_refs needs freeze_song")
 
     if freeze_shots:
         if freeze_audio or freeze_windows or single_frame or split_at or stamp or ref or task == "i2v":
@@ -2217,7 +2291,8 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
             joins[f"window_{i + 1}"] = [mux, 0]
             prev_sampler, prev_window = sampler, win
         g["72"] = {"class_type": "MiniMaxH3JoinWindows",
-                   "inputs": {"audio": ["48", 0], "filename_prefix": out_prefix or "Video/h3_shots", **joins}}
+                   "inputs": {"audio": ["48", 0], "filename_prefix": out_prefix or "Video/h3_shots", **joins,
+                              "save_metadata_png": True}}
         # the Resolution node's length widget is inert on a chain; say the first shot's
         g["27"]["inputs"]["length"] = freeze_shots[0][0]
     return g
@@ -4424,29 +4499,43 @@ _NOTE_SONG = """\
 `MiniMax H3 Audio Freeze Song` plans the windows from the track's length
 (`window_frames` long, `context_frames` of the previous window frozen at
 each head, the last window the smallest length on both clocks that reaches
-the end), encodes the track once, and renders the windows one after another
-inside itself: each window's conditioning from the prompt, the track's slice
-frozen in its audio rows, the previous window's tail frozen as context, its
-new frames written to a file at once. At the end the files are joined
-without re-encoding and the full track muxed over them. Nothing holds more
-than one window of frames, so the track's length is not a memory question.
+the end), encodes the track and every distinct prompt once before anything
+samples, and renders the windows one after another inside itself: the
+track's slice frozen in each window's audio rows, the previous window's tail
+frozen as context, its new frames written to `<prefix>_windows/` at once. At
+the end the files are joined without re-encoding and the full track muxed
+over them. Nothing holds more than one window of frames, so the track's
+length is not a memory question.
 
 **Prompt.** One block for every window, or blocks separated by a line of
 `---`: `cycle` uses them in order (the last repeating), `uniform` uses the
 first everywhere, `random` draws one per window from the seed. A block may
 start with `frames: N` to set that window's length (141, 192, 243, 294 or
-345).
+345). Each distinct block is encoded once, however many windows use it.
+
+**References.** Wire an Append Ref Image chain to `references` and every
+window's prompt is presented with those stills, encoded once per distinct
+prompt. Write the prompt in the reference format, naming each still as
+`<Picture N>`.
 
 **`extent`** is the whole track, or its first N seconds; the shipped graph
 takes the quick look. The seed advances by one per window.
 
+**Files.** The finished `<prefix>_NNNNN.mp4` carries the prompt and the
+workflow; `save_metadata_png` also writes its first frame as a PNG carrying
+the same, which loads back into ComfyUI. Window files stay in
+`<prefix>_windows/` and the next run of the graph overwrites them;
+`keep_windows` off removes this run's after the join.
+
 **Cost.** Attention is quadratic in a window's packed sequence
 (`bench/preflight_graph.py` prices one), so shorter windows are cheaper per
-second of song, at the price of more seams. Sage and Sol on the model apply
-inside each window as on any graph.
+second of song, at the price of more seams; reference stills add rows to
+every window. Sage and Sol on the model apply inside each window as on any
+graph.
 
-The first run of this node on 2026-09-12 had not happened when it shipped;
-treat it as a throwaway and read the report. `docs/h3_audio_freeze.md`.
+The encode-first order, references and the window folder are new on
+2026-09-14: treat the first run as a throwaway and read the report.
+`docs/h3_audio_freeze.md`.
 """
 
 _NOTE_TURBO_PACK = """\
@@ -5167,8 +5256,11 @@ def build_ui(task: str, *, sage: bool = True, prompt: str | None = None,
              freeze_gain: bool = False,
              freeze_song: bool = False, freeze_song_seconds: float | None = 30.0,
              freeze_song_mode: str = "cycle",
+             freeze_song_refs: tuple[str, ...] | None = None,
              **canvas) -> dict:
     ref = task == "r2v"
+    if freeze_song_refs and not freeze_song:
+        raise SystemExit("freeze_song_refs needs freeze_song")
     if freeze_gain:
         raise SystemExit("the audio-gain graph is API only (api_only=True on its GRAPHS entry)")
     if freeze_guide:
@@ -5535,49 +5627,7 @@ def build_ui(task: str, *, sage: bool = True, prompt: str | None = None,
                     _in("references", "MINIMAX_H3_REFERENCES", optional=True))
             append = g.add("MiniMaxH3AppendRefImage", (-760, row_y(i)),
                            size=(280, 150),
-                           # positional: size_policy, then the SELECTED
-                           # DynamicCombo option's own widgets IN SCHEMA ORDER,
-                           # then qwen_short_edge. `references` is a socket and
-                           # consumes no widget slot.
-                           #
-                           # Under `max` the schema declares short_edge BEFORE
-                           # allow_upscale, so that is the order here. This was
-                           # wrong for one build on 2026-08-27: the API branch
-                           # was converted to the dotted form and this one was
-                           # left on the pre-DynamicCombo order, emitting
-                           # ["max", True, 2048, 0] -- short_edge=True,
-                           # allow_upscale=2048. Every validator passed, which
-                           # is the finding: nothing here grades a
-                           # DynamicCombo's sub-widget ORDER against the schema
-                           # it came from, only that the graph is well-formed.
-                           #
-                           # `qwen_view` is a DynamicCombo since 2026-08-31,
-                           # so the SELECTION occupies a slot and the size
-                           # follows it ONLY under `separate`. Under `shared`
-                           # there is no size widget at all -- emitting one
-                           # would shift nothing here (it is last) but would
-                           # not match the schema, and `check_workflow_schema`
-                           # grades exactly that against the served node.
-                           #
-                           # The retired advice this replaces said to ALWAYS
-                           # emit `qwen_short_edge`, even at 0, because the UI
-                           # form matches BY POSITION and an omitted value
-                           # shifts every later widget up one slot. That
-                           # reasoning was right and is preserved by emitting
-                           # the SELECTION unconditionally; what is gone is
-                           # the value 0, which no longer exists on this node.
-                           #
-                           # This half was missed on the first pass of the
-                           # rename: the API branch was converted and this one
-                           # kept emitting the bare number, so 42 UI graphs
-                           # carried `qwen_view = 512`. Same shape as the
-                           # 2026-08-27 miss recorded above, and caught by the
-                           # same check.
-                           widgets=(["max", _ref_short_edge(), ref_upscale,
-                                     "separate", ref_qwen_short_edge]
-                                    if ref_qwen_short_edge else
-                                    ["max", _ref_short_edge(), ref_upscale,
-                                     "shared"]),
+                           widgets=_append_image_widgets(ref_upscale, ref_qwen_short_edge),
                            inputs=append_inputs,
                            outputs=[_out("references", "MINIMAX_H3_REFERENCES")],
                            title=f"Append Picture {i + 1}")
@@ -5807,17 +5857,23 @@ def build_ui(task: str, *, sage: bool = True, prompt: str | None = None,
                       outputs=[_out("AUDIO", "AUDIO")], title="The track")
         song = g.add("MiniMaxH3AudioFreezeSong", (-60, 0), size=(520, 760),
                      widgets=[prompt, cv["width"], cv["height"], length, freeze_context,
-                              # no control widget: the node's seed input declares none, and
-                              # the node advances the seed by one per window itself
                               # `extent`: the selection, then its own widget,
                               # which exists only under `first_seconds`.
                               *(["first_seconds", freeze_song_seconds]
                                 if freeze_song_seconds is not None else ["whole"]),
-                              seed, freeze_mask, "clip_guard",
-                              out_prefix or "Video/h3_song", 19, freeze_song_mode, "uniform"],
+                              # The control slot after `seed`. Declared on the node since
+                              # 2026-09-14; before that the frontend drew it by name
+                              # (any INT called `seed`) while this list wrote none, so
+                              # every widget after it loaded one slot late.
+                              seed, "randomize", freeze_mask, "clip_guard",
+                              out_prefix or "Video/h3_song", 19, freeze_song_mode, "uniform",
+                              # save_metadata_png, keep_windows; `references` is a socket
+                              # and takes no widget slot
+                              True, True],
                      inputs=[_in("model", "MODEL"), _in("clip", "CLIP"), _in("vae", "VAE"),
                              _in("audio_vae", "VAE"), _in("audio", "AUDIO"),
-                             _in("sampler", "SAMPLER"), _in("sigmas", "SIGMAS")],
+                             _in("sampler", "SAMPLER"), _in("sigmas", "SIGMAS"),
+                             _in("references", "MINIMAX_H3_REFERENCES", optional=True)],
                      outputs=[_out("path", "STRING"), _out("report", "STRING"),
                               _out("Filenames", "VHS_FILENAMES")],
                      title="Whole track: windows planned from the song")
@@ -5828,6 +5884,28 @@ def build_ui(task: str, *, sage: bool = True, prompt: str | None = None,
         g.link(track, 0, song, "audio", "AUDIO")
         g.link(samp, 0, song, "sampler", "SAMPLER")
         g.link(_sig_node, _sig_slot, song, "sigmas", "SIGMAS")
+        if freeze_song_refs:
+            # Mirrors build_api: the reference graphs' loaders and appends,
+            # the song node as the conditioner.
+            chain = None
+            slots = _ref_image_slots(True, len(freeze_song_refs), freeze_song_refs)
+            for i, (_ld, _ft, fname) in enumerate(slots):
+                load = g.add("LoadImage", (-1420, 1200 + 370 * i), size=(290, 330),
+                             widgets=[fname, "image"],
+                             outputs=[_out("IMAGE", "IMAGE"), _out("MASK", "MASK")])
+                append_inputs = [_in("image", "IMAGE")]
+                if chain is not None:
+                    append_inputs.append(_in("references", "MINIMAX_H3_REFERENCES", optional=True))
+                append = g.add("MiniMaxH3AppendRefImage", (-760, 1200 + 370 * i), size=(280, 150),
+                               widgets=_append_image_widgets(ref_upscale, ref_qwen_short_edge),
+                               inputs=append_inputs,
+                               outputs=[_out("references", "MINIMAX_H3_REFERENCES")],
+                               title=f"Append Picture {i + 1}")
+                g.link(load, 0, append, "image", "IMAGE")
+                if chain is not None:
+                    g.link(chain, 0, append, "references", "MINIMAX_H3_REFERENCES")
+                chain = append
+            g.link(chain, 0, song, "references", "MINIMAX_H3_REFERENCES")
         g.add("MarkdownNote", (-2180, 0), size=(620, 620), widgets=[_NOTE_SONG],
               title="Whole track: how it works")
         return g.dump(title or f"h3-{task}-song")
@@ -5854,7 +5932,7 @@ def build_ui(task: str, *, sage: bool = True, prompt: str | None = None,
         join_inputs = [_in("audio", "AUDIO")] + [
             _in(f"window_{i + 1}", "VHS_FILENAMES", optional=(i > 0)) for i in range(len(freeze_shots))]
         join = g.add("MiniMaxH3JoinWindows", (2200, 0), size=(420, 80 + 30 * len(freeze_shots)),
-                     widgets=[out_prefix or "Video/h3_shots"], inputs=join_inputs,
+                     widgets=[out_prefix or "Video/h3_shots", True], inputs=join_inputs,
                      outputs=[_out("Filenames", "VHS_FILENAMES"), _out("path", "STRING")],
                      title="Join the windows, mux the track")
         g.link(track, 0, join, "audio", "AUDIO")
@@ -6906,6 +6984,31 @@ def main():
                   "baked checkpoint. Context 90 and random window lengths are "
                   "untested; this is the best-supported start, not a verdict.")),
          "a whole song on PDD8: 345-frame windows, 39 context, loose mask, blocks drawn per window"),
+        # The PDD8 song graph with the subject anchored by a reference still
+        # (owner, 2026-09-14): fl2va takes references, and a fixed still is
+        # the anchor a long song wants, not the previous window's last frame,
+        # which would carry drift forward. The dancer scene's still and its
+        # reference prompt from `h3_config.REFVIEW2_SCENES`; everything else
+        # is the graph above.
+        ("h3_text_to_video_audio_freeze_song_ref_pdd8.json", "t2v-audio-freeze-song-ref-pdd8", "t2v",
+         _bank_prompt(next(p for t, p, _s in REFVIEW2_SCENES if t == "dancer")),
+         dict(pdd=True, sampler_name="euler",
+              unet=MODELS["unet_fl2va_pdd8_baked"],
+              lora=(PDD_FL2VA_STRIPPED_LORA, PDD_STRENGTH), steps=PDD_STEPS,
+              freeze_song=True, freeze_song_seconds=None, freeze_song_mode="random",
+              freeze_song_refs=next(s for t, _p, s in REFVIEW2_SCENES if t == "dancer"),
+              freeze_mask=0.25, freeze_context=39, length=LONG_LENGTH,
+              out_prefix="Video/h3_t2v_audio_freeze_song_ref_pdd8",
+              variant_note=_NOTE_SONG + (
+                  "\n\n**This graph: a whole song on PDD8 with the subject anchored by a "
+                  "reference still.** Everything is the PDD8 song graph's except "
+                  "`references`: the dancer scene's still and its reference prompt "
+                  "(`h3_config.REFVIEW2_SCENES`, `dancer`), which names her as "
+                  "`<Subject 1>` from `<Picture 1>`. The still goes with every "
+                  "window's prompt and is encoded once with it. References on fl2va "
+                  "work (owner, 2026-09-14); whether a reference holds identity across "
+                  "a whole song has not been judged.")),
+         "a whole song on PDD8 with the subject anchored by a reference still"),
         # The same shot in every window: only the audio slice and the carried
         # tail differ between windows, so the picture goes where the track
         # takes it (owner, 2026-09-12 evening).

@@ -698,7 +698,8 @@
         "Node name for S&R": "MiniMaxH3JoinWindows"
       },
       "widgets_values": [
-        "Video/h3_t2v_audio_freeze_shots_repeat"
+        "Video/h3_t2v_audio_freeze_shots_repeat",
+        true
       ],
       "title": "Join the windows, mux the track"
     },

@@ -1003,8 +1003,9 @@ class MiniMaxH3ReferenceConditioning(io.ComfyNode):
             category="MiniMaxH3",
             description=(
                 "Compile an ordered MINIMAX_H3_REFERENCES list into the Qwen "
-                "presentation and DiT reference payload. Use an H3 reference "
-                "checkpoint; this node does not infer checkpoint task identity. "
+                "presentation and DiT reference payload. Works on the H3 "
+                "reference checkpoint and on fl2va; this node does not infer "
+                "checkpoint task identity. "
                 "The node's preview shows what each reference cost once it "
                 "has run; MiniMax H3 Reference Report shows it beforehand."
             ),
