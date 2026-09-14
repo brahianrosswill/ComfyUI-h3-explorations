@@ -15,6 +15,23 @@ own below the rule.
 
 **2026-09-14:**
 
+- **Frozen-audio loop and prompt lists: what was built, by commit.** Stage 1,
+  encode first, references, metadata and the window folder: `22b046c`
+  (smoke record `b3ab31f`). Shot workflows and `MiniMaxH3JoinWindows`
+  retired: `a68be96`. Live preview node dropped: `889b0a1`. Stage 2, resume:
+  `0a2380f`. Stage 3, prompt lists and wildcard files: `1270a2d`, `3fb743b`.
+  One fill path for every loop node, `MiniMaxH3FillPromptLists` and the example
+  `workflows/h3_text_to_video_audio_freeze_song_lists_pdd8.json`: `eac1a6f`.
+  Song graphs' own notes and the API list guard: `e07c462`. **Agreed next and
+  not started** (owner, after reviewing the footguns): simplify before
+  extending. (1) Cut `prompt_mode`, random window lengths, `frames:` lines,
+  the implicit wildcard fallback with its path and JSON lookups, and Fill
+  Prompt Lists' `count`; rename the list node's `seed` to `shuffle` and fix
+  Fill Prompt Lists' `index` by default. (2) An optional timeline on the node
+  (`mm:ss label` lines, one prompt block per label) that lines windows up with
+  the given times, a list moving to its next value per timeline entry. (3) A
+  preview switch that reports each window's time range and filled prompt
+  without rendering or loading models.
 - **Frozen-audio loop, stage 1 of 4 built** (`audio_freeze_song.py`,
   `loop_output.py`, `workflows/h3_text_to_video_audio_freeze_song_ref_pdd8.json`):
   the track and each distinct prompt encoded before any window samples,
