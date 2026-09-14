@@ -22,6 +22,14 @@ own below the rule.
   `h3_probe_sol_on_all_refs` stays: its references (a video with its soundtrack
   and a standalone clip) make it a different workload, and the EasyCache and
   euler probes name it as their control.
+- **Found, not fixed: two stale Sol readers.** (a)
+  `bench/check_provenance_stamp.py` is red on `no_missing_knobs`:
+  `sol_attn_h3.py`'s `token_aug_profile` is not recorded by `provenance.py`.
+  Red at `1345791` too, so it predates the API-only commits. (b)
+  `bench/analyze_sol_error.py`'s CUDA arm passes `centroid_tail=` to
+  `comfy_kitchen.sol_attn`, which the installed kernel rejects since the
+  centroid form became unconditional; its eager and dense arms still run
+  (found by the channel-balance session). Observable for each: run the script.
 - **Frozen-audio loop and prompt lists: what was built, by commit.** Stage 1,
   encode first, references, metadata and the window folder: `22b046c`
   (smoke record `b3ab31f`). Shot workflows and `MiniMaxH3JoinWindows`
