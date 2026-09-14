@@ -17,16 +17,19 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-14
 
-- **Frozen-audio loops take design decisions for four stages** (owner): the
-  song node keeps its window files in a per-graph working folder
-  (`<prefix>_windows/`) rather than a folder deleted after the join, so a
-  later stage can resume from the first changed window; the shot chain gets
-  its own window writer on the same layout; the prompt widgets lose frontend
-  dynamic prompts so `{name}` placeholders survive to a list node with its
-  own seed; wildcard files live in a registered `models/wildcards` folder.
-  Encoding comes before sampling: the track and each distinct prompt once.
-  `docs/wiki/next_steps.md` carries the stages; stage one is
-  `audio_freeze_song.py` and `loop_output.py`.
+- **A four-stage plan for frozen-audio loops.** The owner approved the plan
+  ("I'm good with this plan"); the choices marked *proposed* below were
+  recommendations inside it that the owner has not confirmed one by one.
+  Owner: encoding comes before sampling, the track and each distinct prompt
+  once; reference stills go with every window's prompt, with a workflow for
+  it; prompt lists fill `{name}` placeholders in order or reshuffled on each
+  pass. Proposed: window files in a per-graph working folder
+  (`<prefix>_windows/`) kept by default, so a later stage can resume from the
+  first changed window (stage one ships this, `keep_windows` on); the shot
+  chain's own window writer on the same layout; frontend dynamic prompts off
+  on the three prompt widgets; the list node's own seed; wildcard files in a
+  registered `models/wildcards`. `docs/wiki/next_steps.md` carries the stages;
+  stage one is `audio_freeze_song.py` and `loop_output.py`.
 - **A loop feeds the encoder no per-window image** (owner, after discussion).
   A frame from the previous window would carry drift forward and force an
   encode between windows; the anchor for identity is a fixed reference still.
