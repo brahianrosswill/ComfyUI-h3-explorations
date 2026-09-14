@@ -48,7 +48,8 @@ own below the rule.
   Song graphs' own notes and the API list guard: `e07c462`. **The simplification
   the owner agreed, built the same day** (CHANGELOG 0.108.0,
   `git log -- loop_plan.py`): the cuts, the list node's `shuffle`, Fill Prompt
-  Lists' fixed `index`, the `timeline` and the `preview` switch. Preview
+  Lists' fixed `index`, the `timeline` and the `preview` switch. Preview, and a
+  render of the first 30 seconds (three windows of two lengths, joined),
   exercised on the served example graph:
   `bench/results/2026-09-14_audio_freeze_song_timeline_smoke.jsonl`. **Still
   owed:** the full-length example render (a throwaway first run), resume on
