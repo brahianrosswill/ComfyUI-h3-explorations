@@ -4,6 +4,46 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.114.0
+
+### Added
+
+- **TaoMate-H3 streaming runtime port, not yet run on the card.** The owner
+  reopened the lane to test TaoMate as its authors run it.
+  `docs/h3_taomate.md` section 7 is the plan: what must be reproduced, how it
+  fits one card, and milestones gated on a whole-clip equality check.
+  - **`taomate_streaming.py`** is the torch-only half:
+    - the inherited runtime values: grid, sampler, strength, chunk plan, cache
+      policy and teacher states;
+    - the chunk geometry, the split text/media attention and the host-side K/V
+      cache;
+    - the colour matching and the frozen-track stand-in for the audio teacher.
+  - **`MiniMaxH3TaoMateStreamSampler`** (`taomate_stream_sampler.py`) is a
+    SAMPLER for `SamplerCustomAdvanced` with `BasicGuider`. It runs upstream's
+    chunk loop through `apply_model`:
+    - per-block replace patches carry the attention and the cache;
+    - positions are sliced from the run's full `PackedLayout`;
+    - a frozen track stands in for the teacher's audio states;
+    - each chunk is committed at sigma 0.
+
+    It refuses sage, Sol, VSA, PDD and exact-block patches, references, and
+    lengths or sigmas that are not TaoMate's. `verify_whole_clip` runs core's
+    euler sampler and its own hooked loop on the same inputs and logs the
+    deviation.
+  - **`bench/check_taomate_streaming.py`** grades the torch-only parts on the
+    CPU against upstream's schedule and chunk tables and against core's
+    `temporal_shape` and `PackedLayout`.
+  - **`bench/verify_taomate_stream.py`** runs the equality check and the
+    throwaway stream render on the server and records them.
+
+### Changed
+
+- **The TaoMate runtime values moved out of `workflows/h3_config.py`** into
+  `taomate_streaming.py`, because the sampler node cannot import `h3_config`.
+  `h3_config` keeps the three TaoMate LoRA filenames. The generator, the
+  converter and both distill checks now read the module. Graphs regenerate
+  unchanged.
+
 ## 0.113.1
 
 ### Added

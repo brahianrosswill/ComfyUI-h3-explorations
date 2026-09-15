@@ -272,6 +272,12 @@ retiming to exact five-second requests. ComfyUI decodes at native length.
 
 ### 7.3 Milestones, each gated on the one before
 
+The pieces:
+- `taomate_streaming.py`: constants and torch-only parts;
+- `taomate_stream_sampler.py`: the `MiniMaxH3TaoMateStreamSampler` node;
+- `bench/check_taomate_streaming.py`: step 1;
+- `bench/verify_taomate_stream.py`: steps 2, 4 and 5 on the server.
+
 1. **Unit checks on the CPU, no model:**
    - the chunk plan and audio boundaries against the upstream tables;
    - the split text/media attention against the same attention with an
