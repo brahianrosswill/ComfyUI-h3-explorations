@@ -174,6 +174,9 @@ def attention():
         attn_mask=mask)[0].transpose(0, 1)
     dev = float((got - ref).abs().max())
     assert dev <= ATTN_TOL, f"split routing vs masked SDPA deviates {dev:.2e}"
+    # the cache hands history over as one tensor per commit; splitting it must change nothing
+    split = tm.stream_attention(q, k, v, text_rows, [hk[:4], hk[4:]], [hv[:4], hv[4:]])
+    assert torch.equal(split, got), "a history split across commits changed the attention"
     plain = torch.nn.functional.scaled_dot_product_attention(
         q.transpose(0, 1)[None], k.transpose(0, 1)[None], v.transpose(0, 1)[None])[0].transpose(0, 1)
     assert float((tm.stream_attention(q, k, v, text_rows, text_sees_all=True) - plain).abs().max()) <= ATTN_TOL
@@ -205,9 +208,11 @@ def cache():
     # request 0 chunks see 0, 4990, 9154, 13186; request 1 chunk 0 sees 11105.
     assert seen[:5] == [0, 4990, 9154, 13186, 11105], f"history tokens {seen[:5]}"
     hk, hv = c.history(0, "cpu", torch.float32)
-    assert hk.shape[0] == c.tokens
+    assert sum(t.shape[0] for t in hk) == c.tokens == sum(t.shape[0] for t in hv)
     c.drop_audio()
     assert all(x["audio_rows"] == 0 for x in c.commits)
+    c.release()
+    assert c.tokens == 0 and c.history(0, "cpu", torch.float32) == (None, None)
     return f"history per chunk {seen}"
 
 

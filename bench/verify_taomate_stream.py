@@ -174,7 +174,7 @@ def main(argv=None) -> int:
     ap.add_argument("--record", type=Path)
     args = ap.parse_args(argv)
     if args.cache_device is None:
-        args.cache_device = "cpu_pinned" if args.mode == "stream" else "gpu"
+        args.cache_device = "cpu" if args.mode == "stream" else "gpu"
     whole_clip = args.mode in ("verify_whole_clip", "control_text_only")
 
     graph = build_graph(args)

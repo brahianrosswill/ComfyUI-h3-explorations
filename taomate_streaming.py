@@ -223,8 +223,10 @@ def stream_attention(q, k, v, text_rows: int, history_k=None, history_v=None,
     if history_k is None:
         keys, values = k, v
     else:
-        keys = torch.cat([k[:text_rows], history_k, k[text_rows:]])
-        values = torch.cat([v[:text_rows], history_v, v[text_rows:]])
+        history_k = [history_k] if torch.is_tensor(history_k) else list(history_k)
+        history_v = [history_v] if torch.is_tensor(history_v) else list(history_v)
+        keys = torch.cat([k[:text_rows], *history_k, k[text_rows:]])
+        values = torch.cat([v[:text_rows], *history_v, v[text_rows:]])
     media_out = _sdpa(q[text_rows:], keys, values)
     return torch.cat([text_out, media_out])
 
@@ -236,7 +238,7 @@ class StreamCache:
     media rows, in packed order: audio channel 0, audio channel 1, video.
     """
 
-    def __init__(self, blocks: int, store_device: str = "cpu", pin: bool = True):
+    def __init__(self, blocks: int, store_device: str = "cpu", pin: bool = False):
         import torch
 
         self.blocks = blocks
@@ -306,14 +308,28 @@ class StreamCache:
         return sum(c["audio_rows"] + c["video_rows"] for c in self.commits)
 
     def history(self, block: int, device, dtype):
-        """This block's cached K and V on `device`, or `(None, None)` with no commits."""
-        import torch
+        """This block's cached K and V on `device`, one tensor per commit, or `(None, None)`.
 
+        Lists rather than one concatenation, so `stream_attention` joins them
+        with the chunk's rows in a single `cat` instead of two."""
         if not self.commits:
             return None, None
-        ks = [c["k"][block].to(device=device, dtype=dtype, non_blocking=True) for c in self.commits]
-        vs = [c["v"][block].to(device=device, dtype=dtype, non_blocking=True) for c in self.commits]
-        return torch.cat(ks), torch.cat(vs)
+        ks = [c["k"][block].to(device=device, dtype=dtype, non_blocking=self.pin) for c in self.commits]
+        vs = [c["v"][block].to(device=device, dtype=dtype, non_blocking=self.pin) for c in self.commits]
+        return ks, vs
+
+    def release(self) -> None:
+        """Drop every commit and anything staged, and hand cached pinned pages back.
+
+        PyTorch's host allocator rounds each pinned allocation up to a power of
+        two and caches freed blocks rather than returning them, so a pinned
+        cache would otherwise stay reserved in the server after the run."""
+        import torch
+
+        self.commits = []
+        self._staged = None
+        if self.pin and hasattr(torch._C, "_host_emptyCache"):
+            torch._C._host_emptyCache()
 
 
 def match_to_anchor(rows, anchor):

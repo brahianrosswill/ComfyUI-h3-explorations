@@ -55,6 +55,8 @@ import time
 import torch
 
 import comfy.model_management
+import comfy.model_prefetch
+import comfy.patcher_extension
 import comfy.quant_ops
 import comfy.samplers
 import comfy.utils
@@ -109,12 +111,15 @@ def _stream_attention(attn, block, state, x, rope_freqs=None, transformer_option
     q, k = q[0], k[0]
     text_rows = state["text_rows"]
     cache = state["cache"]
-    if cache is not None and cache.committing:
-        cache.stage(block, k[text_rows:], v[text_rows:])
-    if state["text_sees_all"] or cache is None:
-        history_k = history_v = None
-    else:
-        history_k, history_v = cache.history(block, x.device, k.dtype)
+    # Cache traffic stays outside the block's allocation scope, the way core's
+    # own control patches keep their state (`comfy_extras/nodes_minimax_h3.py`).
+    with comfy.model_prefetch.pause_malloc_graph():
+        if cache is not None and cache.committing:
+            cache.stage(block, k[text_rows:], v[text_rows:])
+        if state["text_sees_all"] or cache is None:
+            history_k = history_v = None
+        else:
+            history_k, history_v = cache.history(block, x.device, k.dtype)
     out = tm.stream_attention(q, k, v, text_rows, history_k, history_v,
                               text_sees_all=state["text_sees_all"])
     return attn.out_proj(out.reshape(s, heads * head_dim))
@@ -149,10 +154,14 @@ def _refusals(model_wrap, transformer_options) -> list[str]:
             "dense bf16 attention and this sampler supplies its own")
     for key in ("optimized_attention_override", "sol_compose"):
         if key in transformer_options:
-            problems.append(f"transformer_options carries `{key}` (Sol or sage). Remove the node")
+            problems.append(f"transformer_options carries `{key}` (Sol, sage or core's Model Attention "
+                            f"Backend). Remove the node; this sampler supplies dense attention itself")
     if transformer_options.get("patches_replace", {}).get("dit"):
         problems.append("another block replace patch is installed (VSA or a control)")
     dm = patcher.model.diffusion_model
+    head = getattr(getattr(dm, "final_layer", None), "video_out", None)
+    if head is not None and head.weight.shape[0] // head.out_features > 1:
+        problems.append("the checkpoint carries a PDD head bank; TaoMate loads on the plain fl2va checkpoint")
     if "_forward" in vars(dm) or "rope_freqs" in vars(dm):
         problems.append("the loaded model's forward was replaced by Sol's Morton install, which "
                         "outlives the node; restart the server")
@@ -165,7 +174,7 @@ def _refusals(model_wrap, transformer_options) -> list[str]:
 
 
 class TaoMateStreamSampler(comfy.samplers.Sampler):
-    def __init__(self, mode: str = "stream", cache_device: str = "cpu_pinned"):
+    def __init__(self, mode: str = "stream", cache_device: str = "cpu"):
         if mode not in MODES:
             raise ValueError(f"mode {mode!r} is not one of {MODES}")
         if cache_device not in CACHE_DEVICES:
@@ -191,6 +200,21 @@ class TaoMateStreamSampler(comfy.samplers.Sampler):
         if (float(sampling.shift), float(sampling.audio_shift or 0.0)) != (tm.SHIFT_VIDEO, tm.SHIFT_AUDIO):
             problems.append(f"model shift {sampling.shift}/{sampling.audio_shift}, the adapter's is "
                             f"{tm.SHIFT_VIDEO}/{tm.SHIFT_AUDIO}")
+        if self.mode == "stream" and denoise_mask is not None and shapes is not None and len(shapes) == 2:
+            # The stream loop generates every video row and holds the track
+            # itself, so any mask but a full audio freeze would be ignored.
+            video_mask, audio_mask = comfy.utils.unpack_latents(denoise_mask, shapes)
+            if bool((video_mask < 1.0 - 1e-3).any()):
+                problems.append("a video denoise mask is set; the stream sampler generates every video row")
+            if bool((audio_mask > 1e-3).any()):
+                problems.append("the audio mask is not a full freeze (audio_mask 0.0); the stream sampler "
+                                "holds the track itself and would ignore a loose mask")
+        for kind in (comfy.patcher_extension.WrappersMP.APPLY_MODEL,
+                     comfy.patcher_extension.WrappersMP.DIFFUSION_MODEL):
+            wrappers = comfy.patcher_extension.get_all_wrappers(kind, base_to)
+            if wrappers:
+                logging.warning("[taomate] %d %s wrapper(s) run on every chunk forward: %s", len(wrappers),
+                                kind, [getattr(w, "__qualname__", repr(w)) for w in wrappers][:4])
         if problems:
             raise ValueError("TaoMate stream sampler refuses this graph:\n  - " + "\n  - ".join(problems))
 
@@ -304,42 +328,47 @@ class TaoMateStreamSampler(comfy.samplers.Sampler):
                 cache.finish_commit(2 * xa.shape[-1], xv.shape[2] * frame_rows)
             return comfy.utils.unpack_latents(denoised, shapes_c)[0]
 
-        for n, chunk in enumerate(plan):
-            started = time.perf_counter()
-            if chunk.index == 0 and chunk.request > 0 and chunk.request % tm.AUDIO_RESET_REQUESTS == 0:
-                cache.drop_audio()
-            positions = tm.chunk_positions(full.position_ids, text_len, audio_t, frame_rows, chunk)
-            layout = _ChunkLayout(text_len, chunk, frame_rows, positions, lat_h, lat_w)
-            xv = video_noise[:, :, chunk.v0:chunk.v1].clone()
-            track_c = track[..., chunk.a0:chunk.a1]
-            noise_c = audio_noise[..., chunk.a0:chunk.a1]
-            audio_states = [noise_c] + tm.frozen_track_states(track_c, noise_c, teacher)
-            for step in range(tm.STEPS):
-                sigma, sigma_next = sigmas[step], sigmas[step + 1]
-                denoised = forward(xv, audio_states[step], sigma, layout, commit=False)
-                xv = denoised + (sigma_next / sigma) * (xv - denoised)
-            rows, anchor = tm.match_to_anchor(patchify_video(xv.to(torch.float32)), anchor)
-            xv = unpatchify_video(rows, chunk.video_latents, lat_h // 2, lat_w // 2,
-                                  int(video_shape[1])).to(xv.dtype)
-            forward(xv, audio_states[-1], sigmas[-1], layout, commit=True)
-            cache.retain()
-            video_out[:, :, chunk.v0:chunk.v1] = xv
-            # Card-wide use from the driver, not torch's allocator counters: the
-            # server runs cudaMallocAsync (`--cuda-malloc`), whose allocations
-            # `max_memory_allocated` does not see (it read 0.06 GiB on the first run).
-            if device.type == "cuda":
-                free, total = torch.cuda.mem_get_info(device)
-                card_used = (total - free) / 2**30
-            else:
-                card_used = 0.0
-            logging.info("[taomate] request %d chunk %d: latents %d-%d, audio %d-%d, cache %d tokens, "
-                         "%.1f s, card in use %.2f GiB, cache host pinned %s", chunk.request, chunk.index,
-                         chunk.v0, chunk.v1, chunk.a0, chunk.a1, cache.tokens,
-                         time.perf_counter() - started, card_used, cache.pin)
-            if callback is not None:
-                packed = comfy.utils.pack_latents([video_out, audio_image])[0]
-                callback(n, packed, packed, len(plan))
-        state["cache"] = None
+        try:
+            for n, chunk in enumerate(plan):
+                started = time.perf_counter()
+                if chunk.index == 0 and chunk.request > 0 and chunk.request % tm.AUDIO_RESET_REQUESTS == 0:
+                    cache.drop_audio()
+                positions = tm.chunk_positions(full.position_ids, text_len, audio_t, frame_rows, chunk)
+                layout = _ChunkLayout(text_len, chunk, frame_rows, positions, lat_h, lat_w)
+                xv = video_noise[:, :, chunk.v0:chunk.v1].clone()
+                track_c = track[..., chunk.a0:chunk.a1]
+                noise_c = audio_noise[..., chunk.a0:chunk.a1]
+                audio_states = [noise_c] + tm.frozen_track_states(track_c, noise_c, teacher)
+                for step in range(tm.STEPS):
+                    sigma, sigma_next = sigmas[step], sigmas[step + 1]
+                    denoised = forward(xv, audio_states[step], sigma, layout, commit=False)
+                    xv = denoised + (sigma_next / sigma) * (xv - denoised)
+                rows, anchor = tm.match_to_anchor(patchify_video(xv.to(torch.float32)), anchor)
+                xv = unpatchify_video(rows, chunk.video_latents, lat_h // 2, lat_w // 2,
+                                      int(video_shape[1])).to(xv.dtype)
+                forward(xv, audio_states[-1], sigmas[-1], layout, commit=True)
+                cache.retain()
+                video_out[:, :, chunk.v0:chunk.v1] = xv
+                # Card-wide use from the driver, not torch's allocator counters: the
+                # server runs cudaMallocAsync (`--cuda-malloc`), whose allocations
+                # `max_memory_allocated` does not see (it read 0.06 GiB on the first run).
+                if device.type == "cuda":
+                    free, total = torch.cuda.mem_get_info(device)
+                    card_used = (total - free) / 2**30
+                else:
+                    card_used = 0.0
+                logging.info("[taomate] request %d chunk %d: latents %d-%d, audio %d-%d, cache %d tokens, "
+                             "%.1f s, card in use %.2f GiB, cache host pinned %s", chunk.request, chunk.index,
+                             chunk.v0, chunk.v1, chunk.a0, chunk.a1, cache.tokens,
+                             time.perf_counter() - started, card_used, cache.pin)
+                if callback is not None:
+                    packed = comfy.utils.pack_latents([video_out, audio_image])[0]
+                    callback(n, packed, packed, len(plan))
+        finally:
+            # Released on every exit, error included: a traceback would otherwise
+            # keep the whole host cache alive in the shared server.
+            cache.release()
+            state["cache"] = None
         return comfy.utils.pack_latents([video_out, audio_image])[0].to(device)
 
 
@@ -361,10 +390,13 @@ class MiniMaxH3TaoMateStreamSampler(io.ComfyNode):
                                tooltip=("stream: the chunked, cached runtime. verify_whole_clip: the stock "
                                         "Euler loop over the whole clip through the same attention hook, "
                                         "for the equality check; not a way to render.")),
-                io.Combo.Input("cache_device", options=list(CACHE_DEVICES), default="cpu_pinned",
-                               tooltip=("Where committed K/V live between chunks. cpu_pinned: host memory, "
-                                        "streamed to the card per block, the only choice that fits at a "
-                                        "trained canvas. gpu: small canvases only.")),
+                io.Combo.Input("cache_device", options=list(CACHE_DEVICES), default="cpu",
+                               tooltip=("Where committed K/V live between chunks, streamed to the card per "
+                                        "block. cpu: ordinary host memory, freed when the run ends; the "
+                                        "default and the choice at a trained canvas. cpu_pinned: faster "
+                                        "transfers, but PyTorch rounds each pinned allocation up to a power "
+                                        "of two, so at 1344x768 it can reserve most of the box's RAM. "
+                                        "gpu: small canvases only.")),
             ],
             outputs=[io.Sampler.Output()],
         )
