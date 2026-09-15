@@ -4,6 +4,19 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.116.4
+
+### Added
+
+- **`bench/results/2026-09-15_cafe_kids_verdict.json`**: on the cafe pair the
+  owner judged the house-structure rewrite way better than the verbatim
+  paragraph at both 5 and 8 steps, and PDD 8-step better by far.
+- **The dancer verdict record gains the PDD arms**: PDD 8-step has "way less
+  artifact morphing". Taken with the cafe verdict, two scenes on the new
+  default chain put 8 steps ahead of the 5-step tail5 partition.
+  `docs/wiki/next_steps.md` flags the earlier tail5 preference, judged under
+  sage, for a re-look.
+
 ## 0.116.3
 
 ### Added

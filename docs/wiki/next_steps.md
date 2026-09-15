@@ -32,9 +32,13 @@ own below the rule.
       people and no obvious artifacts
       (`bench/results/2026-09-15_taomate_stream_verdict.json`).
     - **Still open:** the TaoMate-versus-PDD comparison on the same clips.
-- **Cafe prompt pair, verdicts pending.** An outside prompt verbatim against
-  its house-structure rewrite (`t2va_cafe_kids`), PDD at 5 and 8 steps
-  (`bench/results/2026-09-15_cafe_kids_pdd_arms.jsonl`).
+- **Cafe prompt pair: the rewrite wins, and so does 8 steps.** An outside
+  prompt verbatim against its house-structure rewrite (`t2va_cafe_kids`), PDD
+  at 5 and 8 steps. The owner judged the rewrite way better at both counts,
+  and PDD 8-step better by far (`bench/results/2026-09-15_cafe_kids_verdict.json`).
+  - **Worth re-judging:** with the dancer verdict the same day, 8 steps beat
+    5 (tail5) on two scenes under the new default chain. That runs against
+    the earlier tail5 preference, which was judged under sage.
 
 **2026-09-14:**
 
