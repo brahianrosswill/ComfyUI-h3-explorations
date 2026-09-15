@@ -117,3 +117,12 @@ Not today: Tier 2 and Tier 3.
   branch, wheel installed through `vendor/rebuild_kernel.sh`, server
   restarted, graphs regenerated. Next: the all-levers witness against
   exact tail; if it matches, the bf16 row goes.
+- 2026-09-15, later still: the witnesses rendered on the served
+  `0.2.34+sol.5284cfb`, market prompt, seed 730451892, the same seed as the
+  morning's three arms: `Video/h3_probe_t2v_levers_00001-audio.mp4` (every
+  free lever, no bf16 blocks; wall time within a second of the shipped
+  render, server history) and `Video/h3_probe_t2v_policy_00001-audio.mp4`
+  (the same plus blocks 45/48/49 exact; wall time within a second of the
+  exact-tail render). Unscored at the time of writing; the question is
+  whether `levers` matches `exact_tail` on the porter and the crate. If it
+  does, the bf16 row above goes and the policy is "levers on".
