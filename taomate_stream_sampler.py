@@ -304,8 +304,6 @@ class TaoMateStreamSampler(comfy.samplers.Sampler):
                 cache.finish_commit(2 * xa.shape[-1], xv.shape[2] * frame_rows)
             return comfy.utils.unpack_latents(denoised, shapes_c)[0]
 
-        if device.type == "cuda":
-            torch.cuda.reset_peak_memory_stats(device)
         for n, chunk in enumerate(plan):
             started = time.perf_counter()
             if chunk.index == 0 and chunk.request > 0 and chunk.request % tm.AUDIO_RESET_REQUESTS == 0:
@@ -326,10 +324,18 @@ class TaoMateStreamSampler(comfy.samplers.Sampler):
             forward(xv, audio_states[-1], sigmas[-1], layout, commit=True)
             cache.retain()
             video_out[:, :, chunk.v0:chunk.v1] = xv
-            peak = torch.cuda.max_memory_allocated(device) / 2**30 if device.type == "cuda" else 0.0
+            # Card-wide use from the driver, not torch's allocator counters: the
+            # server runs cudaMallocAsync (`--cuda-malloc`), whose allocations
+            # `max_memory_allocated` does not see (it read 0.06 GiB on the first run).
+            if device.type == "cuda":
+                free, total = torch.cuda.mem_get_info(device)
+                card_used = (total - free) / 2**30
+            else:
+                card_used = 0.0
             logging.info("[taomate] request %d chunk %d: latents %d-%d, audio %d-%d, cache %d tokens, "
-                         "%.1f s, peak allocated %.2f GiB", chunk.request, chunk.index, chunk.v0, chunk.v1,
-                         chunk.a0, chunk.a1, cache.tokens, time.perf_counter() - started, peak)
+                         "%.1f s, card in use %.2f GiB, cache host pinned %s", chunk.request, chunk.index,
+                         chunk.v0, chunk.v1, chunk.a0, chunk.a1, cache.tokens,
+                         time.perf_counter() - started, card_used, cache.pin)
             if callback is not None:
                 packed = comfy.utils.pack_latents([video_out, audio_image])[0]
                 callback(n, packed, packed, len(plan))
