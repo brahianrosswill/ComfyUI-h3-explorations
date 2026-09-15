@@ -65,6 +65,7 @@ under `docs/` that no link from `CLAUDE.md` or this wiki reaches.
 | [`docs/research/sglang_h3_pipeline.md`](../../docs/research/sglang_h3_pipeline.md) | sglang's H3 pipeline stage by stage, at source level. Compares nothing |
 | [`docs/research/sglang_comparison.md`](../../docs/research/sglang_comparison.md) | what the vendor serving path does that we do not. Read before proposing an optimization |
 | [`docs/research/technique_transfer.md`](../../docs/research/technique_transfer.md) | what transfers from LLM and ViT serving to H3 and what does not |
+| [`docs/research/m3_h3_bridge.md`](../../docs/research/m3_h3_bridge.md) | the MiniMax-M3 to H3 conditioning bridge: what H3 consumes, what M3 provides, the alignment that is not open, the tolerance that defines "accepted", what the text lane measured, and the case against the idea. The capture side is the heylook checkout's plan document |
 
 ## Code and directories
 

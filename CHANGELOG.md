@@ -4,6 +4,20 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.108.2
+
+### Added
+
+- **`docs/research/m3_h3_bridge.md`**: the MiniMax-M3 to H3 conditioning
+  bridge from the consumer's end: what H3 consumes (read from the installed
+  encoder and DiT code), what M3 provides, why alignment is not open for text
+  or visual rows, the runtime tolerance that defines "accepted", what the
+  text lane measured, the case against the idea, and where it disagrees with
+  the capture-side plan document in the owner's inference-server repo. Four
+  dated records join `bench/results/` as `2026-09-14_m3_bridge_*`: the
+  tolerance between the shipped int8 encoder and the Mac's 8-bit capture, and
+  the text-lane arms against both target sides. Indexed in `docs/wiki/index.md`.
+
 ## 0.108.1
 
 ### Fixed
