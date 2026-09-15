@@ -160,9 +160,13 @@ bf16 attention on the three loud blocks (section 6).
 1. *Diagnosed.* Closed. Sections 1-5 are the evidence; the checkpoint scan
    and attention-target record is `bench/results/2026-09-14_block49_checkpoint_scan_and_targets.txt`.
 2. *Three levers built, measured on captures, served.* Closed for what
-   they are. All three are still off in the default graph, so a default
-   render today is exactly what it was before this page existed; the
-   probe graphs (`h3_probe_t2v_levers`, `h3_probe_t2v_policy`) turn them on.
+   they are. Until the evening of 2026-09-15 all three were off in the
+   default graph; that evening the owner moved the default chain to
+   kitchen's rotated dense kernel plus Sol with `qk_balance` on, sage out
+   (consumer commit 28d8ee5, `docs/wiki/decisions.md`), so one lever is
+   now on by default and the other two live in the sage-chain probes.
+   A fourth, Sol's own Hadamard rotation (`rotate`), is served since the
+   same night and off (`bench/results/2026-09-15_kitchen_0234_rotate_install.json`).
 3. *Visible, not yet blind.* Section 6: three scenes, two seeds on one of
    them, four viewers between them, the default ranked last every time on
    prompt-adherence failures (morphs, text). Rebalanced against
