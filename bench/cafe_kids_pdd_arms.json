@@ -1,0 +1,20 @@
+{
+  "what": "An outside prompt queued at the owner's request: verbatim (not house structure) and rewritten as prompt_bank/t2va_cafe_kids.txt, both PDD at 5 and 8 evaluations on the shipped default chain, 1344x768, 345 frames, the graph's own seed. Run on a freshly restarted server: back-to-back PDD renders at different step counts leak schedule state (2026-09-15).",
+  "arms": {
+    "cafe_kids_pdd5": "workflows/h3_candidate_t2v_pdd8_baked_api.json",
+    "cafe_kids_house_pdd5": "workflows/h3_candidate_t2v_pdd8_baked_api.json",
+    "cafe_kids_pdd8": "workflows/h3_candidate_t2v_pdd8_baked_api.json",
+    "cafe_kids_house_pdd8": "workflows/h3_candidate_t2v_pdd8_baked_api.json"
+  },
+  "patches": [
+    "cafe_kids_pdd5:MiniMaxH3Conditioning.prompt=Four children are chatting at a table in a busy cafe diner: A red head boy drinking a mug of hot chocolate, a brunette girl drawing with crayons on a paper towel, a blond boy playing a purple gameboy advance (a handheld videogame) with Sonic the Hedgehog visible onscreen, and an asian girl sipping a straw from a glass soda bottle. On the table in front of them are hamburgers and french fries on four individual plates. In the background on the left, a man and a woman are seated at a table, eating scones and drinking coffee. On the right, a waitress is standing behind a checkout counter near the antique cash register, writing on a notepad. Outside the clear glass windows on the left, is a historic downtown with shops with awnings and gilt letters on glass display windows. The time is golden hour, and the shops warm glow counterbalances with the rosy sky and dark, shady trees. The style is cinematic, live action, nature documentary, hyperrealism, with rich textures, crisp edges, sharp and clear focus, 8k resolution, maximum resolution, high visual fidelity.",
+    "cafe_kids_pdd5:PrimitiveInt.value=5",
+    "cafe_kids_house_pdd5:MiniMaxH3Conditioning.prompt=@bank:t2va_cafe_kids",
+    "cafe_kids_house_pdd5:PrimitiveInt.value=5",
+    "cafe_kids_pdd8:MiniMaxH3Conditioning.prompt=Four children are chatting at a table in a busy cafe diner: A red head boy drinking a mug of hot chocolate, a brunette girl drawing with crayons on a paper towel, a blond boy playing a purple gameboy advance (a handheld videogame) with Sonic the Hedgehog visible onscreen, and an asian girl sipping a straw from a glass soda bottle. On the table in front of them are hamburgers and french fries on four individual plates. In the background on the left, a man and a woman are seated at a table, eating scones and drinking coffee. On the right, a waitress is standing behind a checkout counter near the antique cash register, writing on a notepad. Outside the clear glass windows on the left, is a historic downtown with shops with awnings and gilt letters on glass display windows. The time is golden hour, and the shops warm glow counterbalances with the rosy sky and dark, shady trees. The style is cinematic, live action, nature documentary, hyperrealism, with rich textures, crisp edges, sharp and clear focus, 8k resolution, maximum resolution, high visual fidelity.",
+    "cafe_kids_pdd8:PrimitiveInt.value=8",
+    "cafe_kids_house_pdd8:MiniMaxH3Conditioning.prompt=@bank:t2va_cafe_kids",
+    "cafe_kids_house_pdd8:PrimitiveInt.value=8"
+  ],
+  "run": "each step count on a freshly restarted server via run_graph_arms --manifest (the restarts turned out unnecessary: the PDD tracker leak is warning-only, fixed in 0009d9a)"
+}
