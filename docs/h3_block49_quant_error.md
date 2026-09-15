@@ -142,7 +142,7 @@ against Q before quantization at no cost to the attention math. Three
 forms exist, all off by default as of this writing; "rebalanced" in the
 records means all three on:
 
-| lever | where | reaches | block 49 INT8 error | cost |
+| lever | where | reaches | block 49 INT8 quantization term (kernel vs fp32 Sol on the same route; Sol's total error moves about a third as much, since the routing term stays) | cost |
 |---|---|---|---|---|
 | `MiniMaxH3ChannelBalance` (this pack) | per-channel factor from the checkpoint's norm weights, folded into `q_norm`/`k_norm` at load; head-shared, RoPE-pair-equal | any INT8 kernel, ours or not | Sol -13%, sage -7% (8 heads) | none at render time |
 | `qk_balance` (sage fork v0.7.19; the Sage node's `fp8++ balanced` mode) | per-head factor from per-call channel norms, inside the per-thread quantizer, gated per head | sage steps | sage -23% (all heads) | +0.7% call, no memory |

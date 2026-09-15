@@ -34,8 +34,9 @@ unchanged in exact arithmetic (the factor is made equal within each RoPE
 pair so it commutes with the rotation); only the INT8 rounding moves.
 
 Measured on captured block-49 activations, first 8 heads, relative L2
-against fp32 attention on the same inputs: Sol's INT8 term 0.0265 to
-0.0231, sage fp8++ 0.0487 to 0.0453; block 0 unchanged. Per-head factors
+against fp32 attention on the same inputs: Sol's INT8 quantization term
+0.0265 to 0.0231 (its total error, routing included, moves less), sage
+fp8++ 0.0487 to 0.0453; block 0 unchanged. Per-head factors
 inside the kernels do about twice as much (they live in the sage and
 comfy-kitchen forks, see below); this node is the part that works on any
 kernel without a build.
