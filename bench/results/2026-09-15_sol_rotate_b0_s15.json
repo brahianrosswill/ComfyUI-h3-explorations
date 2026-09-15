@@ -1,0 +1,26 @@
+{
+  "block": 0,
+  "step": 15,
+  "heads": 8,
+  "rows": {
+    "plain": {
+      "quant_l2": 0.0024024396885058853,
+      "total_l2": 0.12437333740164076
+    },
+    "balanced": {
+      "quant_l2": 0.0024189424544893913,
+      "total_l2": 0.12437350930195577
+    },
+    "rotated": {
+      "quant_l2": 0.0021377541640165364,
+      "total_l2": 0.12437663573893497
+    },
+    "both": {
+      "quant_l2": 0.00216680347066736,
+      "total_l2": 0.12436736386569426
+    }
+  },
+  "what": "Sol's quantizer with a fixed Hadamard rotation of q/k rows before INT8 (kitchen fork branch h3-sol-rotate, not merged, not installed), graded on the capture: plain, qk_balance, rotate, both",
+  "conditions": "2026-09-15 evening, wheel built from h3-sol-rotate in a scratch worktree and run from the unpacked wheel; served wheel 0.2.34+sol.5284cfb untouched; tau 1.0, first 8 heads, S=104361; quant_l2 = kernel vs fp32 eager Sol on the same inputs, total_l2 = kernel vs fp32 dense attention; script scratchpad grade_rot.py (bench/grade_channel_balance.py's cuda_sol with extra kwargs)",
+  "for_scale": "comfy-kitchen int8_attention (rotated dense kernel) on the same block-49 cell: 0.0166 (bench/results/2026-09-15_ck_int8_attention_block49.json)"
+}

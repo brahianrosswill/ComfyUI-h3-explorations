@@ -24,8 +24,8 @@ placeholder, not a recommendation.
 
 | blocks | attention | status | evidence |
 |---|---|---|---|
-| 0-44, 46, 47 | INT8 (sage per-thread with `qk_balance`; Sol with `qk_balance`) | proposed | flat K-norm weights; both gates shut per head where nothing is loud (blocks 0 and 32 measured neutral, `bench/results/2026-09-15_channel_balance_kernel_b{0,32}_s15.json`) |
-| 45, 48, 49 | bf16 (`MiniMaxH3ExactBlocks`) until the all-levers witness matches it; then INT8 balanced | proposed, two scenes two seeds | market and diner 2026-09-15 (`bench/results/2026-09-15_block49_*`): shipped morphs, balanced does not, exact tail best; Sol's own factor graded on block 49 (`..._kernel_b49_s15.json`), witness render pending |
+| 0-44, 46, 47 | INT8: kitchen `int8_attention` (q/k rotated before INT8, core's Model Attention Backend) on the dense steps; Sol with `qk_balance` on the routed steps; no sage | shipped 2026-09-15, the default chain (owner) | flat K-norm weights; the kitchen kernel is immune to the loud channels by construction (`bench/results/2026-09-15_ck_int8_attention_block49.json`); Sol's gate shuts per head where nothing is loud (blocks 0 and 32 measured neutral, `bench/results/2026-09-15_channel_balance_kernel_b{0,32}_s15.json`); wall time on one market render per arm (`bench/results/2026-09-15_block49_community_chain.md`) |
+| 45, 48, 49 | the same INT8 chain by default; handing them to the kitchen dense kernel (`dense_blocks`, `h3_probe_t2v_ck_dense_tail`) or to bf16 (`MiniMaxH3ExactBlocks`) is the open exception | shipped as INT8; the exception proposed, unscored on this chain | on the sage chain, market and diner 2026-09-15 (`bench/results/2026-09-15_block49_*`): shipped morphs, balanced does not, exact tail best; on the kitchen chain, three arms rendered and unscored (`..._community_chain.md`); Sol's own factor graded on block 49 (`..._kernel_b49_s15.json`) |
 
 ## The policy table (linears)
 
@@ -172,6 +172,17 @@ Not today: Tier 2 and Tier 3.
   changes regardless of the scoring: our Sage node is a candidate for
   removal from the default graph (same speed, a third of the error on
   block 49, measured), and Tier 2 is rotation.
+- 2026-09-15, night: the default flipped (owner). Every video graph's
+  dense kernel under Sol is core's Model Attention Backend on kitchen int8,
+  sage off, and Sol's `qk_balance` is on (`h3_config.DENSE_BACKEND_NODE`,
+  `h3_config.SOL_RECOMMENDED_CUDA`; `docs/wiki/decisions.md`). The sage-chain
+  arms `h3_probe_t2v_levers`, `h3_probe_t2v_policy` and
+  `h3_probe_t2v_exact_tail` stay on sage so their pair and ceiling still mean
+  what they did; `h3_probe_t2v_balanced` and `h3_probe_t2v_ck_balanced`
+  retired (the second is the default now). `h3_probe_t2v_ck` is the
+  community chain as most people run it, Sol's balance off. The
+  community-chain arms are still unscored, so the tail row stays open on
+  this chain.
 
 ## Tier 2 design note (2026-09-15, evening): rotation inside Sol's quantizer
 
@@ -201,3 +212,15 @@ preprocess, so the routed steps stop needing a rebalance or a dense tail:
 - Off by default behind a `rotate` flag until graded; the off path stays
   bit-identical. Same grading path as Tier 1
   (`bench/grade_channel_balance.py` gains a `rotated` row).
+- 2026-09-15, night: Tier 2 built and graded, not installed. Kitchen fork
+  branch `h3-sol-rotate` (off `h3-build`): `sol_attn(..., rotate=True)`, a
+  fixed sign-diagonal-plus-Hadamard rotation of every q/k row before Sol's
+  INT8 quantizers, threshold unrotated, off by default and byte-identical
+  off. On the block-49 capture, Sol's INT8 term: plain 0.0265, balanced
+  0.0193, rotated 0.0140, both 0.0126; block 0 improves slightly too
+  (`bench/results/2026-09-15_sol_rotate_b{49,0}_s15.json`). That is below
+  kitchen's rotated dense kernel's 0.0166 on the same cell. The fork's Sol
+  suite from the wheel: 128 passed, the pre-existing top-k ties case only.
+  Install, a Sol node `rotate` widget and a witness render come after the
+  default flip devguy is making lands, so the two changes do not cross in
+  the generator.
