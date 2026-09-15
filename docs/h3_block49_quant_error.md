@@ -437,6 +437,10 @@ more accurate than the accurate path without it.
   comparison this repo requires of a default, and the freeze session
   told first.
 
+**Prior art.** The rescale is SmoothQuant's migration pointed at the
+attention product instead of a linear layer; what is and is not new in that
+is `docs/research/smoothquant_for_attention_qk.md`.
+
 **Sol's quantizer has it too (2026-09-15, evening).** The same per-head
 factor, computed in Sol's preprocess from the call's own q/k and applied
 inside its pooled, Q and K quantizers with the routing threshold left in
