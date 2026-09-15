@@ -165,8 +165,20 @@ block-49 cell, sage fp8++ as served, mean rtol against fp32 attention:
 | factor form | block 49 | block 0 | where it lives |
 |---|---|---|---|
 | none | 0.0472 | 0.0085 | |
-| per head, from the capture, RoPE-pair-equal (a=0.5) | 0.0381 (-19%) | 0.0088 (+3.5%) | needs a per-head pass; not built |
+| per head, from the capture, RoPE-pair-equal (a=0.5) | 0.0381 (-19%) | 0.0088 (+3.5%) | superseded by the in-quantizer form below |
 | per channel from the checkpoint's norm weights, pair-equal (a=0.5), CPU simulation of the QK side | 0.0587 vs 0.0666 plain (-12%) | 0.0062 vs 0.0062 (neutral) | `MiniMaxH3ChannelBalance`, folded into the norm weights, free |
+
+**Built 2026-09-15 in the sage fork (v0.7.19, `qk_balance`):** the
+per-head factor inside the per-thread INT8 quantizer itself, computed per
+call from copy-free channel norms, gated per head on K's loud-channel
+share, no RoPE-pair constraint (it acts after RoPE), no calibration, no
+extra q/k copy. Kernel-level on the same cells: block 49 0.0472 -> 0.0364
+(-22.9%), blocks 40 and 0 unchanged; cost +0.7% on the call at the frame
+ceiling and no change in peak memory. Off by default there until a render
+check; the record is the fork's CHANGELOG v0.7.19. That is the form to
+reach for on the sage steps; this node's weights fold remains the form
+that also reaches Sol's kernel, until the same factor is put into Sol's
+quantizer.
 
 The alpha sweep put 0.5 at the optimum on both captured block-49 steps;
 fully equalizing K (a=1.0) is bad everywhere because Q then carries the whole

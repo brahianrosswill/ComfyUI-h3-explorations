@@ -33,9 +33,10 @@ The factor comes from the checkpoint's own norm weights,
 mean of one. That needs no capture, so it covers blocks that were never
 captured, and it is neutral where the weights are flat: measured on block 0
 the patched call reproduces the unpatched error to four decimals. A factor
-calibrated per head from captured activations removes about twice as much
-error at block 49 but cannot fold into a per-channel weight; that form would
-be an elementwise pass in the attention forward, and is not built.
+calibrated per head removes about twice as much error at block 49 but
+cannot fold into a per-channel weight; that form lives inside the sage
+fork's per-thread quantizer as `qk_balance` (its v0.7.19), computed per
+call, and reaches only the sage steps until Sol's quantizer gets the same.
 
 ## Off by default, and an experiment
 
