@@ -54,6 +54,11 @@ import logging
 
 from comfy_api.latest import io
 
+try:
+    from . import h3_capture as _capture
+except ImportError:   # run as a script or from a bench harness
+    import h3_capture as _capture
+
 
 def _exact_forward(self, x, rope_freqs=None, transformer_options={}):
     """ComfyUI's stock Attention.forward with the attention override removed.
@@ -77,6 +82,34 @@ def _exact_forward(self, x, rope_freqs=None, transformer_options={}):
             "optimized_attention_override" in transformer_options:
         transformer_options = {k: v for k, v in transformer_options.items()
                                if k != "optimized_attention_override"}
+
+    # Capture on the exact path (2026-09-15). `h3_capture` hooks live in the
+    # sage forward, so until now no capture could come from a block running
+    # plain attention: every q/k/v cell on disk sits on a trajectory that
+    # went through INT8 attention on the steps before it. With H3_CAPTURE
+    # set, this forward installs an override of its own that records the
+    # tensors and then calls the stock kernel unchanged, so a graph with
+    # every block on this node yields a capture with no INT8 anywhere in
+    # the trajectory. Inert otherwise: the override is not installed and
+    # the stock forward runs exactly as before.
+    if _capture.enabled:
+        module = self
+
+        def _capturing(func, q, k, v, heads, mask=None, attn_precision=None,
+                       skip_reshape=False, skip_output_reshape=False, **kw):
+            # core hands BHND with skip_reshape=True; `maybe_capture` wants the
+            # [1, S, H, D] views the sage forward holds, and transposes back.
+            if skip_reshape:
+                _capture.maybe_capture(
+                    module, q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2),
+                    length_hint=q.shape[2], kernel="exact",
+                    transformer_options=transformer_options)
+            return func(q, k, v, heads, mask=mask, attn_precision=attn_precision,
+                        skip_reshape=skip_reshape,
+                        skip_output_reshape=skip_output_reshape, **kw)
+
+        transformer_options = {**(transformer_options or {}),
+                               "optimized_attention_override": _capturing}
 
     return Attention.forward(self, x, rope_freqs=rope_freqs,
                              transformer_options=transformer_options)
