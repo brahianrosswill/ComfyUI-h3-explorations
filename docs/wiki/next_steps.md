@@ -24,12 +24,14 @@ own below the rule.
     ([`../h3_taomate.md`](../h3_taomate.md) section 7). The sampler node is
     built, and its whole-clip equality check matched core
     (`bench/results/2026-09-15_taomate_verify_whole_clip.json`).
-  - **Rendered the same day, verdicts pending.**
-    - The control, a 124-frame throwaway, then the 243-frame dancer stream at
-      1344x768 beside a dense whole-clip control and PDD at 5 and 8 steps.
-    - Section 7.3's status names the records. The owner's free-text verdict
-      on the four dancer clips closes this bullet, in a dated
-      `bench/results/` file.
+  - **Rendered the same day.** The control, a 124-frame throwaway, then the
+    243-frame dancer stream at 1344x768 beside a dense whole-clip control and
+    PDD at 5 and 8 steps.
+    - **Verdict on the two TaoMate arms:** both a lot better than the earlier
+      TaoMate renders. The stream reads as a normal distill with no duplicated
+      people and no obvious artifacts
+      (`bench/results/2026-09-15_taomate_stream_verdict.json`).
+    - **Still open:** the TaoMate-versus-PDD comparison on the same clips.
 - **Cafe prompt pair, verdicts pending.** An outside prompt verbatim against
   its house-structure rewrite (`t2va_cafe_kids`), PDD at 5 and 8 steps
   (`bench/results/2026-09-15_cafe_kids_pdd_arms.jsonl`).

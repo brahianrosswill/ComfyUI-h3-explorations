@@ -337,6 +337,16 @@ The pieces:
 - **The owner's verdict on the four is pending.** Read from stills only, not
   judged: the stream holds one stable dancer with a clean push-in but little
   dance motion; PDD dances.
+- **Owner's verdict on the two TaoMate arms, the same day**
+  (`bench/results/2026-09-15_taomate_stream_verdict.json`). Both look "a lot,
+  lot better" than the earlier TaoMate renders. The streamed clip "looks like
+  a distill lora but it doesnt duplicate ppl and no obvious artifacts. just
+  the usual distill stuff".
+  - **Reading (reasoned, not measured).** Both arms dropped sage and Sol, so
+    that quantized attention stack was a large part of the section 6 failure.
+    The streaming runtime adds stability on top.
+  - **Still to judge:** TaoMate against PDD at 5 and 8 steps on the same scene
+    and seed.
 - **A fidelity review** of the port against upstream and core found no
   fidelity bug. Its runtime findings (host cache memory, allocation scope,
   silent masks) are fixed; see CHANGELOG 0.116.2.

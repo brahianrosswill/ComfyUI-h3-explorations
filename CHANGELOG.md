@@ -4,6 +4,21 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.116.3
+
+### Added
+
+- **`bench/results/2026-09-15_taomate_stream_verdict.json`** holds the
+  owner's verdict on the two TaoMate dancer arms at 1344x768.
+  - **Both look "a lot, lot better"** than the earlier TaoMate renders.
+  - **The streamed clip** "looks like a distill lora but it doesnt duplicate
+    ppl and no obvious artifacts".
+  - **Reading (reasoned):** the quantized attention stack the earlier renders
+    ran under was a large part of their failure. The streaming runtime adds
+    stability on top.
+  - `docs/h3_taomate.md` section 7.3 and `docs/wiki/next_steps.md` point at
+    it. TaoMate against PDD on the same clips is still unjudged.
+
 ## 0.116.2
 
 ### Added
