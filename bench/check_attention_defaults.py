@@ -167,15 +167,6 @@ DEVIATIONS = {
 #: Graphs that legitimately ship without live Sol, by MECHANISM. The
 #: single-frame class is not listed here -- it is derived from GRAPH_DIRS below.
 SOL_EXEMPT_STEMS = {
-    "h3_probe_t2v_sol_core":
-        "ComfyUI core's own Sol node (`BlockSparseAttention`, "
-        "comfy_extras/nodes_sparse_attention.py) at its own defaults, for the "
-        "core-versus-ours A/B (bench/sol_core_ab_arms.json). Core's node owns "
-        "the sparse path here: it replaces the attention of the 50 main blocks "
-        "through `double_block` patches and puts its override on top of sage's, "
-        "so our node beside it would either be bypassed on those blocks or route "
-        "the same calls twice. sage stays wired as the floor both nodes fall "
-        "back to, and SageChainAssert still gates it",
     "h3_probe_vsa":
         "VSA and Sol-Attn are mutually exclusive, not merely redundant: VSA "
         "replaces the DiT block forward on the 50 main blocks and Sol-Attn "
@@ -263,10 +254,6 @@ FLOOR_STEMS = {
     "h3_probe_head_chunks":
         ("sage", "head_chunks is an input of MiniMaxH3SageAttention; the arm "
                  "means nothing without the node"),
-    "h3_probe_t2v_sol_core":
-        ("sage", "core's BlockSparseAttention against ours with sage as the "
-                 "floor both fall back to (bench/sol_core_ab_arms.json); core's "
-                 "node over the kitchen backend has not been rendered here"),
     # Block-49 arms on the sage chain, scored or still being scored there.
     "h3_probe_t2v_levers":
         ("sage", "block-49 Tier 1 witness on the sage chain; its pair with "

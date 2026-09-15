@@ -269,11 +269,18 @@ own below the rule.
 
 **2026-09-10 (upstream survey session):**
 
-- Core vs ours Sol A/B, BUILT not rendered: `bench/sol_core_ab_arms.json`
-  (courtroom, disco, hacker; two seeds; pairs A ours vs core, B ours at core's
-  values vs core, C ours vs all-rows). Graph `h3_probe_t2v_sol_core` (API only).
-  Blocked until the ComfyUI venv rebuild (`docs/comfy_notes.md`, the
-  `start.sh` note) is verified and the server restarted.
+- Core vs ours Sol A/B, rendered 2026-09-10 with no verdict record
+  (`bench/results/2026-09-10_sol_core_ab_arms.jsonl`; this line said "BUILT not
+  rendered" until 2026-09-15): courtroom, disco, hacker; two seeds; pairs A
+  ours vs core, B ours at core's values vs core, C ours vs all-rows.
+  *Retired 2026-09-15*, manifest `bench/sol_core_ab_arms.json` and graph
+  `h3_probe_t2v_sol_core` together: the default floor moved to the kitchen
+  backend (`28d8ee5`), so a re-run would set ours on kitchen against core's
+  node on sage under this A/B's name. The clips remain on disk and unscored,
+  in the ComfyUI output folder under the basenames
+  `bench/results/2026-09-10_sol_core_ab_outputs.json` lists, and the scoring
+  below is still possible from those files. Ours against core again is a new
+  manifest, core's node over the backend node, not a re-run.
 - All-rows sink switch: planned, gated on pair C (`docs/roadmap.md`, forward
   plan step 3).
 - Pair B, GRADED on activations

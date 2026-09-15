@@ -506,8 +506,10 @@ SOL_END_PERCENT_BY_STEPS = {}  # retired 2026-09-11; was {4: 0.74, 6: 0.83, 8: 0
 VSA_KEEP_PERCENT = 10.0
 
 #: ComfyUI core's own Sol node (`comfy_extras/nodes_sparse_attention.py`,
-#: Comfy-Org/ComfyUI#16072, merged 2026-09-06), for the probe that renders it
-#: against ours (`h3_probe_t2v_sol_core`).
+#: Comfy-Org/ComfyUI#16072, merged 2026-09-06), for an arm that renders it
+#: against ours. No graph carries it since 2026-09-15, when
+#: `h3_probe_t2v_sol_core` retired with its sage-floor A/B; the generator's
+#: `sol_impl="core"` still builds one.
 SOL_CORE_NODE = "BlockSparseAttention"
 
 #: Its inputs at the node's OWN schema defaults, in API form. **Inherited, not

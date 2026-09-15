@@ -2,11 +2,11 @@
   "what": "The turbo rung (docs/roadmap.md, 'Owner decisions, 2026-09-05 evening', item 3): two step-reduction distills that are not PDD, each under sage alone with Sol absent, on the five ladder scenes at two seeds, blinded per seed against the sage 16-step floor. Arm turbov4: the larryvrh MiniMax-H3-Turbo v4 step-600 EMA at six steps through its own loader (bypass injection, strength 1.0, scheduler simple, shift 12/3), h3_probe_t2v_turbo_v4_sage. Arm turbolx12: lightx2v's fl2v turbo v1.2 768p 4-step file at the vendor's four steps, strength 1.0, shift 6/3, through the stock loader, h3_probe_t2v_turbo_lx12_sage. 1344x768, 345 frames. Neither LoRA has rendered in this repo before; the pack's node last ran on the mid-August core, so the warmup is its first test on this one.",
   "why": "The acceleration arena's text-to-video tab (internal/refs/SCR-20260905-khpk.png and siblings) puts the larryvrh v4 at six steps about two to one over the 28-step reference and over PDD8, with the lightx2v 8-step next; every 4-step entry sat in the bottom block. PDD8 lost to the sage floor here under sage alone and the bake did not move it, so PDD is parked and the step-reduction question moves to these two files.",
   "scenes": {
-    "standoff": "t2va_frontier_standoff -- see bench/ladder_arms.json for what each scene tests",
-    "diner": "t2va_diner_breakup -- see bench/ladder_arms.json for what each scene tests",
-    "opera": "t2va_opera_grand_stage -- see bench/ladder_arms.json for what each scene tests",
-    "stairwell": "t2va_stairwell_dialogue -- see bench/ladder_arms.json for what each scene tests",
-    "subway": "t2va_subway_chase -- see bench/ladder_arms.json for what each scene tests"
+    "standoff": "t2va_frontier_standoff -- two speakers, a figure at distance, a painted sign, a silent bystander",
+    "diner": "t2va_diner_breakup -- close-up two-person dialogue over scored music: the audio-judgeable one",
+    "opera": "t2va_opera_grand_stage -- a sung Italian aria with a lyrics pair: the singing one",
+    "stairwell": "t2va_stairwell_dialogue -- the shipped dialogue scene (DIALOGUE_T2V_PROMPT): two-person stairwell dialogue over a hard room tone, no music; added by the owner during the first run",
+    "subway": "t2va_subway_chase -- fast tracking shot with strong shake, a fast push in, on-screen text: the fast-motion surface the review found the ladder missing"
   },
   "rungs": {
     "turbov4": "larryvrh v4 step-600 EMA, 6 steps, strength 1.0, simple, shift 12/3, MiniMaxH3TurboLoRA bypass (low_vram off) + MiniMaxH3TurboSampler (stock Euler on this core), sage auto on every step, Sol absent (h3_probe_t2v_turbo_v4_sage)",

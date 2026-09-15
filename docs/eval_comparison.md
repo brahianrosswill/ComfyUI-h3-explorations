@@ -213,6 +213,12 @@ any comparison that is meant to be quoted:
    substrate (including the power limit). One render per arm is two samples,
    not a comparison -- CLAUDE.md's different-sample rule -- so N is the number
    of seeds the claim needs, and for a perceptual claim that is many.
+   **A manifest names a graph, not a render.** The graph is whatever the
+   generator last built, so re-running an old manifest renders today's
+   defaults; the row's graph sha is what actually ran. *Since 2026-09-15
+   (`28d8ee5`)* every manifest that points at a default graph renders the
+   kitchen-backend chain, and re-running one written before then is a
+   different experiment from its record, not a repeat of it.
 2. **Blind with `bench/blind_batch.py`**: neutral `clip_NN.mp4` copies under
    `Video/blind/<session>/`, a MANIFEST with row indices only, and a sealed
    key in `internal/blind_keys/<session>.json` (gitignored). For a two-arm

@@ -4,6 +4,38 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.116.0
+
+### Removed
+
+- **`bench/ladder_arms.json`, `bench/sol_core_ab_arms.json` and the probe
+  graph `h3_probe_t2v_sol_core`.** After `28d8ee5` neither manifest would
+  re-run as its record. The ladder refuses on its sage-mode patch, and the
+  core-versus-ours A/B would set ours on kitchen against core's node on sage
+  under its own name. The owner deferred the call to the sage-fork session.
+  - The ladder's verdict stands
+    (`bench/results/2026-09-04_ladder_2026-09-03_verdict.json`).
+  - The A/B's clips were rendered on 2026-09-10 and never scored. They remain
+    on disk under the basenames
+    `bench/results/2026-09-10_sol_core_ab_outputs.json` lists, and can still be
+    scored.
+  - Ours against core again is a new manifest, core's node over the backend
+    node, not a re-run. `h3_config.SOL_CORE_NODE` and the generator's
+    `sol_impl="core"` stay for it.
+
+### Changed
+
+- **The four manifests that pointed at `bench/ladder_arms.json` for what each
+  scene tests** (`pdd_ladder`, `pdd_bake`, `turbo_rung`, `turbo_rung_floor`)
+  carry those one-line descriptions inline.
+- **`docs/eval_comparison.md` says a manifest names a graph, not a render.**
+  Since `28d8ee5` every manifest that points at a default graph renders the
+  kitchen chain, so re-running one written before then is a different
+  experiment from its record.
+- **`docs/wiki/next_steps.md`** said the core-versus-ours A/B was "BUILT not
+  rendered"; its 2026-09-10 records say it rendered. Corrected, and logged in
+  `docs/wiki/decisions.md`.
+
 ## 0.115.1
 
 ### Added

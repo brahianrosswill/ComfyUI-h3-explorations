@@ -1,11 +1,11 @@
 {
   "what": "The PDD ladder the 2026-09-03 speedup ladder turned out to need. That ladder rendered PDD8 only as the shipped graph (sage auto plus Sol at the PDD window) and it lost to the true baseline on every scene; the owner pointed out that no arm rendered PDD8 without Sol, so the loss attributes to nothing narrower than the shipped graph (bench/results/2026-09-04_ladder_2026-09-03_verdict.json, owner_report_after_join). The owner's ask on 2026-09-04: PDD without Sol at 8 steps, and PDD with Sol at more conservative settings. Under the owner's same-day decision that sage is always on (docs/roadmap.md, forward plan 2026-09-04), every rung here runs sage and the quality reference is the ladder's SAGE clip per scene, not its dense clip; the stock-attention PDD8 graph (h3_probe_t2v_pdd8_dense) exists as the vendor's reference configuration and is not a rung. Same five scenes, same seed, 1344x768, 345 frames; judged blind against each other and against the ladder's sage clips.",
   "scenes": {
-    "standoff": "t2va_frontier_standoff -- see bench/ladder_arms.json for what each scene tests",
-    "diner": "t2va_diner_breakup -- see bench/ladder_arms.json for what each scene tests",
-    "opera": "t2va_opera_grand_stage -- see bench/ladder_arms.json for what each scene tests",
-    "stairwell": "t2va_stairwell_dialogue -- see bench/ladder_arms.json for what each scene tests",
-    "subway": "t2va_subway_chase -- see bench/ladder_arms.json for what each scene tests"
+    "standoff": "t2va_frontier_standoff -- two speakers, a figure at distance, a painted sign, a silent bystander",
+    "diner": "t2va_diner_breakup -- close-up two-person dialogue over scored music: the audio-judgeable one",
+    "opera": "t2va_opera_grand_stage -- a sung Italian aria with a lyrics pair: the singing one",
+    "stairwell": "t2va_stairwell_dialogue -- the shipped dialogue scene (DIALOGUE_T2V_PROMPT): two-person stairwell dialogue over a hard room tone, no music; added by the owner during the first run",
+    "subway": "t2va_subway_chase -- fast tracking shot with strong shake, a fast push in, on-screen text: the fast-motion surface the review found the ladder missing"
   },
   "rungs": {
     "pdd8sage": "PDD8 with sage auto on every step and Sol absent (h3_probe_t2v_pdd8_sage). The owner's 'pdd without sol', and under the sage-always policy the PDD floor. Listed first: it answers the primary question on its own.",

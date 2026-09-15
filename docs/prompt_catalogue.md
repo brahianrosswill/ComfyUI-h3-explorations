@@ -73,7 +73,7 @@ Carried by **40** graph(s). Sections: `integrated_multimodal_description`, `over
 - `h3_probe_t2v_pdd8_dense_api`
 - `h3_probe_t2v_pdd8_sage_api`
 - `h3_probe_t2v_policy_api`
-- `h3_probe_t2v_sol_core_api`
+- `h3_probe_t2v_rotate_api`
 - `h3_probe_t2v_sol_nosage_api`
 - `h3_probe_t2v_turbo_lx12_sage_api`
 - `h3_probe_t2v_turbo_v4_sage_api`

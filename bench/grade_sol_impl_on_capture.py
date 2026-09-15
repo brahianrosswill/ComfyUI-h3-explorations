@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Grade our Sol node's implementation against ComfyUI core's, on the SAME captured inputs.
 
-Pair B of `bench/sol_core_ab_arms.json` renders our node re-set to core's knob
-values against core's own `BlockSparseAttention` (Comfy-Org/ComfyUI#16072).
+Pair B of `bench/sol_core_ab_arms.json` (retired 2026-09-15; its rendered arms
+are listed in `bench/results/2026-09-10_sol_core_ab_outputs.json`) renders our
+node re-set to core's knob values against core's own `BlockSparseAttention`
+(Comfy-Org/ComfyUI#16072).
 The two then differ in implementation, not policy, and a rendered clip cannot
 attribute a numerical change (CLAUDE.md). This does, at the call level:
 

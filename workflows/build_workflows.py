@@ -4993,17 +4993,14 @@ def main():
          dict(dense_attn="sol", out_prefix="Video/h3_probe_t2v_sol_nosage"),
          "text -> video + audio, Sol as shipped, no sage: stock attention outside Sol"),
 
-        # ComfyUI core's own Sol node against ours (2026-09-10, owner's ask:
-        # "one with our node using our current default values, and one with
-        # comfy's sol node at its own defaults"). The shipped chain with core's
-        # `BlockSparseAttention` in our node's slot at ITS OWN defaults
-        # (h3_config.SOL_CORE_DEFAULTS); sage stays the floor underneath. API
-        # only: it is driven by run_graph_arms (bench/sol_core_ab_arms.json),
-        # and the UI builder draws no DynamicCombo for a core node.
-        ("h3_probe_t2v_sol_core.json", "t2v-sol-core", "t2v", LONG_T2V_PROMPT,
-         dict(sol_impl="core", dense_attn="sage_sol",
-              out_prefix="Video/h3_probe_t2v_sol_core"),
-         "text -> video + audio, sage + core's BlockSparseAttention at its own defaults"),
+        # `h3_probe_t2v_sol_core` stood here from 2026-09-10 to 2026-09-15:
+        # core's `BlockSparseAttention` at its own defaults over sage, driven
+        # by the core-versus-ours A/B. Retired with that manifest once the
+        # default floor became the kitchen backend, because a re-run would have
+        # set ours on kitchen against core's node on sage under the A/B's name.
+        # Its clips were rendered and never scored; the record lists them
+        # (bench/results/2026-09-10_sol_core_ab_outputs.json). `sol_impl="core"`
+        # stays for the next such arm, core's node over the backend node.
 
         # **Block-49 probes, 2026-09-15** (docs/h3_block49_quant_error.md).
         # Same prompt and seed as the shipped t2v graph, so they form
