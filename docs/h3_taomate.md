@@ -66,7 +66,14 @@ the direct comparison. They differ in four ways:
    `bench/measure_merge_noise.py --only taomate` measures both on stored
    weights, CPU only. Its record is
    `bench/results/2026-09-15_merge_noise_taomate.json`; read it beside the
-   conversion record's per-module `rel_err`.
+   conversion record's per-module `rel_err`. **The result, 2026-09-15:** in
+   every module, and for both files, the noise one cast adds is larger than
+   the whole gap between ours and kijai's. The two files carry the same
+   noise. So on this checkpoint the resize's loss is below what each load
+   perturbs anyway, and ours' fidelity advantage is unlikely to survive into
+   the weights a render uses. As the record's own caveat says, this is a
+   statement about stored weights. PDD carries the same noise and renders
+   well.
 4. **Cost.** Ours is larger on disk and in each cast, since every module keeps
    full rank (`ls -l` the two files).
 
