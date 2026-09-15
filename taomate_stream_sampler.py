@@ -48,6 +48,7 @@ cache. It must reproduce the stock sampler's latent.
 from __future__ import annotations
 
 import functools
+import json
 import logging
 
 import torch
@@ -116,6 +117,18 @@ def _stream_attention(attn, block, state, x, rope_freqs=None, transformer_option
 def _block_patch(block, diffusion_model, state, args, extra):
     attention = functools.partial(_stream_attention, diffusion_model.blocks[block].attn, block, state)
     return extra["original_block"]({**args, "attention": attention})
+
+
+def _deviation(reference, candidate, shapes) -> dict:
+    """Per stream: the largest absolute difference and the RMS difference over the reference's RMS."""
+    out = {}
+    for name, ref, got in zip(("video", "audio"), comfy.utils.unpack_latents(reference.float(), shapes),
+                              comfy.utils.unpack_latents(candidate.float(), shapes)):
+        diff = got - ref
+        out[name] = {"max_abs": float(diff.abs().max()),
+                     "rel_rms": float(diff.pow(2).mean().sqrt() / ref.pow(2).mean().sqrt().clamp_min(1e-12)),
+                     "exact": bool(torch.equal(got, ref))}
+    return out
 
 
 def _refusals(model_wrap, transformer_options) -> list[str]:
@@ -191,8 +204,15 @@ class TaoMateStreamSampler(comfy.samplers.Sampler):
         base_to["patches_replace"] = replace
 
         if self.mode == "verify_whole_clip":
-            return self._whole_clip(model_wrap, inner, sigmas, noise, latent_image, context, payload,
-                                    shapes, base_to, callback)
+            # The reference is core's own sampler on the same inputs, run first
+            # and without the hook, so the expectation comes from outside this file.
+            reference = comfy.samplers.ksampler("euler").sample(
+                model_wrap, sigmas, dict(extra_args), None, noise, latent_image, denoise_mask, True)
+            hooked = self._whole_clip(model_wrap, inner, sigmas, noise, latent_image, context, payload,
+                                      shapes, base_to, callback)
+            self.last_report = _deviation(reference, hooked, shapes)
+            logging.info("[taomate] verify_whole_clip %s", json.dumps(self.last_report, sort_keys=True))
+            return hooked
         return self._stream(model_wrap, inner, sigmas, noise, latent_image, context, payload,
                             shapes, base_to, state, callback)
 
