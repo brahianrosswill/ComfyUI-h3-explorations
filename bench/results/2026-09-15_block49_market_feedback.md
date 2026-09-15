@@ -116,3 +116,16 @@ be settled from single frames (the takes diverge into different poses by
 the end); the coin beat is the clean evidence. So on this scene the free
 levers do not fully reach the ceiling; the bf16 tail still buys the last
 commitment on small objects.
+
+*Corrected 2026-09-15, same evening.* The paragraph above said the levers
+clip leaves the coins undecided. It does not: at 0.2 s spacing (7.6 to
+8.8 s, crops on the tins) the levers clip shows one small coin in the
+fingers at 7.8 s going into the tin at 8.2 s; the policy clip shows a
+stack of several larger coins dropped more slowly, with the left tin open
+instead of lidded. Both render the exchange; the policy clip makes it
+legible, the levers clip makes it small and fast. The owner's reading
+("faster motion and smaller coins") stands; "undecided" was an artefact of
+half-second frame sampling. The crate parallel is withdrawn: this is a
+legibility difference, not an object left unresolved. What remains true is
+that a viewer separated the pair on it, so the bf16 tail still buys
+something visible on this scene.
