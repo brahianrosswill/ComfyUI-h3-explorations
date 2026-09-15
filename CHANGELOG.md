@@ -4,6 +4,59 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.113.0
+
+### Added
+
+- **Sol's quantizer takes the channel balance too** (`docs/h3_quant_policy.md`
+  Tier 1). The kitchen fork's `h3-qk-balance` branch (off `h3-build`) adds
+  `sol_attn(..., qk_balance=True)`: per (batch, head, channel) the preprocess
+  computes f = rms_k^0.5 / rms_q^0.5 from the call's own q/k (geometric mean
+  one per head, one on any head whose four loudest K channels hold under a
+  fifth of K's energy) and quantizes q * f and k / f in the pooled, Q and K
+  quantizers; the routing threshold, kmean, kcvar and the coarse branch stay
+  unbalanced, so the route is invariant up to the changed quantization. Off,
+  the launch takes null factors and is bit-identical to the served build
+  (twelve shapes and option mixes, checked against the installed
+  `0.2.34+sol.2aff3c5`). The fork's Sol suite gained ten cases. HIP refuses
+  True; `sol_attn_chunked` does not take it. Not installed and not merged to
+  `h3-build` until `bench/grade_channel_balance.py` (its new `kernel` row, the
+  factor on unmodified inputs) says yes.
+- **`MiniMaxH3SolAttn` gains `qk_balance`** (optional, last widget, off): the
+  kernel's switch above, forwarded only when on so the shipped call stays
+  byte-identical, refused at patch time on a build without it, recorded in
+  the observer's settings. `h3_config.SOL_RECOMMENDED_CUDA` carries it off;
+  `h3_probe_t2v_policy` overrides it on (declared deviation), and
+  `h3_probe_t2v_levers` is new: every free lever (balance node, sage
+  `fp8++ balanced`, Sol `qk_balance`) and no exact blocks, the graph that has
+  to match `h3_probe_t2v_exact_tail` for the bf16 tail row to go away.
+  Graphs regenerate on the next server start that carries the widget.
+- The owner's reading of the market morph filed verbatim in
+  `bench/results/2026-09-15_block49_market_feedback.md` and summarized in
+  `docs/h3_block49_quant_error.md` section 6: the worse outputs never decide
+  whether a crate is one deep box or two shallow trays, and the morph is that
+  indecision; the ceiling arm commits to two stacked trays.
+
+## 0.112.0
+
+### Added
+
+- **`bench/results/2026-09-15_taomate_verdicts.json`** records the owner's
+  free-text verdicts on the TaoMate probe and freeze arms:
+  - PDD8 far better in every scene, by the owner and everyone they showed
+  - ours and kijai's indistinguishable
+  - diner arms washed out, with morphing and cloning
+  - the dancer morphs into two people
+  - the frozen voice arm is the only good TaoMate render
+
+### Changed
+
+- **The TaoMate lane is parked.** `docs/h3_taomate.md` gains section 6.
+  `docs/h3_audio_freeze.md` idea 9, `docs/wiki/index.md` and
+  `docs/wiki/next_steps.md` now point at the verdict. The trajectory freeze
+  patch and the lever arms are not run. The converter, the `h3_config`
+  contract, the probe graphs and their checks stay.
+
 ## 0.111.0
 
 ### Added
