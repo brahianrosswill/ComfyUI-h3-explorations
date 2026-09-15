@@ -9,8 +9,17 @@
   },
   "owner_words": [
     "this one looks a lot, lot better.",
-    "both do. the streamed clip is good tho, it looks like a distill lora but it doesnt duplicate ppl and no obvious artifacts. just the usual distill stuff"
+    "both do. the streamed clip is good tho, it looks like a distill lora but it doesnt duplicate ppl and no obvious artifacts. just the usual distill stuff",
+    "yeah 8 step pdd has way less artifact morphing for the freeze dancer"
   ],
+  "pdd_arms": {
+    "renders": {
+      "pdd5": "Video/h3_candidate_t2v_pdd8_baked_audio_freeze_dancer_pdd5_00001-audio.mp4",
+      "pdd8": "Video/h3_candidate_t2v_pdd8_baked_audio_freeze_dancer_pdd8_00002-audio.mp4 (the fresh-server re-run; the interrupted _00001 left only a preview image)"
+    },
+    "verdict": "PDD at 8 steps has way less artifact morphing on the freeze dancer",
+    "comparator": "not stated in the owner's words; asked the same day whether it is against PDD at 5 steps, against the TaoMate stream, or both"
+  },
   "verdicts": {
     "both_arms_vs_earlier_taomate": "both look a lot better than the earlier TaoMate renders (bench/results/2026-09-15_taomate_verdicts.json), which ran whole-clip under sage and Sol",
     "stream": "good: looks like a distill LoRA, does not duplicate people, no obvious artifacts, just the usual distill artifacts",
