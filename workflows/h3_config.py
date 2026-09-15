@@ -1368,6 +1368,75 @@ PDD_MANUAL_SIGMAS = "1.0, 0.972973, 0.923077, 0.878049, 0.8, 0.631579, 0.0"
 PDD_MANUAL_EVALS = 6
 PDD_SHIFT = dict(shift_video=12.0, shift_audio=3.0)
 
+# ---- TaoMate-H3 -------------------------------------------------------------
+#: TaoLiveAIGC's streaming adapter (step-3000 generator EMA, rank 128, alpha
+#: 128), trained on the FL2VA partition of `MiniMaxAI/MiniMax-H3` -- the
+#: directory its `--model-root` must contain. Converted at its own rank by
+#: `bench/convert_taomate_lora.py`; record
+#: `bench/results/2026-09-15_taomate_lora_conversion.json`. It loads on
+#: `MODELS["unet_fl2va"]`, the pruned int8 build of that same partition, and
+#: NOT on `MODELS["unet_fl2va_pdd8_baked"]`, whose backbone already carries
+#: PDD's delta. A plain weight LoRA, so `LoraLoaderModelOnly` carries it.
+#: Its authors run it in causal chunks with a clean K/V cache; a ComfyUI graph
+#: runs it over the whole clip at once, which is outside what they run
+#: (`docs/h3_taomate.md`).
+TAOMATE_LORA = "h3/minimax_h3_taomate_3step_rank128_comfy_bf16.safetensors"
+#: kijai's community resize of the same adapter, a per-module truncated SVD
+#: (the record's `comparison`). A comparison arm, never a default.
+TAOMATE_KIJAI_LORA = "h3/minimax_h3_taomate_3step_lora_avg_rank_19_bf16.safetensors"
+#: The functional control for the SwiGLU mapping: the converter's
+#: `--swap-fc1-halves` output, every `mlp.fc1` `lora_B` with its gate and up
+#: halves exchanged. It should render visibly worse than `TAOMATE_LORA`; if it
+#: does not, the source reads behind "no swap" are wrong.
+TAOMATE_SWAPPED_CONTROL_LORA = ("h3/minimax_h3_taomate_3step_rank128_comfy_bf16"
+                                "_CONTROL_fc1_swapped.safetensors")
+#: Inherited: the runtime adds `update * alpha / rank` with no user multiplier
+#: (`src/taomate_h3/inference/lora_checkpoint.py` upstream).
+TAOMATE_STRENGTH = 1.0
+
+#: The upstream revision every TaoMate value below was read at. Pointers in
+#: comments are paths inside that tree. Values are copied here, not imported:
+#: this repo imports no Python from a sister checkout, and the converter and
+#: the generator must not need one on disk.
+TAOMATE_UPSTREAM = ("https://github.com/TaoLiveAIGC/TaoMate-H3/tree/"
+                    "ccc1a70adbf7f552a84a0cd7eeac0a6f3d461cad")
+#: Inherited, the distilled grid (`src/taomate_h3/denoise_schedule.py`,
+#: called from `src/taomate_h3/model/pipeline.py` at shift 12 for video and 3
+#: for audio): a 50-point `linspace(1, 0)` base schedule, shifted pointwise as
+#: `s*q / (1 + (s-1)*q)`, keeping only these indices. Three intervals, so three
+#: evaluations.
+TAOMATE_GRID_POINTS = 50
+TAOMATE_STATE_INDICES = (0, 16, 33, 49)
+TAOMATE_SHIFT = dict(shift_video=12.0, shift_audio=3.0)
+TAOMATE_STEPS = len(TAOMATE_STATE_INDICES) - 1
+#: Inherited: `src/taomate_h3/model/denoise.py::minimax_h3_denoise_loop` is
+#: "Euler-eta0", `x <- r*x + (1-r)*(x - sigma*v)` with `r` the sigma ratio,
+#: which is ComfyUI's `euler` on a flow model.
+TAOMATE_SAMPLER = "euler"
+
+
+def taomate_sigmas(shift: float) -> list[float]:
+    """The adapter's retained sigmas at one shift, as its pipeline builds them.
+
+    Plain floats where upstream uses a float32 tensor; the difference is below
+    the six decimals `TAOMATE_MANUAL_SIGMAS` keeps.
+    """
+    last = TAOMATE_GRID_POINTS - 1
+    out = []
+    for index in TAOMATE_STATE_INDICES:
+        q = 1.0 - index / last
+        out.append(shift * q / (1.0 + (shift - 1.0) * q))
+    return out
+
+
+#: The video sigmas as a `ManualSigmas` string. Only the video vector is
+#: wired: core derives each audio sigma through `time_shift_sigma` from 12 to
+#: 3, and because the shift is pointwise over the same base point that lands
+#: on `taomate_sigmas(3.0)`, the audio list upstream passes (reasoned;
+#: `bench/check_distill_settings.py` grades both).
+TAOMATE_MANUAL_SIGMAS = ", ".join(
+    repr(round(s, 6)) for s in taomate_sigmas(TAOMATE_SHIFT["shift_video"]))
+
 # `CHAIN` was here and is gone as of 2026-08-14. It listed the node order --
 # Load Diffusion Model, MiniMax H3 SageAttention, SolAttnMiniMax -- and nothing
 # imported it. Node order IS load-bearing (Sol composes with the attention

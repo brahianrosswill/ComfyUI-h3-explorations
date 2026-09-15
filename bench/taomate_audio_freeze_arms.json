@@ -1,0 +1,40 @@
+{
+  "what": "docs/h3_taomate.md section 4 step 2, docs/h3_audio_freeze.md section 5 idea 9: the TaoMate-H3 adapter generating video against a frozen track, beside the PDD8 freeze candidate at the same scene, track and seed. The scenes, seeds and tracks are bench/audio_freeze_step2_arms.json's, so these sit next to that lane's earlier verdicts. TaoMate's authors never let the adapter own audio: their runtime overwrites the audio rows with a base-model pass after every step, so a frozen track is closer to the regime it was distilled in than a plain graph is. The dancer also gets a loose mask (idea 2): rows a little below clean are nearer the noisy teacher audio the adapter trained beside. Judged free-text by the owner.",
+  "scenes": {
+    "dancer": "t2va_studio_dancer against Drum Machine Pulse.mp3, seed 1101",
+    "voice": "t2va_none_of_this_is_real against none_of_this_is_real_final.mp3, seed 2202"
+  },
+  "arms_meaning": {
+    "dancer_taomate_frozen": "TaoMate at its distilled grid, the track frozen, audio_mask 0.0",
+    "dancer_taomate_loose": "the same at audio_mask 0.25",
+    "dancer_pdd8_frozen": "the PDD8 baked freeze candidate: the chain TaoMate would have to beat",
+    "voice_taomate_frozen": "TaoMate at its distilled grid, the clip frozen, transcript in the prompt",
+    "voice_pdd8_frozen": "the PDD8 baked freeze candidate"
+  },
+  "run": "python bench/run_graph_arms.py --manifest bench/taomate_audio_freeze_arms.json --runs 1 --no-alternate --out bench/results/<date>_taomate_audio_freeze_arms.jsonl. No --seed: the runner then leaves each arm's patched RandomNoise seed alone, which is what keeps the pairs matched.",
+  "arms": {
+    "dancer_taomate_frozen": "workflows/h3_probe_taomate_3step_audio_freeze_api.json",
+    "dancer_taomate_loose": "workflows/h3_probe_taomate_3step_audio_freeze_api.json",
+    "dancer_pdd8_frozen": "workflows/h3_candidate_t2v_pdd8_baked_audio_freeze_api.json",
+    "voice_taomate_frozen": "workflows/h3_probe_taomate_3step_audio_freeze_api.json",
+    "voice_pdd8_frozen": "workflows/h3_candidate_t2v_pdd8_baked_audio_freeze_api.json"
+  },
+  "patches": [
+    "dancer_taomate_frozen:MiniMaxH3Conditioning.prompt=@bank:t2va_studio_dancer",
+    "dancer_taomate_frozen:RandomNoise.noise_seed=1101",
+    "dancer_taomate_frozen:LoadAudio.audio=Drum Machine Pulse.mp3",
+    "dancer_taomate_loose:MiniMaxH3Conditioning.prompt=@bank:t2va_studio_dancer",
+    "dancer_taomate_loose:RandomNoise.noise_seed=1101",
+    "dancer_taomate_loose:LoadAudio.audio=Drum Machine Pulse.mp3",
+    "dancer_taomate_loose:MiniMaxH3FreezeAudio.audio_mask=0.25",
+    "dancer_pdd8_frozen:MiniMaxH3Conditioning.prompt=@bank:t2va_studio_dancer",
+    "dancer_pdd8_frozen:RandomNoise.noise_seed=1101",
+    "dancer_pdd8_frozen:LoadAudio.audio=Drum Machine Pulse.mp3",
+    "voice_taomate_frozen:MiniMaxH3Conditioning.prompt=@bank:t2va_none_of_this_is_real",
+    "voice_taomate_frozen:RandomNoise.noise_seed=2202",
+    "voice_taomate_frozen:LoadAudio.audio=none_of_this_is_real_final.mp3",
+    "voice_pdd8_frozen:MiniMaxH3Conditioning.prompt=@bank:t2va_none_of_this_is_real",
+    "voice_pdd8_frozen:RandomNoise.noise_seed=2202",
+    "voice_pdd8_frozen:LoadAudio.audio=none_of_this_is_real_final.mp3"
+  ]
+}

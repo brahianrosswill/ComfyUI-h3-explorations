@@ -23,29 +23,41 @@ Three transforms `bench/convert_pdd_lora.py` needs are deliberately absent:
 
 - **No q/k/v fuse.** The adapter already targets the merged `attn.qkv_proj`;
   its `lora_b` spans the whole merged output.
-- **No `qkv_proj` row reorder.** Two legs. The adapter's: TaoMate reorders
-  the release's per-head grouped qkv weight into q|k|v row bands at load
-  (`coderef/TaoMate-H3/src/taomate_h3/model/weight_loading.py::reorder_grouped_qkv_to_qkv`)
-  and installs the LoRA on that reordered module
-  (`.../inference/lora_checkpoint.py::apply_h3_lora_checkpoint`), so `lora_b`
-  rows are bands. Core's: `comfy/ldm/minimax/model.py::Attention.forward`
-  splits the qkv output into bands, and `anchor_qkv_bands` asserts it on a
-  file that renders correctly in ComfyUI on this box, the Turbo LoRA
-  (`h3_config.TURBO_768P_LORA`), whose fused `lora_B` must be block-diagonal
-  over the three row bands.
+Source paths below are inside the upstream tree at
+`h3_config.TAOMATE_UPSTREAM`, the revision they were read at. Nothing here
+reads that tree: the values this file needs from it (the distilled grid it
+writes into the output's metadata) are copied into `h3_config` beside that
+pointer.
+
+- **No `qkv_proj` row reorder.** Two legs, and neither proves the other. The
+  adapter's: TaoMate reorders the release's per-head grouped qkv weight into
+  q|k|v row bands at load
+  (`src/taomate_h3/model/weight_loading.py::reorder_grouped_qkv_to_qkv`) and
+  installs the LoRA on that reordered module
+  (`src/taomate_h3/inference/lora_checkpoint.py::apply_h3_lora_checkpoint`),
+  so `lora_b` rows are bands. A source read. Core's:
+  `comfy/ldm/minimax/model.py::Attention.forward` splits the qkv output into
+  bands, and `anchor_qkv_bands` asserts it on a file that renders correctly
+  in ComfyUI on this box, the fl2va PDD LoRA (`h3_config.PDD_FL2VA_LORA`),
+  whose fused `lora_B` must be block-diagonal over the three row bands. The
+  anchor shows how core reads a fused LoRA; it says nothing about TaoMate's
+  rows.
 - **No SwiGLU half swap.** TaoMate reads `fc1` as `[gate; up]` on both of its
-  paths (`.../model/layers.py::MiniMaxH3MLP.forward` chunks `gate, up`; the
-  triton `_swiglu_kernel` in `.../inference/fused_kernels.py` loads the gate
-  from the first half), and core's `comfy/ops.py::_swiglu_eager` chunks the
-  same way. The PDD swap exists because diffusers stores `[value; gate]`; this
-  adapter was never in diffusers naming. Source reads only.
+  paths (`src/taomate_h3/model/layers.py::MiniMaxH3MLP.forward` chunks
+  `gate, up`; the triton `_swiglu_kernel` in
+  `src/taomate_h3/inference/fused_kernels.py` loads the gate from the first
+  half), and core's `comfy/ops.py::_swiglu_eager` chunks the same way. The PDD
+  swap exists because diffusers stores `[value; gate]`; this adapter was never
+  in diffusers naming. Source reads only.
 
 **Weight statistics cannot settle either order, so nothing here gates on
 them.** Row norms, within-band correlations and row directions of the
 delta against the base weights were each tried on 2026-09-15 and read at
 chance: a rank-128 delta's rows carry no trace of which base row they sit on.
 The one functional control is a render with the halves deliberately swapped,
-which should look broken if the source reads are right.
+which should look broken if the source reads are right. `--swap-fc1-halves`
+writes that file (`h3_config.TAOMATE_SWAPPED_CONTROL_LORA`) and stamps it as a
+control in its metadata.
 
 ## What `--compare` measures
 
@@ -96,17 +108,31 @@ sys.path.insert(0, str(REPO / "workflows"))
 
 import h3_config  # noqa: E402
 
-CONVERTER_VERSION = 1
+CONVERTER_VERSION = 2
 KINDS = ("attn.qkv_proj", "attn.out_proj", "mlp.fc1", "mlp.fc2")
 DTYPES = {"bf16": torch.bfloat16, "fp32": torch.float32}
 # Reasoned: a block-diagonal fusion leaves only dtype rounding off the three
 # diagonal blocks, while a grouped or band-mixed layout puts about two thirds
 # of the energy there. Any value far between the two separates them.
 ANCHOR_OFF_BLOCK_MAX = 1e-3
-# Where the adapter's distilled sampling grid is defined. Provenance for the
-# file's metadata, read from the authors' pipeline, not a value used here.
-GRID_SOURCE = ("coderef/TaoMate-H3/src/taomate_h3/model/pipeline.py "
-               "(select_time_shift_sigmas, DISTILLED_STATE_INDICES)")
+
+
+def distilled_grid() -> dict:
+    """The adapter's sampling contract, written into the output's metadata so
+    the file says how to run it. From the inherited copy in `h3_config`, whose
+    pointer names the upstream source; nothing here reads that source."""
+    shift_v = h3_config.TAOMATE_SHIFT["shift_video"]
+    shift_a = h3_config.TAOMATE_SHIFT["shift_audio"]
+    return {
+        "upstream": h3_config.TAOMATE_UPSTREAM,
+        "grid_points": h3_config.TAOMATE_GRID_POINTS,
+        "state_indices": list(h3_config.TAOMATE_STATE_INDICES),
+        "shift": [shift_v, shift_a],
+        "sigmas_video": h3_config.taomate_sigmas(shift_v),
+        "sigmas_audio": h3_config.taomate_sigmas(shift_a),
+        "sampler": h3_config.TAOMATE_SAMPLER,
+        "strength": h3_config.TAOMATE_STRENGTH,
+    }
 
 
 class VerificationError(RuntimeError):
@@ -324,8 +350,11 @@ def main(argv=None) -> int:
                     default=COMFY / "models" / "diffusion_models" / h3_config.MODELS["unet_fl2va"],
                     help="the ComfyUI H3 checkpoint the LoRA loads on (default: h3_config.MODELS['unet_fl2va'])")
     ap.add_argument("--anchor", type=Path,
-                    default=COMFY / "models" / "loras" / h3_config.TURBO_768P_LORA,
-                    help="a fused-qkv ComfyUI LoRA known to render (default: h3_config.TURBO_768P_LORA)")
+                    default=COMFY / "models" / "loras" / h3_config.PDD_FL2VA_LORA,
+                    help="a fused-qkv ComfyUI LoRA known to render (default: h3_config.PDD_FL2VA_LORA)")
+    ap.add_argument("--swap-fc1-halves", action="store_true",
+                    help="write the functional control: every mlp.fc1 lora_B with its gate and up "
+                         "halves exchanged (h3_config.TAOMATE_SWAPPED_CONTROL_LORA). Never a usable LoRA")
     ap.add_argument("--compare", type=Path, help="another ComfyUI-format conversion of this adapter")
     ap.add_argument("--record", type=Path, help="write the report as JSON (bench/results/...)")
     args = ap.parse_args(argv)
@@ -348,16 +377,26 @@ def main(argv=None) -> int:
     source_digest = sha256(weights)
     dtype = DTYPES[args.dtype]
     scale = alpha / rank
-    out, cast = {}, []
+    out, cast, swapped = {}, [], 0
     for target in targets:
         a, b = state[f"{target}.lora_a"], state[f"{target}.lora_b"]
         a_cast, b_cast = a.to(dtype).contiguous(), b.to(dtype).contiguous()
         cast.append(delta_stats(b, a, scale, b_cast, a_cast, scale)["rel_err"])
+        if args.swap_fc1_halves and target.endswith(".mlp.fc1"):
+            gate, up = b_cast.chunk(2, dim=0)
+            b_cast = torch.cat([up, gate], dim=0).contiguous()
+            swapped += 1
         out[f"diffusion_model.{target}.lora_A.weight"] = a_cast
         out[f"diffusion_model.{target}.lora_B.weight"] = b_cast
         out[f"diffusion_model.{target}.alpha"] = torch.tensor(alpha, dtype=torch.float32)
     print(f"ok    cast to {args.dtype}: delta relative error "
           f"median {statistics.median(cast):.2e}, max {max(cast):.2e}")
+    if args.swap_fc1_halves:
+        fc1 = sum(1 for t in targets if t.endswith(".mlp.fc1"))
+        if swapped == 0 or swapped != fc1:
+            print(f"FAIL  control: swapped {swapped} of {fc1} fc1 modules")
+            return 1
+        print(f"ok    CONTROL: gate and up halves exchanged in all {swapped} fc1 lora_B")
 
     metadata = {
         "source_format": "TaoMate-H3 adapter (lora_a/lora_b over MiniMax H3 merged linears)",
@@ -367,7 +406,8 @@ def main(argv=None) -> int:
         "source_weight_source": str(config.get("weight_source", file_meta.get("weight_source", ""))),
         "source_optimizer_step": str(config.get("optimizer_step", file_meta.get("optimizer_step", ""))),
         "target_format": "ComfyUI generic LoRA",
-        "base_model": "MiniMaxAI/MiniMax-H3 FL2VA",
+        "base_model": "MiniMaxAI/MiniMax-H3, FL2VA partition (the directory TaoMate's --model-root loads)",
+        "target_checkpoint": args.checkpoint.name,
         "training_rank": str(rank),
         "training_alpha": repr(alpha),
         "training_scale": repr(scale),
@@ -376,7 +416,9 @@ def main(argv=None) -> int:
                        "reorder_grouped_qkv_to_qkv module; core splits bands (anchored on a "
                        "fused LoRA that renders)"),
         "swi_glu_mapping": "TaoMate [gate;up] -> ComfyUI [gate;up], no swap (source reads)",
-        "distilled_grid_source": GRID_SOURCE,
+        "distilled_grid": json.dumps(distilled_grid()),
+        "control": ("fc1 lora_B gate and up halves SWAPPED on purpose: a render control, "
+                    "not a usable LoRA" if args.swap_fc1_halves else "none"),
         "dtype": args.dtype,
         "modules": str(len(targets)),
         "converter": "bench/convert_taomate_lora.py",
@@ -428,6 +470,8 @@ def main(argv=None) -> int:
             "adapter": {"modules": len(targets), "rank": rank, "alpha": alpha},
             "checkpoint_geometry": geometry,
             "anchor": anchor,
+            "control_fc1_swapped": bool(args.swap_fc1_halves),
+            "distilled_grid": distilled_grid(),
             "cast": {"dtype": args.dtype, "delta_rel_err": summarise(cast)},
             "output": ({"file": args.out.name, "sha256": out_digest, "tensors": len(out),
                         "metadata": metadata} if args.out is not None else None),

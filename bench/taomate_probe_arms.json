@@ -1,0 +1,53 @@
+{
+  "what": "docs/h3_taomate.md section 4 step 1: does the TaoMate-H3 adapter produce a usable clip when a ComfyUI graph runs it over the whole clip at once on its own three distilled sigmas, and does kijai's SVD resize look different from the full-rank conversion. Three unrelated scenes at one matched seed each, 1344x768 and 345 frames: ours, kijai's, and the PDD8 candidate the owner already renders with. The swapped-fc1 control on one scene only: if it does not look clearly worse than ours, the source reads behind 'no SwiGLU swap' are wrong and every other arm is suspect. Judged free-text by the owner. Run step 0, the throwaway single render, first.",
+  "scenes": {
+    "diner": "t2va_diner_breakup, seed 3301: dialogue, three shots, on-screen text",
+    "kungfu": "t2va_kungfu_tea_house, seed 3302: fast motion, non-English dialogue",
+    "arctic": "t2va_nature_doc_arctic, seed 3303: landscape, off-screen voiceover"
+  },
+  "arms_meaning": {
+    "<scene>_ours": "h3_config.TAOMATE_LORA, the full-rank conversion, as the probe graph ships",
+    "<scene>_kijai": "the same graph with h3_config.TAOMATE_KIJAI_LORA swapped in; nothing else differs",
+    "<scene>_pdd8": "the PDD8 baked candidate at the same prompt and seed: the chain TaoMate would have to beat",
+    "diner_control": "the same graph with h3_config.TAOMATE_SWAPPED_CONTROL_LORA; expected to look broken"
+  },
+  "run": "python bench/run_graph_arms.py --manifest bench/taomate_probe_arms.json --runs 1 --no-alternate --out bench/results/<date>_taomate_probe_arms.jsonl. No --seed: the runner then leaves each arm's patched RandomNoise seed alone, which is what keeps the pairs matched. Run the throwaway (docs/h3_taomate.md section 4 step 0) first.",
+  "arms": {
+    "diner_ours": "workflows/h3_probe_taomate_3step_api.json",
+    "diner_kijai": "workflows/h3_probe_taomate_3step_api.json",
+    "diner_pdd8": "workflows/h3_candidate_t2v_pdd8_baked_api.json",
+    "diner_control": "workflows/h3_probe_taomate_3step_api.json",
+    "kungfu_ours": "workflows/h3_probe_taomate_3step_api.json",
+    "kungfu_kijai": "workflows/h3_probe_taomate_3step_api.json",
+    "kungfu_pdd8": "workflows/h3_candidate_t2v_pdd8_baked_api.json",
+    "arctic_ours": "workflows/h3_probe_taomate_3step_api.json",
+    "arctic_kijai": "workflows/h3_probe_taomate_3step_api.json",
+    "arctic_pdd8": "workflows/h3_candidate_t2v_pdd8_baked_api.json"
+  },
+  "patches": [
+    "diner_ours:MiniMaxH3Conditioning.prompt=@bank:t2va_diner_breakup",
+    "diner_ours:RandomNoise.noise_seed=3301",
+    "diner_kijai:MiniMaxH3Conditioning.prompt=@bank:t2va_diner_breakup",
+    "diner_kijai:RandomNoise.noise_seed=3301",
+    "diner_kijai:LoraLoaderModelOnly.lora_name=h3/minimax_h3_taomate_3step_lora_avg_rank_19_bf16.safetensors",
+    "diner_pdd8:MiniMaxH3Conditioning.prompt=@bank:t2va_diner_breakup",
+    "diner_pdd8:RandomNoise.noise_seed=3301",
+    "diner_control:MiniMaxH3Conditioning.prompt=@bank:t2va_diner_breakup",
+    "diner_control:RandomNoise.noise_seed=3301",
+    "diner_control:LoraLoaderModelOnly.lora_name=h3/minimax_h3_taomate_3step_rank128_comfy_bf16_CONTROL_fc1_swapped.safetensors",
+    "kungfu_ours:MiniMaxH3Conditioning.prompt=@bank:t2va_kungfu_tea_house",
+    "kungfu_ours:RandomNoise.noise_seed=3302",
+    "kungfu_kijai:MiniMaxH3Conditioning.prompt=@bank:t2va_kungfu_tea_house",
+    "kungfu_kijai:RandomNoise.noise_seed=3302",
+    "kungfu_kijai:LoraLoaderModelOnly.lora_name=h3/minimax_h3_taomate_3step_lora_avg_rank_19_bf16.safetensors",
+    "kungfu_pdd8:MiniMaxH3Conditioning.prompt=@bank:t2va_kungfu_tea_house",
+    "kungfu_pdd8:RandomNoise.noise_seed=3302",
+    "arctic_ours:MiniMaxH3Conditioning.prompt=@bank:t2va_nature_doc_arctic",
+    "arctic_ours:RandomNoise.noise_seed=3303",
+    "arctic_kijai:MiniMaxH3Conditioning.prompt=@bank:t2va_nature_doc_arctic",
+    "arctic_kijai:RandomNoise.noise_seed=3303",
+    "arctic_kijai:LoraLoaderModelOnly.lora_name=h3/minimax_h3_taomate_3step_lora_avg_rank_19_bf16.safetensors",
+    "arctic_pdd8:MiniMaxH3Conditioning.prompt=@bank:t2va_nature_doc_arctic",
+    "arctic_pdd8:RandomNoise.noise_seed=3303"
+  ]
+}

@@ -99,6 +99,16 @@ ARMS = {
         MODELS / "loras/h3/lightx2v_Minimax-h3-Turbo"
         / "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
         DIFF / "minimax_h3_fl2va_pruned_int8_convrot.safetensors"),
+    # TaoMate-H3 (docs/h3_taomate.md): two copies of ONE adapter on the base
+    # they load on, varying only rank. The question is whether requantisation
+    # noise on either exceeds the gap between them, which the conversion
+    # record's `comparison` holds per module. `--only taomate` runs these alone.
+    "taomate_rank128__pruned": (
+        LORA_DIR / "minimax_h3_taomate_3step_rank128_comfy_bf16.safetensors",
+        DIFF / "minimax_h3_fl2va_pruned_int8_convrot.safetensors"),
+    "taomate_kijai_rank19__pruned": (
+        LORA_DIR / "minimax_h3_taomate_3step_lora_avg_rank_19_bf16.safetensors",
+        DIFF / "minimax_h3_fl2va_pruned_int8_convrot.safetensors"),
 }
 KINDS = ("attn.qkv_proj", "attn.out_proj", "mlp.fc1", "mlp.fc2")
 BLOCKS = 50
@@ -150,11 +160,19 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--stride", type=int, default=1,
                     help="sample every Nth block (1 = all 50)")
+    ap.add_argument("--only",
+                    help="run only the arms whose name contains this string; "
+                         "the record's filename carries it")
     args = ap.parse_args()
 
-    arms_present = {k: v for k, v in ARMS.items()
+    selected = {k: v for k, v in ARMS.items()
+                if not args.only or args.only in k}
+    if not selected:
+        print(f"no arm name contains {args.only!r}")
+        return 2
+    arms_present = {k: v for k, v in selected.items()
                     if v[0].exists() and v[1].exists()}
-    absent = sorted(set(ARMS) - set(arms_present))
+    absent = sorted(set(selected) - set(arms_present))
     if not arms_present:
         print("no (lora, base) pair on this box")
         return 2
@@ -270,9 +288,12 @@ def main() -> int:
             "realised_median": statistics.median([r["realised"] for r in v]),
             "per_module": v,
         } for k, v in arms.items()},
-        "reproduce": "python bench/measure_merge_noise.py",
+        "reproduce": ("python bench/measure_merge_noise.py"
+                      + (f" --stride {args.stride}" if args.stride != 1 else "")
+                      + (f" --only {args.only}" if args.only else "")),
     }
-    out = REPO / "bench" / "results" / f"{record['date']}_merge_noise.json"
+    suffix = f"_{args.only}" if args.only else ""
+    out = REPO / "bench" / "results" / f"{record['date']}_merge_noise{suffix}.json"
     out.write_text(json.dumps(record, indent=2) + "\n")
     print(f"\nwrote {out.relative_to(REPO)}")
     return 0

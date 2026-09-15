@@ -4,6 +4,57 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.110.0
+
+### Added
+
+- **TaoMate-H3 contract in `workflows/h3_config.py`**: `TAOMATE_LORA`,
+  `TAOMATE_KIJAI_LORA`, `TAOMATE_SWAPPED_CONTROL_LORA`, `TAOMATE_STRENGTH`,
+  the distilled grid (`TAOMATE_GRID_POINTS`, `TAOMATE_STATE_INDICES`,
+  `TAOMATE_SHIFT`, `taomate_sigmas`, `TAOMATE_MANUAL_SIGMAS`) and
+  `TAOMATE_SAMPLER`. Each value is inherited and sits beside a pointer into
+  the upstream repo at `TAOMATE_UPSTREAM`, the revision it was read at.
+- **Two probe graphs**: `workflows/h3_probe_taomate_3step_api.json` and its
+  audio-freeze twin. Both run the converted adapter on `MODELS["unet_fl2va"]`
+  at its three distilled sigmas through `ManualSigmas`, with euler.
+- **`bench/taomate_probe_arms.json`** has three scenes: ours, kijai's and the
+  PDD8 candidate, plus the swapped-fc1 control on one scene.
+  **`bench/taomate_audio_freeze_arms.json`** has the freeze lane's dancer and
+  voice scenes with TaoMate frozen, a loose-mask dancer, and the PDD8 freeze
+  candidate.
+- **`docs/h3_taomate.md`** covers the file and its base, ours against kijai's,
+  what a graph changes from the authors' runtime, and the test plan. It is
+  linked from `docs/wiki/index.md`, `docs/wiki/next_steps.md`,
+  `docs/wiki/references.md` and `docs/h3_audio_freeze.md` idea 9.
+- **`bench/check_distill_settings.py`** grades TaoMate graphs on:
+  - the checkpoint
+  - no stacked LoRA
+  - shift, the manual schedule at three evaluations, sampler and strength
+
+  Before this they passed as base graphs on shift alone.
+  **`bench/check_distill_grid.py`** gains "taomate graphs on their grid". It
+  checks each graph's `ManualSigmas` against the grid, and core's
+  `time_shift_sigma` against the adapter's audio list.
+- **`bench/measure_merge_noise.py`** gains two TaoMate arms (ours and kijai's,
+  on the pruned fl2va base) and an `--only` filter whose name goes into the
+  record's filename.
+
+### Changed
+
+- **`bench/convert_taomate_lora.py` version 2.**
+  - It no longer names a sister checkout. Source pointers are paths in the
+    upstream repo at `h3_config.TAOMATE_UPSTREAM`, and the grid comes from
+    `h3_config`.
+  - Output metadata replaces `distilled_grid_source` with `distilled_grid`
+    (indices, shifts, both sigma lists, sampler and strength). It also adds
+    `target_checkpoint` and `control`, and `base_model` names the FL2VA
+    partition.
+  - The qkv band anchor defaults to `h3_config.PDD_FL2VA_LORA` instead of the
+    Turbo 768p LoRA.
+  - A new `--swap-fc1-halves` flag writes the functional control.
+  - The converted file and `bench/results/2026-09-15_taomate_lora_conversion.json`
+    were regenerated at this version.
+
 ## 0.109.0
 
 ### Added

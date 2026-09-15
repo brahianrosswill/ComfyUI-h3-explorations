@@ -234,7 +234,11 @@ What the H3 checkout is not evidence of:
 The community ComfyUI copies: kijai's `minimax_h3_taomate_3step_lora_avg_rank_19_bf16`
 is a per-module truncated SVD of this adapter, in the same qkv and SwiGLU
 layout. How much of each delta it keeps is in the record's `comparison`,
-measured against the full-rank conversion.
+measured against the full-rank conversion. How the two differ in use, and the
+plan for running the adapter in a graph, is
+[`../h3_taomate.md`](../h3_taomate.md). The distilled grid is copied into
+`workflows/h3_config.py`'s TaoMate block with this revision as its pointer, so
+nothing that converts or builds needs this checkout.
 
 "ComfyUI does not support KV chunking", as reported on 2026-09-15, is right
 in substance: core's KV-cached causal sampler

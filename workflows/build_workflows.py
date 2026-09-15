@@ -110,6 +110,8 @@ from h3_config import (  # noqa: E402
     TURBO_REF2VA_LORA, TURBO_REF2VA_STEPS, TURBO_REF2VA_SHIFT,
     PDD_FL2VA_LORA, PDD_REF2VA_LORA, PDD_STEPS, PDD_STEPS_FAST,
     PDD_STRENGTH, PDD_FL2VA_STRIPPED_LORA,
+    TAOMATE_LORA, TAOMATE_STRENGTH, TAOMATE_STEPS, TAOMATE_SAMPLER,
+    TAOMATE_MANUAL_SIGMAS,
 )
 
 
@@ -4005,6 +4007,27 @@ def main():
               sol_on=False,
               out_prefix="Video/h3_probe_turbo_768p_sla_dense"),
          "the SLA LoRA with Sol-Attn absent: sage only"),
+
+        # TaoMate-H3 (docs/h3_taomate.md): the full-rank conversion on the
+        # plain fl2va checkpoint, at the adapter's own three distilled sigmas
+        # and Euler step, over the whole clip at once rather than in the
+        # causal chunks its authors run. Probes, not candidates. kijai's
+        # resize and the swapped-fc1 control are arms patched onto these
+        # graphs (bench/taomate_probe_arms.json), not graphs of their own.
+        ("h3_probe_taomate_3step.json", "t2v-taomate-3step", "t2v",
+         LONG_T2V_PROMPT,
+         dict(lora=(TAOMATE_LORA, TAOMATE_STRENGTH), steps=TAOMATE_STEPS,
+              sampler_name=TAOMATE_SAMPLER, manual_sigmas=TAOMATE_MANUAL_SIGMAS,
+              out_prefix="Video/h3_probe_taomate_3step"),
+         "text -> video + audio at 3 steps via the TaoMate-H3 adapter on its distilled grid"),
+
+        ("h3_probe_taomate_3step_audio_freeze.json", "t2v-taomate-3step-audio-freeze", "t2v",
+         LONG_T2V_PROMPT,
+         dict(lora=(TAOMATE_LORA, TAOMATE_STRENGTH), steps=TAOMATE_STEPS,
+              sampler_name=TAOMATE_SAMPLER, manual_sigmas=TAOMATE_MANUAL_SIGMAS,
+              freeze_audio=True,
+              out_prefix="Video/h3_probe_taomate_3step_audio_freeze"),
+         "text + a frozen audio track -> video at 3 steps via the TaoMate-H3 adapter"),
 
         # First graph in this repo to wire a reference VIDEO. Everything about
         # that path was read off source until 2026-08-13 and never executed.

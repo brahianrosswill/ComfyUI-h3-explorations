@@ -3,8 +3,8 @@
   "what": "TaoMate-H3 adapter converted to a ComfyUI LoRA by rename; inventory checked against the checkpoint, core's qkv band layout checked on the anchor; deltas compared against another conversion",
   "provenance": {
     "converter": "bench/convert_taomate_lora.py",
-    "converter_version": 1,
-    "repo_commit": "93436256280f00d44543742092294e46cefdca92",
+    "converter_version": 2,
+    "repo_commit": "d52e4d457a8aa73095b56a9ae874cc36490ced40",
     "comfy_commit": "36da3ff763687eab86a35e1019995dd1fb369b0d",
     "torch": "2.14.0+cu132",
     "source_file": "adapter_model.safetensors",
@@ -29,10 +29,39 @@
     "heads": 56
   },
   "anchor": {
-    "file": "minimax_h3_fl2v_turbo_4step_v1.1_768p_comfyui_bf16.safetensors",
+    "file": "minimax_h3_fl2va_pdd_8step_comfy.safetensors",
     "modules": 52,
-    "off_block_energy_fraction_max": 2.6306517778363187e-16,
+    "off_block_energy_fraction_max": 2.182728911630773e-16,
     "off_block_energy_fraction_bound": 0.001
+  },
+  "control_fc1_swapped": false,
+  "distilled_grid": {
+    "upstream": "https://github.com/TaoLiveAIGC/TaoMate-H3/tree/ccc1a70adbf7f552a84a0cd7eeac0a6f3d461cad",
+    "grid_points": 50,
+    "state_indices": [
+      0,
+      16,
+      33,
+      49
+    ],
+    "shift": [
+      12.0,
+      3.0
+    ],
+    "sigmas_video": [
+      1.0,
+      0.9611650485436893,
+      0.8533333333333333,
+      0.0
+    ],
+    "sigmas_audio": [
+      1.0,
+      0.8608695652173913,
+      0.5925925925925927,
+      0.0
+    ],
+    "sampler": "euler",
+    "strength": 1.0
   },
   "cast": {
     "dtype": "bf16",
@@ -44,7 +73,7 @@
   },
   "output": {
     "file": "minimax_h3_taomate_3step_rank128_comfy_bf16.safetensors",
-    "sha256": "ac913a283fefdf3e30daeaf3f6071dcd8907125a2b11b64fa328cac0203cac5f",
+    "sha256": "018a9ab2979f48aa2bb4c649e7c059281ec2a36f7823e34b0ab1137ba8f13872",
     "tensors": 624,
     "metadata": {
       "source_format": "TaoMate-H3 adapter (lora_a/lora_b over MiniMax H3 merged linears)",
@@ -54,18 +83,20 @@
       "source_weight_source": "generator_ema",
       "source_optimizer_step": "3000",
       "target_format": "ComfyUI generic LoRA",
-      "base_model": "MiniMaxAI/MiniMax-H3 FL2VA",
+      "base_model": "MiniMaxAI/MiniMax-H3, FL2VA partition (the directory TaoMate's --model-root loads)",
+      "target_checkpoint": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
       "training_rank": "128",
       "training_alpha": "128.0",
       "training_scale": "1.0",
       "qkv_fusion": "none: the adapter targets the merged qkv_proj",
       "qkv_layout": "q|k|v row bands on both sides, no reorder: TaoMate trains on its reorder_grouped_qkv_to_qkv module; core splits bands (anchored on a fused LoRA that renders)",
       "swi_glu_mapping": "TaoMate [gate;up] -> ComfyUI [gate;up], no swap (source reads)",
-      "distilled_grid_source": "coderef/TaoMate-H3/src/taomate_h3/model/pipeline.py (select_time_shift_sigmas, DISTILLED_STATE_INDICES)",
+      "distilled_grid": "{\"upstream\": \"https://github.com/TaoLiveAIGC/TaoMate-H3/tree/ccc1a70adbf7f552a84a0cd7eeac0a6f3d461cad\", \"grid_points\": 50, \"state_indices\": [0, 16, 33, 49], \"shift\": [12.0, 3.0], \"sigmas_video\": [1.0, 0.9611650485436893, 0.8533333333333333, 0.0], \"sigmas_audio\": [1.0, 0.8608695652173913, 0.5925925925925927, 0.0], \"sampler\": \"euler\", \"strength\": 1.0}",
+      "control": "none",
       "dtype": "bf16",
       "modules": "208",
       "converter": "bench/convert_taomate_lora.py",
-      "converter_version": "1"
+      "converter_version": "2"
     }
   },
   "comparison": {

@@ -356,6 +356,13 @@ def is_turbo(lora_name):
     return "turbo" in lora_name.lower()
 
 
+def classify_taomate(lora_name):
+    """Any file carrying the TaoMate-H3 adapter: the full-rank conversion,
+    kijai's resize or the swapped control. One set of weights, so one sampling
+    contract, `h3_config`'s TAOMATE_* block."""
+    return "taomate" in lora_name.lower()
+
+
 # --------------------------------------------------------------------------
 # graph reader -- API form, the only form this file reads
 # --------------------------------------------------------------------------
@@ -676,10 +683,49 @@ def main():
 
     # ---- every shipped API graph -----------------------------------------
     def graphs_are_consistent():
-        turbo_graphs, base_graphs = {}, {}
+        import h3_config as cfg
+        turbo_graphs, base_graphs, taomate_graphs = {}, {}, {}
         for path in graph_paths(WORKFLOWS, "*_api.json"):
             doc = json.loads(path.read_text(encoding="utf-8"))
             found = read_api(doc)
+            # TaoMate before the base branch. Its shift IS the base 12/3, so
+            # without this a TaoMate graph passed as a base graph: graded on
+            # the one value it shares and on none of the ones it does not.
+            taomate = [l for l in found.loras if classify_taomate(l)]
+            if taomate:
+                taomate_graphs[path.name] = found
+                nodes = [n for n in doc.values() if isinstance(n, dict)]
+                assert len(found.loras) == 1, (
+                    f"{path.name}: TaoMate stacked with {found.loras}. It was "
+                    f"distilled on the bare FL2VA release.")
+                unets = {n["inputs"].get("unet_name") for n in nodes
+                         if n.get("class_type") == "UNETLoader"}
+                assert unets == {cfg.MODELS["unet_fl2va"]}, (
+                    f"{path.name}: TaoMate on {sorted(map(str, unets))}, not "
+                    f"MODELS['unet_fl2va']. The PDD bake's backbone already "
+                    f"carries another distill's delta.")
+                want_shift = (cfg.TAOMATE_SHIFT["shift_video"],
+                              cfg.TAOMATE_SHIFT["shift_audio"])
+                # An absent shift node runs the checkpoint's own, as for PDD.
+                effective = BASE_SHIFT if found.shift is None else found.shift
+                assert effective == want_shift, (
+                    f"{path.name}: TaoMate wants shift {want_shift}, graph runs "
+                    f"{effective}")
+                assert (found.scheduler, found.steps) == ("manual", cfg.TAOMATE_STEPS), (
+                    f"{path.name}: TaoMate runs its distilled grid through "
+                    f"ManualSigmas at {cfg.TAOMATE_STEPS} evaluations; graph has "
+                    f"scheduler {found.scheduler!r}, steps {found.steps}. "
+                    f"`check_distill_grid.py` grades the vector itself.")
+                samplers = {n["inputs"].get("sampler_name") for n in nodes
+                            if n.get("class_type") == "KSamplerSelect"}
+                assert samplers == {cfg.TAOMATE_SAMPLER}, (
+                    f"{path.name}: TaoMate's step is {cfg.TAOMATE_SAMPLER}, graph "
+                    f"has {sorted(map(str, samplers))}")
+                got_strength = (found.strengths or {}).get(taomate[0])
+                assert got_strength == cfg.TAOMATE_STRENGTH, (
+                    f"{path.name}: TaoMate strength {got_strength}, the runtime "
+                    f"applies {cfg.TAOMATE_STRENGTH}")
+                continue
             turbo = [l for l in found.loras if is_turbo(l) or classify_pdd(l)]
 
             if not turbo:
@@ -849,6 +895,7 @@ def main():
         # first on the loop above cannot reach here; that is fine, because it
         # names the graph instead.
         print(f"        ({len(turbo_graphs)} turbo/distilled, "
+              f"{len(taomate_graphs)} TaoMate, "
               f"{len(base_graphs)} base API graph(s) graded)")
         assert turbo_graphs, (
             "no shipped API graph loads a turbo or PDD LoRA; this check saw "

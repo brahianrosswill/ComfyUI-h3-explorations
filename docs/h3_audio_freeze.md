@@ -344,7 +344,9 @@ judgement on 2026-09-12, not a measurement.
    with the converted adapter (`bench/convert_taomate_lora.py`) on its own
    three distilled sigmas, judged against the PDD8 chain. A second arm is
    closer to what the adapter saw: the frozen track re-noised to each step's
-   audio sigma rather than held clean.
+   audio sigma rather than held clean. The graphs, the arms, and why the
+   second arm needs a new patch are [`h3_taomate.md`](h3_taomate.md)
+   section 4.
 
 ---
 
