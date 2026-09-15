@@ -67,3 +67,28 @@ Interpretation and caveats: `docs/h3_block49_quant_error.md`, section 6.
 > In the other gens, it seems like the two horizontal slats are meant to be
 > one deeper crate vs two shallow ones. Not sure which is more accurate for
 > that kind of market though.
+
+## Measured, 2026-09-15 evening: the market pair (levers vs policy) and the audio question
+
+The owner could not see a difference between `h3_probe_t2v_levers_00001`
+and `h3_probe_t2v_policy_00001` but heard the policy clip as louder.
+`ffmpeg ebur128` integrated loudness / true peak, and `bench/measure_clip_delta.py`
+(frame-to-frame motion, %busy at the file's threshold):
+
+| clip | LUFS | peak dBFS | %busy |
+|---|---|---|---|
+| shipped (h3_t2v_00019) | -17.5 | -3.9 | 44.8 |
+| exact_tail | -14.6 | -1.5 | 36.9 |
+| levers | -20.4 | -7.2 | 28.8 |
+| policy | -15.8 | +0.2 (clipping) | 35.2 |
+
+`bench/compare_clip_pixels.py` levers vs policy: every frame differs, mean
+abs diff 29 of 255; different takes, as any numerics change gives.
+
+Read against the diner batch (six clips, three arms, two seeds), where all
+six sit within about two LU of each other and no arm is louder
+(`2026-09-15_block49_diner_batch.md`): the market loudness differences are
+take-to-take variation on one scene, not an effect of the bf16 tail. The
+audio thread from the morning closes on that evidence. Nothing measured
+here ranks the two clips' video; the pixel and motion tools say "different
+takes, comparable motion", which is all they can say.

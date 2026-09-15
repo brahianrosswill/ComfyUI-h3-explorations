@@ -81,3 +81,14 @@ The two free levers cost nothing measurable (a weights fold at load and a
 per-call factor in sage's quantizer). Exact attention on three of fifty
 blocks costs about a sixth more wall time: bf16 attention at S~104k on
 those blocks runs without Sol's routing and without INT8.
+
+## Audio loudness per clip (ffmpeg ebur128, integrated LUFS / true peak dBFS)
+
+| arm | seed 730451892 | seed 20260915 |
+|---|---|---|
+| shipped | -28.8 / -13.2 | -28.4 / -12.1 |
+| balanced | -28.8 / -11.8 | -27.3 / -11.3 |
+| exact_tail | -29.3 / -12.5 | -27.6 / -10.0 |
+
+No arm effect: all six within about two LU. The market scene's louder
+ceiling arm was that take, not the tail.
