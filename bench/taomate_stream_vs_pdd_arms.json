@@ -1,0 +1,28 @@
+{
+  "what": "docs/h3_taomate.md section 7.3 step 5, the owner's pair: the TaoMate streaming runtime against PDD on one scene, track, seed and length. t2va_dancer_stream_243 (one continuous ten-second medium shot, written for this) against Drum Machine Pulse.mp3, seed 1101, 1344x768, 243 frames (two TaoMate requests). PDD runs on the shipped default attention chain as of 0.115.0 (core's kitchen dense backend plus Sol with qk_balance) at the owner's 5 steps (the node's envelope partition [8,8,8,4,4], tail5) and at 8. The TaoMate arms are not graph patches, so they run through bench/verify_taomate_stream.py: the stream sampler, and the whole-clip control with every attention patch stripped (dense attention), which separates the attention stack from the whole-clip regime. Judged free-text by the owner. The earlier whole-clip TaoMate dancer split into two people; one continuous shot makes that visible.",
+  "run": "python bench/run_graph_arms.py --manifest bench/taomate_stream_vs_pdd_arms.json --runs 1 --no-alternate --out bench/results/<date>_taomate_stream_vs_pdd_arms.jsonl. No --seed: the patched seeds hold. Then the two harness_runs, one at a time, only with the card agreed with the session holding it.",
+  "harness_runs": {
+    "dancer_taomate_stream": "python bench/verify_taomate_stream.py --mode stream --width 1344 --height 768 --length 243 --prompt-id t2va_dancer_stream_243 --audio \"Drum Machine Pulse.mp3\" --seed 1101 --prefix Video/taomate_vs_pdd/dancer_taomate_stream --record bench/results/<date>_taomate_stream_dancer_243.json",
+    "dancer_taomate_whole_clip_dense": "python bench/verify_taomate_stream.py --mode plain_render --width 1344 --height 768 --length 243 --prompt-id t2va_dancer_stream_243 --audio \"Drum Machine Pulse.mp3\" --seed 1101 --prefix Video/taomate_vs_pdd/dancer_taomate_whole_clip_dense --record bench/results/<date>_taomate_whole_clip_dense_dancer_243.json"
+  },
+  "arms_meaning": {
+    "dancer_pdd5": "PDD on the baked checkpoint, frozen track, 5 evaluations (tail5), shipped default attention chain",
+    "dancer_pdd8": "the same at 8 evaluations, the owner's current best"
+  },
+  "arms": {
+    "dancer_pdd5": "workflows/h3_candidate_t2v_pdd8_baked_audio_freeze_api.json",
+    "dancer_pdd8": "workflows/h3_candidate_t2v_pdd8_baked_audio_freeze_api.json"
+  },
+  "patches": [
+    "dancer_pdd5:MiniMaxH3Conditioning.prompt=@bank:t2va_dancer_stream_243",
+    "dancer_pdd5:RandomNoise.noise_seed=1101",
+    "dancer_pdd5:LoadAudio.audio=Drum Machine Pulse.mp3",
+    "dancer_pdd5:MiniMaxH3Resolution.length=243",
+    "dancer_pdd5:PrimitiveInt.value=5",
+    "dancer_pdd8:MiniMaxH3Conditioning.prompt=@bank:t2va_dancer_stream_243",
+    "dancer_pdd8:RandomNoise.noise_seed=1101",
+    "dancer_pdd8:LoadAudio.audio=Drum Machine Pulse.mp3",
+    "dancer_pdd8:MiniMaxH3Resolution.length=243",
+    "dancer_pdd8:PrimitiveInt.value=8"
+  ]
+}

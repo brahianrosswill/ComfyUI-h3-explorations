@@ -59,6 +59,11 @@ PROBES = {
     "verify_whole_clip": REPO / "workflows" / "h3_probe_taomate_3step_api.json",
     "control_text_only": REPO / "workflows" / "h3_probe_taomate_3step_api.json",
     "stream": REPO / "workflows" / "h3_probe_taomate_3step_audio_freeze_api.json",
+    # The whole-clip control for the stream render: the stock sampler on the
+    # same freeze probe with every attention patch stripped, so TaoMate runs
+    # over the whole clip on dense attention. Separates the attention stack
+    # from the whole-clip regime.
+    "plain_render": REPO / "workflows" / "h3_probe_taomate_3step_audio_freeze_api.json",
 }
 #: Model-path nodes the check keeps: loading, the LoRA and the shift. Every
 #: other node between the guider and these is an attention patch or an assert
@@ -114,9 +119,10 @@ def build_graph(args) -> dict:
     for cls in remove:
         for nid in by_class.get(cls, []):
             del doc[nid]
-    doc[by_class["KSamplerSelect"][0]] = {
-        "class_type": "MiniMaxH3TaoMateStreamSampler",
-        "inputs": {"mode": args.mode, "cache_device": args.cache_device}}
+    if args.mode != "plain_render":
+        doc[by_class["KSamplerSelect"][0]] = {
+            "class_type": "MiniMaxH3TaoMateStreamSampler",
+            "inputs": {"mode": args.mode, "cache_device": args.cache_device}}
     if whole_clip:
         doc["900"] = {"class_type": "PreviewAny",
                       "inputs": {"source": [by_class["SamplerCustomAdvanced"][0], 0]}}
@@ -238,6 +244,17 @@ def main(argv=None) -> int:
                     "which must differ from core's euler latent")
         record.update(what=what, match_bound_rel_rms=MATCH_REL_RMS, report=report, passed=passed)
         code = 0 if passed else 1
+    elif args.mode == "plain_render":
+        outputs = [f"{i.get('subfolder', '')}/{i['filename']}" for o in history.get("outputs", {}).values()
+                   for v in o.values() if isinstance(v, list) for i in v
+                   if isinstance(i, dict) and "filename" in i]
+        passed = bool(outputs)
+        print(("ok    " if passed else "FAIL  ") + f"plain whole-clip render; outputs {outputs}")
+        record.update(what=("the TaoMate adapter over the whole clip with the stock sampler and every "
+                            "attention patch stripped: the dense-attention whole-clip control"),
+                      prompt_bank_id=args.prompt_id, audio=args.audio, seed=args.seed,
+                      outputs=outputs, passed=passed)
+        code = 0 if passed else 2
     else:
         lines = log_lines_since(args.host, since, CHUNK_TAG)
         expected = len(tm.run_plan(tm.requests_for(
