@@ -92,3 +92,27 @@ take-to-take variation on one scene, not an effect of the bf16 tail. The
 audio thread from the morning closes on that evidence. Nothing measured
 here ranks the two clips' video; the pixel and motion tools say "different
 takes, comparable motion", which is all they can say.
+
+## Viewers on the Tier 1 pair (clip 1 = levers, clip 2 = policy), 2026-09-15 evening
+
+The owner: "i cannot see the difference between them" at first; another
+viewer:
+
+> The right has better small hands. (Much better than left, but still AI
+> bad.) Look at the woman's hands near scene end, and at the woman's hand
+> on the left of the shot carrying a bag.
+
+> Two has better coins
+
+The owner, after: "i saw this too. look at 8s-9s mark in both clips."
+
+Checked on extracted frames (8.0, 8.5, 9.0 s; 13.8, 14.2 s): in the policy
+clip the left tin is open and full of coins through the beat and at 8.5 s
+the fingers hold a coin over the right tin; in the levers clip the left
+tin's lid stays closed and the hand reaches into an empty tin with no coin
+anywhere. The same failure shape as the crate: a small prompt-named object
+left undecided by the arm without the bf16 tail. The hands claim could not
+be settled from single frames (the takes diverge into different poses by
+the end); the coin beat is the clean evidence. So on this scene the free
+levers do not fully reach the ceiling; the bf16 tail still buys the last
+commitment on small objects.
