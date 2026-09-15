@@ -15,9 +15,12 @@
   "arms": {
     "dancer_taomate_frozen": "workflows/h3_probe_taomate_3step_audio_freeze_api.json",
     "dancer_taomate_loose": "workflows/h3_probe_taomate_3step_audio_freeze_api.json",
-    "dancer_pdd8_frozen": "workflows/h3_candidate_t2v_pdd8_baked_audio_freeze_api.json",
-    "voice_taomate_frozen": "workflows/h3_probe_taomate_3step_audio_freeze_api.json",
-    "voice_pdd8_frozen": "workflows/h3_candidate_t2v_pdd8_baked_audio_freeze_api.json"
+    "voice_taomate_frozen": "workflows/h3_probe_taomate_3step_audio_freeze_api.json"
+  },
+  "compare_against_existing": {
+    "why": "The PDD8 freeze renders at these scenes, tracks and seeds already exist from bench/audio_freeze_pdd_arms.json, rendered 2026-09-12. They are not re-rendered (owner 2026-09-15: do not waste rendering). The shipped graph has moved since then, so treat each pair as a free-text comparison, not a controlled one.",
+    "dancer_pdd8_frozen": "Video/h3_candidate_t2v_pdd8_baked_audio_freeze_dancer_frozen_pdd8_00001-audio.mp4",
+    "voice_pdd8_frozen": "Video/h3_candidate_t2v_pdd8_baked_audio_freeze_voice_frozen_pdd8_00001-audio.mp4"
   },
   "patches": [
     "dancer_taomate_frozen:MiniMaxH3Conditioning.prompt=@bank:t2va_studio_dancer",
