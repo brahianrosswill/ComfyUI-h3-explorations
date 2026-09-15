@@ -60,7 +60,10 @@ PROBES = {
     "control_text_only": REPO / "workflows" / "h3_probe_taomate_3step_api.json",
     "stream": REPO / "workflows" / "h3_probe_taomate_3step_audio_freeze_api.json",
 }
-ATTENTION_CHAIN = ("MiniMaxH3SageAttention", "MiniMaxH3SolAttn", "SageChainAssert")
+#: Model-path nodes the check keeps: loading, the LoRA and the shift. Every
+#: other node between the guider and these is an attention patch or an assert
+#: on one, and is stripped.
+MODEL_PATH_KEEP = ("UNETLoader", "LoraLoaderModelOnly", "MiniMaxH3SigmaShift")
 #: Reasoned: the hooked loop computes the same attention with torch's SDPA on
 #: the same inputs, so any difference is kernel dispatch and float rounding.
 #: A wiring defect (a wrong position, timestep or row order) moves the latent
@@ -88,13 +91,23 @@ def build_graph(args) -> dict:
     by_class = {}
     for nid, node in doc.items():
         by_class.setdefault(node["class_type"], []).append(nid)
-    # Rewire the guider past the removed attention chain, to whatever its
-    # first node took as the model.
-    sage = doc[by_class["MiniMaxH3SageAttention"][0]]
-    doc[by_class["BasicGuider"][0]]["inputs"]["model"] = sage["inputs"]["model"]
+    # Strip whatever attention chain sits on the model path, by walking back
+    # from the guider until a node that only loads or shifts the model. By
+    # structure rather than by class name: the shipped chain changed on
+    # 2026-09-15 from sage + Sol to core's attention backend + Sol, and the
+    # sampler refuses both.
+    guider = doc[by_class["BasicGuider"][0]]
+    source = guider["inputs"]["model"]
+    stripped = []
+    while doc[source[0]]["class_type"] not in MODEL_PATH_KEEP:
+        stripped.append(source[0])
+        source = doc[source[0]]["inputs"]["model"]
+    guider["inputs"]["model"] = source
+    for nid in stripped:
+        del doc[nid]
     cond = doc[by_class["MiniMaxH3Conditioning"][0]]
     cond["inputs"].update(width=args.width, height=args.height, length=args.length)
-    remove = ATTENTION_CHAIN + ("MiniMaxH3Resolution",)
+    remove = ("MiniMaxH3Resolution",)
     whole_clip = args.mode in ("verify_whole_clip", "control_text_only")
     if whole_clip:
         remove += ("VAEDecode", "VAEDecodeAudio", "VHS_VideoCombine")
