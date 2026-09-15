@@ -4,6 +4,22 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.111.0
+
+### Added
+
+- **`bench/convert_taomate_lora.py --release`** (converter version 3) reads
+  the `MiniMaxAI/MiniMax-H3` download. At `RELEASE_PROBE_MODULES` it
+  dequantises the checkpoint's qkv and fc1, using the group size from each
+  module's own `comfy_quant`. It asserts that each matches the bf16 release
+  row for row under exactly one layout: qkv as the release's per-head
+  interleaved rows reordered into q|k|v bands (TaoMate's own reorder), and fc1
+  as stored. The core tensor is then shown on weights to be the one TaoMate
+  trained its LoRA on. Before this, the layout rested on source reads and a
+  fused-LoRA anchor. The output's metadata gains `release_layout`, and the
+  record gains the per-module row cosines. The converted file and its record
+  still carry version 2 until they are regenerated with `--release`.
+
 ## 0.110.0
 
 ### Added

@@ -41,7 +41,7 @@ pointer.
   in ComfyUI on this box, the fl2va PDD LoRA (`h3_config.PDD_FL2VA_LORA`),
   whose fused `lora_B` must be block-diagonal over the three row bands. The
   anchor shows how core reads a fused LoRA; it says nothing about TaoMate's
-  rows.
+  rows. `--release` adds the leg that joins them, on weights (below).
 - **No SwiGLU half swap.** TaoMate reads `fc1` as `[gate; up]` on both of its
   paths (`src/taomate_h3/model/layers.py::MiniMaxH3MLP.forward` chunks
   `gate, up`; the triton `_swiglu_kernel` in
@@ -50,12 +50,19 @@ pointer.
   swap exists because diffusers stores `[value; gate]`; this adapter was never
   in diffusers naming. Source reads only.
 
-**Weight statistics cannot settle either order, so nothing here gates on
-them.** Row norms, within-band correlations and row directions of the
-delta against the base weights were each tried on 2026-09-15 and read at
-chance: a rank-128 delta's rows carry no trace of which base row they sit on.
-The one functional control is a render with the halves deliberately swapped,
-which should look broken if the source reads are right. `--swap-fc1-halves`
+**The delta's statistics cannot settle either order; the base weights can.**
+Row norms, within-band correlations and row directions of the delta against
+the base weights were each tried on 2026-09-15 and read at chance: a rank-128
+delta's rows carry no trace of which base row they sit on. Comparing base to
+base does settle it. With `--release` pointing at the `MiniMaxAI/MiniMax-H3`
+download, `release_layout` dequantises the checkpoint's own qkv and fc1 at
+`RELEASE_PROBE_MODULES`. It then asserts that each matches the release row
+for row under exactly one layout: qkv under TaoMate's reorder of the per-head
+interleaved release into bands, and fc1 as stored. That shows the tensor core
+loads is the tensor TaoMate installed its LoRA on. Both engines run that base
+correctly, so they read its rows the same way, and so the LoRA's rows line up
+too. A render with the fc1 halves deliberately swapped remains the functional
+control, which should look broken. `--swap-fc1-halves`
 writes that file (`h3_config.TAOMATE_SWAPPED_CONTROL_LORA`) and stamps it as a
 control in its metadata.
 
@@ -108,13 +115,22 @@ sys.path.insert(0, str(REPO / "workflows"))
 
 import h3_config  # noqa: E402
 
-CONVERTER_VERSION = 2
+CONVERTER_VERSION = 3
 KINDS = ("attn.qkv_proj", "attn.out_proj", "mlp.fc1", "mlp.fc2")
 DTYPES = {"bf16": torch.bfloat16, "fp32": torch.float32}
 # Reasoned: a block-diagonal fusion leaves only dtype rounding off the three
 # diagonal blocks, while a grouped or band-mixed layout puts about two thirds
 # of the energy there. Any value far between the two separates them.
 ANCHOR_OFF_BLOCK_MAX = 1e-3
+# Reasoned: an int8_convrot row dequantises to within rounding of its source,
+# so its cosine with the right release row sits just under one, and against an
+# unrelated row it sits near zero. Bounds far inside that gap separate layouts.
+RELEASE_MATCH_MIN = 0.999
+RELEASE_OTHER_MAX = 0.1
+# Reasoned: the layout comes from one conversion applied to every module, so
+# both ends of the stack and the text refiner catch a per-block path; checking
+# every module costs a dequantisation each and adds nothing a layout can hide.
+RELEASE_PROBE_MODULES = ("blocks.0", "blocks.25", "blocks.49", "token_refiner.blocks.0")
 
 
 def distilled_grid() -> dict:
@@ -266,6 +282,82 @@ def anchor_qkv_bands(anchor: Path) -> dict:
             "off_block_energy_fraction_bound": ANCHOR_OFF_BLOCK_MAX}
 
 
+def _dequantised(handle, keys: set, module: str) -> torch.Tensor:
+    """A checkpoint linear as float32, dequantised when it is int8_convrot.
+
+    The group size is the module's own `comfy_quant` config, not a constant,
+    so a checkpoint built at another size still reads correctly."""
+    weight = handle.get_tensor(f"{module}.weight")
+    if f"{module}.weight_scale" not in keys:
+        return weight.float()
+    config = json.loads(bytes(handle.get_tensor(f"{module}.comfy_quant").tolist()).decode())
+    if config.get("format") != "int8_tensorwise" or not config.get("convrot"):
+        raise VerificationError(f"{module}: quantised as {config}, which this check does not dequantise")
+    if str(COMFY) not in sys.path:
+        sys.path.append(str(COMFY))
+    from comfy_kitchen.backends.eager.quantization import dequantize_int8_convrot_weight
+    return dequantize_int8_convrot_weight(weight, handle.get_tensor(f"{module}.weight_scale"),
+                                          int(config["convrot_groupsize"])).float()
+
+
+def _row_cosine_median(a: torch.Tensor, b: torch.Tensor) -> float:
+    return float(torch.nn.functional.cosine_similarity(a, b, dim=1).median())
+
+
+def release_layout(release: Path, checkpoint: Path, heads: int, head_dim: int) -> dict:
+    """The checkpoint's qkv and fc1 rows against the release's, under each candidate layout.
+
+    The release interleaves q, k and v per head; TaoMate reorders that into
+    row bands before installing its LoRA
+    (`src/taomate_h3/model/weight_loading.py::_local_tensor`, one query group
+    per head) and leaves fc1 as stored. Each module must match the release
+    under exactly that layout and under no other."""
+    transformer = release / "FL2VA" / "transformer"
+    index = transformer / "model.safetensors.index.json"
+    if not index.is_file():
+        raise VerificationError(f"--release has no FL2VA/transformer/{index.name}")
+    weight_map = json.loads(index.read_text(encoding="utf-8"))["weight_map"]
+
+    def released(key: str) -> torch.Tensor:
+        if key not in weight_map:
+            raise VerificationError(f"release has no {key}")
+        with safe_open(str(transformer / weight_map[key]), "pt") as shard:
+            return shard.get_tensor(key).float()
+
+    modules, problems = {}, []
+    with safe_open(str(checkpoint), "pt") as handle:
+        keys = set(handle.keys())
+        for prefix in RELEASE_PROBE_MODULES:
+            qkv, fc1 = f"{prefix}.attn.qkv_proj", f"{prefix}.mlp.fc1"
+            source, stored = released(f"{qkv}.weight"), _dequantised(handle, keys, qkv)
+            if source.shape != stored.shape or source.shape[0] != 3 * heads * head_dim:
+                problems.append(f"{qkv}: release {tuple(source.shape)}, checkpoint "
+                                f"{tuple(stored.shape)}, not one q, k and v per head")
+                continue
+            q, k, v = torch.split(source.reshape(heads, 3 * head_dim, -1), [head_dim] * 3, dim=1)
+            bands = torch.cat([t.reshape(heads * head_dim, -1) for t in (q, k, v)])
+            modules[qkv] = ("grouped_to_bands",
+                            {"as_stored": _row_cosine_median(source, stored),
+                             "grouped_to_bands": _row_cosine_median(bands, stored)})
+            source, stored = released(f"{fc1}.weight"), _dequantised(handle, keys, fc1)
+            half = source.shape[0] // 2
+            modules[fc1] = ("as_stored",
+                            {"as_stored": _row_cosine_median(source, stored),
+                             "halves_swapped": _row_cosine_median(
+                                 torch.cat([source[half:], source[:half]]), stored)})
+    for module, (want, scores) in modules.items():
+        others = [value for name, value in scores.items() if name != want]
+        if scores[want] < RELEASE_MATCH_MIN or max(others) > RELEASE_OTHER_MAX:
+            problems.append(f"{module}: row cosine medians {scores} do not single out {want}")
+    if problems:
+        raise VerificationError("release layout: " + "; ".join(problems))
+    return {"release": "MiniMaxAI/MiniMax-H3 FL2VA/transformer",
+            "release_index_sha256": sha256(index),
+            "match_min": RELEASE_MATCH_MIN, "other_max": RELEASE_OTHER_MAX,
+            "modules": {module: {"expected": want, "row_cosine_median": scores}
+                        for module, (want, scores) in modules.items()}}
+
+
 # --------------------------------------------------------------------------
 # deltas, compared in factored form
 # --------------------------------------------------------------------------
@@ -352,6 +444,9 @@ def main(argv=None) -> int:
     ap.add_argument("--anchor", type=Path,
                     default=COMFY / "models" / "loras" / h3_config.PDD_FL2VA_LORA,
                     help="a fused-qkv ComfyUI LoRA known to render (default: h3_config.PDD_FL2VA_LORA)")
+    ap.add_argument("--release", type=Path,
+                    help="the MiniMaxAI/MiniMax-H3 download (containing FL2VA/transformer): check the "
+                         "checkpoint's qkv and fc1 rows against the weights TaoMate trained on")
     ap.add_argument("--swap-fc1-halves", action="store_true",
                     help="write the functional control: every mlp.fc1 lora_B with its gate and up "
                          "halves exchanged (h3_config.TAOMATE_SWAPPED_CONTROL_LORA). Never a usable LoRA")
@@ -364,6 +459,8 @@ def main(argv=None) -> int:
         targets = adapter_inventory(state, rank)
         geometry = checkpoint_inventory(args.checkpoint, state, targets)
         anchor = anchor_qkv_bands(args.anchor)
+        release = (release_layout(args.release, args.checkpoint, geometry["heads"], geometry["head_dim"])
+                   if args.release is not None else None)
     except VerificationError as exc:
         print(f"FAIL  {exc}")
         return 1
@@ -373,6 +470,11 @@ def main(argv=None) -> int:
     print(f"ok    anchor {anchor['file']}: {anchor['modules']} fused qkv_proj lora_B are "
           f"block-diagonal over row bands (worst off-block energy "
           f"{anchor['off_block_energy_fraction_max']:.2e})")
+    if release is not None:
+        print(f"ok    release: the checkpoint's qkv is the release reordered to q|k|v bands and its "
+              f"fc1 is the release as stored, at {', '.join(RELEASE_PROBE_MODULES)}")
+    else:
+        print("note  no --release: the qkv and fc1 layouts rest on source reads and the anchor")
 
     source_digest = sha256(weights)
     dtype = DTYPES[args.dtype]
@@ -416,6 +518,8 @@ def main(argv=None) -> int:
                        "reorder_grouped_qkv_to_qkv module; core splits bands (anchored on a "
                        "fused LoRA that renders)"),
         "swi_glu_mapping": "TaoMate [gate;up] -> ComfyUI [gate;up], no swap (source reads)",
+        "release_layout": ("checkpoint qkv == release reordered to bands, fc1 == release as stored, at "
+                           + ", ".join(RELEASE_PROBE_MODULES)) if release is not None else "not checked",
         "distilled_grid": json.dumps(distilled_grid()),
         "control": ("fc1 lora_B gate and up halves SWAPPED on purpose: a render control, "
                     "not a usable LoRA" if args.swap_fc1_halves else "none"),
@@ -470,6 +574,7 @@ def main(argv=None) -> int:
             "adapter": {"modules": len(targets), "rank": rank, "alpha": alpha},
             "checkpoint_geometry": geometry,
             "anchor": anchor,
+            "release_layout": release,
             "control_fc1_swapped": bool(args.swap_fc1_halves),
             "distilled_grid": distilled_grid(),
             "cast": {"dtype": args.dtype, "delta_rel_err": summarise(cast)},

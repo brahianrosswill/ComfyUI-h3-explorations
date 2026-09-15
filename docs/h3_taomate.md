@@ -22,7 +22,10 @@ references: TaoMate". Nothing here has been rendered.
   graph that tries.
 - **Conversion.** `bench/convert_taomate_lora.py` renames the authors' factors
   and keeps their rank. Its docstring gives the evidence for each part of the
-  mapping. The records are
+  mapping. With `--release` it also checks the ComfyUI checkpoint's qkv and
+  fc1 row for row against the bf16 release TaoMate trained on. That shows the
+  layout on the weights themselves, not only by reading source. The records
+  are
   `bench/results/2026-09-15_taomate_lora_conversion.json` (the file, plus the
   comparison with kijai's) and
   `bench/results/2026-09-15_taomate_lora_control_fc1_swapped.json` (the
