@@ -4,7 +4,10 @@ Opened 2026-09-15. What the TaoMate-H3 adapter is on this box, how a graph
 runs it, how our conversion differs from kijai's, and the test plan, including
 the audio-freeze arm. What the authors' runtime is, and what their release is
 not evidence of, is [`wiki/references.md`](wiki/references.md), "The streaming
-references: TaoMate". Nothing here has been rendered.
+references: TaoMate". The probe and freeze arms rendered on 2026-09-15; their
+runner rows are `bench/results/2026-09-15_taomate_probe_arms.jsonl` and
+`bench/results/2026-09-15_taomate_audio_freeze_arms.jsonl`, and no verdict is
+recorded yet.
 
 ---
 

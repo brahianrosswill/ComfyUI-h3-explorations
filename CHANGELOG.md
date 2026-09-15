@@ -17,8 +17,21 @@ artifact.
   as stored. The core tensor is then shown on weights to be the one TaoMate
   trained its LoRA on. Before this, the layout rested on source reads and a
   fused-LoRA anchor. The output's metadata gains `release_layout`, and the
-  record gains the per-module row cosines. The converted file and its record
-  still carry version 2 until they are regenerated with `--release`.
+  record gains the per-module row cosines. The converted file and
+  `bench/results/2026-09-15_taomate_lora_conversion.json` are regenerated with
+  it.
+
+### Changed
+
+- **The swapped-fc1 control is documented as uninformative.** Its render,
+  `diner_control`, is a coherent clip: fc1's delta is too small against the
+  base weight for misplaced rows to break a working model. `h3_config`,
+  `docs/h3_taomate.md` and the converter docstring now name `--release` as
+  the mapping's evidence.
+- **`bench/taomate_audio_freeze_arms.json`** no longer re-renders the PDD8
+  freeze arms. It points at the existing 2026-09-12 clips instead. The probe
+  and freeze runner rows are committed; the `dancer_taomate_loose` row is
+  rebuilt from `/history`, because its runner was stopped mid-render.
 
 ## 0.110.0
 
