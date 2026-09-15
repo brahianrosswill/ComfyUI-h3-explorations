@@ -1,0 +1,59 @@
+{
+  "what": "the blk_cnt work rebased onto comfy-kitchen v0.2.34 and built here, graded against upstream's own Sol test suite with the same selections as the 2026-09-08 record, and the block-49 channel-balance grade rerun as a numerics control",
+  "why": "ComfyUI moved its pin to comfy-kitchen==0.2.34. The owner asked for the latest from kijai's fork and Comfy-Org to be brought into the fork, keeping only what is useful; the rebuild script's design is the pinned tag plus our commits, so the move is a rebase onto the tag, and kijai's branches were checked by content rather than by commit count",
+  "installed": {
+    "version": "0.2.34+sol.2aff3c5",
+    "branch": "h3-build",
+    "sha": "2aff3c5",
+    "base": "v0.2.34 (e5e0d02)",
+    "commits_on_top": 6,
+    "previous": "0.2.33+sol.397c790, kept as tag archive/h3-build-0.2.33",
+    "built_by": "vendor/rebuild_kernel.sh (default arch 89), from the pack's real path; invoked through a coderef symlink it derives a nonexistent venv from its own location and fails before compiling",
+    "record": "comfy_kitchen_build.json beside the venv",
+    "host": "torch 2.14.0+cu132, python 3.14, sm89"
+  },
+  "measured": "2026-09-15",
+  "gained_from_the_tag": [
+    "PR 167 + HIP port 175: MiniMax H3 VAE kernels (fused encoder pad/norm, fp16-accumulate conv3d and GEMM, int8 residual epilogue)",
+    "PR 162: persistent RoPE allocations behind set_allocation_context, which core calls when exported",
+    "PR 165: compress-mode=size for the CUDA build",
+    "an eager apply_rope_split_half1 optimization"
+  ],
+  "kijai_branches": {
+    "checked": ["kijai/sol_exact_pquant", "kijai/sol_token_aug_main", "kijai/minimax_vae"],
+    "method": "content diff against v0.2.34 on comfy_kitchen/backends/cuda/sage_attention and the eager Sol reference; Comfy-Org squash-merges, so commit counts against upstream overstate what is unmerged",
+    "result": "identical to the tag on those files; the remaining differences are an older v0.2.32 base (missing HIP ports and tests, older Triton rope and quantization helpers). Nothing to carry",
+    "kijai_w4a8_gemv": "PR 176, not carried (decode-path kernels; see open_prs_not_carried)"
+  },
+  "open_prs_not_carried": {
+    "176": "W4A8 codebook GEMV and fused GatedDeltaNet decode for an LLM text-encoder decode loop; H3's encoder is prefill only here",
+    "171": "key_bias on the fused-QKV sol_attn_chunked producers; sol_attn_chunked is unwired here and key_bias is left at default on the direct path",
+    "172": "int64 offsets in the Triton INT8 GEMM output offset; this card runs the CUDA INT8 linear. Worth taking if that changes",
+    "others": "174 HIP WMMA, 151/153/154/155/161 Ascend, 157 stochastic fp8 (Triton), 160 dead import: other backends or cosmetic"
+  },
+  "our_cases": {
+    "selection": "-k 'blk_cnt or token_aug or ties'",
+    "result": "21 passed, 1 failed, 2 skipped",
+    "reading": "every blk_cnt case passes on the v0.2.34 base; the one failure is upstream's test_topk_ties_over_select, which the 2026-09-08 record already attributes (tie group straddling the budget), matched here by the 'ties' selection; two more blk_cnt cases than on 2026-09-08 (the chunked keyword-only commit added them)"
+  },
+  "upstream_cases_that_fail_here": {
+    "attribution": "unchanged from 2026-09-08: `git diff v0.2.34 h3-build` touches only comfy_kitchen/backends/cuda/__init__.py and tests/test_sol_attn.py, no .cu/.cpp/.h; the binding-validation gaps are upstream's CUDA bindings",
+    "poisoning_cases": ["test_bindings_check_dtype_and_layout", "test_bindings_reject_a_bad_sink_range", "test_bindings_reject_non_positive_extents"],
+    "suite_with_the_poisoning_cases_deselected": "108 passed, 1 failed (test_topk_ties_over_select), 2 skipped",
+    "comparison_to_2026_09_08": "106 passed, 5 failed, 1 skipped then; no case that passed then fails now"
+  },
+  "numerics_control": {
+    "what": "bench/grade_channel_balance.py on the 2026-09-03 capture, block 49 step 15, tau 1.0, first 8 heads, weights-derived factor, on the new wheel",
+    "result": "Sol sparsity_l2 0.0324 / quant_l2 0.0265 / total 0.0415 plain; 0.0323 / 0.0231 / 0.0393 balanced; identical to all printed digits with the 2026-09-14 record taken on 0.2.33+sol.397c790",
+    "reading": "the rebase changed no Sol kernel arithmetic on this cell"
+  },
+  "how": [
+    "tests are run with pytest from OUTSIDE the checkout, with --import-mode=importlib -c /dev/null --rootdir=<scratch>, so comfy_kitchen resolves to the installed wheel; run in place (or with the checkout's pytest.ini as rootdir) the source tree shadows the wheel, has no compiled extension, and all 122 cases skip while reporting success",
+    "pytest was installed into the ComfyUI venv for the run and removed afterwards, as the 2026-09-08 record keeps it out"
+  ],
+  "render_verification": "not run in this session; see the entry below when it is",
+  "not_established": [
+    "that the H3 VAE kernels the tag adds (#167) render identically to the previous VAE path; nothing here rendered, and the smoke render with the route observer armed (2026-09-08 record, render_verification) is the instrument",
+    "that the upstream binding-validation gaps fail on upstream's own CI, which builds wheels and runs no GPU tests"
+  ]
+}

@@ -230,12 +230,22 @@ is the one a stock wheel fails (`bench/check_sol_kernel.py:129`). *Corrected
 local build was the only way to run it, which was true while the pin was
 `0.2.31` (PR 117 merged upstream on 2026-08-29).
 
-**Kitchen `main` has moved past `v0.2.33` with no new tag** (checked
-2026-09-10). PR 162 adds `set_allocation_context`, a hook ComfyUI core calls
-only when kitchen exports it (`comfy/model_prefetch.py:63-64`), for allocations
-the kernel keeps between calls. A build based on the tag does not export it, so
-core skips the hook. [`docs/sol_upstream.md`](sol_upstream.md) holds the
-snapshot.
+**ComfyUI moved its pin to `comfy-kitchen==0.2.34` and `h3-build` followed
+(2026-09-15).** `v0.2.34` carries PR 162 (`set_allocation_context`, the hook
+core calls only when kitchen exports it, `comfy/model_prefetch.py:63-64`),
+PR 167 and its HIP port 175 (the MiniMax H3 VAE kernels: fused encoder
+pad/norm, fp16-accumulate conv3d and GEMM, int8 residual epilogue), PR 165
+(`compress-mode=size` for the CUDA build) and an eager `apply_rope_split_half1`
+optimization. The build branch was rebased onto the tag per the script's
+recipe, the old tip kept as `archive/h3-build-0.2.33`, and the six `blk_cnt`
+commits reapplied clean; the installed build is `0.2.34+sol.2aff3c5`. Nothing
+on kijai's branches was left behind: on the CUDA and sage-attention files every
+one of them (`sol_exact_pquant`, `sol_token_aug_main`, `minimax_vae`) is
+identical to the tag, their remaining diffs being an older `v0.2.32` base.
+The open PRs assessed and not carried are in
+[`docs/sol_upstream.md`](sol_upstream.md) under 2026-09-15. Before 2026-09-15
+this paragraph said main had moved past `v0.2.33` with no new tag, which was
+true on 2026-09-10.
 
 **On this box, use the script.** `vendor/rebuild_kernel.sh [ARCH]` (default 89)
 does everything below and three things the manual recipe does not: it derives

@@ -15,6 +15,19 @@ Older history lives elsewhere and is not copied here:
   decisions" and forward-plan sections.
 - `bench/results/`: the verdict records, each with its conditions.
 
+## 2026-09-15
+
+- **Kitchen build moved to `0.2.34+sol.2aff3c5`.** ComfyUI's pin went to
+  `comfy-kitchen==0.2.34`; `h3-build` was rebased onto the tag by the recipe
+  in `vendor/rebuild_kernel.sh`, old tip archived as `archive/h3-build-0.2.33`,
+  six `blk_cnt` commits reapplied clean. Brings the H3 VAE kernels (#167/#175),
+  persistent RoPE allocations (#162), `compress-mode=size` (#165). Kijai's
+  branches carried nothing unmerged on the CUDA side; open PRs assessed and
+  not carried: `docs/sol_upstream.md`, 2026-09-15. `docs/SOLATTN.md` "Install
+  the CUDA kernel" used to say main had moved past 0.2.33 with no tag.
+- **`docs/research/2026-09-14_block49_quant_error.md` gained sections 7
+  (the sage-side `qk_balance` kernel fix) and "So what".** No default changed.
+
 ## 2026-09-14
 
 - **The generator runs masked, as documented, rather than needing the card**

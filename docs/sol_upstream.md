@@ -1,6 +1,6 @@
 # What upstream says: the paper, Sol-Engine, Sol-H3, and the other packs
 
-Last updated: 2026-09-11, when sglang's own Sol-Attn backend was added, the
+Last updated: 2026-09-15 (the comfy-kitchen section); before that 2026-09-11, when sglang's own Sol-Attn backend was added, the
 comfy-kitchen snapshot moved forward, an
 open core PR against core's Sol node was read, and a third ComfyUI Sol pack
 was added from its README. Before that, 2026-09-10, when Sana's `sol-engine`
@@ -38,6 +38,45 @@ Every `coderef/Sana/...` pointer below resolves against a checkout at
 `757d902`. The branch `release/sol-h3-spark` has the same tree as that tip.
 
 ---
+
+## comfy-kitchen, 2026-09-15: the pin moved to v0.2.34, and what was and was not carried
+
+Read with the fork's remotes fetched (Comfy-Org as `upstream`, kijai as
+`kijai`) and the GitHub PR lists of both, the day ComfyUI's
+`requirements.txt` moved to `comfy-kitchen==0.2.34`.
+
+**Carried, by rebasing `h3-build` onto `v0.2.34`** (everything the tag holds
+past `v0.2.33`): PR 167 and its HIP port 175, the MiniMax H3 VAE kernels
+(fused encoder pad/norm, fp16-accumulate conv3d and GEMM, int8 residual
+epilogue); PR 162, persistent RoPE allocations behind
+`set_allocation_context`, which core now calls; PR 165, `compress-mode=size`
+for the CUDA build; an eager `apply_rope_split_half1` optimization. Our six
+`blk_cnt` commits (PR 168, still open) reapplied without conflict.
+
+**Kijai's branches: nothing left to pull.** Comfy-Org squash-merges, so
+commit counts against upstream overstate what is unmerged; by content, on
+`comfy_kitchen/backends/cuda/sage_attention` and the eager Sol reference,
+`kijai/sol_exact_pquant` (#150), `kijai/sol_token_aug_main` (#156) and
+`kijai/minimax_vae` (#167) are identical to `v0.2.34`. Their remaining
+differences are an older base (`v0.2.32`): missing HIP ports and tests, and
+older Triton rope/quantization helpers. `kijai/w4a8_gemv` is PR 176 below.
+A local branch named `sol_fp16_pv` in the kijai mirror is kijai's
+2026-08-14 `sol_attn` head, not a 16-bit PV variant; the name misleads.
+
+**Open PRs assessed and not carried:**
+
+| PR | what | why not |
+|---|---|---|
+| 176, kijai, `w4a8_gemv` | W4A8 codebook GEMV for M <= 8, int8 decode GEMV, fused GatedDeltaNet decode; for an LLM text-encoder *decode* loop, paired with a core PR | H3's encoder is prefill only here; no decode path runs. Revisit if ComfyUI's pin moves to a tag that needs it, which the rebuild gate will say |
+| 171, xmarre, chunked `key_bias` | per-key logit bias on the fused-QKV `sol_attn_chunked` producers, CUDA and HIP | `sol_attn_chunked` is registered and unwired here, and `key_bias` is left at its default on the direct path too |
+| 172, neuregex, Triton INT8 GEMM int64 offsets | the same overflow class as the sage fork's v0.7.0 and v0.7.17 fixes, in kitchen's Triton INT8 GEMM output offset | this card runs the CUDA INT8 linear, not the Triton one; a correct fix for a path not on ours. Worth taking if that changes |
+| 174 (HIP WMMA), 151/153/154/155/161 (Ascend), 157 (stochastic fp8, Triton), 160 (dead import) | other backends, or cosmetic | not this card |
+
+**What would make this stale:** ComfyUI moving its pin again (the gate in
+`vendor/rebuild_kernel.sh` reports it), PR 168 merging (drop the carried
+commits on the next rebase), or a kitchen change to `quant_k_rows` /
+`quant_q_rows`, which is where the sage fork's `qk_balance` factor would go
+on the Sol side (`docs/research/2026-09-14_block49_quant_error.md`, section 7).
 
 ## The paper
 

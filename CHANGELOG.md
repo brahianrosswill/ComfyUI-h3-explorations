@@ -104,6 +104,17 @@ regrouped, which `docs/comfy_notes.md` now allows when the owner accepts it.
 
 ## 0.107.0
 
+### Changed
+
+- **Kitchen build `0.2.33+sol.397c790` -> `0.2.34+sol.2aff3c5`** (2026-09-15).
+  ComfyUI pinned `comfy-kitchen==0.2.34`; `h3-build` rebased onto the tag,
+  `archive/h3-build-0.2.33` keeps the old tip, `blk_cnt` commits unchanged.
+  Gains from the tag: MiniMax H3 VAE kernels (#167, HIP #175), persistent RoPE
+  allocations (#162), CUDA `compress-mode=size` (#165), eager rope
+  optimization. Kijai's branches had nothing unmerged on the CUDA side; open
+  PRs 176 (decode GEMV), 171 (chunked key bias), 172 (Triton INT8 GEMM int64
+  offsets) assessed and not carried, reasons in `docs/sol_upstream.md`.
+
 ### Added
 
 - **`MiniMaxH3ChannelBalance`** (`channel_balance.py`): rebalances q/k
