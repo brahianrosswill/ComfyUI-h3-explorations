@@ -862,3 +862,16 @@ This is `docs/SOLATTN.md`'s unit trap at a larger scale. The RTX 4090 cell's
 Sol increment is the closest thing to comparable, and it is an increment over
 TeaCache from one sample. The one arm that *would* be comparable,
 `rtx5090_sol` against `rtx5090_dense`, still has no published result.
+
+## 2026-09-15, evening: `qk_balance` prepared for upstream
+
+Branch `sol-qk-balance-pr` in the fork clone (`coderef/comfy-kitchen`): the
+two `qk_balance` commits rebased by hand onto upstream `main`
+(`e5e0d02`, the v0.2.34 tag), with the blk_cnt-adjacent lines dropped and
+the two tests that read the route through `blk_cnt` restated on the
+output. Built against that base (sm_89) and its Sol suite run from the
+wheel: the ten new cases pass, the whole suite fails only the pre-existing
+`test_topk_ties_over_select`. Not pushed, no PR opened; the PR text is
+`docs/sol_upstream_qk_balance_pr.md`. The owner pushes and opens it, per
+the standing rule; `gh pr create` needs `--repo Comfy-Org/comfy-kitchen
+--base main --head <fork>:sol-qk-balance-pr` spelled out.
