@@ -50,6 +50,7 @@ from __future__ import annotations
 import functools
 import json
 import logging
+import time
 
 import torch
 
@@ -296,7 +297,10 @@ class TaoMateStreamSampler(comfy.samplers.Sampler):
                 cache.finish_commit(2 * xa.shape[-1], xv.shape[2] * frame_rows)
             return comfy.utils.unpack_latents(denoised, shapes_c)[0]
 
+        if device.type == "cuda":
+            torch.cuda.reset_peak_memory_stats(device)
         for n, chunk in enumerate(plan):
+            started = time.perf_counter()
             if chunk.index == 0 and chunk.request > 0 and chunk.request % tm.AUDIO_RESET_REQUESTS == 0:
                 cache.drop_audio()
             positions = tm.chunk_positions(full.position_ids, text_len, audio_t, frame_rows, chunk)
@@ -315,8 +319,10 @@ class TaoMateStreamSampler(comfy.samplers.Sampler):
             forward(xv, audio_states[-1], sigmas[-1], layout, commit=True)
             cache.retain()
             video_out[:, :, chunk.v0:chunk.v1] = xv
-            logging.info("[taomate] request %d chunk %d: latents %d-%d, audio %d-%d, cache %d tokens",
-                         chunk.request, chunk.index, chunk.v0, chunk.v1, chunk.a0, chunk.a1, cache.tokens)
+            peak = torch.cuda.max_memory_allocated(device) / 2**30 if device.type == "cuda" else 0.0
+            logging.info("[taomate] request %d chunk %d: latents %d-%d, audio %d-%d, cache %d tokens, "
+                         "%.1f s, peak allocated %.2f GiB", chunk.request, chunk.index, chunk.v0, chunk.v1,
+                         chunk.a0, chunk.a1, cache.tokens, time.perf_counter() - started, peak)
             if callback is not None:
                 packed = comfy.utils.pack_latents([video_out, audio_image])[0]
                 callback(n, packed, packed, len(plan))
