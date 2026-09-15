@@ -304,6 +304,16 @@ was not the author, before the key was opened. Their notes, then the key:
 
 In all three the woman changes identity over the clip.
 
+A second pass by the same judge, watching in the presented order on a
+phone: the clip where "the dude morphs backwards" (clip 1, balanced) is the
+worst; the last one (clip 3, exact tail) is the best, with no morphing on
+the crate, a more natural weight shift as he carries it, and the crate
+rested on the table edge while he puts the coins in the tin rather than
+held one-handed; possibly less motion blur, "hard to say". The weight
+shift onto the hip and the coins into the tin are both specified in the
+prompt, so the two details that separated the clips are prompt-adherence
+details, which is the axis section 5 predicts.
+
 **What this is and is not.** The direction matches the prediction (the
 ceiling arm read as best). It is one judge on one seed, and
 `bench/compare_clip_pixels.py` puts every pair at a large mean absolute
