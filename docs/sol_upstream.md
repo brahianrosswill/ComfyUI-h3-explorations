@@ -76,7 +76,7 @@ A local branch named `sol_fp16_pv` in the kijai mirror is kijai's
 `vendor/rebuild_kernel.sh` reports it), PR 168 merging (drop the carried
 commits on the next rebase), or a kitchen change to `quant_k_rows` /
 `quant_q_rows`, which is where the sage fork's `qk_balance` factor would go
-on the Sol side (`docs/research/2026-09-14_block49_quant_error.md`, section 7).
+on the Sol side (`docs/h3_block49_quant_error.md`, section 7).
 
 ## The paper
 

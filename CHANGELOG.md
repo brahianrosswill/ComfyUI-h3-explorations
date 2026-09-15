@@ -126,8 +126,8 @@ regrouped, which `docs/comfy_notes.md` now allows when the owner accepts it.
   `dense_blocks` syntax. An experiment under `docs/SOLATTN.md`'s decision
   standard, wired by no workflow. `bench/check_channel_balance.py` pins the
   fold; `bench/grade_channel_balance.py` grades the Sol kernel's INT8 term
-  plain against balanced on a capture. Why: `docs/research/2026-09-14_block49_quant_error.md`.
-- **`docs/research/2026-09-14_block49_quant_error.md`**: the mechanism behind
+  plain against balanced on a capture. Why: `docs/h3_block49_quant_error.md`.
+- **`docs/h3_block49_quant_error.md`**: the mechanism behind
   block 49's INT8 error (loud K-norm channels under a shared quantization
   scale, amplified by the block's peaky attention), the weights ranking of
   all fifty blocks, and the measured fold.

@@ -11,7 +11,7 @@ about three bits. The block's attention is also the peakiest in the model
 (a handful of effective keys per query on its worst heads), so a small
 relative error in K becomes a large logit error and the softmax flips.
 Measured: sage's INT8 error at block 49 is ~5x block 0's, and K's rounding is
-almost all of it. `docs/research/2026-09-14_block49_quant_error.md` has the
+almost all of it. `docs/h3_block49_quant_error.md` has the
 anatomy; the sage fork's `CHANGELOG.md` (workload intel, "MiniMax H3, block
 49") has the tables.
 

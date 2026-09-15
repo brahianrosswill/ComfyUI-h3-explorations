@@ -96,7 +96,7 @@ distinction matters:
   kernels quantize them with less error at no render-time cost. Its combo is
   **off by default** and no graph wires it: an experiment under
   `docs/SOLATTN.md`'s decision standard, with the mechanism in
-  `docs/research/2026-09-14_block49_quant_error.md`. Registered so a probe
+  `docs/h3_block49_quant_error.md`. Registered so a probe
   graph can switch it on without a code change.
 - **`MiniMaxH3SolAttnCurve` was deleted on 2026-08-31** and is no longer in
   this table. It supplied a `hilbert` token ordering by rebinding

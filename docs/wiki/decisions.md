@@ -17,6 +17,16 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-15
 
+- **`docs/research/2026-09-14_block49_quant_error.md` moved to
+  `docs/h3_block49_quant_error.md` and revised** (owner, 2026-09-15): it is
+  a reference page now, not a dated research note. Its "So what" was
+  rewritten with the blast radius (a design property of INT8 attention
+  meeting this model, affecting every H3 user on any quantized-attention
+  kernel, not a bug in any kernel and not confined to these forks) and a
+  numbered status: diagnosed and closed; two levers built, measured, both
+  off; open items are the blind visibility check, the factor in Sol's
+  quantizer, and sending the finding upstream. Every link was rewritten;
+  `bench/build_wiki_index.py` reaches the new path.
 - **Kitchen build moved to `0.2.34+sol.2aff3c5`.** ComfyUI's pin went to
   `comfy-kitchen==0.2.34`; `h3-build` was rebased onto the tag by the recipe
   in `vendor/rebuild_kernel.sh`, old tip archived as `archive/h3-build-0.2.33`,
@@ -25,7 +35,7 @@ Older history lives elsewhere and is not copied here:
   branches carried nothing unmerged on the CUDA side; open PRs assessed and
   not carried: `docs/sol_upstream.md`, 2026-09-15. `docs/SOLATTN.md` "Install
   the CUDA kernel" used to say main had moved past 0.2.33 with no tag.
-- **`docs/research/2026-09-14_block49_quant_error.md` gained sections 7
+- **`docs/h3_block49_quant_error.md` gained sections 7
   (the sage-side `qk_balance` kernel fix) and "So what".** No default changed.
 
 ## 2026-09-14
@@ -220,7 +230,7 @@ Older history lives elsewhere and is not copied here:
   per-channel q/k rebalancing into the norm weights of the blocks whose
   K-norm is lopsided (45, 48, 49 on the shipped checkpoint). No workflow
   wires it; no default changed. Why the blocks are lopsided and what the fold
-  buys: `docs/research/2026-09-14_block49_quant_error.md`.
+  buys: `docs/h3_block49_quant_error.md`.
 - **Corrected: "K offset predicts `smooth_k`'s benefit."** The sage fork's
   real-activation spike printed that inference; graded across ten cells the
   benefit tracks block depth and error magnitude, not the offset, and the

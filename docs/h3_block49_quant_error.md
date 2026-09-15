@@ -1,6 +1,6 @@
-# Why block 49 has so much quantization error, and what can be done about it
+# Block 49: why INT8 attention loses accuracy on H3's last blocks, and what has been done about it
 
-Last updated: 2026-09-15. Written from the sage fork's session at the owner's
+Last updated: 2026-09-15 (moved from `docs/research/` and revised). Written from the sage fork's session at the owner's
 request. Model throughout: **MiniMax H3, the pruned int8 convrot fl2va
 checkpoint** (`h3_config.MODELS["unet_fl2va"]`), the one the capture set was
 rendered with and the one every graph here ships; the weights finding holds
@@ -8,54 +8,75 @@ for every H3 DiT checkpoint on disk, see "So what". Capture: the 2026-09-03
 base16 t2v set at 1344x768, S=104,361 (395 text, 1,150 audio, 102,816 video
 rows), kept to 2026-09-20.
 
-## So what
+## So what, revised 2026-09-15
 
-**It is in every H3 DiT checkpoint, and it is the base model.** Every full
-DiT file on this box carries the same three lopsided blocks with the same
-channels and the same shares, to the percent: fl2va and ref2va, pruned and
-unpruned, int8 convrot, fp8 scaled, w4a8, all four fl2va/ref2va hybrids,
-and the FastVideo VSA distill. The turbo, SLA and PDD files are LoRAs on
-the projections and carry no norm weights, so every one of them inherits
-it (`bench/results/2026-09-14_block49_checkpoint_scan_and_targets.txt`).
-Pruning, convrot and the quantization format did not cause it and do not
-change it. Any H3 graph anyone runs, on any variant, has this.
+**It is not a bug, and it is not ours.** It is a design property of INT8
+attention meeting this model: every INT8 attention kernel quantizes K with
+one scale shared across a row's or a block's 128 channels, which is fine
+where channels are alike, and H3's last blocks are not alike -- the released
+weights put an order of magnitude of gain on four channels there. Nobody's
+kernel is wrong; the model's weights and the quantizer's granularity are a
+bad match at three blocks.
 
-**It is learned, not architectural, and it is not a defect.** The loud
-channels are the model's own RMSNorm gain weights on q and k at blocks 45,
-48 and 49. The architecture lets a per-channel gain exist; training put an
-order of magnitude on four channels at the last block and nowhere else.
-The model uses them: those channels are how the last block forms very
-large logits on a few keys.
+**The blast radius is every H3 user on quantized attention.** Stock
+comfy-kitchen's Sol kernel (Comfy-Org's and kijai's; the per-row K
+quantizer shares its scale across channels), stock SageAttention upstream
+and every fork of it, in every mode including the "accurate" fp16 one (all
+of them quantize QK to INT8), and by the same mechanism NVLabs' own INT8
+Sol kernels, unmeasured here. Every H3 checkpoint variant: the loud channels
+are identical across all fourteen full DiT files on this box, and the
+turbo/SLA/PDD LoRAs carry no norm weights, so they inherit it. Untouched:
+anyone on full-precision attention (flash or SDPA in bf16), which has no
+scale to share.
 
-**It is not an attention sink.** Measured on the capture: no single key
-absorbs the attention (the median head has 7% of queries sharing a top-1
-key, the maximum head 34%), and no key row has an outsized norm (the
-loudest key row per head is within 1.0-1.4x of the median). What is
-different at block 49 is *which* keys get read: the 395 text rows are 0.4%
-of the packed sequence and receive 12% of the attention mass on the median
-head, up to 38% on some heads, against 0.4% at block 0. The last block is
-where video queries read the prompt, sharply. The loud channels are the
-mechanism of that lookup, and the peaky attention in section 3 is its
-shape.
+**It is a quality effect, not a correctness one.** Renders complete and are
+plausible. The error lands on the last block's sharp read of the text rows
+(section 5), so if it is ever visible it will be as prompt adherence at
+the output head, not as texture. Whether it is visible is unknown, for
+everyone, not only here.
 
-**Why that matters for what you render.** INT8 attention error at the last
-blocks is therefore structural to H3 under any kernel that quantizes K
-with a shared channel scale, which both of ours do, and it lands on the
-text-conditioning read at the output head rather than on texture. That is
-the most plausible place for an attention-quantization effect to show up
-as prompt adherence rather than as grain, if it shows up at all; whether it
-does is the open perceptual question. The fix in section 4 is free,
-generic across every variant because the weights are identical, and
-recovers about an eighth of Sol's INT8 term and a fifth of sage's at block
-49; the deeper fix is finer K scaling inside the kernels.
+**It is fixable where the quantizers are, and this box owns both.** The
+identity `q . k == (q * f) . (k / f)` lets K's loud channels be rebalanced
+against Q before quantization at no cost to the attention math. Two forms
+exist, both off by default:
 
-**Is this normal?** As a pattern, yes: a few high-gain channels late in a
-transformer, concentrated on the layers that do the final conditioning
-read, is the same shape the LLM quantization literature was built around
-(the reason per-channel smoothing methods exist). As a magnitude, block
-49's 16x gain ratio is far outside this model's other 49 blocks, which sit
-at 1.0-1.6x, so within H3 it is exceptional and localized. Nothing here
-says it is unusual for the model class.
+| lever | where | reaches | block 49 INT8 error | cost |
+|---|---|---|---|---|
+| `MiniMaxH3ChannelBalance` (this pack) | per-channel factor from the checkpoint's norm weights, folded into `q_norm`/`k_norm` at load | sage steps and Sol steps | Sol -13%, sage -7% (8 heads) | none at render time |
+| `qk_balance` (sage fork v0.7.19) | per-head factor from per-call channel norms, inside the per-thread quantizer, gated per head | sage steps only | sage -23% (all heads) | +0.7% call, no memory |
+
+Neither reaches the rest: with the best lever on, block 49 still sits at
+several times block 0, because the block's attention shape amplifies
+whatever rounding remains, and only finer K scaling inside a kernel touches
+that.
+
+**Where this stands, and what it would take to call it solved:**
+
+1. *Diagnosed.* Closed. Sections 1-5 are the evidence; the checkpoint scan
+   and attention-target record is `bench/results/2026-09-14_block49_checkpoint_scan_and_targets.txt`.
+2. *Two levers built and measured on captures.* Closed for what they are.
+   Nothing is switched on, so a render today is exactly what it was before
+   this page existed.
+3. *Open: is any of it visible?* The blind multi-scene comparison in
+   `docs/SOLATTN.md`'s decision standard, with one probe arm wired to the
+   node (inputs in the generator's hands: `balance` "loud blocks (from
+   weights)", alpha 0.5) and one with the fork's `qk_balance` on, against
+   the unchanged graph. The only instrument for this question.
+4. *Open: Sol's quantizer.* `quant_k_rows` / `quant_q_rows` in the kitchen
+   fork do not take the per-head factor; the routed steps get only the
+   weights fold. The same factor into those two functions, sharing the
+   key-mean pass they already do, is the remaining half; `bench/grade_channel_balance.py`
+   grades it. Kitchen build as of 2026-09-15 is `0.2.34+sol.2aff3c5`
+   (`docs/sol_upstream.md`), which changed nothing on this axis.
+5. *Open, and not ours alone:* the mechanism, the checkpoint scan and the
+   fold numbers are a contribution the kitchen maintainers could act on
+   for every user; the sage-side change is one commit anyone forking sage
+   could take. Neither has been sent anywhere.
+6. *Deeper, not started:* finer K scaling inside the kernels (per-channel
+   groups, or splitting the loud channels into their own scale), the LLM
+   world's per-channel key quantization done in an attention kernel. Real
+   kernel work on either side, uncertain payoff beyond the fifth-to-third
+   already recoverable.
 
 ## The answer in four sentences
 

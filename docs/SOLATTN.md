@@ -2326,7 +2326,7 @@ them a render:
    checkpoint's own norm weights so no capture is needed. The per-channel
    (head-shared) factor gets about half the per-head gain measured in the
    sage fork and is exactly neutral on a flat block;
-   `docs/research/2026-09-14_block49_quant_error.md` has the table.
+   `docs/h3_block49_quant_error.md` has the table.
    Routing invariance is asserted by `bench/grade_channel_balance.py`
    (eager Sol plain against balanced) before it reports anything.
 3. ~~Grade with `bench/grade_channel_balance.py`.~~ **Done 2026-09-14**,
