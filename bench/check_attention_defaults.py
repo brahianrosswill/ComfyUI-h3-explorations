@@ -128,6 +128,12 @@ DEVIATIONS = {
                             "Tier 0/1): sage in 'fp8++ balanced', Sol with its own "
                             "qk_balance on, plus the balance node and exact tail "
                             "blocks; both modes ARE the arm"),
+    "h3_probe_t2v_ck_balanced": (("qk_balance",),
+                                 "community-chain probe (2026-09-15): kitchen int8 dense + Sol "
+                                 "with qk_balance on; the switch IS the arm"),
+    "h3_probe_t2v_ck_dense_tail": (("dense_blocks",),
+                                   "community-chain probe (2026-09-15): blocks 45/48/49 handed to "
+                                   "the kitchen dense kernel; the list IS the arm"),
     "h3_probe_t2v_levers": (("mode", "qk_balance"),
                             "block-49 Tier 1 witness (2026-09-15, docs/h3_quant_policy.md): "
                             "every free lever on and no exact blocks; both modes ARE the arm"),

@@ -639,7 +639,13 @@ _SONG_FLICKER_TIMELINE = "\n".join((
 #: The named attention modes an entry's `dense_attn` may carry. A mode gets a
 #: name, never a number (bench/check_literal_widgets.py's rule, applied to the
 #: generator's own extras).
-_DENSE_ATTN_MODES = ("none", "sage", "sol")
+# "ck" (2026-09-15): the community chain. ComfyUI core's Model Attention
+# Backend node on "comfy kitchen attention" (kitchen's int8_attention, which
+# rotates q/k before INT8 and is immune to the loud-channel mechanism) as the
+# dense kernel, our Sol node on top, sage ABSENT. Exists to measure the
+# block-49 effect on the chain most people run, where only the routed
+# steps carry it; bench/results/2026-09-15_ck_int8_attention_block49.json.
+_DENSE_ATTN_MODES = ("none", "sage", "sol", "ck")
 
 
 def _sol_with_overrides(extra: dict) -> dict:
@@ -702,9 +708,9 @@ def _attention_plan(extra: dict) -> tuple[bool, bool, str | None, bool]:
     if dense_mode is not None and dense_mode not in _DENSE_ATTN_MODES:
         raise SystemExit(f"dense_attn={dense!r} is not one of {_DENSE_ATTN_MODES}")
     vsa_on = extra.get("vsa") is not None
-    if dense_mode == "sol":
+    if dense_mode in ("sol", "ck"):
         if is_image or vsa_on:
-            raise SystemExit("dense_attn='sol' names a Sol-over-stock video arm; "
+            raise SystemExit(f"dense_attn={dense_mode!r} names a Sol-over-dense video arm; "
                              "it cannot be an image arm or carry VSA")
         return False, bool(extra.get("sol_on", True)), dense_mode, vsa_on
     sage = (dense_mode == "sage") if dense_mode else True
@@ -1373,6 +1379,9 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
               sage_mode: str | None = None,
               channel_balance: str | None = None,
               exact_blocks: str | None = None,
+              # dense_backend: ComfyUI core's ModelAttentionBackend value, put
+              # where the Sage node would sit (dense_attn="ck").
+              dense_backend: str | None = None,
               # Owner decision 2026-09-13: True, the node's own default and
               # what sglang, diffusers and DiffSynth do (every still to the
               # 2048 short edge, one copy for both towers). It was flipped
@@ -1893,6 +1902,13 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
         g["19"] = {"class_type": "MiniMaxH3SigmaShift",
                    "inputs": {"model": model_src, **sh}}
         model_src = ["19", 0]
+    if dense_backend is not None:
+        # Core's node: `set_model_optimized_attention`, which is the function
+        # our Sol node's dense fallback calls, so Sol composes on top of it
+        # exactly as core's own block-sparse node would. Node id 60.
+        g["60"] = {"class_type": "ModelAttentionBackend",
+                   "inputs": {"model": model_src, "attention": dense_backend}}
+        model_src = ["60", 0]
     if sage:
         g["20"] = {"class_type": "MiniMaxH3SageAttention",
                    "inputs": {"model": model_src, **dict(
@@ -4967,6 +4983,20 @@ def main():
         # and NO exact blocks, the graph that has to match `exact_tail` for
         # the bf16 row to disappear. `policy` is Tier 0/1: the same levers
         # plus the three lopsided blocks on exact attention.
+        # The community chain (2026-09-15): kitchen's rotated INT8 kernel on
+        # the dense steps, Sol on the routed ones, no sage. Three arms: as
+        # most people run it, with Sol's qk_balance, and with the three
+        # lopsided blocks on the dense backend (the "leave 47-49 dense"
+        # recipe, corrected to the blocks the weights name).
+        ("h3_probe_t2v_ck.json", "t2v-ck", "t2v", LONG_T2V_PROMPT,
+         dict(dense_attn="ck", out_prefix="Video/h3_probe_t2v_ck"),
+         "text -> video + audio, community chain: kitchen int8 attention dense + Sol, no sage"),
+        ("h3_probe_t2v_ck_balanced.json", "t2v-ck-balanced", "t2v", LONG_T2V_PROMPT,
+         dict(dense_attn="ck", sol_overrides={"qk_balance": True}, out_prefix="Video/h3_probe_t2v_ck_balanced"),
+         "text -> video + audio, community chain with Sol qk_balance on"),
+        ("h3_probe_t2v_ck_dense_tail.json", "t2v-ck-dense-tail", "t2v", LONG_T2V_PROMPT,
+         dict(dense_attn="ck", sol_overrides={"dense_blocks": "45,48,49"}, out_prefix="Video/h3_probe_t2v_ck_dense_tail"),
+         "text -> video + audio, community chain with blocks 45/48/49 on the kitchen dense kernel"),
         ("h3_probe_t2v_levers.json", "t2v-levers", "t2v", LONG_T2V_PROMPT,
          dict(channel_balance="loud blocks (from weights)", sage_mode="fp8++ balanced",
               sol_overrides={"qk_balance": True}, out_prefix="Video/h3_probe_t2v_levers"),
@@ -5194,6 +5224,7 @@ def main():
         wf = build_api(task, sage=sage_on,
                        prompt=prompt,
                        sol=(_sol_with_overrides(extra) if sol_on else None),
+                       **({"dense_backend": "comfy kitchen attention"} if _dense_mode == "ck" else {}),
                        **{**api_extra, "length": graph_length(api_extra)})
         p = _graph_dir(out, extra) / fname.replace(".json", "_api.json")
         written.append((label, p, wf))
