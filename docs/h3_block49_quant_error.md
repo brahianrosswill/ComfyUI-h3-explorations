@@ -35,6 +35,18 @@ plausible. The error lands on the last block's sharp read of the text rows
 the output head, not as texture. Whether it is visible is unknown, for
 everyone, not only here.
 
+**An outside runtime treats the tail as sensitive too** (read 2026-09-15 by
+the TaoMate session, `coderef/TaoMate-H3`): TaoLiveAIGC's TaoMate-H3 runs
+H3 with W8A8 on the linears but keeps the first two and last three blocks
+in bf16 -- `resolve_h3_cutlass_w8a8_policy` protects blocks 0, 1, 47, 48
+and 49, and quantizes only `qkv_proj` and `fc1` of the interior blocks. That
+is weight and activation quantization of the linears, with attention in
+bf16 FA3, so it is a different surface from the shared-channel-scale
+mechanism on this page and corroborates only the sensitivity of the tail,
+not the cause. Their protected set and this page's lopsided set (45, 48,
+49) overlap on 48 and 49 and disagree on 45 and 47; whether the linear-side
+sensitivity and the attention-side one share a root is not established.
+
 **It is fixable where the quantizers are, and this box owns both.** The
 identity `q . k == (q * f) . (k / f)` lets K's loud channels be rebalanced
 against Q before quantization at no cost to the attention math. Two forms
