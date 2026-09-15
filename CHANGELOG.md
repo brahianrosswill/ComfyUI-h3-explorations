@@ -4,6 +4,49 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.116.2
+
+### Added
+
+- **The TaoMate streaming runtime at the trained canvas**, 1344x768 and 243
+  frames (two requests), on `t2va_dancer_stream_243` against a frozen drum
+  track.
+  - **Stream.** All eight chunks committed, with upstream's cache sizes. Per
+    chunk wall time and card use are in
+    `bench/results/2026-09-15_taomate_stream_dancer_243.json`.
+  - **Two controls beside it:** a whole-clip TaoMate render with every
+    attention patch stripped, from the harness's new `plain_render` mode
+    (`bench/results/2026-09-15_taomate_whole_clip_dense_dancer_243.json`); and
+    PDD at 5 (tail5) and 8 steps on the shipped default chain
+    (`bench/taomate_stream_vs_pdd_arms.json`,
+    `bench/results/2026-09-15_taomate_stream_vs_pdd_arms.jsonl`).
+  - **Verdicts pending.**
+- **A verbatim-versus-structured PDD pair** for an outside prompt, at 5 and 8
+  steps: the paragraph as given, and its house-structure rewrite
+  `prompt_bank/t2va_cafe_kids.txt` (`bench/cafe_kids_pdd_arms.json`,
+  `bench/results/2026-09-15_cafe_kids_pdd_arms.jsonl`). Verdicts pending.
+
+### Changed
+
+- **The TaoMate stream sampler, after a fidelity review against upstream and
+  core** that found no fidelity bug:
+  - its cache defaults to pageable host memory and is released in a
+    `finally`; the pinned option warns, since PyTorch rounds pinned allocations
+    to a power of two and keeps them in the shared server;
+  - cache staging and history transfer run under `pause_malloc_graph`;
+  - stream mode refuses a video mask, a loose audio mask and a PDD head bank,
+    and logs APPLY_MODEL and DIFFUSION_MODEL wrappers;
+  - history reaches attention in one concatenation.
+
+### Fixed
+
+- **The first PDD 8-step dancer arm was interrupted as "contaminated", and it
+  was not.** It ran right after the 5-step arm and warned about 6 block
+  boundaries, but 0.116.1 shows that warning came from a stale tracker the
+  heads never read, so its pixels were correct. The re-run on a fresh server
+  is the arm recorded. `a93b820`'s message describes the interruption, not a
+  defect in the render.
+
 ## 0.116.1
 
 ### Fixed

@@ -320,3 +320,23 @@ The pieces:
     and now reads the driver.
 - **Step 4 and the 1344x768 renders wait on a card window.** The sage fork has
   priority.
+
+**Status, later on 2026-09-15.**
+- **Steps 4 and 5 ran at 1344x768**, 243 frames, on `t2va_dancer_stream_243`
+  against the drum-machine track.
+  - **Stream.** All eight chunks committed across both requests, with the
+    cache at upstream's sizes. Wall time and card use per chunk are in
+    `bench/results/2026-09-15_taomate_stream_dancer_243.json`.
+  - **Host memory.** The cache lives in pageable host memory, which left
+    little headroom on this box. Watch it before a longer run.
+- **Two controls beside the stream:**
+  - a whole-clip render with every attention patch stripped
+    (`bench/results/2026-09-15_taomate_whole_clip_dense_dancer_243.json`);
+  - PDD at 5 and 8 steps on the shipped default chain
+    (`bench/results/2026-09-15_taomate_stream_vs_pdd_arms.jsonl`).
+- **The owner's verdict on the four is pending.** Read from stills only, not
+  judged: the stream holds one stable dancer with a clean push-in but little
+  dance motion; PDD dances.
+- **A fidelity review** of the port against upstream and core found no
+  fidelity bug. Its runtime findings (host cache memory, allocation scope,
+  silent masks) are fixed; see CHANGELOG 0.116.2.

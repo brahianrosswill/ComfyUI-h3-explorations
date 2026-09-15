@@ -24,11 +24,15 @@ own below the rule.
     ([`../h3_taomate.md`](../h3_taomate.md) section 7). The sampler node is
     built, and its whole-clip equality check matched core
     (`bench/results/2026-09-15_taomate_verify_whole_clip.json`).
-  - **Next, when the card is free** (the sage fork has priority):
-    - the `control_text_only` control;
-    - a 124-frame throwaway stream at 864x480;
-    - the 243-frame dancer stream at 1344x768, beside PDD at 5 steps (tail5)
-      and a TaoMate whole-clip control with no attention patches.
+  - **Rendered the same day, verdicts pending.**
+    - The control, a 124-frame throwaway, then the 243-frame dancer stream at
+      1344x768 beside a dense whole-clip control and PDD at 5 and 8 steps.
+    - Section 7.3's status names the records. The owner's free-text verdict
+      on the four dancer clips closes this bullet, in a dated
+      `bench/results/` file.
+- **Cafe prompt pair, verdicts pending.** An outside prompt verbatim against
+  its house-structure rewrite (`t2va_cafe_kids`), PDD at 5 and 8 steps
+  (`bench/results/2026-09-15_cafe_kids_pdd_arms.jsonl`).
 
 **2026-09-14:**
 
