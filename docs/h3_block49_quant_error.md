@@ -29,7 +29,14 @@ are identical across all fourteen full DiT files on this box, and the
 turbo/SLA/PDD LoRAs carry no norm weights, so they inherit it (the TaoMate
 LoRA too: 208 modules, qkv/out/fc1/fc2 only, read 2026-09-15). Untouched:
 anyone on full-precision attention (flash or SDPA in bf16), which has no
-scale to share.
+scale to share. **That is ComfyUI's default** (read from
+`comfy/ldm/modules/attention.py`, 2026-09-15): a stock ComfyUI with the
+stock kitchen wheel runs pytorch SDPA unless one of three opt-ins is on,
+`--use-sage-attention` (SageAttention's INT8 q/k), `--use-ck-attention`
+(kitchen's own `int8_attention`), or the core block-sparse attention node
+(kitchen's `sol_attn`). The affected population is everyone who turned
+one of those on to make long H3 renders bearable, which is many of the
+people rendering long clips and none of the people on defaults.
 
 **It is a quality effect, not a correctness one, and it is visible.**
 Renders complete and are plausible. The error lands on the last block's
