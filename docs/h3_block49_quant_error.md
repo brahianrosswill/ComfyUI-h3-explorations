@@ -623,6 +623,9 @@ kernel's off path was checked bit-identical to the previous wheel.
   (2026-08-20) and `bench/results/2026-08-20_head_magnitudes*.json`;
   `docs/SOLATTN.md` "The defaults, re-read against the sage-side error
   records, 2026-09-14"; `bench/results/2026-09-14_channel_balance_*.json`.
+- The node on its own, for anyone: `ComfyUI-H3-Quant`
+  (https://github.com/fblissjr/ComfyUI-H3-Quant), published 2026-09-15 from
+  this repo's `standalone/h3_quant`; this pack defers to it when installed.
 - 2026-09-15: `bench/results/2026-09-15_channel_balance_kernel_b{49,0,32}_s15.json`
   (Sol's own factor graded), `2026-09-15_kitchen_0234_qk_balance_install.json`
   (the served wheel), `2026-09-15_block49_market_feedback.md`,

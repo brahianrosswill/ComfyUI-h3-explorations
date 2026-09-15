@@ -101,6 +101,10 @@ Not today: Tier 2 and Tier 3.
 
 ## Status log
 
+- The public pack: https://github.com/fblissjr/ComfyUI-H3-Quant (the
+  channel-balance node and the checkpoint scan; the kernel forms go upstream
+  through comfy-kitchen).
+
 - 2026-09-15: page created; Tier 0 graph added to the generator; Tier 1
   kernel work started in the kitchen fork.
 - 2026-09-15, later: Tier 1 built. Sol's quantizer takes `qk_balance` on the
