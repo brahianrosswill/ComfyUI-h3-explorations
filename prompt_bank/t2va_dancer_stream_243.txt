@@ -1,0 +1,5 @@
+integrated_multimodal_description: [Shot 1] Live-action, cinematic, a medium shot frames a lone dancer from the knees up in a bright rehearsal studio across the ten-second take, a mirrored wall behind her and a portable speaker on the sprung wooden floor at the edge of frame playing a fast, dry drum-machine pulse. She is in her twenties, with dark hair tied back, in a grey vest and loose black trousers, barefoot, and she produces no vocal sound. She dances alone to the pulse: sharp shoulder isolations on every beat, a quick head snap on the downbeats, arms cutting out and folding back in, and on the fourth hit of each bar a small hop that lands square before the pattern starts again. Her face stays calm and focused, her eyes on her own reflection. The camera pushes in with small amplitude at slow speed until her head and shoulders fill the frame, and it does not pan, tilt or cut.
+
+overall_soundscape: Bare feet squeak and slap on the sprung floor, fabric swings and rustles with each isolation, and her breath comes in short controlled bursts between hits, under the dry room tone of an empty studio.
+
+non_diegetic_music: N/A

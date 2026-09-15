@@ -483,6 +483,14 @@
       "tests": "fast physical action with liquid across a cut (throw, splash, drip), shouted lines and a scream owned by the right speaker, and a wide walk-out with a background character who stays silent. High motion, unlike t2va_diner_breakup, so it shows morphing and cloning where that one cannot."
     },
     {
+      "id": "t2va_dancer_stream_243",
+      "mode": "t2va",
+      "frames": 243,
+      "donor": null,
+      "brief": "The studio dancer as one continuous ten-second medium shot pushing in, no cut, for the TaoMate streaming runtime's two-request length (docs/h3_taomate.md section 7); written for a frozen drum-machine track.",
+      "tests": "whether one person stays one person across a streamed chunk and request boundary: identity, body count and the face under a slow push-in, with the moves on the beat of the frozen track. The TaoMate whole-clip render of the dancer split her into two people."
+    },
+    {
       "id": "t2va_pirate_deck_mutiny",
       "mode": "t2va",
       "frames": 345,
