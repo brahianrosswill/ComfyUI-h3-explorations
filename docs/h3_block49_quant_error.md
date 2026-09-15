@@ -25,7 +25,8 @@ and every fork of it, in every mode including the "accurate" fp16 one (all
 of them quantize QK to INT8), and by the same mechanism NVLabs' own INT8
 Sol kernels, unmeasured here. Every H3 checkpoint variant: the loud channels
 are identical across all fourteen full DiT files on this box, and the
-turbo/SLA/PDD LoRAs carry no norm weights, so they inherit it. Untouched:
+turbo/SLA/PDD LoRAs carry no norm weights, so they inherit it (the TaoMate
+LoRA too: 208 modules, qkv/out/fc1/fc2 only, read 2026-09-15). Untouched:
 anyone on full-precision attention (flash or SDPA in bf16), which has no
 scale to share.
 
