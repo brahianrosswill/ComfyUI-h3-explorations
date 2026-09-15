@@ -9,6 +9,40 @@ for every H3 DiT checkpoint on disk, see "So what". Capture: the 2026-09-03
 base16 t2v set at 1344x768, S=104,361 (395 text, 1,150 audio, 102,816 video
 rows), kept to 2026-09-20.
 
+## What "error" means on this page
+
+Not the video. Every render goes through fifty transformer blocks, and
+each block runs attention: it takes three tensors called q, k and v (one
+row per token, 128 numbers per row per head) and produces one output
+tensor of the same shape. That attention step is a fixed piece of
+arithmetic with one exact answer for a given q, k, v. A full-precision
+kernel (bf16 or fp32 attention) computes that answer to rounding. An
+INT8 kernel first rounds q and k to 8-bit integers to go faster, so its
+output differs from the exact answer. **The error is the size of that
+difference**: take the same q, k, v, run them through the INT8 kernel
+and through exact fp32 attention, subtract the two outputs, and divide
+the size of the difference by the size of the exact output. That is
+"relative L2 error": 0.01 means the INT8 kernel's output is off by one
+percent of its own magnitude, on that block, on that step.
+
+**Where the data comes from.** Nothing here is inferred from frames. The
+pack's `h3_capture.py` hooks the attention call during a real render and
+saves the actual q, k, v the kernel received, for a chosen block and
+step (about 4.5 GB per cell at 345 frames; the set on this box covers
+blocks 0, 24, 32, 40 and 49 of one text-to-video render). The grade
+scripts load a cell, run each kernel on it, run exact attention on it,
+and print the numbers in the tables below. Anyone with a card and this
+pack can capture their own cells and rerun every script; the results
+files under `bench/results/` are those printouts, kept.
+
+**Why it matters that it is measured this way.** The video is the sum of
+fifty blocks times sixteen steps of that arithmetic plus a decoder, so a
+change you can see in a clip cannot be traced to a block or a kernel by
+looking at the clip. The captured-activation error can: it says which
+block, which kernel, how much, and whether a change to the kernel moved
+it, with the video left out of the loop entirely. The clips come back in
+at the end, to ask whether a difference that size is one people notice.
+
 ## What is measured here, and why it is not a matter of taste
 
 Every claim on this page except the last row is a number computed from a
