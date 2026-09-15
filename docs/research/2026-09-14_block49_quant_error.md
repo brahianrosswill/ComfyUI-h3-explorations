@@ -264,7 +264,91 @@ token and not on video-to-video attention.
   the kernel (per-channel or per-32-token scales) is the lever for that, and
   it is a kernel change on either side, not a weights fold.
 
-## 7. Records
+## 7. The kernel-side fix, built 2026-09-15: `qk_balance` in the sage fork
+
+### What was done
+
+The weights fold in section 4 is capped by the architecture: the only
+per-channel weights after the projection are the q/k RMSNorm gains, which
+are shared across heads, so a per-head factor, which the simulation put at
+twice the gain, had nowhere to live. The sage fork's per-thread INT8
+quantizer is the other place the factor can be applied, and it streams q
+and k exactly once, so the multiply is free. Built there as `qk_balance`
+(sage fork v0.7.19, its `CHANGELOG.md` and `tests/test_qk_balance.py`):
+
+- Both Triton quant kernels take a factor pointer, `[B, H_kv, C]` fp32,
+  and multiply it in right after the load, before the absmax: Q by `f`,
+  K by `1/f`. `q . k == (q * f) . (k / f)`, so the attention math is
+  unchanged; only the INT8 rounding moves.
+- `f = rms_k^0.5 / rms_q^0.5` per (batch, kv head, channel), geometric
+  mean one per head, computed per call from `torch.linalg.vector_norm`
+  with fp32 accumulation, so no fp32 or bf16 copy of q or k is ever made.
+  That is the difference from `smooth_k`, which this stack rejected for
+  materializing a K copy at the frame ceiling.
+- Gated per head on the energy share of K's four loudest channels; below
+  the threshold the head's codes are bit-identical to the plain path.
+  Under GQA the factor is per kv head and each query head reads its
+  group's.
+- No calibration, no capture, no RoPE-pair constraint (it acts after
+  RoPE), no per-block list: blocks 45, 48 and 49 open on their own.
+
+### What it measured
+
+Same cells and reference as the rest of this page, sage fp8++ as served:
+
+| cell | plain | `qk_balance` (gate 0.2, the default) | gate 0.5 |
+|---|---|---|---|
+| block 49, step 15 | 0.0472 | **0.0364 (-22.9%)** | 0.0412 (-12.8%) |
+| block 40, step 15 | 0.0426 | 0.0426 (+0.1%) | (no head opens) |
+| block 0, step 15 | 0.0085 | 0.0085 (-0.2%) | 0.0085 (+0.0%) |
+
+Per head, in the CPU simulation of the QK side: block 49 loses a third of
+its QK error at the default gate and the worst head (17) three-quarters
+of its own; block 0 shows a 3% cost in that simulation that the real
+kernel's Q rounding and fp8 PV error dilute to nothing, which is why the
+default was chosen on the kernel rows. Cost: the two norm passes, +3.3 ms
+on the quant step at 104k rows, +0.7% on the whole call, and no change in
+peak memory.
+
+For scale against the other numbers on this page: the balanced fp8++ call
+at block 49 (0.0364) is below the fp16 kernel's unbalanced error on the
+same cell (0.0409), so on this block the fast path with balancing is now
+more accurate than the accurate path without it.
+
+### Why it matters
+
+- It removes the identified mechanism at the source, in the code that
+  quantizes, rather than working around it in the weights. Every H3
+  variant benefits identically because the loud channels are identical
+  across them; any other model with late-block outlier channels benefits
+  without anyone naming a block.
+- It lands the correction on the block that reads the prompt at the
+  output head, with nothing after it to absorb error, which is the most
+  plausible place for INT8 attention to show up as prompt adherence.
+- It costs nothing that this card is short of: no memory, and under a
+  percent of the call.
+- It is the same idea the LLM quantization world settled on
+  (SmoothQuant's migration of difficulty from activations to the other
+  operand; KVQuant's per-channel keys), applied to the attention inputs
+  of a DiT, in the dynamic per-call form rather than the static
+  calibrated one.
+
+### What it does not yet cover
+
+- **Sol's steps.** The routed steps run Sol's kernel, whose quantizer
+  (`quant_k_rows` / `quant_q_rows` in the kitchen fork) does not have the
+  factor yet. Until it does, `qk_balance` reaches only the sage steps:
+  the dense window, every `dense_blocks` entry, and the token-refiner
+  calls. This node's weights fold is the form that reaches Sol today, at
+  the smaller, head-shared gain (section 4). Putting the same factor into
+  Sol's quantizer, sharing the key-mean pass it already does, is the
+  remaining half.
+- **Whether it is visible.** Off by default in the fork. Turning it on
+  changes numerics on every served render, so it wants the blind
+  comparison this repo requires of a default, and the freeze session
+  told first.
+
+## 8. Records
 
 - Sage fork `CHANGELOG.md`: decision log "sm89 q/k quantization" and
   "`smooth_k` on H3: graded across the trajectory"; workload intel "MiniMax
