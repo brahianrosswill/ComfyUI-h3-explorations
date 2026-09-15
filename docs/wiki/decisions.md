@@ -17,6 +17,23 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-15
 
+- **Sage out of the default attention chain; Sol's `qk_balance` on** (owner,
+  2026-09-15; `28d8ee5`). **Reverses the 2026-09-04 floor decision** ("sage
+  always on is the floor", `docs/roadmap.md` forward plan 2026-09-04, quoted
+  in `bench/sol_core_ab_arms.json` and `bench/sol_nosage_arms.json`, which stay
+  as records of what those runs held). Every video graph that names no mode
+  now carries core's `ModelAttentionBackend` at `h3_config.DENSE_BACKEND_NODE`
+  under Sol, and `h3_config.SOL_RECOMMENDED_CUDA` carries `qk_balance=True`.
+  Taken on capture grades and one render per arm, not a blind verdict: the
+  community-chain arms were unscored when it landed
+  (`bench/results/2026-09-15_block49_community_chain.md`,
+  `bench/results/2026-09-15_ck_int8_attention_block49.json`). What stays on
+  sage or stock attention, and why, is
+  `bench/check_attention_defaults.py::FLOOR_STEMS`. `h3_probe_t2v_balanced`
+  and `h3_probe_t2v_ck_balanced` retired. Prose that said the fallback under
+  Sol is sage on every graph (`docs/SOLATTN.md` knob table and two dense-block
+  sections, `docs/wiki/next_steps.md` "Now") carries a dated note in place.
+  The policy page's table rows for this landed early, in `76b2378`.
 - **`docs/research/2026-09-14_block49_quant_error.md` moved to
   `docs/h3_block49_quant_error.md` and revised** (owner, 2026-09-15): it is
   a reference page now, not a dated research note. Its "So what" was
