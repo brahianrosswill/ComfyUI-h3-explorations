@@ -126,6 +126,7 @@ VENDOR_README = REPO / "coderef" / "Minimax-H3-Turbo" / "README.md"
 
 from h3_config import graph_paths  # noqa: E402
 import h3_config  # noqa: E402
+import taomate_streaming as taomate  # noqa: E402
 from pdd_math import block_bounds, partition_bounds  # noqa: E402
 from pdd_lora import envelope_partition  # noqa: E402
 from check_distill_settings import (  # noqa: E402
@@ -723,8 +724,8 @@ def main() -> int:
     def taomate_graphs_on_their_grid():
         """A TaoMate-H3 graph samples the adapter's own retained sigmas, on both streams.
 
-        Ground truth is the inherited copy in `h3_config` (`taomate_sigmas`;
-        `TAOMATE_UPSTREAM` names the source). The video vector is the graph's
+        Ground truth is the inherited copy in `taomate_streaming.py`
+        (`student_sigmas`; `UPSTREAM` names the source). The video vector is the graph's
         `ManualSigmas`. The audio vector is never in a graph: core's DiT
         derives it through `time_shift_sigma`, so that function is graded
         against the adapter's audio list rather than assumed to land on it.
@@ -740,10 +741,9 @@ def main() -> int:
                 f"ComfyUI is not importable from {COMFY}; the audio half of "
                 f"this case grades core's own derivation and has no fallback "
                 f"({exc})") from exc
-        sv = h3_config.TAOMATE_SHIFT["shift_video"]
-        sa = h3_config.TAOMATE_SHIFT["shift_audio"]
-        want_v = h3_config.taomate_sigmas(sv)
-        want_a = h3_config.taomate_sigmas(sa)
+        sv, sa = taomate.SHIFT_VIDEO, taomate.SHIFT_AUDIO
+        want_v = taomate.student_sigmas(sv)
+        want_a = taomate.student_sigmas(sa)
         derived = [float(time_shift_sigma(s, sv, sa)) for s in want_v]
         dev = max(abs(a - b) for a, b in zip(derived, want_a))
         assert dev <= EXACT, (

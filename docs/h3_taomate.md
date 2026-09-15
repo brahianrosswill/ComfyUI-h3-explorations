@@ -34,11 +34,13 @@ parked (section 6).**
   comparison with kijai's) and
   `bench/results/2026-09-15_taomate_lora_control_fc1_swapped.json` (the
   control).
-- **The contract** is the TaoMate block in `workflows/h3_config.py`:
-  - `TAOMATE_LORA` and `TAOMATE_STRENGTH`
-  - the grid: `TAOMATE_STATE_INDICES` over `TAOMATE_GRID_POINTS` at `TAOMATE_SHIFT`
-  - `TAOMATE_SAMPLER`
-  - `TAOMATE_UPSTREAM`, the upstream revision every value was read at
+- **The contract** is `taomate_streaming.py` at the repo root, the one module
+  the sampler node, the generator, the converter and the checks all read; the
+  LoRA filenames are `workflows/h3_config.py`'s `TAOMATE_*_LORA`:
+  - `STRENGTH`
+  - the grid: `STATE_INDICES` over `GRID_POINTS` at `SHIFT_VIDEO` and `SHIFT_AUDIO`
+  - `SAMPLER`
+  - `UPSTREAM`, the upstream revision every value was read at
 
   The converter writes the same contract into the output file's metadata as
   `distilled_grid`. Converting and building graphs need no sister checkout.
@@ -108,7 +110,7 @@ possible cause of a bad render, to rule out before blaming the adapter.
 - **Weights.**
   - Upstream quantises the interior blocks' qkv and fc1 linears to W8A8 and
     keeps blocks 0, 1, 47, 48 and 49 in bf16
-    (`src/taomate_h3/inference/w8a8.py` at `TAOMATE_UPSTREAM`).
+    (`src/taomate_h3/inference/w8a8.py` at `taomate_streaming.UPSTREAM`).
   - This box's checkpoint is int8_convrot in every block.
   - The adapter carries no norm tensors, so it inherits the block-49 attention
     sensitivity every LoRA here has
@@ -195,3 +197,99 @@ Steps 3 and 4 do not run, and nothing here gets another render slot unless
 the owner reopens the lane. The converter, the contract in `h3_config`, the
 probe graphs and their checks stay as they are, so a reopening starts from a
 rebuild rather than a re-derivation.
+
+## 7. Reopened 2026-09-15: porting the streaming runtime
+
+**The owner reopened the lane the same day** ("why not try building the
+streaming pipeline? isnt that the point of it?"). Section 6's verdict judged
+TaoMate's weights run the only way a stock graph can: over the whole clip at
+once. A port asks a different question: whether TaoMate is good when run as
+its authors run it.
+
+### 7.1 What the port must reproduce
+
+The source is `src/taomate_h3/streaming/` at `taomate_streaming.UPSTREAM`. Of what the
+runtime does, these parts are the regime the adapter was distilled in:
+
+- **Chunk plan.** A request is 37 latent frames, split into chunks of 12, 10,
+  10 and 5. A continuation request is 35, split 10, 10, 10, 5. Audio chunk
+  boundaries are rounded from the frame timeline; they are not the freeze
+  lane's exact 39 + 51k grid.
+- **Steps per chunk.** Three steps at the adapter's grid with an Euler update,
+  on video only.
+- **Audio.** The adapter's audio velocity is ignored. After each step the
+  chunk's audio is replaced by a base-model teacher's state at 3, 6 and 9 of
+  a 10-point schedule, so the commit pass sees clean audio.
+- **Colour matching.** Each chunk's patchified video is matched, feature by
+  feature, to the mean and standard deviation of the first chunk.
+- **Commit pass.** A clean forward at t = 1, adapter on, records every main
+  block's post-norm, post-RoPE K and its V for the chunk's audio and video
+  rows. Text is never cached.
+- **Cache.** The first chunk's video is kept as a sink, plus the two most
+  recent commits with their audio. Audio history is dropped every 12
+  requests.
+- **Attention.** Text attends only to text. Audio and video attend to the
+  text, the cache and the current chunk, with no causal mask.
+- **Positions.** One global timeline in audio-latent units, with its origin
+  at the first request's prompt length. Each prompt is right-aligned to the
+  start of its request's media.
+
+These are engineering and are not reproduced: tensor and sequence
+parallelism, FlashAttention-3, the Triton kernels, W8A8, and the ffmpeg
+retiming to exact five-second requests. ComfyUI decodes at native length.
+
+### 7.2 How it fits this box
+
+- **Hook points, all in this pack, none in core.**
+  - A `comfy.samplers.Sampler` behind a SAMPLER node drives the chunk loop
+    through `apply_model`.
+  - `patches_replace["dit"][("double_block", i)]` swaps in an attention
+    function per block that concatenates the cache.
+  - Positions are sliced from one full-length `PackedLayout`. A chunk-local
+    layout would restart the frame-span pattern at zero.
+- **The cache lives in pinned host memory**, streamed to the card one block
+  at a time. Its size per cached row is 50 blocks × K and V × 56 heads × 128
+  dims in bf16. At every TaoMate canvas the worst-case history is larger than
+  what the card has left after the staged model, so this is the only shape
+  that fits, not a fallback.
+- **Canvas.** Build and verify at 864x480, where the host cache is smallest.
+  A render for the owner's verdict runs at 1344x768, the trained canvas
+  (CLAUDE.md), which TaoMate also accepts.
+- **Length.** A run is 124 frames plus 119 per further request: 124, 243 and
+  362 are all on ComfyUI's 17k + 5 grid, so the stitched latent decodes in one
+  pass. 345 is not a TaoMate length.
+- **Audio from a frozen track instead of the teacher.** In a loop this pack
+  owns, the track is mixed with noise at the teacher's audio sigma for states
+  3 and 6 and used clean for state 9. No core patch is needed. This makes
+  section 4 step 3 buildable. A plain text-to-audio-video run would need the
+  base-model teacher, which core cannot run audio-only; that is the last
+  milestone, if any.
+- **Attention stack.** Sol and sage are refused on the model this sampler
+  drives. The adapter was trained under dense bf16 attention. The block hook
+  bypasses sage's patch, and Sol's Morton reordering and sink find their spans
+  by the identity of `position_ids`, which sliced positions do not carry. The
+  streaming graph takes a `SOL_EXEMPT_STEMS` entry that says so.
+
+### 7.3 Milestones, each gated on the one before
+
+1. **Unit checks on the CPU, no model:**
+   - the chunk plan and audio boundaries against the upstream tables;
+   - the split text/media attention against the same attention with an
+     explicit mask;
+   - the cache's retention and eviction bookkeeping.
+2. **The degenerate case equals the probe.** Run one chunk covering the whole
+   clip, with an empty cache, full attention for text, the adapter's own
+   audio and no colour matching. It must reproduce the sampled latent of
+   `h3_probe_taomate_3step` at the same seed, within dtype tolerance. It
+   exercises the sliced positions, the layout, the per-segment timesteps, the
+   audio carry and the bypassed inpaint path against a graph that already
+   renders. If it does not pass, stop.
+3. **The cache is exact where it can be.** A two-chunk run's first chunk has
+   no history, so it must equal the matching rows of a single-chunk run with
+   the same masks.
+4. **Cost at the target canvas.** One chunk forward with the largest history
+   at 1344x768: peak VRAM, pinned host memory and wall time. Record it under
+   `bench/results/`.
+5. **One request, one throwaway render** at 124 frames with a frozen track,
+   read end to end. Then 243 frames, two requests, beside the PDD8 freeze
+   chain at the same scene, track and seed, for the owner.

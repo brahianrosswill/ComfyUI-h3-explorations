@@ -359,7 +359,7 @@ def is_turbo(lora_name):
 def classify_taomate(lora_name):
     """Any file carrying the TaoMate-H3 adapter: the full-rank conversion,
     kijai's resize or the swapped control. One set of weights, so one sampling
-    contract, `h3_config`'s TAOMATE_* block."""
+    contract, `taomate_streaming.py`."""
     return "taomate" in lora_name.lower()
 
 
@@ -684,6 +684,7 @@ def main():
     # ---- every shipped API graph -----------------------------------------
     def graphs_are_consistent():
         import h3_config as cfg
+        import taomate_streaming as tm
         turbo_graphs, base_graphs, taomate_graphs = {}, {}, {}
         for path in graph_paths(WORKFLOWS, "*_api.json"):
             doc = json.loads(path.read_text(encoding="utf-8"))
@@ -704,27 +705,26 @@ def main():
                     f"{path.name}: TaoMate on {sorted(map(str, unets))}, not "
                     f"MODELS['unet_fl2va']. The PDD bake's backbone already "
                     f"carries another distill's delta.")
-                want_shift = (cfg.TAOMATE_SHIFT["shift_video"],
-                              cfg.TAOMATE_SHIFT["shift_audio"])
+                want_shift = (tm.SHIFT_VIDEO, tm.SHIFT_AUDIO)
                 # An absent shift node runs the checkpoint's own, as for PDD.
                 effective = BASE_SHIFT if found.shift is None else found.shift
                 assert effective == want_shift, (
                     f"{path.name}: TaoMate wants shift {want_shift}, graph runs "
                     f"{effective}")
-                assert (found.scheduler, found.steps) == ("manual", cfg.TAOMATE_STEPS), (
+                assert (found.scheduler, found.steps) == ("manual", tm.STEPS), (
                     f"{path.name}: TaoMate runs its distilled grid through "
-                    f"ManualSigmas at {cfg.TAOMATE_STEPS} evaluations; graph has "
+                    f"ManualSigmas at {tm.STEPS} evaluations; graph has "
                     f"scheduler {found.scheduler!r}, steps {found.steps}. "
                     f"`check_distill_grid.py` grades the vector itself.")
                 samplers = {n["inputs"].get("sampler_name") for n in nodes
                             if n.get("class_type") == "KSamplerSelect"}
-                assert samplers == {cfg.TAOMATE_SAMPLER}, (
-                    f"{path.name}: TaoMate's step is {cfg.TAOMATE_SAMPLER}, graph "
+                assert samplers == {tm.SAMPLER}, (
+                    f"{path.name}: TaoMate's step is {tm.SAMPLER}, graph "
                     f"has {sorted(map(str, samplers))}")
                 got_strength = (found.strengths or {}).get(taomate[0])
-                assert got_strength == cfg.TAOMATE_STRENGTH, (
+                assert got_strength == tm.STRENGTH, (
                     f"{path.name}: TaoMate strength {got_strength}, the runtime "
-                    f"applies {cfg.TAOMATE_STRENGTH}")
+                    f"applies {tm.STRENGTH}")
                 continue
             turbo = [l for l in found.loras if is_turbo(l) or classify_pdd(l)]
 

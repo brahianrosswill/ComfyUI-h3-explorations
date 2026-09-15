@@ -1403,53 +1403,13 @@ TAOMATE_KIJAI_LORA = "h3/minimax_h3_taomate_3step_lora_avg_rank_19_bf16.safetens
 #: reproduces; not worth another slot.
 TAOMATE_SWAPPED_CONTROL_LORA = ("h3/minimax_h3_taomate_3step_rank128_comfy_bf16"
                                 "_CONTROL_fc1_swapped.safetensors")
-#: Inherited: the runtime adds `update * alpha / rank` with no user multiplier
-#: (`src/taomate_h3/inference/lora_checkpoint.py` upstream).
-TAOMATE_STRENGTH = 1.0
-
-#: The upstream revision every TaoMate value below was read at. Pointers in
-#: comments are paths inside that tree. Values are copied here, not imported:
-#: this repo imports no Python from a sister checkout, and the converter and
-#: the generator must not need one on disk.
-TAOMATE_UPSTREAM = ("https://github.com/TaoLiveAIGC/TaoMate-H3/tree/"
-                    "ccc1a70adbf7f552a84a0cd7eeac0a6f3d461cad")
-#: Inherited, the distilled grid (`src/taomate_h3/denoise_schedule.py`,
-#: called from `src/taomate_h3/model/pipeline.py` at shift 12 for video and 3
-#: for audio): a 50-point `linspace(1, 0)` base schedule, shifted pointwise as
-#: `s*q / (1 + (s-1)*q)`, keeping only these indices. Three intervals, so three
-#: evaluations.
-TAOMATE_GRID_POINTS = 50
-TAOMATE_STATE_INDICES = (0, 16, 33, 49)
-TAOMATE_SHIFT = dict(shift_video=12.0, shift_audio=3.0)
-TAOMATE_STEPS = len(TAOMATE_STATE_INDICES) - 1
-#: Inherited: `src/taomate_h3/model/denoise.py::minimax_h3_denoise_loop` is
-#: "Euler-eta0", `x <- r*x + (1-r)*(x - sigma*v)` with `r` the sigma ratio,
-#: which is ComfyUI's `euler` on a flow model.
-TAOMATE_SAMPLER = "euler"
-
-
-def taomate_sigmas(shift: float) -> list[float]:
-    """The adapter's retained sigmas at one shift, as its pipeline builds them.
-
-    Plain floats where upstream uses a float32 tensor; the difference is below
-    the six decimals `TAOMATE_MANUAL_SIGMAS` keeps.
-    """
-    last = TAOMATE_GRID_POINTS - 1
-    out = []
-    for index in TAOMATE_STATE_INDICES:
-        q = 1.0 - index / last
-        out.append(shift * q / (1.0 + (shift - 1.0) * q))
-    return out
-
-
-#: The video sigmas as a `ManualSigmas` string. Only the video vector is
-#: wired. Core derives each audio sigma from it through `time_shift_sigma`
-#: (12 to 3); the shift is pointwise over the same base point, so that lands
-#: on `taomate_sigmas(3.0)`, the audio list upstream passes. Reasoned, and
-#: graded by `bench/check_distill_grid.py::taomate_graphs_on_their_grid`,
-#: which checks the graph's vector and core's derivation against both lists.
-TAOMATE_MANUAL_SIGMAS = ", ".join(
-    repr(round(s, 6)) for s in taomate_sigmas(TAOMATE_SHIFT["shift_video"]))
+#: Everything else about TaoMate -- its strength, distilled grid, sampler,
+#: `ManualSigmas` string, chunk plan, cache policy and audio teacher states --
+#: lives in `taomate_streaming.py` at the repo root, with its upstream
+#: pointers. Not here, because the sampler node needs the same values and
+#: cannot import this file (the reason `h3_rules.py` gives), and this file
+#: imports nothing. The generator, the converter and the checks read that
+#: module directly.
 
 # `CHAIN` was here and is gone as of 2026-08-14. It listed the node order --
 # Load Diffusion Model, MiniMax H3 SageAttention, SolAttnMiniMax -- and nothing

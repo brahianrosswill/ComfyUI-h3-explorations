@@ -110,8 +110,7 @@ from h3_config import (  # noqa: E402
     TURBO_REF2VA_LORA, TURBO_REF2VA_STEPS, TURBO_REF2VA_SHIFT,
     PDD_FL2VA_LORA, PDD_REF2VA_LORA, PDD_STEPS, PDD_STEPS_FAST,
     PDD_STRENGTH, PDD_FL2VA_STRIPPED_LORA,
-    TAOMATE_LORA, TAOMATE_STRENGTH, TAOMATE_STEPS, TAOMATE_SAMPLER,
-    TAOMATE_MANUAL_SIGMAS,
+    TAOMATE_LORA,
 )
 
 
@@ -1100,6 +1099,7 @@ from h3_rules import (  # noqa: E402
     duration_in_range, duration_of, is_single_frame, max_legal_length,
     min_legal_length, snap_length,
 )
+import taomate_streaming as taomate  # noqa: E402
 
 
 def _core_cpu_when_no_card():
@@ -4016,15 +4016,15 @@ def main():
         # graphs (bench/taomate_probe_arms.json), not graphs of their own.
         ("h3_probe_taomate_3step.json", "t2v-taomate-3step", "t2v",
          LONG_T2V_PROMPT,
-         dict(lora=(TAOMATE_LORA, TAOMATE_STRENGTH), steps=TAOMATE_STEPS,
-              sampler_name=TAOMATE_SAMPLER, manual_sigmas=TAOMATE_MANUAL_SIGMAS,
+         dict(lora=(TAOMATE_LORA, taomate.STRENGTH), steps=taomate.STEPS,
+              sampler_name=taomate.SAMPLER, manual_sigmas=taomate.MANUAL_SIGMAS,
               out_prefix="Video/h3_probe_taomate_3step"),
          "text -> video + audio at 3 steps via the TaoMate-H3 adapter on its distilled grid"),
 
         ("h3_probe_taomate_3step_audio_freeze.json", "t2v-taomate-3step-audio-freeze", "t2v",
          LONG_T2V_PROMPT,
-         dict(lora=(TAOMATE_LORA, TAOMATE_STRENGTH), steps=TAOMATE_STEPS,
-              sampler_name=TAOMATE_SAMPLER, manual_sigmas=TAOMATE_MANUAL_SIGMAS,
+         dict(lora=(TAOMATE_LORA, taomate.STRENGTH), steps=taomate.STEPS,
+              sampler_name=taomate.SAMPLER, manual_sigmas=taomate.MANUAL_SIGMAS,
               freeze_audio=True,
               out_prefix="Video/h3_probe_taomate_3step_audio_freeze"),
          "text + a frozen audio track -> video at 3 steps via the TaoMate-H3 adapter"),

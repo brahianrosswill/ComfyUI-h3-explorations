@@ -27,10 +27,10 @@ Three transforms `bench/convert_pdd_lora.py` needs are deliberately absent:
 - **No q/k/v fuse.** The adapter already targets the merged `attn.qkv_proj`;
   its `lora_b` spans the whole merged output.
 Source paths below are inside the upstream tree at
-`h3_config.TAOMATE_UPSTREAM`, the revision they were read at. Nothing here
+`taomate_streaming.UPSTREAM`, the revision they were read at. Nothing here
 reads that tree: the values this file needs from it (the distilled grid it
-writes into the output's metadata) are copied into `h3_config` beside that
-pointer.
+writes into the output's metadata) are copied into `taomate_streaming.py`
+beside that pointer.
 
 - **No `qkv_proj` row reorder.** Two legs, and neither proves the other. The
   adapter's: TaoMate reorders the release's per-head grouped qkv weight into
@@ -118,8 +118,10 @@ REPO = HERE.parent
 # file sits, as `bench/check_distill_grid.py` does.
 COMFY = REPO.parent.parent
 sys.path.insert(0, str(REPO / "workflows"))
+sys.path.insert(0, str(REPO))
 
 import h3_config  # noqa: E402
+import taomate_streaming as taomate  # noqa: E402
 
 CONVERTER_VERSION = 3
 KINDS = ("attn.qkv_proj", "attn.out_proj", "mlp.fc1", "mlp.fc2")
@@ -143,17 +145,16 @@ def distilled_grid() -> dict:
     """The adapter's sampling contract, written into the output's metadata so
     the file says how to run it. From the inherited copy in `h3_config`, whose
     pointer names the upstream source; nothing here reads that source."""
-    shift_v = h3_config.TAOMATE_SHIFT["shift_video"]
-    shift_a = h3_config.TAOMATE_SHIFT["shift_audio"]
+    shift_v, shift_a = taomate.SHIFT_VIDEO, taomate.SHIFT_AUDIO
     return {
-        "upstream": h3_config.TAOMATE_UPSTREAM,
-        "grid_points": h3_config.TAOMATE_GRID_POINTS,
-        "state_indices": list(h3_config.TAOMATE_STATE_INDICES),
+        "upstream": taomate.UPSTREAM,
+        "grid_points": taomate.GRID_POINTS,
+        "state_indices": list(taomate.STATE_INDICES),
         "shift": [shift_v, shift_a],
-        "sigmas_video": h3_config.taomate_sigmas(shift_v),
-        "sigmas_audio": h3_config.taomate_sigmas(shift_a),
-        "sampler": h3_config.TAOMATE_SAMPLER,
-        "strength": h3_config.TAOMATE_STRENGTH,
+        "sigmas_video": taomate.student_sigmas(shift_v),
+        "sigmas_audio": taomate.student_sigmas(shift_a),
+        "sampler": taomate.SAMPLER,
+        "strength": taomate.STRENGTH,
     }
 
 
