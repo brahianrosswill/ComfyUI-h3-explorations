@@ -6,8 +6,9 @@ the audio-freeze arm. What the authors' runtime is, and what their release is
 not evidence of, is [`wiki/references.md`](wiki/references.md), "The streaming
 references: TaoMate". The probe and freeze arms rendered on 2026-09-15; their
 runner rows are `bench/results/2026-09-15_taomate_probe_arms.jsonl` and
-`bench/results/2026-09-15_taomate_audio_freeze_arms.jsonl`, and no verdict is
-recorded yet.
+`bench/results/2026-09-15_taomate_audio_freeze_arms.jsonl`. **The owner's
+verdict is `bench/results/2026-09-15_taomate_verdicts.json`, and the lane is
+parked (section 6).**
 
 ---
 
@@ -170,3 +171,27 @@ A dated record under `bench/results/` holding:
 - the rows the runner stamps
 
 Until one exists, this page is a plan.
+
+## 6. Verdict, 2026-09-15: parked
+
+Steps 1 and 2 rendered, and the owner judged them in free text
+(`bench/results/2026-09-15_taomate_verdicts.json`):
+
+- **PDD8 is far better than TaoMate in every scene**, by the owner and by
+  everyone the owner showed the clips to.
+- **Ours and kijai's are indistinguishable**, which is consistent with the
+  merge-noise record in section 2.
+- **The TaoMate renders fail on consistency.** The diner arms are washed out,
+  with morphing and cloning. The dancer morphs into two people, frozen and
+  loose alike.
+- **The frozen voice arm is the only good TaoMate render.**
+
+No cause is isolated. Of the differences in section 3, denoising the whole
+clip without the chunked, cached regime the adapter was trained for is the
+most direct candidate for morphing and cloning. That is a reasoned guess, not
+a measurement.
+
+Steps 3 and 4 do not run, and nothing here gets another render slot unless
+the owner reopens the lane. The converter, the contract in `h3_config`, the
+probe graphs and their checks stay as they are, so a reopening starts from a
+rebuild rather than a re-derivation.

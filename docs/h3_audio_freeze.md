@@ -346,7 +346,11 @@ judgement on 2026-09-12, not a measurement.
    closer to what the adapter saw: the frozen track re-noised to each step's
    audio sigma rather than held clean. The graphs, the arms, and why the
    second arm needs a new patch are [`h3_taomate.md`](h3_taomate.md)
-   section 4.
+   section 4. **Rendered 2026-09-15, and parked.** The frozen voice arm was
+   good; the dancer morphed into two people, frozen and loose alike; the
+   PDD8 freeze chain was far better
+   (`bench/results/2026-09-15_taomate_verdicts.json`). The second arm is not
+   built.
 
 ---
 

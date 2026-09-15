@@ -15,13 +15,11 @@ own below the rule.
 
 **2026-09-15:**
 
-- **TaoMate-H3: a throwaway render, then the probe and audio-freeze arms.**
-  The adapter is converted at full rank with a swapped-fc1 control, its grid
-  is in `workflows/h3_config.py`, and two probe graphs are built. The plan,
-  and what each difference from the authors' runtime could explain, is
-  [`../h3_taomate.md`](../h3_taomate.md); the arms are
-  `bench/taomate_probe_arms.json` and `bench/taomate_audio_freeze_arms.json`.
-  Closes on a dated verdict record under `bench/results/`.
+- **TaoMate-H3: parked.** The probe and audio-freeze arms rendered, and the
+  owner judged PDD8 far better in every scene, with ours and kijai's
+  indistinguishable. `bench/results/2026-09-15_taomate_verdicts.json`;
+  [`../h3_taomate.md`](../h3_taomate.md) section 6. No render slot unless the
+  owner reopens it.
 
 **2026-09-14:**
 
