@@ -134,3 +134,15 @@ Not today: Tier 2 and Tier 3.
   change, the bf16 tail on top of the levers. "Same" or a preference for
   clip 1 removes the bf16 row; a preference for clip 2 keeps it at about a
   sixth more wall time.
+- 2026-09-15, evening: the market pair read three ways (cannot tell apart;
+  clip 2 on hands and coins, the coins verified as a legibility difference;
+  "super close, maybe faces"), a much smaller gap than the morning's
+  shipped-vs-rest look (`bench/results/2026-09-15_block49_market_feedback.md`).
+  Second scene rendered for the same pair, restaurant-kitchen prompt, seed
+  730451892: `Video/block49_kitchen/levers_s730451892_00001-audio.mp4` and
+  `policy_s730451892_00001-audio.mp4` (wall times in the server history:
+  levers at the shipped cost, policy about a sixth more, as before).
+  Unscored. Direction the evidence points: levers on by default (free,
+  always ranked above shipped), the bf16 tail as the opt-in best-take
+  setting, Tier 2 the only way to retire it. No default flipped yet; the
+  freeze session is told before that lands.
