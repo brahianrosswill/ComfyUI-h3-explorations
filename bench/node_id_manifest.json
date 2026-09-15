@@ -407,7 +407,8 @@
       "morton_curve",
       "verbose",
       "dense_blocks",
-      "qk_balance"
+      "qk_balance",
+      "rotate"
     ],
     "node_id": "MiniMaxH3SolAttn",
     "outputs": [

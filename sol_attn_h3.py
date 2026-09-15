@@ -666,7 +666,7 @@ def _bthd(q, k, v, heads, skip_reshape):
 
 def _run(q, k, v, heads, skip_reshape, skip_output_reshape, scale,
          tau, min_tokens, verbose, sink_blocks=(0, 0), sink_q=(0, 0),
-         topk_ratio=0.0, tail=True, blk_cnt=None, token_aug=0, qk_balance=False):
+         topk_ratio=0.0, tail=True, blk_cnt=None, token_aug=0, qk_balance=False, rotate=False):
     """Returns the attention output, or None if this call should stay dense.
 
     `blk_cnt`, when given, is an int32 (B, H, ceil(T/64)) buffer the kernel
@@ -701,6 +701,8 @@ def _run(q, k, v, heads, skip_reshape, skip_output_reshape, scale,
         extra["token_aug"] = int(token_aug)
     if qk_balance:                      # same rule: False is the kernel's default
         extra["qk_balance"] = True
+    if rotate:
+        extra["rotate"] = True
     out = _ck.sol_attn(qs, ks, vs, tau=tau, scale=scale,
                        sink_blocks=list(sink_blocks), sink_q=list(sink_q),
                        topk_ratio=topk_ratio, tail=tail, **extra)      # BTHD
@@ -711,6 +713,7 @@ def _run(q, k, v, heads, skip_reshape, skip_output_reshape, scale,
                   f"sparse {tuple(qs.shape)} {sel} cuda-int8"
                   + (f" token_aug={int(token_aug)}" if token_aug else "")
                   + (" qk_balance" if qk_balance else "")
+                  + (" rotate" if rotate else "")
                   + ("" if tail else " NO POOLED TAIL (SLA/VSA fine stage)"))
 
     if skip_output_reshape:
@@ -778,7 +781,7 @@ def make_override(tau=1.0, min_tokens=4096,
                   sink_conditioning="exact_kv", dense_blocks=frozenset(),
                   tau_profile=None, token_aug_profile=None,
                   previous=None, topk_ratio=0.0, tail=True, qk_balance=False,
-                  settings=None):
+                  rotate=False, settings=None):
     """Build an optimized_attention_override callable.
 
     ``previous`` chains any override already installed on the model: every path
@@ -905,7 +908,7 @@ def make_override(tau=1.0, min_tokens=4096,
             out = _run(q, k, v, heads, skip_reshape, skip_output_reshape,
                        kwargs.get("scale", None), block_tau, min_tokens, verbose,
                        sink, sink_q, topk_ratio, tail, blk_cnt=counts,
-                       token_aug=block_aug, qk_balance=qk_balance)
+                       token_aug=block_aug, qk_balance=qk_balance, rotate=rotate)
         except Exception as exc:
             _stats["errors"] += 1
             _log_kernel_failure(exc)
@@ -1058,7 +1061,7 @@ def _install_compose_hooks(model, attn_attr):
 def _apply_patch(model, *, tau, start_percent, end_percent, min_tokens,
                  sink_conditioning, morton, morton_curve, dense_blocks,
                  verbose, tau_profile, token_aug_blocks="",
-                 topk_ratio=0.0, tail=True, qk_balance=False):
+                 topk_ratio=0.0, tail=True, qk_balance=False, rotate=False):
     # Before anything else: fail here if the installed kernel cannot take what
     # this node passes. Patch time is the only place that can be said -- see
     # `_require_kernel`.
@@ -1071,6 +1074,11 @@ def _apply_patch(model, *, tau, start_percent, end_percent, min_tokens,
             "qk_balance is on, but the installed comfy_kitchen.sol_attn has no "
             "qk_balance argument. It is carried on the owner's fork (h3-build); "
             "rebuild with vendor/rebuild_kernel.sh, or turn the widget off.")
+    if rotate and "rotate" not in inspect.signature(_ck.sol_attn).parameters:
+        raise RuntimeError(
+            "rotate is on, but the installed comfy_kitchen.sol_attn has no rotate "
+            "argument. It is carried on the owner's fork (h3-build); rebuild with "
+            "vendor/rebuild_kernel.sh, or turn the widget off.")
     diffusion_model = model.get_model_object("diffusion_model")
     is_h3 = hasattr(diffusion_model, "rope_freqs") and hasattr(diffusion_model, "_forward")
 
@@ -1144,7 +1152,7 @@ def _apply_patch(model, *, tau, start_percent, end_percent, min_tokens,
     # dict, referenced by digest from every call row. Plain JSON types only.
     settings = {
         "node": "MiniMaxH3SolAttn", "tau": float(tau), "topk_ratio": float(topk_ratio),
-        "tail": bool(tail), "qk_balance": bool(qk_balance), "min_tokens": int(min_tokens),
+        "tail": bool(tail), "qk_balance": bool(qk_balance), "rotate": bool(rotate), "min_tokens": int(min_tokens),
         "sink_conditioning": sink_conditioning,
         "start_percent": float(start_percent), "end_percent": float(end_percent),
         "sigma_start": sigma_start, "sigma_end": sigma_end,
@@ -1171,7 +1179,7 @@ def _apply_patch(model, *, tau, start_percent, end_percent, min_tokens,
                       dense_blocks=dense, tau_profile=profile,
                       token_aug_profile=aug, previous=previous,
                       topk_ratio=topk_ratio, tail=tail, qk_balance=qk_balance,
-                      settings=settings)
+                      rotate=rotate, settings=settings)
     if reorder:
         m.model_options["transformer_options"]["sol_morton"] = True
         m.model_options["transformer_options"]["sol_morton_curve"] = morton_curve
@@ -1360,6 +1368,20 @@ class MiniMaxH3SolAttn(io.ComfyNode):
                                      "build that takes qk_balance; the node refuses at "
                                      "patch time otherwise."),
                                  ),
+                io.Boolean.Input("rotate", optional=True, default=False,
+                                 tooltip=(
+                                     "Rotate every q/k row by one fixed orthogonal matrix "
+                                     "(sign diagonal + Hadamard) inside the kernel before "
+                                     "INT8 quantization, so a row's energy spreads across "
+                                     "all 128 channels and no loud channel or single spike "
+                                     "sets its scale. Exact for every attention score; "
+                                     "threshold unrotated. What comfy-kitchen's own "
+                                     "int8_attention does, done in Sol. Off by default: an "
+                                     "experiment graded on captures "
+                                     "(bench/results/2026-09-15_sol_rotate_*.json). Needs a "
+                                     "kernel build that takes rotate; refused at patch time "
+                                     "otherwise."),
+                                 ),
             ],
             outputs=[io.Model.Output()],
         )
@@ -1367,7 +1389,7 @@ class MiniMaxH3SolAttn(io.ComfyNode):
     @classmethod
     def execute(cls, model, selection, start_percent, end_percent, min_tokens,
                 sink_conditioning, pooled_tail, morton, morton_curve, verbose,
-                dense_blocks, token_aug_blocks="", qk_balance=False) -> io.NodeOutput:
+                dense_blocks, token_aug_blocks="", qk_balance=False, rotate=False) -> io.NodeOutput:
         topk = selection["selection"] == "top-k (SLA)"
         return _apply_patch(
             model, tau=selection.get("tau", 1.0),
@@ -1377,4 +1399,4 @@ class MiniMaxH3SolAttn(io.ComfyNode):
             verbose=verbose, tau_profile=selection.get("tau_profile"),
             token_aug_blocks=token_aug_blocks,
             topk_ratio=selection["keep_percent"] / 100.0 if topk else 0.0,
-            tail=pooled_tail, qk_balance=bool(qk_balance))
+            tail=pooled_tail, qk_balance=bool(qk_balance), rotate=bool(rotate))

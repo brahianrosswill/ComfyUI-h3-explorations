@@ -123,6 +123,9 @@ SOL_CLOSURE_KEYS = (
     "tau", "min_tokens", "sigma_start", "sigma_end", "verbose",
     "sink_conditioning", "dense_blocks", "tau_profile",
     "topk_ratio", "tail",
+    # 2026-09-15: the knobs check_provenance_stamp found unrecorded once the
+    # node grew them (qk_balance on in every default graph since 28d8ee5).
+    "token_aug_profile", "qk_balance", "rotate",
 )
 
 NOT_DETECTED = "not detected"

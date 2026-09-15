@@ -715,6 +715,11 @@ SOL_RECOMMENDED_CUDA = dict(
     # INT8 left on those blocks. h3_probe_t2v_ck and h3_probe_t2v_exact_tail
     # carry False as declared deviations (bench/check_attention_defaults.py).
     qk_balance=True,
+    # Off (2026-09-15, night). Sol's Hadamard rotation of q/k before INT8 (kitchen
+    # fork branch h3-sol-rotate): graded on captures at about half of Sol's
+    # block-49 quantization term (bench/results/2026-09-15_sol_rotate_*.json);
+    # an experiment until a witness render says otherwise.
+    rotate=False,
 )
 
 
@@ -823,6 +828,10 @@ SOL_CUDA_DEFAULTS = dict(
     verbose=False, dense_blocks="",
     # Token routing off everywhere. `SOL_RECOMMENDED_CUDA` above owns why.
     token_aug_blocks="",
+    # Pinned so an ad-hoc bench spec can flip them (`shipped[qk_balance=0]`);
+    # the values follow SOL_RECOMMENDED_CUDA.
+    qk_balance=True,
+    rotate=False,
 )
 
 # Our own node. `auto`, which resolves to fp8_cuda++ on sm89.

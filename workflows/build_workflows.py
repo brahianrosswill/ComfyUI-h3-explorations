@@ -224,7 +224,7 @@ SOL_SELECTION_INPUTS = {
 SOL_TAIL_WIDGETS = ("start_percent", "end_percent", "min_tokens",
                     "sink_conditioning", "pooled_tail", "morton",
                     "morton_curve", "verbose", "dense_blocks",
-                    "token_aug_blocks", "qk_balance")
+                    "token_aug_blocks", "qk_balance", "rotate")
 
 
 def sol_widget_order(sol):

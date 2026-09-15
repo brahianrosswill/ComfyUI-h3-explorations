@@ -327,7 +327,8 @@ class SageChainAssert(io.ComfyNode):
                     return False, f"a probe above the gate reached sage on {large['name']!r}"
                 return True, (f"no sage: probes at {small_n} and {min_tokens + 512} tokens ran "
                               "through the composed override, raised nothing and reached no "
-                              "sage kernel, so Sol's fallback is stock attention")
+                              "sage kernel, so Sol's fallback is the model's own attention "
+                              "(kitchen int8 on a backend graph, stock otherwise)")
             return True, (f"no sage: a {small_n}-token probe ran through the override, raised "
                           "nothing and reached no sage kernel; no sparse gate was published")
         if small_name is None:
@@ -430,7 +431,7 @@ class SageChainAssert(io.ComfyNode):
             logger.info("[h3] chain assert ok: attention unpatched, as this graph requires")
         elif require_no_forward_patch:
             logger.info("[h3] chain assert ok: override installed and no attention forward "
-                        "patch, as a Sol-over-stock graph requires")
+                        "patch, as a Sol-over-dense graph requires")
         elif require_override or require_forward_patch:
             logger.info(
                 "[h3] chain assert ok: override installed, "

@@ -15,7 +15,27 @@ from .keyframe_canvas import MiniMaxH3KeyframeCanvas
 from .marker_arms import MiniMaxH3MarkerArm
 from .conditioning import MiniMaxH3Conditioning
 from .exact_blocks import MiniMaxH3ExactBlocks
-from .channel_balance import MiniMaxH3ChannelBalance
+# The channel-balance node is published on its own as ComfyUI-H3-ChannelBalance
+# (2026-09-15). ComfyUI keeps one class per node id and the last pack loaded
+# wins with no warning, so if that pack is installed beside this one, this
+# pack registers THAT pack's class: one object under the id, whatever the load
+# order. Otherwise the bundled copy (kept in step with the published one).
+def _channel_balance_class():
+    import importlib.util
+    import logging
+    from pathlib import Path
+    src = Path(__file__).resolve().parent.parent / "ComfyUI-H3-ChannelBalance" / "channel_balance.py"
+    if src.is_file():
+        spec = importlib.util.spec_from_file_location("comfyui_h3_channelbalance.channel_balance", src)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        logging.info("[h3] MiniMaxH3ChannelBalance served by ComfyUI-H3-ChannelBalance")
+        return mod.MiniMaxH3ChannelBalance
+    from .channel_balance import MiniMaxH3ChannelBalance
+    return MiniMaxH3ChannelBalance
+
+
+MiniMaxH3ChannelBalance = _channel_balance_class()
 from .h3_encoder_loader import MiniMaxH3EncoderLoader
 from .pdd_lora import MiniMaxH3PDDLoRA
 from .audio_carry_probe import MiniMaxH3AudioCarryProbe
@@ -286,7 +306,11 @@ class H3ExplorationsExtension(ComfyExtension):
                 MiniMaxH3AudioAttentionGain, MiniMaxH3AudioFreezeSong,
                 MiniMaxH3ReferenceReport, MiniMaxH3PromptList,
                 MiniMaxH3FillPromptLists,
-                # appended 2026-09-14; insertion anywhere earlier would move what follows
+                # appended 2026-09-14; insertion anywhere earlier would move what follows.
+                # Since 2026-09-15 the node also ships on its own as the
+                # ComfyUI-H3-ChannelBalance pack; when that is installed beside this
+                # one, the name above IS that pack's class (see the import), so both
+                # registrations hold one object and load order decides nothing.
                 MiniMaxH3ChannelBalance,
                 # appended 2026-09-15, the TaoMate streaming runtime (docs/h3_taomate.md section 7)
                 MiniMaxH3TaoMateStreamSampler]
