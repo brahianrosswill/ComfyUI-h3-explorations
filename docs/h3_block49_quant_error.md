@@ -303,9 +303,13 @@ same day; the blind singles were never scored.)
 
 | arm | what was seen |
 |---|---|
-| 1, shipped (INT8 attention everywhere) | the porter and the crate morph into something else as he turns; the woman's identity drifts. The morph is this scene's known failure: the owner has seen it "often" in prior renders of this prompt |
+| 1, shipped (INT8 attention everywhere) | the porter and the crate morph into something else as he turns. The morph is this scene's known failure: the owner has seen it "often" in prior renders of this prompt |
 | 2, balanced (channel-balance node + sage `fp8++ balanced`) | no morph; he goes straight; "way better" than shipped, nothing wrong with it; the one clip where he ends up carrying two crates, arriving with a slight morph-in |
 | 3, exact tail (blocks 45, 48, 49 on bf16 attention) | best, "in subtle ways": no morph; he sets the crate down on the table edge and then lifts it, rather than one-handing it, which two viewers had never seen this prompt do; he moves around the shoppers walking toward him instead of through them; the weight shift as he carries is more natural; the audio is louder and crisper; possibly less motion blur |
+
+In all three the woman's identity drifts over the clip; no arm touched
+that. The viewers' notes are filed verbatim in
+`bench/results/2026-09-15_block49_market_feedback.md`.
 
 The details that separated the arms are the prompt's own: the weight
 shift onto the hip, the coins into the tin, shoppers stepping aside. That
