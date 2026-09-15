@@ -1,6 +1,6 @@
 # Freezing a known audio track: audio-driven video on MiniMax H3
 
-last updated: 2026-09-14
+last updated: 2026-09-15
 
 **The owner of this lane.** Opened 2026-09-12 by the owner: drop a song of any
 length, keep it exactly, and have the picture move to it, the way the owner's
@@ -328,6 +328,23 @@ judgement on 2026-09-12, not a measurement.
    with one image reference is the next arm before any prompt work. This is
    also the argument for idea 2 on fl2va: a loose mask keeps the rows at
    timesteps fl2va saw at its late steps. Medium confidence.
+
+9. **The TaoMate-H3 adapter on the freeze chain.** Proposed 2026-09-15 by
+   the owner; confidence not yet set. TaoMate-H3's own runtime already runs
+   this lane's regime: its adapter generates the video while the audio rows
+   are overwritten after every step with a separate base-model pass
+   (`coderef/TaoMate-H3/src/taomate_h3/streaming/runtime.py::_base_audio_teacher_step_callback`),
+   which makes it the one adapter on this box distilled with audio it does
+   not own. It differs from the mask freeze in two ways. The injected audio
+   follows the base model's own denoising trajectory at each step's noise
+   level instead of sitting clean at timestep one. And each request's audio
+   continues from the previous request's last second of clean audio, held as
+   a frozen prefix (`coderef/TaoMate-H3/src/taomate_h3/teacher.py::_audio_branch`),
+   which is this lane's seam in audio form. The first arm is the freeze graph
+   with the converted adapter (`bench/convert_taomate_lora.py`) on its own
+   three distilled sigmas, judged against the PDD8 chain. A second arm is
+   closer to what the adapter saw: the frozen track re-noised to each step's
+   audio sigma rather than held clean.
 
 ---
 

@@ -34,6 +34,20 @@ of the all-refs render and under 2% of the turbo renders in the 2026-08-18 to
 | speculative decoding (DSpark, DFlash, MTP, EAGLE) | weight-read-bound decode steps where verifying k tokens costs one | nothing is generated token by token. The diffusion analog, a draft model proposing denoising steps for the target to verify, needs a step budget with slack and a trained draft; INFERENCE, unmeasured anywhere here | n/a |
 | paged KV, continuous batching, session-aware eviction | many concurrent sequences | one user, one sequence | n/a |
 
+**2026-09-15: the DiT rows here and the KV-quantisation row below assume the
+released procedure.** TaoMate-H3 puts a KV cache on H3 by changing the
+procedure and distilling for it: the video is generated in causal chunks,
+one extra forward at sigma zero commits each finished chunk's K/V, later
+chunks attend to it, and the cache keeps a first-chunk sink plus the two most
+recent chunks, which is the LLM world's attention sink and sliding window
+([`../wiki/references.md`](../wiki/references.md), "The streaming references:
+TaoMate"). Fact 2 still holds for the checkpoint as released, so these rows
+stay n/a for it. Two parts have no LLM counterpart: history has to be
+re-encoded clean, because K/V computed from a noisy chunk change every step,
+and the weights have to be trained on their own causal outputs. Its runtime
+needs a multi-GPU node and does not run on this box; its adapter does, as an
+ordinary LoRA run over the whole clip at once.
+
 Where these two do apply in the owner's workflow: the LLM that writes H3
 prompts against the system prompts in
 [`h3_references.md`](../h3_references.md)'s prompting references. DFlash

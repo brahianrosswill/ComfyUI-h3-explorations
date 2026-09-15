@@ -1,6 +1,6 @@
 # The sister checkouts: what each one is good for
 
-last updated: 2026-09-11 (section "What moved by 2026-09-11" added and the two comfy-kitchen rows corrected; "What moved by 2026-09-10" added 2026-09-10; the tables are otherwise the 2026-08-28 read)
+last updated: 2026-09-15 (section "The streaming references: TaoMate" added; "What moved by 2026-09-11" added and the two comfy-kitchen rows corrected 2026-09-11; "What moved by 2026-09-10" added 2026-09-10; the tables are otherwise the 2026-08-28 read)
 
 `coderef/` holds the reference implementations. `ls -l coderef/` is the list of
 what is currently on disk — some symlinks, some real clones — and this page is
@@ -199,6 +199,51 @@ node and the ComfyUI Sol packs live in [`../sol_upstream.md`](../sol_upstream.md
   `workflows/h3_config.py`, the generator nor any shipped graph names it.
 - **Upstream PRs, not cloned**: Comfy-Org/ComfyUI #16239 and the kitchen and
   ComfyUI-pack PRs around it are read in `sol_upstream.md`.
+
+---
+
+## The streaming references: TaoMate
+
+Read 2026-09-15, at the revisions named here.
+
+| checkout | revision read | what it is | reach for it when |
+|---|---|---|---|
+| `TaoMate-H3` | `ccc1a70` | TaoLiveAIGC's streaming runtime for H3. A 3-step LoRA on the FL2VA partition, run over each 5-second request in causal chunks: the chunk's video attends to the prompt, to a clean K/V cache and to itself, and a sigma-zero forward after each chunk commits its K/V. The cache keeps the first chunk's video as a sink and the two most recent chunks (`src/taomate_h3/streaming/cache.py::CleanAVKVCache.retain_sink_and_recent_commits`). It accepts only 4 or 8 GPUs under TP2 with Ulysses and requires FlashAttention-3 (`src/taomate_h3/config.py::DirectRunConfig`, `src/taomate_h3/streaming/attention_hook.py`), so it does not run on this box. The adapter converts to a ComfyUI LoRA by rename: `bench/convert_taomate_lora.py`, record `bench/results/2026-09-15_taomate_lora_conversion.json` | you need the adapter's distilled sigma grid (`src/taomate_h3/model/pipeline.py`, `DISTILLED_STATE_INDICES` at its two shifts), how a KV-cached causal H3 is wired, or an H3 team's own audio-freeze regime |
+| `TaoMate-LTX` | `136d890` | the same group's LTX 2.3 system and the code for their paper (arXiv 2607.24359): learned persistent memory, reference-aware FiLM, a pyramid K/V retention policy, stage-parallel inference | the paper's mechanisms. Not evidence about H3 |
+
+What the H3 checkout is not evidence of:
+
+- **The paper's memory.** The H3 adapter holds LoRA factors on the existing
+  attention and MLP linears and nothing else (the converter's
+  `adapter_inventory` refuses any other tensor). The H3 runtime's only
+  appearance mechanism is an untrained per-channel renormalisation of each
+  chunk to the first chunk's statistics
+  (`src/taomate_h3/streaming/runtime.py::H3StreamingRuntime._renorm_clean_video_rows`).
+- **Streamed or distilled audio.** `src/taomate_h3/teacher.py` runs the base
+  model with no adapter over each request, and the streaming loop overwrites
+  the adapter's audio with those states after every step, then asserts the
+  published audio equals the base result
+  (`src/taomate_h3/streaming/runtime.py::_base_audio_teacher_step_callback`
+  and the guard after the phase loop). The README's speed table excludes that
+  pass by its own note. What the adapter does to audio in a ComfyUI graph is
+  outside anything its authors run. This is the audio-freeze regime:
+  [`../h3_audio_freeze.md`](../h3_audio_freeze.md) section 5.
+- **Anything about a single-card graph.** The README's timings are its own
+  base runtime on its own node.
+
+The community ComfyUI copies: kijai's `minimax_h3_taomate_3step_lora_avg_rank_19_bf16`
+is a per-module truncated SVD of this adapter, in the same qkv and SwiGLU
+layout. How much of each delta it keeps is in the record's `comparison`,
+measured against the full-rank conversion.
+
+"ComfyUI does not support KV chunking", as reported on 2026-09-15, is right
+in substance: core's KV-cached causal sampler
+(`comfy/k_diffusion/sampling.py::sample_ar_video`) requires a diffusion model
+exposing `init_kv_caches`, which only Causal-Wan does, and core's H3 model
+runs one unmasked attention over the whole packed sequence
+([`../research/technique_transfer.md`](../research/technique_transfer.md),
+fact 2). The "attention chunking" nodes in third-party H3 packs slice queries
+to cut peak VRAM and carry no cache between chunks.
 
 ---
 

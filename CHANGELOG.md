@@ -4,6 +4,35 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.109.0
+
+### Added
+
+- **`bench/convert_taomate_lora.py`**: converts TaoLiveAIGC's TaoMate-H3
+  adapter to a ComfyUI LoRA at its own rank, by rename plus explicit `.alpha`
+  tensors. The docstring gives the evidence for each part of the mapping: no
+  q/k/v fuse, no qkv row reorder (TaoMate trains on its reordered q|k|v
+  module; core's band split is asserted on the Turbo LoRA's block-diagonal
+  `lora_B`), no SwiGLU half swap (source reads on both engines). It asserts
+  the module set and shapes against `h3_config.MODELS["unet_fl2va"]`,
+  measures the cast, and with `--compare` scores another conversion's deltas
+  in factored form. Weight statistics were tried as a layout gate and read at
+  chance, so none is used. First run, with kijai's `avg_rank_19` file as the
+  comparison: `bench/results/2026-09-15_taomate_lora_conversion.json`. The
+  output goes to `models/loras/h3/minimax_h3_taomate_3step_rank128_comfy_bf16.safetensors`;
+  no graph or `h3_config` constant names it yet.
+- **`docs/wiki/references.md`, "The streaming references: TaoMate"**: rows
+  for `coderef/TaoMate-H3` and `coderef/TaoMate-LTX`. It covers what the H3
+  release is, and that it is not the paper's learned memory. Its audio comes
+  from a base-model pass the runtime injects after every step. And the "no KV
+  chunking in ComfyUI" remark is right in substance.
+- **`docs/research/technique_transfer.md`**: a dated note that the DiT rows
+  and the KV-quantisation row assume the released procedure; TaoMate-H3 gets a
+  KV cache by changing the procedure and distilling for it.
+- **`docs/h3_audio_freeze.md`** section 5, idea 9: the TaoMate adapter on the
+  freeze chain. Its own runtime already runs video under audio it does not own.
+  Proposed by the owner; confidence not yet set.
+
 ## 0.108.2
 
 ### Added
