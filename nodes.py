@@ -41,6 +41,7 @@ from .reference_conditioning import (
 from .reference_report import MiniMaxH3ReferenceReport
 from .prompt_lists import MiniMaxH3FillPromptLists, MiniMaxH3PromptList, register_wildcards_folder
 from . import h3_capture
+from .taomate_stream_sampler import MiniMaxH3TaoMateStreamSampler
 
 from .attention import (
     MODES,
@@ -286,7 +287,9 @@ class H3ExplorationsExtension(ComfyExtension):
                 MiniMaxH3ReferenceReport, MiniMaxH3PromptList,
                 MiniMaxH3FillPromptLists,
                 # appended 2026-09-14; insertion anywhere earlier would move what follows
-                MiniMaxH3ChannelBalance]
+                MiniMaxH3ChannelBalance,
+                # appended 2026-09-15, the TaoMate streaming runtime (docs/h3_taomate.md section 7)
+                MiniMaxH3TaoMateStreamSampler]
 
 
 async def comfy_entrypoint() -> H3ExplorationsExtension:

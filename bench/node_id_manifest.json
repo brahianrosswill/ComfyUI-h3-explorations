@@ -425,6 +425,16 @@
       "Output"
     ]
   },
+  "MiniMaxH3TaoMateStreamSampler": {
+    "inputs": [
+      "mode",
+      "cache_device"
+    ],
+    "node_id": "MiniMaxH3TaoMateStreamSampler",
+    "outputs": [
+      "Output"
+    ]
+  },
   "MiniMaxH3VAEPrecision": {
     "inputs": [
       "vae",
