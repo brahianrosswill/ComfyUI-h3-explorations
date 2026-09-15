@@ -9,22 +9,56 @@ for every H3 DiT checkpoint on disk, see "So what". Capture: the 2026-09-03
 base16 t2v set at 1344x768, S=104,361 (395 text, 1,150 audio, 102,816 video
 rows), kept to 2026-09-20.
 
+## What is measured here, and why it is not a matter of taste
+
+Every claim on this page except the last row is a number computed from a
+file by a script in this repo, on inputs anyone with the file can rerun.
+The only opinions are in the last row, and they are labelled as such.
+
+| what | how it is measured | the referent (what "error" is against) | tool | needs |
+|---|---|---|---|---|
+| Which blocks have loud K channels | energy share of the four largest `k_norm.weight` entries, per block, straight from the checkpoint file | none: a property of the weights | `bench/check_channel_balance.py` (or a five-line one-liner) | the checkpoint, no GPU |
+| Whether the activations agree | per-head channel energy of captured q/k/v after norm and RoPE, the channels that dominate, loudest-to-median ratio | none: a property of the tensors | `bench/analyze_head_magnitudes.py` | a capture (`h3_capture.py`, 4.5 GB per cell) |
+| How much each INT8 kernel loses | relative L2 of the kernel's output against fp32 attention computed on the same bf16 q/k/v | exact attention on identical inputs, so the only difference is the kernel | `bench/grade_channel_balance.py`, `bench/grade_ck_int8_on_capture.py`, `bench/analyze_sol_error.py` | a capture and the kernels |
+| What a fix recovers | the same number, same inputs, same referent, with the fix on | as above; the fix is the only change | same scripts | same |
+| That the fix is exact for the math | the fp32 eager reference with and without the rescale: same route, same scores to rounding | the reference against itself | kitchen `tests/test_sol_attn.py -k qk_balance`, sage `tests/test_qk_balance.py` | any CUDA card |
+| What it costs | wall time from the server's own history, start to finish, one render at a time | the unmodified render on the same seed | server history | a render |
+| Whether people can see it | labelled originals in a fixed order, viewers asked one question, words filed verbatim | none; this row is opinion, three scenes and four viewers of it | `bench/results/2026-09-15_block49_*` | eyes |
+
+The measured rows say the error exists, where, how large, and that the
+fix removes part of it at no cost. The last row says whether that shows.
+Neither row stands in for the other.
+
 ## So what, revised 2026-09-15
 
-**It is not a bug, and it is not ours.** It is a design property of INT8
-attention meeting this model: every INT8 attention kernel quantizes K with
-one scale shared across a row's or a block's 128 channels, which is fine
-where channels are alike, and H3's last blocks are not alike -- the released
-weights put an order of magnitude of gain on four channels there. Nobody's
-kernel is wrong; the model's weights and the quantizer's granularity are a
-bad match at three blocks.
+**It is not a bug, and it is not ours.** It is a design property of
+unrotated INT8 attention meeting this model: SageAttention and
+comfy-kitchen's `sol_attn` quantize K with one scale shared across a
+row's or a block's 128 channels, which is fine where channels are alike,
+and H3's last blocks are not alike -- the released weights put an order of
+magnitude of gain on four channels there. Nobody's kernel is wrong; the
+model's weights and the quantizer's granularity are a bad match at three
+blocks. comfy-kitchen's other INT8 kernel, `int8_attention`, rotates q and
+k with a block-Hadamard before quantizing and does not have the problem
+(measured, below).
 
-**The blast radius is every H3 user on quantized attention.** Stock
-comfy-kitchen's Sol kernel (Comfy-Org's and kijai's; the per-row K
-quantizer shares its scale across channels), stock SageAttention upstream
-and every fork of it, in every mode including the "accurate" fp16 one (all
-of them quantize QK to INT8), and by the same mechanism NVLabs' own INT8
-Sol kernels, unmeasured here. Every H3 checkpoint variant: the loud channels
+**The blast radius is every H3 user on sparse attention or SageAttention,
+and not the rest.** Stock comfy-kitchen's Sol kernel (Comfy-Org's and
+kijai's; the per-row K quantizer shares its scale across channels), which
+is what ComfyUI core's block-sparse attention node calls; stock
+SageAttention upstream and every fork of it, in every mode including the
+"accurate" fp16 one (all of them quantize QK to INT8); and by the same
+mechanism NVLabs' own INT8 Sol kernels, unmeasured here. NOT
+comfy-kitchen's `int8_attention`, the kernel behind ComfyUI core's Model
+Attention Backend node on "comfy kitchen attention" and the
+`--use-ck-attention` flag: it rotates q/k first, and on the block-49
+capture its error is a third of Sol's and of sage's with nothing done
+(`bench/results/2026-09-15_ck_int8_attention_block49.json`). So the
+common community chain, that backend for the dense steps and the
+block-sparse node for the routed ones, carries the problem on its routed
+steps only; our own chain, sage on the dense steps, carried it on both,
+which is a choice of ours and part of why our failures were as visible
+as they were. Every H3 checkpoint variant: the loud channels
 are identical across all fourteen full DiT files on this box, and the
 turbo/SLA/PDD LoRAs carry no norm weights, so they inherit it (the TaoMate
 LoRA too: 208 modules, qkv/out/fc1/fc2 only, read 2026-09-15). Untouched:
