@@ -57,6 +57,7 @@ import taomate_streaming as tm  # noqa: E402
 
 PROBES = {
     "verify_whole_clip": REPO / "workflows" / "h3_probe_taomate_3step_api.json",
+    "control_text_only": REPO / "workflows" / "h3_probe_taomate_3step_api.json",
     "stream": REPO / "workflows" / "h3_probe_taomate_3step_audio_freeze_api.json",
 }
 ATTENTION_CHAIN = ("MiniMaxH3SageAttention", "MiniMaxH3SolAttn", "SageChainAssert")
@@ -94,7 +95,8 @@ def build_graph(args) -> dict:
     cond = doc[by_class["MiniMaxH3Conditioning"][0]]
     cond["inputs"].update(width=args.width, height=args.height, length=args.length)
     remove = ATTENTION_CHAIN + ("MiniMaxH3Resolution",)
-    if args.mode == "verify_whole_clip":
+    whole_clip = args.mode in ("verify_whole_clip", "control_text_only")
+    if whole_clip:
         remove += ("VAEDecode", "VAEDecodeAudio", "VHS_VideoCombine")
     for cls in remove:
         for nid in by_class.get(cls, []):
@@ -102,7 +104,7 @@ def build_graph(args) -> dict:
     doc[by_class["KSamplerSelect"][0]] = {
         "class_type": "MiniMaxH3TaoMateStreamSampler",
         "inputs": {"mode": args.mode, "cache_device": args.cache_device}}
-    if args.mode == "verify_whole_clip":
+    if whole_clip:
         doc["900"] = {"class_type": "PreviewAny",
                       "inputs": {"source": [by_class["SamplerCustomAdvanced"][0], 0]}}
         return doc
@@ -153,7 +155,8 @@ def main(argv=None) -> int:
     ap.add_argument("--record", type=Path)
     args = ap.parse_args(argv)
     if args.cache_device is None:
-        args.cache_device = "gpu" if args.mode == "verify_whole_clip" else "cpu_pinned"
+        args.cache_device = "cpu_pinned" if args.mode == "stream" else "gpu"
+    whole_clip = args.mode in ("verify_whole_clip", "control_text_only")
 
     graph = build_graph(args)
     graph_sha = hashlib.sha256(json.dumps(graph, sort_keys=True).encode()).hexdigest()
@@ -193,21 +196,34 @@ def main(argv=None) -> int:
         "submit_to_finish_s": round(wall, 1),
         "is_not": "a quality statement; a small canvas proves the harness and the hook",
     }
-    if args.mode == "verify_whole_clip":
-        lines = log_lines_since(args.host, since, VERIFY_TAG)
+    if whole_clip:
+        tag = f"[taomate] {args.mode} "
+        lines = log_lines_since(args.host, since, tag)
         if not lines:
-            print("FAIL  the run succeeded but no verify report is in the server log buffer")
+            print(f"FAIL  the run succeeded but no {args.mode} report is in the server log buffer")
             return 2
-        report = json.loads(lines[-1].split(VERIFY_TAG, 1)[1].strip().replace('\\"', '"'))
-        passed = all(report[s]["rel_rms"] <= MATCH_REL_RMS for s in ("video", "audio"))
+        report = json.loads(lines[-1].split(tag, 1)[1].strip().replace('\\"', '"'))
+        matched = all(report[s]["rel_rms"] <= MATCH_REL_RMS for s in ("video", "audio"))
+        hooked = int(report.get("hook_calls", 0)) > 0
         for stream in ("video", "audio"):
             r = report[stream]
             print(f"  {stream}: exact {r['exact']}, max_abs {r['max_abs']:.3e}, rel_rms {r['rel_rms']:.3e}")
-        print(("ok    " if passed else "FAIL  ") + "hooked whole-clip loop vs core euler "
-              f"(bound rel_rms {MATCH_REL_RMS}, reasoned)")
-        record.update(what=("core's euler sampler and the sampler's own loop through its block attention "
-                            "hook, same graph inputs, latents compared"),
-                      match_bound_rel_rms=MATCH_REL_RMS, report=report, passed=passed)
+        print(f"  block hook calls: {report.get('hook_calls')}")
+        if args.mode == "verify_whole_clip":
+            # the hook must have run AND reproduced core
+            passed = matched and hooked
+            print(("ok    " if passed else "FAIL  ") + "hooked whole-clip loop vs core euler "
+                  f"(bound rel_rms {MATCH_REL_RMS}, reasoned; hook ran: {hooked})")
+            what = ("core's euler sampler and the sampler's own loop through its block attention hook, "
+                    "same graph inputs, latents compared")
+        else:
+            # the control: upstream's text-only routing must NOT reproduce core
+            passed = hooked and not matched
+            print(("ok    " if passed else "FAIL  ") + "control: text-only routing departs from core "
+                  f"(must exceed rel_rms {MATCH_REL_RMS}; hook ran: {hooked})")
+            what = ("control for verify_whole_clip: the hooked loop with upstream's text-only routing, "
+                    "which must differ from core's euler latent")
+        record.update(what=what, match_bound_rel_rms=MATCH_REL_RMS, report=report, passed=passed)
         code = 0 if passed else 1
     else:
         lines = log_lines_since(args.host, since, CHUNK_TAG)

@@ -63,7 +63,12 @@ from comfy_api.latest import io
 
 from . import taomate_streaming as tm
 
-MODES = ("stream", "verify_whole_clip")
+#: Append only: a saved graph stores the chosen string, so new modes go last.
+#: `control_text_only` is `verify_whole_clip` with upstream's text-only routing
+#: in the hooked loop. It must NOT match core, which is what shows the exact
+#: match in `verify_whole_clip` comes from the hook running and not from it
+#: being bypassed.
+MODES = ("stream", "verify_whole_clip", "control_text_only")
 CACHE_DEVICES = ("cpu_pinned", "cpu", "gpu")
 #: Reasoned: the graph's `ManualSigmas` string keeps six decimals.
 SIGMA_TOL = 1e-5
@@ -116,6 +121,7 @@ def _stream_attention(attn, block, state, x, rope_freqs=None, transformer_option
 
 
 def _block_patch(block, diffusion_model, state, args, extra):
+    state["hook_calls"] = state.get("hook_calls", 0) + 1
     attention = functools.partial(_stream_attention, diffusion_model.blocks[block].attn, block, state)
     return extra["original_block"]({**args, "attention": attention})
 
@@ -195,7 +201,7 @@ class TaoMateStreamSampler(comfy.samplers.Sampler):
             raise ValueError("TaoMate stream sampler is text to audio-video only: remove references and keyframes")
 
         state = {"cache": None, "text_rows": int(context.shape[1]),
-                 "text_sees_all": self.mode == "verify_whole_clip"}
+                 "text_sees_all": self.mode == "verify_whole_clip", "hook_calls": 0}
         dm = inner.diffusion_model
         replace = dict(base_to.get("patches_replace", {}))
         dit = dict(replace.get("dit", {}))
@@ -204,7 +210,7 @@ class TaoMateStreamSampler(comfy.samplers.Sampler):
         replace["dit"] = dit
         base_to["patches_replace"] = replace
 
-        if self.mode == "verify_whole_clip":
+        if self.mode in ("verify_whole_clip", "control_text_only"):
             # The reference is core's own sampler on the same inputs, run first
             # and without the hook, so the expectation comes from outside this file.
             reference = comfy.samplers.ksampler("euler").sample(
@@ -212,7 +218,8 @@ class TaoMateStreamSampler(comfy.samplers.Sampler):
             hooked = self._whole_clip(model_wrap, inner, sigmas, noise, latent_image, context, payload,
                                       shapes, base_to, callback)
             self.last_report = _deviation(reference, hooked, shapes)
-            logging.info("[taomate] verify_whole_clip %s", json.dumps(self.last_report, sort_keys=True))
+            self.last_report["hook_calls"] = state["hook_calls"]
+            logging.info("[taomate] %s %s", self.mode, json.dumps(self.last_report, sort_keys=True))
             return hooked
         return self._stream(model_wrap, inner, sigmas, noise, latent_image, context, payload,
                             shapes, base_to, state, callback)
