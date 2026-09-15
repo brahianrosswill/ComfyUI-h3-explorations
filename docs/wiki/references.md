@@ -208,7 +208,7 @@ Read 2026-09-15, at the revisions named here.
 
 | checkout | revision read | what it is | reach for it when |
 |---|---|---|---|
-| `TaoMate-H3` | `ccc1a70` | TaoLiveAIGC's streaming runtime for H3. A 3-step LoRA on the FL2VA partition, run over each 5-second request in causal chunks: the chunk's video attends to the prompt, to a clean K/V cache and to itself, and a sigma-zero forward after each chunk commits its K/V. The cache keeps the first chunk's video as a sink and the two most recent chunks (`src/taomate_h3/streaming/cache.py::CleanAVKVCache.retain_sink_and_recent_commits`). It accepts only 4 or 8 GPUs under TP2 with Ulysses and requires FlashAttention-3 (`src/taomate_h3/config.py::DirectRunConfig`, `src/taomate_h3/streaming/attention_hook.py`), so it does not run on this box. The adapter converts to a ComfyUI LoRA by rename: `bench/convert_taomate_lora.py`, record `bench/results/2026-09-15_taomate_lora_conversion.json` | you need the adapter's distilled sigma grid (`src/taomate_h3/model/pipeline.py`, `DISTILLED_STATE_INDICES` at its two shifts), how a KV-cached causal H3 is wired, or an H3 team's own audio-freeze regime |
+| `TaoMate-H3` | `ccc1a70` | TaoLiveAIGC's streaming runtime for H3. A 3-step LoRA on the FL2VA partition, run over each 5-second request in causal chunks: the chunk's video attends to the prompt, to a clean K/V cache and to itself, and a sigma-zero forward after each chunk commits its K/V. The cache keeps the first chunk's video as a sink and the two most recent chunks (`coderef/TaoMate-H3/src/taomate_h3/streaming/cache.py::CleanAVKVCache.retain_sink_and_recent_commits`). It accepts only 4 or 8 GPUs under TP2 with Ulysses and requires FlashAttention-3 (`coderef/TaoMate-H3/src/taomate_h3/config.py::DirectRunConfig`, `coderef/TaoMate-H3/src/taomate_h3/streaming/attention_hook.py`), so it does not run on this box. The adapter converts to a ComfyUI LoRA by rename: `bench/convert_taomate_lora.py`, record `bench/results/2026-09-15_taomate_lora_conversion.json` | you need the adapter's distilled sigma grid (`coderef/TaoMate-H3/src/taomate_h3/model/pipeline.py`, `DISTILLED_STATE_INDICES` at its two shifts), how a KV-cached causal H3 is wired, or an H3 team's own audio-freeze regime |
 | `TaoMate-LTX` | `136d890` | the same group's LTX 2.3 system and the code for their paper (arXiv 2607.24359): learned persistent memory, reference-aware FiLM, a pyramid K/V retention policy, stage-parallel inference | the paper's mechanisms. Not evidence about H3 |
 
 What the H3 checkout is not evidence of:
@@ -218,12 +218,12 @@ What the H3 checkout is not evidence of:
   `adapter_inventory` refuses any other tensor). The H3 runtime's only
   appearance mechanism is an untrained per-channel renormalisation of each
   chunk to the first chunk's statistics
-  (`src/taomate_h3/streaming/runtime.py::H3StreamingRuntime._renorm_clean_video_rows`).
-- **Streamed or distilled audio.** `src/taomate_h3/teacher.py` runs the base
+  (`coderef/TaoMate-H3/src/taomate_h3/streaming/runtime.py::H3StreamingRuntime._renorm_clean_video_rows`).
+- **Streamed or distilled audio.** `coderef/TaoMate-H3/src/taomate_h3/teacher.py` runs the base
   model with no adapter over each request, and the streaming loop overwrites
   the adapter's audio with those states after every step, then asserts the
   published audio equals the base result
-  (`src/taomate_h3/streaming/runtime.py::_base_audio_teacher_step_callback`
+  (`coderef/TaoMate-H3/src/taomate_h3/streaming/runtime.py::_base_audio_teacher_step_callback`
   and the guard after the phase loop). The README's speed table excludes that
   pass by its own note. What the adapter does to audio in a ComfyUI graph is
   outside anything its authors run. This is the audio-freeze regime:
