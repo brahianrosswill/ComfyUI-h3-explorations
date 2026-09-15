@@ -163,3 +163,12 @@ Not today: Tier 2 and Tier 3.
   attention; and Tier 2's shape is rotation, not group scales. Not timed;
   whether that kernel is a viable default at H3 length is a speed question
   nobody here has asked yet.
+- 2026-09-15, late: the community chain rendered on the market prompt
+  (`bench/results/2026-09-15_block49_community_chain.md`): kitchen's rotated
+  INT8 kernel on the dense steps plus Sol, three arms (as run, with Sol's
+  balance, with 45/48/49 on the dense kernel). Same wall time as our
+  sage-dense chain; the dense tail costs 16 s here, not 60, because the
+  fallback is INT8 rotated rather than bf16. Unscored. Two things this
+  changes regardless of the scoring: our Sage node is a candidate for
+  removal from the default graph (same speed, a third of the error on
+  block 49, measured), and Tier 2 is rotation.
