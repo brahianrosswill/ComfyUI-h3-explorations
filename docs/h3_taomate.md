@@ -299,3 +299,24 @@ The pieces:
 5. **One request, one throwaway render** at 124 frames with a frozen track,
    read end to end. Then 243 frames, two requests, beside the PDD8 freeze
    chain at the same scene, track and seed, for the owner.
+
+**Status, 2026-09-15.**
+- **Step 1 passes** (`bench/check_taomate_streaming.py`).
+- **Step 2 passes bit-exact**
+  (`bench/results/2026-09-15_taomate_verify_whole_clip.json`). Its control
+  shows the match came through the hook: `control_text_only` ran the hook on
+  every block at every step and departed from core by orders of magnitude
+  more than the bound
+  (`bench/results/2026-09-15_taomate_control_text_only.json`).
+- **Step 3 was replaced.** A first chunk with no history only equals a
+  single-chunk run of the same length, and no such run exists to compare
+  against.
+- **Step 5's throwaway ran at 864x480**, a canvas that proves the harness and
+  not a verdict. All four chunks committed, and the cache sizes matched
+  upstream's retention arithmetic.
+  - Frames either side of each chunk boundary show one person, a stable room,
+    and no morph or duplicate.
+  - Its peak-memory log field was unusable under the server's async allocator
+    and now reads the driver.
+- **Step 4 and the 1344x768 renders wait on a card window.** The sage fork has
+  priority.

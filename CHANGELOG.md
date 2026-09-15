@@ -4,6 +4,39 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.115.1
+
+### Added
+
+- **The TaoMate stream sampler's first runs on the card, all at 864x480 and
+  124 frames.**
+  - **Whole-clip equality.** `verify_whole_clip` reproduces core's euler latent
+    bit for bit (`bench/results/2026-09-15_taomate_verify_whole_clip.json`).
+  - **Its control.** A new `control_text_only` mode, appended to the node's
+    mode list, runs the hook with upstream's text-only routing. It departs
+    from core far beyond the bound, with the hook recorded on every block at
+    every step (`bench/results/2026-09-15_taomate_control_text_only.json`).
+    So the match came through the hook.
+  - **A throwaway stream.** It committed all four chunks with the cache sizes
+    upstream's retention gives. Frames around each chunk boundary show one
+    person and a stable scene. `docs/h3_taomate.md` section 7.3 carries the
+    status.
+  - **A row in `docs/checks.md`** indexes `bench/check_taomate_streaming.py`.
+
+### Changed
+
+- **The harness strips the attention chain by walking the model path.**
+  `bench/verify_taomate_stream.py` no longer finds nodes by class name, so it
+  builds its graphs from the new default chain as well as the old one.
+- **The sampler logs card memory from the driver** (`torch.cuda.mem_get_info`).
+  Under the server's `cudaMallocAsync`, torch's allocator counters read
+  near zero.
+
+### Fixed
+
+- **`docs/wiki/references.md` TaoMate citations** carry their
+  `coderef/TaoMate-H3/` prefix.
+
 ## 0.115.0
 
 ### Changed
