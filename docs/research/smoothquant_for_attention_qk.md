@@ -64,7 +64,7 @@ the DiT quantization papers do not look.
 ## What is different here, as far as we know
 
 1. **The target is the attention product, not a linear.** The INT8
-   attention kernels (SageAttention, comfy-kitchen's `int8_attention` and
+   attention kernels this repo runs (SageAttention, comfy-kitchen's
    `sol_attn`) quantize `q` and `k` activations per token row (or per
    token block) with one scale across the 128 head channels. That is
    SmoothQuant's shared-scale problem inside the attention kernel, and the
@@ -73,6 +73,18 @@ the DiT quantization papers do not look.
    there. SageAttention's own "smooth K" is a different operation (subtract
    the per-channel mean of K, which removes a bias, not a spread); the two
    compose.
+
+   **But the rotation form of the same fix already exists in an attention
+   kernel** (found 2026-09-15, after this note was first written):
+   comfy-kitchen's `int8_attention` applies a randomized block-Hadamard
+   rotation to q and k before quantizing, the QuaRot / SpinQuant / convrot
+   move (rotate so outliers spread across channels, quantize, and let the
+   orthogonality keep the product exact). On the block-49 capture it is
+   immune to the loud channels and more accurate than the rebalanced Sol
+   row (`bench/results/2026-09-15_ck_int8_attention_block49.json`). So the
+   honest novelty claim narrows to: the migration form, per head, per
+   call, gated, in kernels that quantize unrotated. The rotation form is
+   the stronger answer and is prior art.
 2. **No calibration set.** SmoothQuant and its DiT descendants derive `s`
    from calibration activations offline. The kernel forms here compute `f`
    from the call's own `q` and `k` (their channel rms over the sequence),
@@ -96,10 +108,12 @@ SmoothQuant cannot fix an outlier that lives in one token rather than one
 channel, and neither can this: the factor must be the same for every token
 or the scores change. That residual is the gap that remains between the
 balanced arms and bf16 attention on the last three blocks. The literature's
-answer is finer granularity (per-group scales, or SVDQuant's low-rank
-residue); the analogue here is a second scale group for the loud channels
-inside the kernel, which is Tier 2 in
-[`docs/h3_quant_policy.md`](../h3_quant_policy.md).
+answers are finer granularity (per-group scales, SVDQuant's low-rank
+residue) or rotation (QuaRot, SpinQuant), and rotation handles the
+per-token case too, since it flattens whatever a row's outlier is. That
+is what kitchen's `int8_attention` does, and it is the shape Tier 2 in
+[`docs/h3_quant_policy.md`](../h3_quant_policy.md) should take in sage's
+and Sol's quantizers rather than a second scale group.
 
 ## What to cite if this gets written up
 

@@ -32,11 +32,20 @@ anyone on full-precision attention (flash or SDPA in bf16), which has no
 scale to share. **That is ComfyUI's default** (read from
 `comfy/ldm/modules/attention.py`, 2026-09-15): a stock ComfyUI with the
 stock kitchen wheel runs pytorch SDPA unless one of three opt-ins is on,
-`--use-sage-attention` (SageAttention's INT8 q/k), `--use-ck-attention`
-(kitchen's own `int8_attention`), or the core block-sparse attention node
-(kitchen's `sol_attn`). The affected population is everyone who turned
-one of those on to make long H3 renders bearable, which is many of the
-people rendering long clips and none of the people on defaults.
+`--use-sage-attention` (SageAttention's INT8 q/k), the core block-sparse
+attention node (kitchen's `sol_attn`), or `--use-ck-attention` (kitchen's
+own `int8_attention`). **The third one is immune, measured 2026-09-15**
+(`bench/results/2026-09-15_ck_int8_attention_block49.json`,
+`bench/grade_ck_int8_on_capture.py`): kitchen's `int8_attention` rotates Q
+and K with a block-Hadamard before quantizing, so no channel can dominate
+its shared scale; on the block-49 capture its error is a third of Sol's
+and a third of sage fp8++'s, and the weights fold moves it by about one
+percent. An earlier version of this paragraph listed it as affected by
+design; that was inferred from its being a SageAttention port, not read
+from its quantizer, and was wrong. The affected population is therefore
+everyone on `--use-sage-attention` or the block-sparse node, which is
+many of the people rendering long clips and none of the people on
+defaults.
 
 **It is a quality effect, not a correctness one, and it is visible.**
 Renders complete and are plausible. The error lands on the last block's
@@ -101,12 +110,16 @@ bf16 attention on the three loud blocks (section 6).
    fold numbers are a contribution the kitchen maintainers could act on
    for every user; the sage-side change is one commit anyone forking sage
    could take. Neither has been sent anywhere.
-6. *Deeper, not started:* finer K scaling inside the kernels (a second
-   scale group for the loud channels, two accumulators), the LLM world's
-   per-channel key quantization done in an attention kernel; Tier 2 in
-   `docs/h3_quant_policy.md`. Real kernel work on either side. Its payoff
-   is the edge bf16 still holds over the rebalanced arms, which three
-   scenes put at "small, takes a careful look".
+6. *Deeper, not started:* the structural fix inside the kernels. Two
+   shapes: finer K scaling (a second scale group for the loud channels),
+   or a Hadamard rotation of q and k inside the quantizer, which is what
+   kitchen's `int8_attention` already does and which also flattens a
+   per-token spike, the case no per-channel rescale can reach. On the
+   block-49 capture the rotated kernel beats even the balanced Sol row
+   (0.0166 against 0.0193), so rotation is the stronger candidate; Tier 2
+   in `docs/h3_quant_policy.md`. Its payoff is the edge bf16 still holds
+   over the rebalanced arms, which three scenes put at "small, takes a
+   careful look".
 
 ## The answer in four sentences
 

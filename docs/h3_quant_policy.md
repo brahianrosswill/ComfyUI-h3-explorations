@@ -54,10 +54,18 @@ the routed steps get what the sage steps get. Graded by
 with balanced everywhere and no bf16 blocks. If that matches exact tail,
 the bf16 row disappears and the policy is "levers on."
 
-**Tier 2 (a week): INT8 that survives the loud blocks.** Mixed-granularity K
-in both quantizers: the loud channels permuted into a 16-channel group with
-its own scale, two accumulators. Goal: INT8 at block 49 as good as bf16, so
-the tail needs no exception and every user of these kernels gets it.
+**Tier 2 (a week): INT8 that survives the loud blocks.** The structural fix
+inside both quantizers. First shape considered: mixed-granularity K, the
+loud channels permuted into a 16-channel group with its own scale, two
+accumulators. Better shape, found 2026-09-15: a Hadamard rotation of q and
+k inside the quantizer, as comfy-kitchen's `int8_attention` already does
+(randomized block-Hadamard, one scale per token block after rotation);
+orthogonal, so exact for the scores, and it flattens per-token spikes too,
+which no per-channel factor can. Measured on the block-49 capture that
+kernel is immune to the loud channels and beats the balanced Sol row
+(`bench/results/2026-09-15_ck_int8_attention_block49.json`). Goal: INT8
+at block 49 as good as bf16, so the tail needs no exception and every
+user of these kernels gets it.
 
 **Tier 3 (a day, independent): a sensitivity-ranked bake for the linears.**
 Capture one step's linear inputs across all fifty blocks, score each
@@ -146,3 +154,12 @@ Not today: Tier 2 and Tier 3.
   always ranked above shipped), the bf16 tail as the opt-in best-take
   setting, Tier 2 the only way to retire it. No default flipped yet; the
   freeze session is told before that lands.
+- 2026-09-15, late: kitchen's own `int8_attention` (ComfyUI's
+  `--use-ck-attention`) graded on the block-49 and block-0 captures: immune
+  to the loud channels by construction (Hadamard rotation of q/k before
+  INT8), a third of Sol's and sage's error on block 49, the fold moves it
+  one percent (`bench/results/2026-09-15_ck_int8_attention_block49.json`).
+  Two consequences: the blast radius is sage and Sol, not every INT8
+  attention; and Tier 2's shape is rotation, not group scales. Not timed;
+  whether that kernel is a viable default at H3 length is a speed question
+  nobody here has asked yet.
