@@ -83,7 +83,8 @@ that.
    fork do not take the per-head factor; the routed steps get only the
    weights fold. The same factor into those two functions, sharing the
    key-mean pass they already do, is the remaining half; `bench/grade_channel_balance.py`
-   grades it. Kitchen build as of 2026-09-15 is `0.2.34+sol.2aff3c5`
+   grades it. Kitchen build as of 2026-09-15 evening is `0.2.34+sol.5284cfb`
+   (earlier that day `0.2.34+sol.2aff3c5`, without Sol's `qk_balance`)
    (`docs/sol_upstream.md`), which changed nothing on this axis.
 5. *Open, and not ours alone:* the mechanism, the checkpoint scan and the
    fold numbers are a contribution the kitchen maintainers could act on
@@ -435,6 +436,18 @@ more accurate than the accurate path without it.
   changes numerics on every served render, so it wants the blind
   comparison this repo requires of a default, and the freeze session
   told first.
+
+**Sol's quantizer has it too (2026-09-15, evening).** The same per-head
+factor, computed in Sol's preprocess from the call's own q/k and applied
+inside its pooled, Q and K quantizers with the routing threshold left in
+the unbalanced space, is `comfy_kitchen.sol_attn(..., qk_balance=True)` on
+the owner's kitchen fork (`h3-build`), exposed by the Sol node's
+`qk_balance` widget, off. Graded on the block-49 capture it removes about
+twice what the weights fold removes from Sol's INT8 term and is neutral
+on blocks 0 and 32 (`bench/results/2026-09-15_channel_balance_kernel_*.json`).
+With it, every INT8 step on the graph is balanced; the witness that decides
+whether the bf16 tail is still needed is `h3_probe_t2v_levers`
+(`docs/h3_quant_policy.md`).
 
 ## 9. Records
 

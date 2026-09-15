@@ -2,7 +2,7 @@
   "1": {
     "class_type": "UNETLoader",
     "inputs": {
-      "unet_name": "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
+      "unet_name": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
       "weight_dtype": "default"
     }
   },
@@ -125,7 +125,7 @@
       ],
       "frame_rate": 24.0,
       "loop_count": 0,
-      "filename_prefix": "Video/h3_r2v_swap",
+      "filename_prefix": "Video/h3_probe_t2v_levers",
       "format": "video/h264-mp4",
       "pix_fmt": "yuv420p",
       "crf": 19,
@@ -138,13 +138,13 @@
   "27": {
     "class_type": "MiniMaxH3Resolution",
     "inputs": {
-      "shape": "standard",
-      "shape.standard_resolution": "1024x768  4/3  768 tok/frame  0.58x",
+      "shape": "wide",
+      "shape.wide_resolution": "1344x768  7/4  1008 tok/frame  1.00x",
       "length": 345
     }
   },
   "5": {
-    "class_type": "MiniMaxH3ReferenceConditioning",
+    "class_type": "MiniMaxH3Conditioning",
     "inputs": {
       "clip": [
         "2",
@@ -154,15 +154,7 @@
         "3",
         0
       ],
-      "audio_vae": [
-        "4",
-        0
-      ],
-      "references": [
-        "51",
-        0
-      ],
-      "prompt": "subject_definitions:\n<Subject 1> is the character whose complete visual identity -- face, facial structure, eyes, skin tone, hair style and colour, body proportions, and overall appearance -- comes exclusively from <Picture 1>. Their body motion, posture, gestures, head movements, timing, and physical performance come from the original character in <Video 1>.\n<Picture 1> supplies subject identity only. It does not supply lighting, exposure, colour grade, background, camera angle, pose, framing, or scene composition.\n<Audio 1> is the synchronized audio track of <Video 1> and is reused in the target video.\n<Video 1> is the source video for the target video edit. It supplies the camera path, framing, background, environment, lighting, composition, action timing, and the original character's body motion. It does not supply the face or identity.\n\nsummary:\n[video editing + reference generation + audio reuse] The target video is an edited version of <Video 1>, replacing its original character with <Subject 1> from <Picture 1> while preserving the camera movement, environment, and audio.\n\nretention_analysis:\n<Subject 1> (appears in [Shot 1]): fully_preserved - facial structure, identity, hair, and appearance from <Picture 1> are retained.\n<Audio 1>: fully_copy - <Audio 1> is reused 1:1 as the target video's complete final audio track.\n<Video 1> (environment and motion): partially_preserved - the setting, lighting, and camera composition are retained, and the original character's actions are transferred to <Subject 1>.\n\ndetailed_description:\nThe target video is in a cinematic live-action style.\n[Shot 1] The scene maintains the exact environmental details, lighting, and composition of <Video 1>. Within this space, <Subject 1> performs the exact movements and actions of the original character from <Video 1>, executing every gesture, step, and head turn frame for frame, while the face, hair, and build stay those defined by <Picture 1>.\n\noverall_soundscape:\nThe ambience of <Audio 1> continues under the shot.\n\nnon_diegetic_music:\nN/A",
+      "prompt": "integrated_multimodal_description:\n[Shot 1] Live-action, cinematic, handheld, shallow depth of field. A medium-wide shot frames a covered market aisle in late morning, crates of citrus stacked along a wooden stall front, dust turning slowly in a shaft of light from the roof vents and a hanging brass scale swaying gently at the edge of frame. A stallholder in her fifties with a warm, gravelly alto (S1) sets a crate on the counter, wipes both palms down her apron, and says: <d>[English] Last of the good ones. After this it is all imports.</d> Her lips close and she pushes the crate forward with the heel of her hand. The camera trucks left as a young porter, a lean man in his twenties with a quick, bright tenor (S2), steps into frame behind her shoulder. [Shot 2] At 00:04.500, the shot cuts to a close shot over the porter's shoulder as he squats, takes the crate at its corners, and lifts it to his chest. The porter (S2) answers: <d>[English] Then I will take two.</d> His lips close and he shifts the weight onto his hip, and coins clatter one after another into a metal tin on the counter. [Shot 3] At 00:09.000, the camera holds a static shot, wide on the aisle, as he carries both crates away between the stalls, shoppers stepping aside around him, while the stallholder turns back and stacks fruit into a pyramid with both hands, her lips closed.\noverall_soundscape:\nLoose crowd murmur under a high roof, wooden crates knocking hollow as they stack, coins dropping one by one into a metal tin, boot steps on swept concrete, and the dry crackle of paper bags shaken open.\n\nnon_diegetic_music:\nN/A",
       "width": [
         "27",
         0
@@ -175,68 +167,27 @@
         "27",
         2
       ],
-      "video_policy": "comfy",
-      "image_policy": "comfy"
-    }
-  },
-  "15": {
-    "class_type": "LoadImage",
-    "inputs": {
-      "image": "1-man.png"
+      "canvas": "explicit"
     }
   },
   "50": {
-    "class_type": "MiniMaxH3AppendRefImage",
+    "class_type": "MiniMaxH3ChannelBalance",
     "inputs": {
-      "image": [
-        "15",
+      "model": [
+        "1",
         0
       ],
-      "size_policy": "max",
-      "size_policy.dit_short_edge": 2048,
-      "size_policy.allow_upscale": false,
-      "qwen_view": "shared"
-    }
-  },
-  "28": {
-    "class_type": "VHS_LoadVideo",
-    "inputs": {
-      "video": "h3ref_diner_monologue_25fps_14s.mp4",
-      "force_rate": 24.0,
-      "custom_width": 0,
-      "custom_height": 0,
-      "frame_load_cap": 345,
-      "skip_first_frames": 0,
-      "select_every_nth": 1,
-      "format": "AnimateDiff"
-    }
-  },
-  "51": {
-    "class_type": "MiniMaxH3AppendRefVideo",
-    "inputs": {
-      "frames": [
-        "28",
-        0
-      ],
-      "video_info": [
-        "28",
-        3
-      ],
-      "soundtrack": [
-        "28",
-        2
-      ],
-      "references": [
-        "50",
-        0
-      ]
+      "balance": "loud blocks (from weights)",
+      "blocks": "49",
+      "alpha": 0.5,
+      "loud_share": 0.15
     }
   },
   "19": {
     "class_type": "MiniMaxH3SigmaShift",
     "inputs": {
       "model": [
-        "1",
+        "50",
         0
       ],
       "shift_video": 12.0,
@@ -250,7 +201,7 @@
         "19",
         0
       ],
-      "mode": "auto",
+      "mode": "fp8++ balanced",
       "patch_token_refiner": false,
       "head_chunks": 1
     }
@@ -274,7 +225,7 @@
       "verbose": false,
       "dense_blocks": "",
       "token_aug_blocks": "",
-      "qk_balance": false
+      "qk_balance": true
     }
   },
   "23": {

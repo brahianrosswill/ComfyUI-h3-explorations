@@ -223,7 +223,8 @@ is that `bench/check_solattn_correctness.py` **hard-requires** it and
 `comfy_kitchen.sol_attn` **ships in the stock wheel ComfyUI pins**, since
 the pin reached `comfy-kitchen==0.2.33` (the tag's `comfy_kitchen/__init__.py`
 exports `sol_attn` and `sol_attn_chunked`); the pin is `0.2.34` as of
-2026-09-15 and the installed build is `0.2.34+sol.2aff3c5`, see below. A local
+2026-09-15 and the installed build is `0.2.34+sol.5284cfb` (the qk_balance
+commits on top of the blk_cnt ones, installed the same evening), see below. A local
 build is needed here for `blk_cnt`, the route observer's out-parameter,
 which upstream does not carry (and, since 2026-09-15, for `qk_balance`, the
 in-quantizer channel rebalancing, likewise ours): `bench/check_sol_kernel.py`'s `observable` case
@@ -240,7 +241,8 @@ pad/norm, fp16-accumulate conv3d and GEMM, int8 residual epilogue), PR 165
 (`compress-mode=size` for the CUDA build) and an eager `apply_rope_split_half1`
 optimization. The build branch was rebased onto the tag per the script's
 recipe, the old tip kept as `archive/h3-build-0.2.33`, and the six `blk_cnt`
-commits reapplied clean; the installed build is `0.2.34+sol.2aff3c5`. Nothing
+commits reapplied clean; that build was `0.2.34+sol.2aff3c5`, superseded the
+same evening by `0.2.34+sol.5284cfb` (`bench/results/2026-09-15_kitchen_0234_qk_balance_install.json`). Nothing
 on kijai's branches was left behind: on the CUDA and sage-attention files every
 one of them (`sol_exact_pquant`, `sol_token_aug_main`, `minimax_vae`) is
 identical to the tag, their remaining diffs being an older `v0.2.32` base.

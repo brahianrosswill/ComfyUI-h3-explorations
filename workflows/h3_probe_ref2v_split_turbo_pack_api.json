@@ -283,7 +283,8 @@
       "pooled_tail": true,
       "verbose": false,
       "dense_blocks": "",
-      "token_aug_blocks": ""
+      "token_aug_blocks": "",
+      "qk_balance": false
     }
   },
   "23": {
@@ -369,7 +370,8 @@
       "pooled_tail": true,
       "verbose": false,
       "dense_blocks": "",
-      "token_aug_blocks": ""
+      "token_aug_blocks": "",
+      "qk_balance": false
     }
   },
   "43": {

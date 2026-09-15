@@ -1,0 +1,33 @@
+{
+  "capture": "qkv_L104361_S104361_b32_s15.pt",
+  "block": 32,
+  "step": 15,
+  "tau": 1.0,
+  "heads_measured": 8,
+  "alpha": 0.5,
+  "source": "weights",
+  "input_rounding_rel_l2": 0.0017601183294531167,
+  "eager_balanced_vs_plain_rel_l2": 0.0026848290132565986,
+  "rows": {
+    "plain": {
+      "sparsity_l2": 0.09121815908380047,
+      "quant_l2": 0.012116909634594629,
+      "total_l2": 0.0917933303553009,
+      "sage_fp8pp_l2": 0.01353958253052137
+    },
+    "balanced": {
+      "sparsity_l2": 0.09120750440420912,
+      "quant_l2": 0.01174418346032194,
+      "total_l2": 0.09180205531738113,
+      "sage_fp8pp_l2": 0.013549030105836263
+    },
+    "kernel": {
+      "sparsity_l2": 0.09121815908380047,
+      "quant_l2": 0.012116909634594629,
+      "total_l2": 0.0917933303553009
+    }
+  },
+  "kernel_graded": "0.2.34+sol.b36ed9a (kitchen fork branch h3-qk-balance, wheel unpacked beside the venv, not installed at grade time)",
+  "kernel_served": "0.2.34+sol.2aff3c5",
+  "note": "rows plain/balanced are the weights fold (ChannelBalance node); row kernel is sol_attn(qk_balance=True) on unmodified inputs"
+}

@@ -24,8 +24,8 @@ placeholder, not a recommendation.
 
 | blocks | attention | status | evidence |
 |---|---|---|---|
-| 0-44, 46, 47 | INT8 (sage per-thread with `qk_balance`; Sol as shipped) | proposed | flat K-norm weights; balancing gated off per head where nothing is loud |
-| 45, 48, 49 | bf16 (`MiniMaxH3ExactBlocks`) until Tier 1/2 close the gap; then INT8 balanced | proposed, one scene one seed | market scene 2026-09-15: shipped morphs, balanced does not, exact tail best |
+| 0-44, 46, 47 | INT8 (sage per-thread with `qk_balance`; Sol with `qk_balance`) | proposed | flat K-norm weights; both gates shut per head where nothing is loud (blocks 0 and 32 measured neutral, `bench/results/2026-09-15_channel_balance_kernel_b{0,32}_s15.json`) |
+| 45, 48, 49 | bf16 (`MiniMaxH3ExactBlocks`) until the all-levers witness matches it; then INT8 balanced | proposed, two scenes two seeds | market and diner 2026-09-15 (`bench/results/2026-09-15_block49_*`): shipped morphs, balanced does not, exact tail best; Sol's own factor graded on block 49 (`..._kernel_b49_s15.json`), witness render pending |
 
 ## The policy table (linears)
 
@@ -106,3 +106,14 @@ Not today: Tier 2 and Tier 3.
   the policy graph and a new all-levers witness (`h3_probe_t2v_levers`)
   turn it on. Not yet graded on captures (the card was rendering the diner
   batch); not installed; not merged to `h3-build`.
+- 2026-09-15, evening: Tier 1 graded and installed. On the block-49 capture
+  Sol's own factor removes about twice what the weights fold removes from
+  its INT8 term, and it is neutral on blocks 0 and 32 where the gate is
+  shut (`bench/results/2026-09-15_channel_balance_kernel_b{49,0,32}_s15.json`;
+  the fork's Sol suite on the wheel: only the pre-existing top-k ties case
+  fails). Diner batch at two seeds replicated the market ranking
+  (`bench/results/2026-09-15_block49_diner_batch.md`), and the two free
+  levers cost no measurable wall time. `h3-build` fast-forwarded to the
+  branch, wheel installed through `vendor/rebuild_kernel.sh`, server
+  restarted, graphs regenerated. Next: the all-levers witness against
+  exact tail; if it matches, the bf16 row goes.

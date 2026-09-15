@@ -1063,6 +1063,7 @@ def _apply_patch(model, *, tau, start_percent, end_percent, min_tokens,
     # this node passes. Patch time is the only place that can be said -- see
     # `_require_kernel`.
     _require_kernel()
+    import inspect   # a later block in this function imports it too, which makes the name local here
     if qk_balance and "qk_balance" not in inspect.signature(_ck.sol_attn).parameters:
         # Same shape as the token_aug check below: raised from the dispatch
         # path it would become a silent dense render.
@@ -1281,23 +1282,6 @@ class MiniMaxH3SolAttn(io.ComfyNode):
                                      "calls are far above either. Drop it to 0 only "
                                      "if you deliberately want the refiner blocks "
                                      "routed too."),
-                io.Boolean.Input("qk_balance", optional=True, default=False,
-                                 tooltip=(
-                                     "Rebalance q/k channels inside the kernel's INT8 "
-                                     "quantizers, per head and per call. On MiniMax H3 "
-                                     "the last block carries most of its K energy in "
-                                     "four channels, and the kernel's one scale per key "
-                                     "row leaves the other channels a few levels; this "
-                                     "scales q up and k down on exactly those channels, "
-                                     "which changes no attention score in exact "
-                                     "arithmetic and leaves the routing threshold "
-                                     "alone. Heads without loud channels are untouched. "
-                                     "Off by default: an experiment under docs/SOLATTN.md's "
-                                     "decision standard, graded on captures by "
-                                     "bench/grade_channel_balance.py. Needs a kernel "
-                                     "build that takes qk_balance; the node refuses at "
-                                     "patch time otherwise."),
-                                 ),
                 io.Combo.Input("sink_conditioning",
                                options=list(SINK_CONDITIONING_MODES),
                                default="exact_kv_and_rows",
@@ -1355,6 +1339,27 @@ class MiniMaxH3SolAttn(io.ComfyNode):
                                         "run on the fallback backend, which on these "
                                         "graphs is sage, not exact attention -- use "
                                         "MiniMaxH3ExactBlocks for that."),
+                # Declared LAST on purpose (2026-09-15): bench/check_node_ids.py
+                # matches widgets_values by index against the declared order,
+                # and the first placement (after token_aug_blocks, mid-list)
+                # re-pointed every later value in every saved graph.
+                io.Boolean.Input("qk_balance", optional=True, default=False,
+                                 tooltip=(
+                                     "Rebalance q/k channels inside the kernel's INT8 "
+                                     "quantizers, per head and per call. On MiniMax H3 "
+                                     "the last block carries most of its K energy in "
+                                     "four channels, and the kernel's one scale per key "
+                                     "row leaves the other channels a few levels; this "
+                                     "scales q up and k down on exactly those channels, "
+                                     "which changes no attention score in exact "
+                                     "arithmetic and leaves the routing threshold "
+                                     "alone. Heads without loud channels are untouched. "
+                                     "Off by default: an experiment under docs/SOLATTN.md's "
+                                     "decision standard, graded on captures by "
+                                     "bench/grade_channel_balance.py. Needs a kernel "
+                                     "build that takes qk_balance; the node refuses at "
+                                     "patch time otherwise."),
+                                 ),
             ],
             outputs=[io.Model.Output()],
         )
