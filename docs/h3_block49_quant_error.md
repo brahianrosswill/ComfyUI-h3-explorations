@@ -1,6 +1,7 @@
 # Block 49: why INT8 attention loses accuracy on H3's last blocks, and what has been done about it
 
-Last updated: 2026-09-15 (moved from `docs/research/` and revised). Written from the sage fork's session at the owner's
+Last updated: 2026-09-15, evening (revised end to end after the kernel-side
+fix landed in both kernels and three scenes were watched). Written from the sage fork's session at the owner's
 request. Model throughout: **MiniMax H3, the pruned int8 convrot fl2va
 checkpoint** (`h3_config.MODELS["unet_fl2va"]`), the one the capture set was
 rendered with and the one every graph here ships; the weights finding holds
@@ -30,11 +31,14 @@ LoRA too: 208 modules, qkv/out/fc1/fc2 only, read 2026-09-15). Untouched:
 anyone on full-precision attention (flash or SDPA in bf16), which has no
 scale to share.
 
-**It is a quality effect, not a correctness one.** Renders complete and are
-plausible. The error lands on the last block's sharp read of the text rows
-(section 5), so if it is ever visible it will be as prompt adherence at
-the output head, not as texture. Whether it is visible is unknown, for
-everyone, not only here.
+**It is a quality effect, not a correctness one, and it is visible.**
+Renders complete and are plausible. The error lands on the last block's
+sharp read of the text rows (section 5), and that is where it shows: on
+three scenes (market, diner at two seeds, restaurant kitchen) every viewer
+ranked the unrebalanced default below the rebalanced arms without being
+told what to look for, on morphing objects and people, a doubled and
+misspelled sign, a chef appearing from nothing (section 6). Not blind,
+not a protocol; consistent in direction on every look.
 
 **An outside runtime treats the tail as sensitive too** (read 2026-09-15 by
 the TaoMate session, `coderef/TaoMate-H3`): TaoLiveAIGC's TaoMate-H3 runs
@@ -50,51 +54,52 @@ sensitivity and the attention-side one share a root is not established.
 
 **It is fixable where the quantizers are, and this box owns both.** The
 identity `q . k == (q * f) . (k / f)` lets K's loud channels be rebalanced
-against Q before quantization at no cost to the attention math. Two forms
-exist, both off by default:
+against Q before quantization at no cost to the attention math. Three
+forms exist, all off by default as of this writing; "rebalanced" in the
+records means all three on:
 
 | lever | where | reaches | block 49 INT8 error | cost |
 |---|---|---|---|---|
-| `MiniMaxH3ChannelBalance` (this pack) | per-channel factor from the checkpoint's norm weights, folded into `q_norm`/`k_norm` at load | sage steps and Sol steps | Sol -13%, sage -7% (8 heads) | none at render time |
-| `qk_balance` (sage fork v0.7.19) | per-head factor from per-call channel norms, inside the per-thread quantizer, gated per head | sage steps only | sage -23% (all heads) | +0.7% call, no memory |
+| `MiniMaxH3ChannelBalance` (this pack) | per-channel factor from the checkpoint's norm weights, folded into `q_norm`/`k_norm` at load; head-shared, RoPE-pair-equal | any INT8 kernel, ours or not | Sol -13%, sage -7% (8 heads) | none at render time |
+| `qk_balance` (sage fork v0.7.19; the Sage node's `fp8++ balanced` mode) | per-head factor from per-call channel norms, inside the per-thread quantizer, gated per head | sage steps | sage -23% (all heads) | +0.7% call, no memory |
+| `qk_balance` (kitchen fork `h3-build`, served as `0.2.34+sol.5284cfb`; the Sol node's `qk_balance` widget) | the same per-head factor in Sol's preprocess, inside its pooled, Q and K quantizers, threshold left unbalanced | Sol's routed steps | Sol -27% (8 heads) | one extra read of q per call; none measurable per render |
 
-Neither reaches the rest: with the best lever on, block 49 still sits at
+None reaches the rest: with every lever on, block 49 still sits at
 several times block 0, because the block's attention shape amplifies
-whatever rounding remains, and only finer K scaling inside a kernel touches
-that.
+whatever rounding remains, and a per-channel factor cannot fix a spike
+that lives in one token's row. Only finer K scaling inside a kernel
+touches that, and on the renders it shows as a small remaining edge for
+bf16 attention on the three loud blocks (section 6).
 
 **Where this stands, and what it would take to call it solved:**
 
 1. *Diagnosed.* Closed. Sections 1-5 are the evidence; the checkpoint scan
    and attention-target record is `bench/results/2026-09-14_block49_checkpoint_scan_and_targets.txt`.
-2. *Two levers built and measured on captures.* Closed for what they are.
-   Nothing is switched on, so a render today is exactly what it was before
-   this page existed.
-3. *Open: is any of it visible?* First look in section 6 (one scene, one
-   seed, two viewers: the scene's known morph failure absent from both
-   treated arms, the ceiling arm best with behaviours never seen from this
-   prompt before; direction as predicted, a second scene queued). The
-   blind multi-scene comparison in
-   `docs/SOLATTN.md`'s decision standard, with one probe arm wired to the
-   node (inputs in the generator's hands: `balance` "loud blocks (from
-   weights)", alpha 0.5) and one with the fork's `qk_balance` on, against
-   the unchanged graph. The only instrument for this question.
-4. *Open: Sol's quantizer.* `quant_k_rows` / `quant_q_rows` in the kitchen
-   fork do not take the per-head factor; the routed steps get only the
-   weights fold. The same factor into those two functions, sharing the
-   key-mean pass they already do, is the remaining half; `bench/grade_channel_balance.py`
-   grades it. Kitchen build as of 2026-09-15 evening is `0.2.34+sol.5284cfb`
-   (earlier that day `0.2.34+sol.2aff3c5`, without Sol's `qk_balance`)
-   (`docs/sol_upstream.md`), which changed nothing on this axis.
+2. *Three levers built, measured on captures, served.* Closed for what
+   they are. All three are still off in the default graph, so a default
+   render today is exactly what it was before this page existed; the
+   probe graphs (`h3_probe_t2v_levers`, `h3_probe_t2v_policy`) turn them on.
+3. *Visible, not yet blind.* Section 6: three scenes, two seeds on one of
+   them, four viewers between them, the default ranked last every time on
+   prompt-adherence failures (morphs, text). Rebalanced against
+   rebalanced-plus-bf16-tail is a close call ("cannot tell them apart",
+   "super close, maybe faces", one viewer on hands and coin legibility).
+   The blind multi-scene comparison in `docs/SOLATTN.md`'s decision
+   standard has not been run; the flip of the default waits on the
+   owner's call, with the freeze session told first.
+4. *Sol's quantizer.* Closed 2026-09-15 evening: the per-head factor is in
+   Sol's preprocess on the kitchen fork, graded on captures and installed
+   (`bench/results/2026-09-15_kitchen_0234_qk_balance_install.json`).
 5. *Open, and not ours alone:* the mechanism, the checkpoint scan and the
    fold numbers are a contribution the kitchen maintainers could act on
    for every user; the sage-side change is one commit anyone forking sage
    could take. Neither has been sent anywhere.
-6. *Deeper, not started:* finer K scaling inside the kernels (per-channel
-   groups, or splitting the loud channels into their own scale), the LLM
-   world's per-channel key quantization done in an attention kernel. Real
-   kernel work on either side, uncertain payoff beyond the fifth-to-third
-   already recoverable.
+6. *Deeper, not started:* finer K scaling inside the kernels (a second
+   scale group for the loud channels, two accumulators), the LLM world's
+   per-channel key quantization done in an attention kernel; Tier 2 in
+   `docs/h3_quant_policy.md`. Real kernel work on either side. Its payoff
+   is the edge bf16 still holds over the rebalanced arms, which three
+   scenes put at "small, takes a careful look".
 
 ## The answer in four sentences
 
@@ -290,7 +295,15 @@ the token-routing loser, is the heaviest text reader of the four at 38%.
 So the block-49 error is concentrated on the prompt read, not on a sink
 token and not on video-to-video attention.
 
-## 6. First look at visibility, 2026-09-15: one scene, one seed, two viewers
+## 6. Visibility, 2026-09-15: three scenes, and the pair that decides the tail
+
+**On the arm names.** "Shipped" below and in the records means the owner's
+default text-to-video graph on this box on this date
+(`h3_text_to_video_api.json`: sage `fp8++` plus Sol at the recipe in
+`workflows/h3_config.py`), not a released setting and not anyone else's
+default; the later records call it `default`.
+
+### 6a. The first look: market scene, one seed, two viewers
 
 The three probe graphs (`h3_text_to_video`, `h3_probe_t2v_balanced`,
 `h3_probe_t2v_exact_tail`; same prompt, seed 730451892, 345 frames at
@@ -335,23 +348,79 @@ that the porter morphs, and in the two treated arms he does not. The
 "never seen before" behaviours in the ceiling arm are the strongest single
 claim here and the one most in need of a second seed. The audio difference
 is unexplained by the mechanism (the last block's attention reads the
-text rows, and audio rows are 1% of the keys); real or not, it is a
-question, not a finding. Next: the same three arms on a second scene at two
-seeds (`prompt_bank/t2va_diner_breakup.txt`), queued behind another
-session's batch as this was written.
+text rows, and audio rows are 1% of the keys); it was measured later the
+same day and closed as take-to-take variation (6c).
+
+### 6b. Second scene, two seeds: the diner
+
+The same three arms on `prompt_bank/t2va_diner_breakup.txt` at seeds
+730451892 and 20260915 (`bench/results/2026-09-15_block49_diner_batch.md`).
+The owner and other viewers, unprompted, on the first seed: the default
+last ("a chef morphs out of thin air at the end"; the door sign reads
+"TUE SATR DINER" and appears twice), the rebalanced arm second (the sign
+legible), the bf16 tail best "in subtle ways". Wall time from the server
+history: the rebalanced arm within a second of the default on both seeds,
+the bf16 tail about a sixth more. Same ranking as the market scene, so the
+direction holds on a second scene and a second seed.
+
+### 6c. The pair that decides the tail: rebalanced vs rebalanced + bf16
+
+With Sol's own factor served (section 8), the open question became whether
+the bf16 tail still buys anything once every lever is on. Two graphs
+isolate exactly that: `h3_probe_t2v_levers` (balance node + sage balanced
++ Sol balanced, INT8 everywhere) and `h3_probe_t2v_policy` (the same plus
+blocks 45/48/49 on bf16). Rendered on the market prompt and on
+`prompt_bank/t2va_restaurant_kitchen.txt` at seed 730451892, with the
+default alongside (`bench/results/2026-09-15_block49_kitchen_batch.md`);
+captioned three-band stacks of every scene exist beside the singles
+(`bench/stack_labeled_clips.py`).
+
+Three readings of the market pair, unprompted: the owner could not tell
+them apart; one viewer preferred the bf16 tail on "small hands" and
+"better coins"; a third called it "super close, maybe faces a tiny bit
+less distorted, nothing jumping out". The coin claim was checked on
+frames at 0.2 s spacing: both arms render the coin drop; the bf16 arm's
+coins are larger, slower and in an open tin, the rebalanced arm's one
+small coin is fast and the tin is lidded. A legibility difference, not an
+object left undecided (a first reading said "undecided"; corrected in the
+record the same evening). Against the unprompted separation of the
+default from everything else, this is a much smaller gap.
+
+Measured on the market pair: loudness differs (the bf16 arm about four
+and a half LU louder, its peak at clipping), but the six diner clips sit
+within two LU of each other with no arm louder, so loudness is the take,
+not the tail, and the morning's audio question closes. Motion statistics
+are comparable; every frame differs, as any numerics change gives.
+
+**Where that leaves the policy.** Rebalanced is free (wall time within a
+second of the default on every scene) and ranked above the default by
+every viewer on every scene: the candidate default. The bf16 tail is a
+small remaining edge at about a sixth more render time: the opt-in
+best-take setting. Closing that edge is kernel granularity work, not more
+rescaling (`docs/h3_quant_policy.md`).
 
 ## 7. What this does not establish
 
-- Whether a fifth less INT8 error at the last block is visible in a clip.
-  Nothing here is perceptual; the blind comparison in `docs/SOLATTN.md`'s
-  decision standard is the only instrument for that.
+- A blind verdict. Section 6 is consistent in direction across three
+  scenes and four viewers, but every look was on labelled originals in a
+  known order; the blind comparison in `docs/SOLATTN.md`'s decision
+  standard has not been run.
+- Anything about attention paths that are not INT8 with a shared per-row
+  scale. fp8 q/k attention gives each element its own exponent, so the
+  starving cannot happen the same way, but fp8 still places a per-block
+  range with three mantissa bits; expected much smaller, unmeasured. And
+  bf16 attention on the loud blocks is the best arm measured, not a
+  measured zero: nothing here compares it to fp32.
+- Anything outside attention. The loud channels are created by the
+  k_norm gain after the qkv projection, so the convrot INT8 linears never
+  see them; that is read from the model code, not measured.
 - Whether blocks 45 and 48 behave like 49 under balancing. The weights say
   they carry the defect; no capture exists to grade them.
-- The remaining four-fifths. After balancing, block 49 still sits at several
-  times block 0, and section 3 says why: the attention shape is the
-  amplifier, and no input-side rescale changes it. Finer K granularity in
-  the kernel (per-channel or per-32-token scales) is the lever for that, and
-  it is a kernel change on either side, not a weights fold.
+- The remainder. After balancing, block 49 still sits at several times
+  block 0, and section 3 says why: the attention shape is the amplifier,
+  and no per-channel rescale can fix a spike in one token's row. Finer K
+  granularity in the kernel is the lever for that, and it is a kernel
+  change on either side, not a weights fold.
 
 ## 8. The kernel-side fix, built 2026-09-15: `qk_balance` in the sage fork
 
@@ -422,20 +491,16 @@ more accurate than the accurate path without it.
   of a DiT, in the dynamic per-call form rather than the static
   calibrated one.
 
-### What it does not yet cover
+### What it covers now, and what is still open
 
-- **Sol's steps.** The routed steps run Sol's kernel, whose quantizer
-  (`quant_k_rows` / `quant_q_rows` in the kitchen fork) does not have the
-  factor yet. Until it does, `qk_balance` reaches only the sage steps:
-  the dense window, every `dense_blocks` entry, and the token-refiner
-  calls. This node's weights fold is the form that reaches Sol today, at
-  the smaller, head-shared gain (section 4). Putting the same factor into
-  Sol's quantizer, sharing the key-mean pass it already does, is the
-  remaining half.
-- **Whether it is visible.** Off by default in the fork. Turning it on
-  changes numerics on every served render, so it wants the blind
-  comparison this repo requires of a default, and the freeze session
-  told first.
+- **Sol's steps: covered since the evening of 2026-09-15.** The same
+  factor lives in Sol's preprocess on the kitchen fork (below), so every
+  INT8 step on the graph can be balanced: sage's dense window and
+  refiner calls, Sol's routed steps.
+- **Visible: yes, on three scenes (section 6); blind: not yet.** All three
+  levers are still off in the default graph. Turning them on changes
+  numerics on every served render, so the flip is the owner's call and
+  the freeze session is told first.
 
 **Prior art.** The rescale is SmoothQuant's migration pointed at the
 attention product instead of a linear layer; what is and is not new in that
@@ -449,9 +514,11 @@ the owner's kitchen fork (`h3-build`), exposed by the Sol node's
 `qk_balance` widget, off. Graded on the block-49 capture it removes about
 twice what the weights fold removes from Sol's INT8 term and is neutral
 on blocks 0 and 32 (`bench/results/2026-09-15_channel_balance_kernel_*.json`).
-With it, every INT8 step on the graph is balanced; the witness that decides
-whether the bf16 tail is still needed is `h3_probe_t2v_levers`
-(`docs/h3_quant_policy.md`).
+With it, every INT8 step on the graph is balanced. The witness pair
+(`h3_probe_t2v_levers` against `h3_probe_t2v_policy`, section 6c) says the
+bf16 tail keeps a small edge; the install record is
+`bench/results/2026-09-15_kitchen_0234_qk_balance_install.json`, and the
+kernel's off path was checked bit-identical to the previous wheel.
 
 ## 9. Records
 
@@ -464,3 +531,10 @@ whether the bf16 tail is still needed is `h3_probe_t2v_levers`
   (2026-08-20) and `bench/results/2026-08-20_head_magnitudes*.json`;
   `docs/SOLATTN.md` "The defaults, re-read against the sage-side error
   records, 2026-09-14"; `bench/results/2026-09-14_channel_balance_*.json`.
+- 2026-09-15: `bench/results/2026-09-15_channel_balance_kernel_b{49,0,32}_s15.json`
+  (Sol's own factor graded), `2026-09-15_kitchen_0234_qk_balance_install.json`
+  (the served wheel), `2026-09-15_block49_market_feedback.md`,
+  `2026-09-15_block49_diner_batch.md`, `2026-09-15_block49_kitchen_batch.md`
+  (the viewers' words, wall times, loudness, the stacks);
+  `docs/h3_quant_policy.md` (the policy and its status log);
+  `docs/research/smoothquant_for_attention_qk.md` (prior art).
