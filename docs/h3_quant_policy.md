@@ -126,3 +126,11 @@ Not today: Tier 2 and Tier 3.
   exact-tail render). Unscored at the time of writing; the question is
   whether `levers` matches `exact_tail` on the porter and the crate. If it
   does, the bf16 row above goes and the policy is "levers on".
+- 2026-09-15, evening: the owner is showing the Tier 1 pair to viewers as
+  clip 1 = `h3_probe_t2v_levers_00001-audio.mp4` (every free lever, INT8
+  everywhere) and clip 2 = `h3_probe_t2v_policy_00001-audio.mp4` (the same
+  plus blocks 45/48/49 on bf16), originals in that order, one question:
+  which is better, or are they the same. The pair isolates exactly one
+  change, the bf16 tail on top of the levers. "Same" or a preference for
+  clip 1 removes the bf16 row; a preference for clip 2 keeps it at about a
+  sixth more wall time.
