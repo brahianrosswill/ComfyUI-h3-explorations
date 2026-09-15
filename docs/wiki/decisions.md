@@ -17,6 +17,17 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-15
 
+- **Two bench manifests and one probe graph retired** (the owner deferred the
+  call to the sage-fork session, which chose it; `531fbab`). Both would re-run as
+  something other than their records: `bench/ladder_arms.json` (rendered
+  2026-09-03, verdict `bench/results/2026-09-04_ladder_2026-09-03_verdict.json`)
+  refuses on its sage-mode patch now that `h3_text_to_video` has no sage node,
+  and `bench/sol_core_ab_arms.json` with `h3_probe_t2v_sol_core` (rendered
+  2026-09-10, no verdict record) would set ours on kitchen against core's node
+  on sage. The four manifests that pointed at the ladder for what each scene
+  tests carry the descriptions inline. **Corrected:** `docs/wiki/next_steps.md`
+  said the core-versus-ours A/B was "BUILT not rendered"; its 2026-09-10 records
+  say it rendered.
 - **Sage out of the default attention chain; Sol's `qk_balance` on** (owner,
   2026-09-15; `28d8ee5`). **Reverses the 2026-09-04 floor decision** ("sage
   always on is the floor", `docs/roadmap.md` forward plan 2026-09-04, quoted
