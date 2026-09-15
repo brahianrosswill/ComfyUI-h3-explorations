@@ -70,7 +70,9 @@ that.
 2. *Two levers built and measured on captures.* Closed for what they are.
    Nothing is switched on, so a render today is exactly what it was before
    this page existed.
-3. *Open: is any of it visible?* The blind multi-scene comparison in
+3. *Open: is any of it visible?* First look in section 6 (one judge, one
+   seed: exact tail read best, direction as predicted, not yet a result).
+   The blind multi-scene comparison in
    `docs/SOLATTN.md`'s decision standard, with one probe arm wired to the
    node (inputs in the generator's hands: `balance` "loud blocks (from
    weights)", alpha 0.5) and one with the fork's `qk_balance` on, against
@@ -285,7 +287,35 @@ the token-routing loser, is the heaviest text reader of the four at 38%.
 So the block-49 error is concentrated on the prompt read, not on a sink
 token and not on video-to-video attention.
 
-## 6. What this does not establish
+## 6. First look at visibility, 2026-09-15: one judge, one seed
+
+The three probe graphs (`h3_text_to_video`, `h3_probe_t2v_balanced`,
+`h3_probe_t2v_exact_tail`; same prompt, seed 730451892, 345 frames at
+1344x768, 16 steps) rendered on the served build and were judged blind as
+audio-muxed singles under neutral names (key
+`internal/blind_keys/block49_singles_2026-09-15.json`), by one person who
+was not the author, before the key was opened. Their notes, then the key:
+
+| clip | note | arm |
+|---|---|---|
+| 1 | the man morphs when he turns around | balanced (channel-balance node + sage `fp8++ balanced`) |
+| 2 | the only one where he ends up carrying two crates, but it morphs in | shipped |
+| 3 | best quality perhaps | exact tail (blocks 45, 48, 49 on bf16 attention) |
+
+In all three the woman changes identity over the clip.
+
+**What this is and is not.** The direction matches the prediction (the
+ceiling arm read as best). It is one judge on one seed, and
+`bench/compare_clip_pixels.py` puts every pair at a large mean absolute
+difference from frame 0 with audio differing throughout: the three are
+three different takes, as any numerics change under one seed produces, so a
+single comparison cannot separate the mechanism from take-to-take luck. The
+identity drift common to all three is a scene-level instability no arm
+touched, and it is the kind of thing that swamps a subtle effect. Nothing
+here is a result yet; it is the first data point and the reason to run more
+seeds before believing any of it.
+
+## 7. What this does not establish
 
 - Whether a fifth less INT8 error at the last block is visible in a clip.
   Nothing here is perceptual; the blind comparison in `docs/SOLATTN.md`'s
@@ -298,7 +328,7 @@ token and not on video-to-video attention.
   the kernel (per-channel or per-32-token scales) is the lever for that, and
   it is a kernel change on either side, not a weights fold.
 
-## 7. The kernel-side fix, built 2026-09-15: `qk_balance` in the sage fork
+## 8. The kernel-side fix, built 2026-09-15: `qk_balance` in the sage fork
 
 ### What was done
 
@@ -382,7 +412,7 @@ more accurate than the accurate path without it.
   comparison this repo requires of a default, and the freeze session
   told first.
 
-## 8. Records
+## 9. Records
 
 - Sage fork `CHANGELOG.md`: decision log "sm89 q/k quantization" and
   "`smooth_k` on H3: graded across the trajectory"; workload intel "MiniMax
