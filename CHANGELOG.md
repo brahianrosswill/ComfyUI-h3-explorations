@@ -4,6 +4,20 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.113.1
+
+### Added
+
+- **`t2va_diner_breakup_short` joins the prompt bank.** It is the owner's
+  diner reveal, extended at their request from two shots to four so it fills
+  the 345-frame take:
+  - the "I'm pregnant!" coffee throw and his scream, as written
+  - a close-up of his stammered reply
+  - a wide walk-out past a silent cook
+
+  It has a manifest entry in `prompt_bank/bank.json` and grades clean at 345
+  frames. `docs/prompt_bank.md` is regenerated. No graph ships it.
+
 ## 0.113.0
 
 ### Added
