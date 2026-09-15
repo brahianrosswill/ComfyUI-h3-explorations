@@ -70,9 +70,11 @@ that.
 2. *Two levers built and measured on captures.* Closed for what they are.
    Nothing is switched on, so a render today is exactly what it was before
    this page existed.
-3. *Open: is any of it visible?* First look in section 6 (one judge, one
-   seed: exact tail read best, direction as predicted, not yet a result).
-   The blind multi-scene comparison in
+3. *Open: is any of it visible?* First look in section 6 (one scene, one
+   seed, two viewers: the scene's known morph failure absent from both
+   treated arms, the ceiling arm best with behaviours never seen from this
+   prompt before; direction as predicted, a second scene queued). The
+   blind multi-scene comparison in
    `docs/SOLATTN.md`'s decision standard, with one probe arm wired to the
    node (inputs in the generator's hands: `balance` "loud blocks (from
    weights)", alpha 0.5) and one with the fork's `qk_balance` on, against
@@ -287,43 +289,44 @@ the token-routing loser, is the heaviest text reader of the four at 38%.
 So the block-49 error is concentrated on the prompt read, not on a sink
 token and not on video-to-video attention.
 
-## 6. First look at visibility, 2026-09-15: one judge, one seed
+## 6. First look at visibility, 2026-09-15: one scene, one seed, two viewers
 
 The three probe graphs (`h3_text_to_video`, `h3_probe_t2v_balanced`,
 `h3_probe_t2v_exact_tail`; same prompt, seed 730451892, 345 frames at
-1344x768, 16 steps) rendered on the served build and were judged blind as
-audio-muxed singles under neutral names (key
-`internal/blind_keys/block49_singles_2026-09-15.json`), by one person who
-was not the author, before the key was opened. Their notes, then the key:
+1344x768, 16 steps) rendered on the served build. They were watched as the
+original files in that order by an outside viewer and then by the owner,
+who has rendered this market scene many times before and knows its habits.
+(A first version of this section mapped the outside viewer's notes through
+a blind-singles key; the viewer had watched the originals in the listed
+order, not the shuffled singles, so two labels were swapped. Corrected the
+same day; the blind singles were never scored.)
 
-| clip | note | arm |
-|---|---|---|
-| 1 | the man morphs when he turns around | balanced (channel-balance node + sage `fp8++ balanced`) |
-| 2 | the only one where he ends up carrying two crates, but it morphs in | shipped |
-| 3 | best quality perhaps | exact tail (blocks 45, 48, 49 on bf16 attention) |
+| arm | what was seen |
+|---|---|
+| 1, shipped (INT8 attention everywhere) | the porter and the crate morph into something else as he turns; the woman's identity drifts. The morph is this scene's known failure: the owner has seen it "often" in prior renders of this prompt |
+| 2, balanced (channel-balance node + sage `fp8++ balanced`) | no morph; he goes straight; "way better" than shipped, nothing wrong with it; the one clip where he ends up carrying two crates, arriving with a slight morph-in |
+| 3, exact tail (blocks 45, 48, 49 on bf16 attention) | best, "in subtle ways": no morph; he sets the crate down on the table edge and then lifts it, rather than one-handing it, which two viewers had never seen this prompt do; he moves around the shoppers walking toward him instead of through them; the weight shift as he carries is more natural; the audio is louder and crisper; possibly less motion blur |
 
-In all three the woman changes identity over the clip.
+The details that separated the arms are the prompt's own: the weight
+shift onto the hip, the coins into the tin, shoppers stepping aside. That
+is the prompt-adherence axis section 5 predicts, and the ranking follows
+the error sizes: shipped worst, the free levers (which remove a fifth to a
+third of the INT8 error on the sage steps and an eighth on Sol's) in the
+middle, the ceiling arm (no INT8 error at those blocks on either kernel)
+best.
 
-A second pass by the same judge, watching in the presented order on a
-phone: the clip where "the dude morphs backwards" (clip 1, balanced) is the
-worst; the last one (clip 3, exact tail) is the best, with no morphing on
-the crate, a more natural weight shift as he carries it, and the crate
-rested on the table edge while he puts the coins in the tin rather than
-held one-handed; possibly less motion blur, "hard to say". The weight
-shift onto the hip and the coins into the tin are both specified in the
-prompt, so the two details that separated the clips are prompt-adherence
-details, which is the axis section 5 predicts.
-
-**What this is and is not.** The direction matches the prediction (the
-ceiling arm read as best). It is one judge on one seed, and
-`bench/compare_clip_pixels.py` puts every pair at a large mean absolute
-difference from frame 0 with audio differing throughout: the three are
-three different takes, as any numerics change under one seed produces, so a
-single comparison cannot separate the mechanism from take-to-take luck. The
-identity drift common to all three is a scene-level instability no arm
-touched, and it is the kind of thing that swamps a subtle effect. Nothing
-here is a result yet; it is the first data point and the reason to run more
-seeds before believing any of it.
+**What this is and is not.** One scene and one seed, so any single
+comparison can still be take-to-take luck, and `bench/compare_clip_pixels.py`
+confirms the three are three different takes from frame 0. What makes it
+more than a coin flip is the prior: the owner's experience of this prompt is
+that the porter morphs, and in the two treated arms he does not. The
+"never seen before" behaviours in the ceiling arm are the strongest single
+claim here and the one most in need of a second seed. The audio difference
+is unexplained by the mechanism (the last block's attention reads the
+text rows, and audio rows are 1% of the keys); real or not, it is a
+question, not a finding. Next: the same three arms on a second scene at two
+seeds (`prompt_bank/t2va_diner_breakup.txt`), queued behind another
+session's batch as this was written.
 
 ## 7. What this does not establish
 
