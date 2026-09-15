@@ -249,7 +249,11 @@ class MiniMaxH3AudioCarryProbe(io.ComfyNode):
             "shift_v": float(getattr(ms, "shift", 12.0)),
             "shift_a": float(getattr(ms, "audio_shift", None) or 3.0),
         }
-        base = m.get_model_object("diffusion_model").forward
+        # The forward, not the module's attribute: an upstream patch on this
+        # clone (the PDD node's capture forward) and the shared backup of an
+        # earlier render's patch both live in `object_patches`, which the
+        # attribute bypasses.
+        base = m.get_model_object("diffusion_model.forward")
         m.add_object_patch("diffusion_model.forward",
                            _make_probe_forward(base, mode, state))
         logger.info(

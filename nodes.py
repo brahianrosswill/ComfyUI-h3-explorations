@@ -224,7 +224,10 @@ class MiniMaxH3SageAttention(io.ComfyNode):
         # OFF, which is only true if the tap rides on a patch. Inert unless
         # `H3_CAPTURE` carries `final=1`, which is every normal render.
         if h3_capture.wants_final():
-            _original_forward = diffusion_model.forward
+            # Through `get_model_object`, so the tap chains onto an upstream
+            # patch on this clone and never onto an earlier render's wrapper
+            # still applied to the shared module.
+            _original_forward = m.get_model_object("diffusion_model.forward")
 
             def _final_tap(*args, **kwargs):
                 out = _original_forward(*args, **kwargs)

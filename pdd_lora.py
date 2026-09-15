@@ -2520,9 +2520,18 @@ class MiniMaxH3PDDLoRA(io.ComfyNode):
                     f"looks entirely normal. Remove the other PDD or head-swap "
                     f"node, or set patch_heads=False here to run this one as "
                     f"the backbone-and-adaln arm.")
+            # The base comes through `get_model_object`, never
+            # `final_layer.forward`. The module is shared by every clone, so
+            # while an earlier render's patcher is still applied its attribute
+            # IS that render's wrapper, and chaining onto it ran the stale
+            # tracker's `update` on every step, one more per re-execution
+            # (found 2026-09-15 as a false boundary warning on an 8-step render
+            # after a 5-step one). `get_model_object` reads the shared backup
+            # instead. `bench/check_pdd_head_selection.py` drives it.
             m.add_object_patch(
                 "diffusion_model.final_layer.forward",
-                _make_final_layer_forward(final_layer.forward, tracker))
+                _make_final_layer_forward(
+                    m.get_model_object("diffusion_model.final_layer.forward"), tracker))
         # OUTSIDE the head gate, deliberately. `transformer_options` reaches the
         # model's forward and no further, and both the block extents and the
         # graph's shift live in it -- so this patch carries `check_shift` as

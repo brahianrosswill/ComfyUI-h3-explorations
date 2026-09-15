@@ -4,6 +4,34 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.116.1
+
+### Fixed
+
+- **A re-executed PDD node no longer chains onto the previous render's
+  head wrapper.** Found by the TaoMate session: an 8-step render that
+  followed a 5-step one warned "nearest of the 6 block boundaries" and
+  logged duplicate `H3_PDD_TRACE` lines.
+  - `pdd_lora.py` built the `final_layer.forward` wrapper on the module's
+    live attribute. While an earlier render's patcher is still applied, that
+    attribute is that render's wrapper, so every step also ran the stale
+    tracker's `update`, one more per re-execution.
+  - The heads decoded from the current tracker, so no render changed. No PDD
+    verdict is affected, because no recorded arm re-executed the node at
+    another step count.
+  - The base now comes through `get_model_object`, which reads the shared
+    backup. `audio_carry_probe.py`'s probe forward and `nodes.py`'s
+    final-layer capture tap had the same read and take the same fix.
+  - The node code is live after the next server restart.
+- **`bench/check_pdd_head_selection.py` gains "a re-executed node does not
+  chain the previous wrapper".**
+  - At runtime, on core's real `ModelPatcher` with an earlier patcher
+    applied, a wrapper on the live attribute runs the stale tracker (the
+    control) and one on `get_model_object` does not.
+  - Statically, all four sites must read their base through
+    `get_model_object`.
+  - Shown red against the pre-fix tree, where it names the three sites.
+
 ## 0.116.0
 
 ### Removed

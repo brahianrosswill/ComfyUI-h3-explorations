@@ -65,9 +65,16 @@ rather than the one the bug was found at.
                        introduces, forwarding the extras verbatim. An object
                        patch REPLACES the method, so a pinned parameter list
                        is a TypeError on step 1 the day core widens it
+  no stale chaining    a PDD node re-executed while an earlier render's
+                       patcher is still applied wraps the base forward, not
+                       that render's wrapper: on core's real ModelPatcher, and
+                       statically at every site that wraps a forward it read
+                       back. Otherwise every later render runs the stale
+                       tracker too, and only a trace log shows it
 
 Needs a checkpoint on disk and ComfyUI importable for `safetensors` for the
-first three; the arity cases need neither and always run. No CUDA, no server,
+first three; the arity cases need neither and always run, and the chaining
+case needs ComfyUI importable for `comfy.model_patcher`. No CUDA, no server,
 no model load -- it reads one small buffer out of a header.
 
 Exit codes: 0 all cases passed, 1 a case failed, 2 passed but a control was
@@ -568,6 +575,173 @@ def refuses_to_stack():
 
 
 
+# --- a re-executed node does not chain the previous render's wrapper ---------
+
+#: Every call that wraps a model forward this pack read back, as (file, callee):
+#: its first argument must be a `get_model_object` call. `nodes.py`'s final-layer
+#: tap is an assignment rather than a factory call and is graded beside these.
+WRAPPED_BASE_SITES = (
+    ("pdd_lora.py", "_make_final_layer_forward"),
+    ("pdd_lora.py", "_make_capture_forward"),
+    ("audio_carry_probe.py", "_make_probe_forward"),
+)
+
+
+def no_stale_chaining():
+    """A PDD node re-executed while an earlier render's patcher is still applied
+    wraps the base forward, not that render's wrapper.
+
+    ## The escaped defect that earns this case
+
+    Found 2026-09-15 by the TaoMate session, as a boundary warning ("nearest of
+    the 6 block boundaries") on an 8-step render that followed a 5-step one, and
+    duplicate `H3_PDD_TRACE` lines. The head wrapper took its base from
+    `final_layer.forward`, the LIVE attribute. Every clone shares that module,
+    and ComfyUI leaves a render's object patches applied until another patcher
+    loads, so the attribute was the previous render's wrapper: every step ran
+    the stale tracker's `update` too, one more tracker per re-execution. The
+    heads still read the current tracker, so no pixel moved and no gate went
+    red. `get_model_object` returns the clone's own patch, then the shared
+    backup of the original, and only then the attribute.
+
+    ## What it grades
+
+    Both halves. At runtime, on core's real `ModelPatcher` and this pack's real
+    `_make_final_layer_forward`: with an earlier patcher applied, a wrapper built
+    on `get_model_object` runs only its own tracker, and one built on the live
+    attribute runs the stale one as well. The second is the control; without it
+    a patcher that never applied would pass. Statically, every site in
+    `WRAPPED_BASE_SITES` and the `nodes.py` tap takes its base through
+    `get_model_object`, so the next edit that reaches for the attribute goes red
+    here rather than in a trace log.
+    """
+    import ast
+
+    def is_gmo(node):
+        return (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "get_model_object")
+
+    # A base passed by name is resolved to what that name is assigned in the
+    # same top-level function: `audio_carry_probe.py` reads it into `base` a line
+    # before the call. The tap in `nodes.py` is graded at its assignment only;
+    # the later call of `_original_forward` is the use, not the read.
+    seen = {site: 0 for site in WRAPPED_BASE_SITES}
+    seen[("nodes.py", "_original_forward")] = 0
+    bad = []
+    for fname in sorted({f for f, _ in seen}):
+        tree = ast.parse((HERE.parent / fname).read_text())
+        parents = {c: n for n in ast.walk(tree) for c in ast.iter_child_nodes(n)}
+
+        def nested(node):
+            up = parents.get(node)
+            while up is not None:
+                if isinstance(up, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+                    return True
+                up = parents.get(up)
+            return False
+
+        for fn in [n for n in ast.walk(tree)
+                   if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and not nested(n)]:
+            assigned = {}
+            for node in ast.walk(fn):
+                if isinstance(node, ast.Assign):
+                    for tgt in node.targets:
+                        if isinstance(tgt, ast.Name):
+                            assigned.setdefault(tgt.id, []).append(node.value)
+            for node in ast.walk(fn):
+                if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                        and (fname, node.func.id) in WRAPPED_BASE_SITES):
+                    seen[(fname, node.func.id)] += 1
+                    arg = node.args[0] if node.args else None
+                    values = (assigned.get(arg.id, []) if isinstance(arg, ast.Name)
+                              else [arg] if arg is not None else [])
+                    if not values or not all(is_gmo(v) for v in values):
+                        bad.append(f"{fname}:{node.lineno} {node.func.id}")
+            if fname == "nodes.py":
+                for value in assigned.get("_original_forward", []):
+                    seen[(fname, "_original_forward")] += 1
+                    if not is_gmo(value):
+                        bad.append(f"{fname}:{value.lineno} _original_forward")
+    missing = sorted(f"{f}:{n}" for (f, n), c in seen.items() if not c)
+    assert not missing, (
+        f"no call or assignment found for {missing}; the site was renamed or "
+        f"removed, and this case has lost its subject rather than passing")
+    assert not bad, (
+        f"a forward is wrapped on a base read from the module attribute: {bad}. "
+        f"While an earlier render's patcher is applied that attribute is its "
+        f"wrapper, so the new one chains onto it. Read the base with "
+        f"`m.get_model_object(\"<path>.forward\")`.")
+
+    try:
+        # Masked, as docs/checks.md runs every check while a render holds the
+        # card: without the CPU flag core's device probe raises on import and
+        # this half would skip on every run that matters.
+        import comfy.cli_args
+        if not torch.cuda.is_available() and "comfy.model_management" not in sys.modules:
+            comfy.cli_args.args.cpu = True
+        import comfy.model_patcher as mp
+    except Exception as exc:                          # noqa: BLE001
+        skipped.append(f"comfy.model_patcher not importable ({exc}), so the "
+                       f"chaining case ran its static half only")
+        return f"{sum(seen.values())} site(s) read their base through get_model_object; runtime half SKIPPED"
+
+    calls = []
+
+    class _Tracker:
+        def __init__(self, name):
+            self.name = name
+
+        def update(self, t_emb, video_seg, audio_seg):
+            calls.append(self.name)
+
+    class _FinalLayer(torch.nn.Module):
+        def forward(self, x, t_emb, video_seg, audio_seg, *extra, **kw):
+            return x
+
+    class _DiffusionModel(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.final_layer = _FinalLayer()
+
+    class _Base(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.diffusion_model = _DiffusionModel()
+
+    key = "diffusion_model.final_layer.forward"
+    cpu = torch.device("cpu")
+    base = mp.ModelPatcher(_Base(), cpu, cpu)
+    earlier = base.clone()
+    earlier.add_object_patch(key, P._make_final_layer_forward(
+        earlier.get_model_object(key), _Tracker("earlier")))
+    earlier.patch_model(load_weights=False)           # the previous render, still applied
+    try:
+        rerun = base.clone()
+        on_backup = P._make_final_layer_forward(rerun.get_model_object(key), _Tracker("rerun"))
+        on_attribute = P._make_final_layer_forward(
+            rerun.model.diffusion_model.final_layer.forward, _Tracker("rerun"))
+        calls.clear()
+        on_attribute("x", "t_emb", (0, 1, 0), (1, 2, 0))
+        via_attribute = list(calls)
+        calls.clear()
+        on_backup("x", "t_emb", (0, 1, 0), (1, 2, 0))
+        via_backup = list(calls)
+    finally:
+        earlier.unpatch_model(unpatch_weights=False)
+    assert via_attribute == ["rerun", "earlier"], (
+        f"the control did not reproduce the defect: a wrapper on the live "
+        f"attribute ran trackers {via_attribute}. Either the earlier patcher "
+        f"never applied or core stopped leaving applied patches on the shared "
+        f"module; either way the assertion below proves nothing")
+    assert via_backup == ["rerun"], (
+        f"a wrapper built on get_model_object ran trackers {via_backup}; only "
+        f"the re-executed node's own may run. The stale one would update on "
+        f"every step of every later render in the session")
+    return (f"{sum(seen.values())} site(s) read their base through get_model_object; "
+            f"with an earlier patcher applied the attribute chains {via_attribute}, "
+            f"get_model_object runs {via_backup}")
+
+
 # --- the tracker's state cannot outlive the schedule it describes ------------
 
 #: `_key` is the ONLY attribute allowed to survive `_adopt`, and it has to.
@@ -825,6 +999,7 @@ check("a second owner of the heads is refused", refuses_to_stack)
 check("the head_strength sentinel is resolved", head_strength_sentinel_is_resolved)
 check("fusing follows the bank device", fusion_follows_the_bank_device)
 check("no state outlives its schedule", no_state_outlives_its_schedule)
+check("a re-executed node does not chain the previous wrapper", no_stale_chaining)
 
 print()
 if failures:
