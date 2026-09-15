@@ -1,11 +1,61 @@
 # Why block 49 has so much quantization error, and what can be done about it
 
-Last updated: 2026-09-14. Written from the sage fork's session at the owner's
+Last updated: 2026-09-15. Written from the sage fork's session at the owner's
 request. Model throughout: **MiniMax H3, the pruned int8 convrot fl2va
 checkpoint** (`h3_config.MODELS["unet_fl2va"]`), the one the capture set was
-rendered with and the one every graph here ships. Capture: the 2026-09-03
+rendered with and the one every graph here ships; the weights finding holds
+for every H3 DiT checkpoint on disk, see "So what". Capture: the 2026-09-03
 base16 t2v set at 1344x768, S=104,361 (395 text, 1,150 audio, 102,816 video
 rows), kept to 2026-09-20.
+
+## So what
+
+**It is in every H3 DiT checkpoint, and it is the base model.** Every full
+DiT file on this box carries the same three lopsided blocks with the same
+channels and the same shares, to the percent: fl2va and ref2va, pruned and
+unpruned, int8 convrot, fp8 scaled, w4a8, all four fl2va/ref2va hybrids,
+and the FastVideo VSA distill. The turbo, SLA and PDD files are LoRAs on
+the projections and carry no norm weights, so every one of them inherits
+it (`bench/results/2026-09-14_block49_checkpoint_scan_and_targets.txt`).
+Pruning, convrot and the quantization format did not cause it and do not
+change it. Any H3 graph anyone runs, on any variant, has this.
+
+**It is learned, not architectural, and it is not a defect.** The loud
+channels are the model's own RMSNorm gain weights on q and k at blocks 45,
+48 and 49. The architecture lets a per-channel gain exist; training put an
+order of magnitude on four channels at the last block and nowhere else.
+The model uses them: those channels are how the last block forms very
+large logits on a few keys.
+
+**It is not an attention sink.** Measured on the capture: no single key
+absorbs the attention (the median head has 7% of queries sharing a top-1
+key, the maximum head 34%), and no key row has an outsized norm (the
+loudest key row per head is within 1.0-1.4x of the median). What is
+different at block 49 is *which* keys get read: the 395 text rows are 0.4%
+of the packed sequence and receive 12% of the attention mass on the median
+head, up to 38% on some heads, against 0.4% at block 0. The last block is
+where video queries read the prompt, sharply. The loud channels are the
+mechanism of that lookup, and the peaky attention in section 3 is its
+shape.
+
+**Why that matters for what you render.** INT8 attention error at the last
+blocks is therefore structural to H3 under any kernel that quantizes K
+with a shared channel scale, which both of ours do, and it lands on the
+text-conditioning read at the output head rather than on texture. That is
+the most plausible place for an attention-quantization effect to show up
+as prompt adherence rather than as grain, if it shows up at all; whether it
+does is the open perceptual question. The fix in section 4 is free,
+generic across every variant because the weights are identical, and
+recovers about an eighth of Sol's INT8 term and a fifth of sage's at block
+49; the deeper fix is finer K scaling inside the kernels.
+
+**Is this normal?** As a pattern, yes: a few high-gain channels late in a
+transformer, concentrated on the layers that do the final conditioning
+read, is the same shape the LLM quantization literature was built around
+(the reason per-channel smoothing methods exist). As a magnitude, block
+49's 16x gain ratio is far outside this model's other 49 blocks, which sit
+at 1.0-1.6x, so within H3 it is exceptional and localized. Nothing here
+says it is unusual for the model class.
 
 ## The answer in four sentences
 
@@ -168,7 +218,28 @@ The sparsity term does not move. So on the shipped stack the fold lowers
 the last block's INT8 term for both the dense-window steps and the routed
 steps, at no cost, and does nothing anywhere the weights are flat.
 
-## 5. What this does not establish
+## 5. What the peaky heads attend to
+
+Measured on the same two cells, 768 sampled query rows per cell over all
+keys, all 56 heads, exact fp32 softmax
+(`bench/results/2026-09-14_block49_checkpoint_scan_and_targets.txt`):
+
+| | block 0 | block 49 |
+|---|---|---|
+| attention mass on the 395 text keys, median head | 0.4% | 12.2% |
+| attention mass on the 1,150 audio keys, median head | 17.7% | 16.2% |
+| queries whose top-1 key is a text key, median head | 4% | 20% |
+| queries sharing one top-1 key (sink signature), median / max head | 2% / 67% | 7% / 34% |
+| loudest key row's norm over the median, worst heads | 1.0-1.1x | 1.0-1.4x |
+
+The four worst heads by K-rounding error (17, 9, 11, 22) put 6-38% of
+their mass on text keys and their top-1 keys are text tokens (rows 0 and
+114) for a tenth to a fifth of queries, with no key-norm outlier. Head 11,
+the token-routing loser, is the heaviest text reader of the four at 38%.
+So the block-49 error is concentrated on the prompt read, not on a sink
+token and not on video-to-video attention.
+
+## 6. What this does not establish
 
 - Whether a fifth less INT8 error at the last block is visible in a clip.
   Nothing here is perceptual; the blind comparison in `docs/SOLATTN.md`'s
@@ -181,7 +252,7 @@ steps, at no cost, and does nothing anywhere the weights are flat.
   the kernel (per-channel or per-32-token scales) is the lever for that, and
   it is a kernel change on either side, not a weights fold.
 
-## Records
+## 7. Records
 
 - Sage fork `CHANGELOG.md`: decision log "sm89 q/k quantization" and
   "`smooth_k` on H3: graded across the trajectory"; workload intel "MiniMax
