@@ -2,7 +2,7 @@
   "1": {
     "class_type": "UNETLoader",
     "inputs": {
-      "unet_name": "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
+      "unet_name": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
       "weight_dtype": "default"
     }
   },
@@ -125,7 +125,7 @@
       ],
       "frame_rate": 24.0,
       "loop_count": 0,
-      "filename_prefix": "Video/h3_r2v_edit_combo",
+      "filename_prefix": "Video/h3_probe_t2v_rotate",
       "format": "video/h264-mp4",
       "pix_fmt": "yuv420p",
       "crf": 19,
@@ -138,13 +138,13 @@
   "27": {
     "class_type": "MiniMaxH3Resolution",
     "inputs": {
-      "shape": "standard",
-      "shape.standard_resolution": "1024x768  4/3  768 tok/frame  0.58x",
+      "shape": "wide",
+      "shape.wide_resolution": "1344x768  7/4  1008 tok/frame  1.00x",
       "length": 345
     }
   },
   "5": {
-    "class_type": "MiniMaxH3ReferenceConditioning",
+    "class_type": "MiniMaxH3Conditioning",
     "inputs": {
       "clip": [
         "2",
@@ -154,15 +154,7 @@
         "3",
         0
       ],
-      "audio_vae": [
-        "4",
-        0
-      ],
-      "references": [
-        "52",
-        0
-      ],
-      "prompt": "subject_definitions:\n<Subject 1> is the person in <Video 1>, whose face, build, and position in frame are kept in the target video.\n<Subject 2> is the garment shown in <Picture 1>, which replaces the one <Subject 1> wears in <Video 1>.\n<Subject 3> is the environment in <Picture 2>, which replaces the background of <Video 1> while the camera move is kept.\n<Audio 1> is the synchronized audio track of <Video 1> and is reused in the target video.\n<Video 1> is the source video for the target video edit.\n\nsummary:\n[video editing + reference generation + audio reuse] The target video is an edited version of <Video 1>, keeping its framing and motion while replacing what the retention analysis names.\n\nretention_analysis:\n<Subject 1> (appears in [Shot 1]): partially_preserved - face, build, posture, and motion are retained from <Video 1>; the garment and the background change.\n<Subject 2> (appears in [Shot 1]): attribute_transfer - the garment from <Picture 1> replaces the original on <Subject 1>.\n<Subject 3> (appears in [Shot 1]): fully_preserved - the visual setting comes from <Picture 2>.\n<Audio 1>: partially_copy - the ambience of <Audio 1> is kept under the new scene.\n<Video 1> (source video for the edit): partially_preserved - framing, camera movement, and shot timing are kept; only what is named above changes.\n\ndetailed_description:\nThe target video is in a cinematic live-action style.\n[Shot 1] The shot reproduces <Video 1> frame for frame in framing, camera movement, and timing. <Subject 1> keeps their face, build, posture, and every step of their motion, but now wears <Subject 2> and moves through <Subject 3> instead of the original background.\n\noverall_soundscape:\nThe ambience of <Audio 1> continues under the shot.\n\nnon_diegetic_music:\nN/A",
+      "prompt": "integrated_multimodal_description:\n[Shot 1] Live-action, cinematic, handheld, shallow depth of field. A medium-wide shot frames a covered market aisle in late morning, crates of citrus stacked along a wooden stall front, dust turning slowly in a shaft of light from the roof vents and a hanging brass scale swaying gently at the edge of frame. A stallholder in her fifties with a warm, gravelly alto (S1) sets a crate on the counter, wipes both palms down her apron, and says: <d>[English] Last of the good ones. After this it is all imports.</d> Her lips close and she pushes the crate forward with the heel of her hand. The camera trucks left as a young porter, a lean man in his twenties with a quick, bright tenor (S2), steps into frame behind her shoulder. [Shot 2] At 00:04.500, the shot cuts to a close shot over the porter's shoulder as he squats, takes the crate at its corners, and lifts it to his chest. The porter (S2) answers: <d>[English] Then I will take two.</d> His lips close and he shifts the weight onto his hip, and coins clatter one after another into a metal tin on the counter. [Shot 3] At 00:09.000, the camera holds a static shot, wide on the aisle, as he carries both crates away between the stalls, shoppers stepping aside around him, while the stallholder turns back and stacks fruit into a pyramid with both hands, her lips closed.\noverall_soundscape:\nLoose crowd murmur under a high roof, wooden crates knocking hollow as they stack, coins dropping one by one into a metal tin, boot steps on swept concrete, and the dry crackle of paper bags shaken open.\n\nnon_diegetic_music:\nN/A",
       "width": [
         "27",
         0
@@ -175,84 +167,7 @@
         "27",
         2
       ],
-      "video_policy": "comfy",
-      "image_policy": "comfy"
-    }
-  },
-  "15": {
-    "class_type": "LoadImage",
-    "inputs": {
-      "image": "1-man.png"
-    }
-  },
-  "16": {
-    "class_type": "LoadImage",
-    "inputs": {
-      "image": "2-mountain_landscape.png"
-    }
-  },
-  "50": {
-    "class_type": "MiniMaxH3AppendRefImage",
-    "inputs": {
-      "image": [
-        "15",
-        0
-      ],
-      "size_policy": "max",
-      "size_policy.dit_short_edge": 2048,
-      "size_policy.allow_upscale": false,
-      "qwen_view": "shared"
-    }
-  },
-  "51": {
-    "class_type": "MiniMaxH3AppendRefImage",
-    "inputs": {
-      "image": [
-        "16",
-        0
-      ],
-      "size_policy": "max",
-      "references": [
-        "50",
-        0
-      ],
-      "size_policy.dit_short_edge": 2048,
-      "size_policy.allow_upscale": false,
-      "qwen_view": "shared"
-    }
-  },
-  "28": {
-    "class_type": "VHS_LoadVideo",
-    "inputs": {
-      "video": "h3ref_diner_monologue_25fps_14s.mp4",
-      "force_rate": 24.0,
-      "custom_width": 0,
-      "custom_height": 0,
-      "frame_load_cap": 345,
-      "skip_first_frames": 0,
-      "select_every_nth": 1,
-      "format": "AnimateDiff"
-    }
-  },
-  "52": {
-    "class_type": "MiniMaxH3AppendRefVideo",
-    "inputs": {
-      "frames": [
-        "28",
-        0
-      ],
-      "video_info": [
-        "28",
-        3
-      ],
-      "soundtrack": [
-        "28",
-        2
-      ],
-      "references": [
-        "51",
-        0
-      ]
+      "canvas": "explicit"
     }
   },
   "19": {
@@ -296,7 +211,7 @@
       "dense_blocks": "",
       "token_aug_blocks": "",
       "qk_balance": true,
-      "rotate": false
+      "rotate": true
     }
   },
   "23": {

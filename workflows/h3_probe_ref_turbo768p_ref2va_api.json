@@ -295,7 +295,8 @@
       "verbose": false,
       "dense_blocks": "",
       "token_aug_blocks": "",
-      "qk_balance": true
+      "qk_balance": true,
+      "rotate": false
     }
   },
   "23": {

@@ -5038,6 +5038,13 @@ def main():
         ("h3_probe_t2v_ck_dense_tail.json", "t2v-ck-dense-tail", "t2v", LONG_T2V_PROMPT,
          dict(dense_attn="ck", sol_overrides={"dense_blocks": "45,48,49"}, out_prefix="Video/h3_probe_t2v_ck_dense_tail"),
          "text -> video + audio, the default chain with blocks 45/48/49 on the kitchen dense kernel"),
+        # Tier 2 witness (2026-09-15 night): the default chain with Sol's
+        # Hadamard rotation on (docs/h3_quant_policy.md). Same seed as every
+        # other market arm today, so it sits beside h3_text_to_video (the
+        # default, rotate off) and h3_probe_t2v_ck_dense_tail.
+        ("h3_probe_t2v_rotate.json", "t2v-rotate", "t2v", LONG_T2V_PROMPT,
+         dict(dense_attn="ck", sol_overrides={"rotate": True}, out_prefix="Video/h3_probe_t2v_rotate"),
+         "text -> video + audio, the default chain with Sol rotate on"),
         ("h3_probe_t2v_levers.json", "t2v-levers", "t2v", LONG_T2V_PROMPT,
          dict(dense_attn="sage_sol", channel_balance="loud blocks (from weights)",
               sage_mode="fp8++ balanced", out_prefix="Video/h3_probe_t2v_levers"),

@@ -147,6 +147,9 @@ DEVIATIONS = {
                         "community-chain control (2026-09-15): kitchen int8 dense + Sol "
                         "with qk_balance OFF, the chain as most people run it; the "
                         "switch IS the arm"),
+    "h3_probe_t2v_rotate": (("rotate",),
+                            "Tier 2 witness (2026-09-15): the default chain with Sol's "
+                            "Hadamard rotation on; the switch IS the arm"),
     "h3_probe_t2v_ck_dense_tail": (("dense_blocks",),
                                    "community-chain probe (2026-09-15): blocks 45/48/49 handed to "
                                    "the kitchen dense kernel; the list IS the arm"),
