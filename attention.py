@@ -111,6 +111,12 @@ def _sage():
 MODES = {
     "auto": (None, {}),
     "fp8++ (fastest)": (None, {"pv_accum_dtype": "fp32+fp16"}),
+    # fp8++ with the fork's per-head q/k channel rebalancing inside the INT8
+    # quantizer (sage fork v0.7.19, `qk_balance`): exact for the attention
+    # math, gated per head, measured -22.9% INT8 error on H3's block 49 and
+    # neutral elsewhere for +0.7% call time and no memory. Off in the fork;
+    # this mode is how a graph turns it on. docs/h3_block49_quant_error.md.
+    "fp8++ balanced": (None, {"pv_accum_dtype": "fp32+fp16", "qk_balance": True}),
     "fp8": (None, {"pv_accum_dtype": "fp32+fp32"}),
     "fp16 (most accurate)": ("sageattn_qk_int8_pv_fp16_cuda", {"pv_accum_dtype": "fp32"}),
 }
@@ -179,6 +185,15 @@ def build_kernel(mode):
         )
 
     attr, extra = MODES[mode]
+    if "qk_balance" in extra:
+        import inspect
+        params = inspect.signature(sa.sageattn_qk_int8_pv_fp8_cuda).parameters
+        if "qk_balance" not in params:
+            raise RuntimeError(
+                f"mode {mode!r} needs a sageattention with qk_balance on "
+                "sageattn_qk_int8_pv_fp8_cuda (the Ada fork at v0.7.19 or later); "
+                "the installed one has no such keyword."
+            )
     # A note for anyone arriving from KJNodes' "pad V to CTA_K=128 in H3 mem-eff
     # sage sm90" fix: that bug is not reachable from here. It comes from
     # reimplementing sage's internals and skipping the kv_len pad that the

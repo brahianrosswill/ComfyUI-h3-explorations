@@ -1360,6 +1360,17 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
               steps: int | None = None, shift: dict | None = None,
               sampler_name: str | None = None, scheduler_name: str | None = None,
               head_chunks: int | None = None,
+              # Block-49 probes (docs/h3_block49_quant_error.md, 2026-09-15).
+              # sage_mode overrides SAGE_NODE's mode ("fp8++ balanced" turns
+              # on the fork's qk_balance); channel_balance is
+              # MiniMaxH3ChannelBalance's combo value, placed before the
+              # attention nodes since it only patches norm weights;
+              # exact_blocks is MiniMaxH3ExactBlocks' list, placed AFTER the
+              # chain assert so the assert still grades the sage/Sol
+              # composition it was written for.
+              sage_mode: str | None = None,
+              channel_balance: str | None = None,
+              exact_blocks: str | None = None,
               # Owner decision 2026-09-13: True, the node's own default and
               # what sglang, diffusers and DiffSynth do (every still to the
               # 2048 short edge, one copy for both towers). It was flipped
@@ -1867,6 +1878,14 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
     # at some other shift gets the node back rather than silently losing the
     # only place to set it.
     # Node id 19; 18 is the LoRA and 20/21/22 are already spoken for.
+    if channel_balance is not None:
+        # Weight patches on q_norm/k_norm of the lopsided blocks; no runtime
+        # cost, so its position only needs to precede the attention nodes.
+        # Node id 50: 47-49 are taken by the VAE-precision and freeze arms.
+        g["50"] = {"class_type": "MiniMaxH3ChannelBalance",
+                   "inputs": {"model": model_src, "balance": channel_balance,
+                              "blocks": "49", "alpha": 0.5, "loud_share": 0.15}}
+        model_src = ["50", 0]
     sh = shift if shift is not None else SIGMA_SHIFT
     if not (pdd and sh == SIGMA_SHIFT):
         g["19"] = {"class_type": "MiniMaxH3SigmaShift",
@@ -1877,7 +1896,8 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
                    "inputs": {"model": model_src, **dict(
                        SAGE_NODE,
                        **({} if head_chunks is None
-                          else {"head_chunks": head_chunks}))}}
+                          else {"head_chunks": head_chunks}),
+                       **({} if sage_mode is None else {"mode": sage_mode}))}}
         model_src = ["20", 0]
     if vsa is not None:
         # FastVideo VSA, an ALTERNATIVE TO SOL rather than a companion: both
@@ -1932,6 +1952,12 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
     g["23"] = {"class_type": "SageChainAssert",
                "inputs": {"model": model_src, **_assert_inputs(sage, sol is not None)}}
     model_src = ["23", 0]
+    if exact_blocks is not None:
+        # After the assert: it grades the sage/Sol composition as shipped, and
+        # exact blocks wrap on top (the node's forward survives either order).
+        g["51"] = {"class_type": "MiniMaxH3ExactBlocks",
+                   "inputs": {"model": model_src, "blocks": exact_blocks}}
+        model_src = ["51", 0]
 
     if cache is not None:
         # Step caching, AFTER the assert: the assert grades the attention
@@ -4897,6 +4923,22 @@ def main():
         ("h3_probe_t2v_sol_core.json", "t2v-sol-core", "t2v", LONG_T2V_PROMPT,
          dict(sol_impl="core", out_prefix="Video/h3_probe_t2v_sol_core"),
          "text -> video + audio, sage + core's BlockSparseAttention at its own defaults"),
+
+        # **Block-49 probes, 2026-09-15** (docs/h3_block49_quant_error.md).
+        # Same prompt and seed as the shipped t2v graph, so the three form
+        # same-seed pairs against it. `balanced` turns on both free levers:
+        # the channel-balance node on the lopsided blocks and the sage fork's
+        # per-head qk_balance. `exact_tail` runs blocks 45, 48 and 49 on
+        # ComfyUI's own bf16 attention: the ceiling of what any fix at those
+        # blocks can do, at a few percent of render time. Neither is a
+        # default; both are the tinkerer's look before any protocol.
+        ("h3_probe_t2v_balanced.json", "t2v-balanced", "t2v", LONG_T2V_PROMPT,
+         dict(channel_balance="loud blocks (from weights)", sage_mode="fp8++ balanced",
+              out_prefix="Video/h3_probe_t2v_balanced"),
+         "text -> video + audio, shipped chain + channel balance node + sage qk_balance"),
+        ("h3_probe_t2v_exact_tail.json", "t2v-exact-tail", "t2v", LONG_T2V_PROMPT,
+         dict(exact_blocks="45,48,49", out_prefix="Video/h3_probe_t2v_exact_tail"),
+         "text -> video + audio, shipped chain with blocks 45/48/49 on exact bf16 attention"),
 
         # **Candidates on trial, 2026-09-05.** The owner asked for canonical
         # graphs carrying the settings the lane currently thinks are its

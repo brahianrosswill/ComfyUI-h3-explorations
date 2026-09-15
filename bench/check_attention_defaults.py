@@ -123,6 +123,11 @@ DEVIATIONS = {
                                          "candidate graph (2026-09-05): Sol on two of "
                                          "the eight PDD steps; the window IS the arm, "
                                          "blinded as pdd_ladder_2026-09-04"),
+    "h3_probe_t2v_balanced": (("mode",),
+                              "block-49 probe (2026-09-15): sage in 'fp8++ balanced' "
+                              "turns on the fork's per-head q/k channel rebalancing "
+                              "in the INT8 quantizer; the mode IS the arm, paired "
+                              "same-seed against the shipped graph"),
 }
 
 #: Graphs that legitimately ship without live Sol, by MECHANISM. The

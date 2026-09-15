@@ -87,7 +87,12 @@ class MiniMaxH3SageAttention(io.ComfyNode):
                         "suspected accuracy problem. 'fp16' is the most "
                         "accurate and the slowest, and is the one mode that "
                         "gives up the per-call memory saving, because there is "
-                        "no consuming entry point for that kernel."
+                        "no consuming entry point for that kernel. 'fp8++ "
+                        "balanced' is fp8++ with the fork's per-head q/k channel "
+                        "rebalancing in the INT8 quantizer: less error on the "
+                        "blocks whose K channels are lopsided (H3's last ones), "
+                        "same elsewhere, under 1% slower. An experiment; "
+                        "docs/h3_block49_quant_error.md."
                     ),
                 ),
                 io.Boolean.Input(

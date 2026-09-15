@@ -104,6 +104,21 @@ regrouped, which `docs/comfy_notes.md` now allows when the owner accepts it.
 
 ## 0.107.0
 
+### Added
+
+- **Sage mode `fp8++ balanced`** on `MiniMaxH3SageAttention`: fp8++ with the
+  fork's per-head q/k channel rebalancing in the INT8 quantizer (sage fork
+  v0.7.19, `qk_balance`). Refuses with a clear message on a sage without
+  the keyword. `docs/h3_block49_quant_error.md`.
+- **Two block-49 probe graphs**, same prompt and seed as the shipped t2v
+  graph so they pair with it: `h3_probe_t2v_balanced` (channel-balance node
+  on the lopsided blocks + sage `fp8++ balanced`) and
+  `h3_probe_t2v_exact_tail` (blocks 45/48/49 on ComfyUI's own bf16
+  attention, the ceiling of any fix there). Generator options
+  `sage_mode`, `channel_balance`, `exact_blocks`; node ids 50 and 51. The
+  balanced probe's mode is a declared deviation in
+  `bench/check_attention_defaults.py`. Neither is a default.
+
 ### Changed
 
 - **Kitchen build `0.2.33+sol.397c790` -> `0.2.34+sol.2aff3c5`** (2026-09-15).
