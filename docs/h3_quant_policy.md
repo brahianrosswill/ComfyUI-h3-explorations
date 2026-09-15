@@ -85,7 +85,7 @@ better quant.
 5. Grade the rebuilt wheel on captures; re-render the witness with
    balanced-everywhere and no bf16 blocks.
 6. Fill this page's rows with what the day earned; flip the defaults it
-   justifies, telling the freeze session first; tag the served sage build
+   justifies, telling the live h3-repo sessions first; tag the served sage build
    if the fork changed.
 
 Not today: Tier 2 and Tier 3.
@@ -153,7 +153,7 @@ Not today: Tier 2 and Tier 3.
   Unscored. Direction the evidence points: levers on by default (free,
   always ranked above shipped), the bf16 tail as the opt-in best-take
   setting, Tier 2 the only way to retire it. No default flipped yet; the
-  freeze session is told before that lands.
+  live h3-repo sessions are told before that lands (freeze is gone).
 - 2026-09-15, late: kitchen's own `int8_attention` (ComfyUI's
   `--use-ck-attention`) graded on the block-49 and block-0 captures: immune
   to the loud channels by construction (Hadamard rotation of q/k before

@@ -170,7 +170,7 @@ bf16 attention on the three loud blocks (section 6).
    "super close, maybe faces", one viewer on hands and coin legibility).
    The blind multi-scene comparison in `docs/SOLATTN.md`'s decision
    standard has not been run; the flip of the default waits on the
-   owner's call, with the freeze session told first.
+   owner's call, with the live h3-repo sessions told first (the freeze session is gone).
 4. *Sol's quantizer.* Closed 2026-09-15 evening: the per-head factor is in
    Sol's preprocess on the kitchen fork, graded on captures and installed
    (`bench/results/2026-09-15_kitchen_0234_qk_balance_install.json`).
@@ -588,7 +588,7 @@ more accurate than the accurate path without it.
 - **Visible: yes, on three scenes (section 6); blind: not yet.** All three
   levers are still off in the default graph. Turning them on changes
   numerics on every served render, so the flip is the owner's call and
-  the freeze session is told first.
+  the live h3-repo sessions are told first (the freeze session is gone).
 
 **Prior art.** The rescale is SmoothQuant's migration pointed at the
 attention product instead of a linear layer; what is and is not new in that
