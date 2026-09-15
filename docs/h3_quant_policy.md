@@ -228,3 +228,10 @@ preprocess, so the routed steps stop needing a rebalance or a dense tail:
   Install, a Sol node `rotate` widget and a witness render come after the
   default flip devguy is making lands, so the two changes do not cross in
   the generator.
+- 2026-09-15, night: the Tier 2 witness rendered on the served rotate wheel:
+  `Video/h3_probe_t2v_rotate_00001-audio.mp4` (the default chain with Sol's
+  rotation on, market prompt, seed 730451892; wall time from the server
+  history 534 s against 500 s for the same chain without it, the first
+  render after a restart). Its pair is `h3_probe_t2v_ck_balanced_00001`,
+  which is the new default chain exactly (kitchen dense + Sol qk_balance),
+  rendered earlier today on the same seed. Unscored.
