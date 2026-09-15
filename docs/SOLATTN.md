@@ -220,9 +220,10 @@ is that `bench/check_solattn_correctness.py` **hard-requires** it and
 
 ### 2. Install the CUDA kernel
 
-`comfy_kitchen.sol_attn` **ships in the stock wheel ComfyUI pins** since
-ComfyUI moved its pin to `comfy-kitchen==0.2.33` (the tag's
-`comfy_kitchen/__init__.py` exports `sol_attn` and `sol_attn_chunked`). A local
+`comfy_kitchen.sol_attn` **ships in the stock wheel ComfyUI pins**, since
+the pin reached `comfy-kitchen==0.2.33` (the tag's `comfy_kitchen/__init__.py`
+exports `sol_attn` and `sol_attn_chunked`); the pin is `0.2.34` as of
+2026-09-15 and the installed build is `0.2.34+sol.2aff3c5`, see below. A local
 build is needed here only for `blk_cnt`, the route observer's out-parameter,
 which upstream does not carry: `bench/check_sol_kernel.py`'s `observable` case
 is the one a stock wheel fails (`bench/check_sol_kernel.py:129`). *Corrected
