@@ -129,3 +129,17 @@ half-second frame sampling. The crate parallel is withdrawn: this is a
 legibility difference, not an object left unresolved. What remains true is
 that a viewer separated the pair on it, so the bf16 tail still buys
 something visible on this scene.
+
+A third viewer on the same pair:
+
+> super close call. Right (clip 2) seems like maybe faces are a tiny bit
+> less distorted but theres nothing jumping out at me as substantially
+> different quality wise
+
+Three readings of the Tier 1 pair so far: cannot tell them apart (owner,
+first look), clip 2 on hands and coins (one viewer, the coins verified as
+a legibility difference above), and "super close, maybe faces" (this one).
+Against the morning's three-way look, where every viewer separated shipped
+from the rest without prompting, this is a much smaller gap: the free
+levers close most of it, the bf16 tail is a small remaining edge that
+takes a careful look to find.
