@@ -20,7 +20,11 @@
     "an eager apply_rope_split_half1 optimization"
   ],
   "kijai_branches": {
-    "checked": ["kijai/sol_exact_pquant", "kijai/sol_token_aug_main", "kijai/minimax_vae"],
+    "checked": [
+      "kijai/sol_exact_pquant",
+      "kijai/sol_token_aug_main",
+      "kijai/minimax_vae"
+    ],
     "method": "content diff against v0.2.34 on comfy_kitchen/backends/cuda/sage_attention and the eager Sol reference; Comfy-Org squash-merges, so commit counts against upstream overstate what is unmerged",
     "result": "identical to the tag on those files; the remaining differences are an older v0.2.32 base (missing HIP ports and tests, older Triton rope and quantization helpers). Nothing to carry",
     "kijai_w4a8_gemv": "PR 176, not carried (decode-path kernels; see open_prs_not_carried)"
@@ -38,7 +42,11 @@
   },
   "upstream_cases_that_fail_here": {
     "attribution": "unchanged from 2026-09-08: `git diff v0.2.34 h3-build` touches only comfy_kitchen/backends/cuda/__init__.py and tests/test_sol_attn.py, no .cu/.cpp/.h; the binding-validation gaps are upstream's CUDA bindings",
-    "poisoning_cases": ["test_bindings_check_dtype_and_layout", "test_bindings_reject_a_bad_sink_range", "test_bindings_reject_non_positive_extents"],
+    "poisoning_cases": [
+      "test_bindings_check_dtype_and_layout",
+      "test_bindings_reject_a_bad_sink_range",
+      "test_bindings_reject_non_positive_extents"
+    ],
     "suite_with_the_poisoning_cases_deselected": "108 passed, 1 failed (test_topk_ties_over_select), 2 skipped",
     "comparison_to_2026_09_08": "106 passed, 5 failed, 1 skipped then; no case that passed then fails now"
   },
@@ -51,9 +59,19 @@
     "tests are run with pytest from OUTSIDE the checkout, with --import-mode=importlib -c /dev/null --rootdir=<scratch>, so comfy_kitchen resolves to the installed wheel; run in place (or with the checkout's pytest.ini as rootdir) the source tree shadows the wheel, has no compiled extension, and all 122 cases skip while reporting success",
     "pytest was installed into the ComfyUI venv for the run and removed afterwards, as the 2026-09-08 record keeps it out"
   ],
-  "render_verification": "not run in this session; see the entry below when it is",
+  "render_verification": {
+    "what": "the first render on the rebuilt kernel, the shipped text-to-video graph at the length that exercises Sol, checked against the server log",
+    "graph": "workflows/h3_text_to_video_api.json via bench/smoke_h3.py --length 49 --steps 16 --log <server log>",
+    "sequence_tokens": 17360,
+    "server": "started by the docs/comfy_notes.md recipe onto the new wheel; start.sh's first log line names comfy-kitchen 0.2.34+sol.2aff3c5; left running afterwards, unarmed",
+    "result": "render: success. node order ok ([h3-sol] chaining onto an existing attention override; composed with 50 patched attention forward(s)). sparse ran ok. sage engaged: the smoke needle read MISSING because SageChainAssert skipped its probe ('2388 MiB free, want 2800 MiB headroom for a 12800-token probe') and so never logged the 'sage routed a ...' line; its registration checks passed ('chain assert ok: override installed, 50 attention forward patch(es) present') and sage's own dispatcher line fired on step 1 ('sage routing: arch=sm89 cuda=13.2 mask=False pv_accum=fp32+fp16 -> fp8_cuda++'), which is the kernel engaging",
+    "vae_path": "the render decoded through the new build's VAE path (#167 kernels) without error; nothing here compares its output to the previous VAE path",
+    "startup_warnings": "two tracebacks at server start, ModuleNotFoundError for ml_dtypes and rotary_embedding_torch, from other custom nodes' optional imports; unrelated to this pack or kitchen",
+    "record": "smoke_h3 output and the server log are in the sage fork's gitignored internal/records/ for 2026-09-15"
+  },
   "not_established": [
-    "that the H3 VAE kernels the tag adds (#167) render identically to the previous VAE path; nothing here rendered, and the smoke render with the route observer armed (2026-09-08 record, render_verification) is the instrument",
-    "that the upstream binding-validation gaps fail on upstream's own CI, which builds wheels and runs no GPU tests"
+    "that the H3 VAE kernels the tag adds (#167) produce the same decode as the previous VAE path; the smoke render decoded through them without error and nothing compared the two",
+    "that the upstream binding-validation gaps fail on upstream's own CI, which builds wheels and runs no GPU tests",
+    "that the probe skip for VRAM headroom is new with this build; the assert reads free memory at a moment that depends on load state, and no earlier smoke record on this box carries the headroom line to compare"
   ]
 }
