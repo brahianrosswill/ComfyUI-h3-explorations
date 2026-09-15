@@ -1,0 +1,39 @@
+{
+  "capture": "qkv_L104361_S104361_b49_s15.pt",
+  "block": 49,
+  "step": 15,
+  "tau": 1.0,
+  "heads_measured": 8,
+  "key_blocks": 1631,
+  "instrument": "blk_cnt counts vs an fp32 block-level route recomputed with the eager rule; counts only",
+  "rows": {
+    "plain": {
+      "mean_abs_count_diff": 1.8795217275619507,
+      "mean_signed_count_diff": 0.035101164132356644,
+      "query_blocks_with_equal_count": 0.17956775426864624,
+      "routed_density_kernel": 0.2059629102340876,
+      "routed_density_fp32": 0.20594139262842007
+    },
+    "balanced": {
+      "mean_abs_count_diff": 1.4959380626678467,
+      "mean_signed_count_diff": -0.02628755383193493,
+      "query_blocks_with_equal_count": 0.2299969345331192,
+      "routed_density_kernel": 0.20592526377965015,
+      "routed_density_fp32": 0.20594139262842007
+    },
+    "rotated": {
+      "mean_abs_count_diff": 1.35576331615448,
+      "mean_signed_count_diff": -0.0081238504499197,
+      "query_blocks_with_equal_count": 0.2608828842639923,
+      "routed_density_kernel": 0.20593641551267436,
+      "routed_density_fp32": 0.20594139262842007
+    },
+    "both": {
+      "mean_abs_count_diff": 1.131744384765625,
+      "mean_signed_count_diff": 0.002529123332351446,
+      "query_blocks_with_equal_count": 0.31169527769088745,
+      "routed_density_kernel": 0.2059429456382204,
+      "routed_density_fp32": 0.20594139262842007
+    }
+  }
+}

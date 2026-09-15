@@ -235,3 +235,19 @@ preprocess, so the routed steps stop needing a rebalance or a dense tail:
   render after a restart). Its pair is `h3_probe_t2v_ck_balanced_00001`,
   which is the new default chain exactly (kitchen dense + Sol qk_balance),
   rendered earlier today on the same seed. Unscored.
+- 2026-09-15, late night: the route and the cost measured
+  (`bench/results/2026-09-15_sol_route_b{49,0}_s15.json`,
+  `2026-09-15_sol_timing_b49_s15.json`; scripts
+  `bench/grade_sol_route_on_capture.py`, `bench/time_sol_options_on_capture.py`).
+  Route: against the fp32 route recomputed with the eager rule, the INT8
+  kernel's routed-block count per query block is off by about two blocks on
+  block 49 and about one on block 0 (counts only; a swap at equal count
+  reads as agreement); the balance takes a fifth off that at block 49,
+  rotation a quarter, both together two fifths, and at block 0 rotation
+  alone takes a third off. Density is unchanged in every arm, so the error
+  is scatter, not bias. That is the first number for "make Sol's routing
+  better", and rotation moves it on every block, not only the loud ones.
+  Cost: qk_balance one to two percent of a Sol call, rotate about fifteen
+  (serial per-row Hadamard; a warp-per-row form is the optimization if it
+  earns a default). Two control renders queued for the coins question
+  (`h3_probe_t2v_dense`, `h3_probe_t2v_sol_nosage`, market seed).
