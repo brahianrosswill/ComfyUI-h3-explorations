@@ -167,6 +167,10 @@ DEVIATIONS = {
 #: Graphs that legitimately ship without live Sol, by MECHANISM. The
 #: single-frame class is not listed here -- it is derived from GRAPH_DIRS below.
 SOL_EXEMPT_STEMS = {
+    "h3_probe_t2v_dense":
+        "the fully dense control (2026-09-15): no Sol, no sage, no dense node, "
+        "ComfyUI's own attention on every step; the ceiling for the whole chain "
+        "and the arm that separates a kernel flaw from a take",
     "h3_probe_vsa":
         "VSA and Sol-Attn are mutually exclusive, not merely redundant: VSA "
         "replaces the DiT block forward on the 50 main blocks and Sol-Attn "
@@ -263,6 +267,9 @@ FLOOR_STEMS = {
     "h3_probe_t2v_exact_tail":
         ("sage", "the scored ceiling arm of the sage chain, kept as it rendered"),
     # Sol over ComfyUI's own attention.
+    "h3_probe_t2v_dense":
+        ("stock", "the fully dense control (2026-09-15): stock attention everywhere, "
+                  "by construction"),
     "h3_probe_t2v_sol_nosage":
         ("stock", "the just-Sol arm of 2026-09-04 (bench/sol_nosage_arms.json): "
                   "Sol over stock attention, which is not the kitchen chain"),

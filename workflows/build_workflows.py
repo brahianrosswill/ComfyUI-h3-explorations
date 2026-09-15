@@ -5039,6 +5039,14 @@ def main():
         # Hadamard rotation on (docs/h3_quant_policy.md). Same seed as every
         # other market arm today, so it sits beside h3_text_to_video (the
         # default, rotate off) and h3_probe_t2v_ck_dense_tail.
+        # Fully dense control (2026-09-15 night): neither Sol nor any INT8
+        # kernel, ComfyUI's own attention on every step. The ceiling for the
+        # whole chain and the arm that says whether a flaw every INT8 arm
+        # shares (the market coins appearing from nowhere on all three
+        # community-chain arms) belongs to the kernels or to the take.
+        ("h3_probe_t2v_dense.json", "t2v-dense", "t2v", LONG_T2V_PROMPT,
+         dict(dense_attn=True, out_prefix="Video/h3_probe_t2v_dense"),
+         "text -> video + audio, fully dense: no sage, no Sol, no INT8 anywhere"),
         ("h3_probe_t2v_rotate.json", "t2v-rotate", "t2v", LONG_T2V_PROMPT,
          dict(dense_attn="ck", sol_overrides={"rotate": True}, out_prefix="Video/h3_probe_t2v_rotate"),
          "text -> video + audio, the default chain with Sol rotate on"),
