@@ -172,3 +172,32 @@ Not today: Tier 2 and Tier 3.
   changes regardless of the scoring: our Sage node is a candidate for
   removal from the default graph (same speed, a third of the error on
   block 49, measured), and Tier 2 is rotation.
+
+## Tier 2 design note (2026-09-15, evening): rotation inside Sol's quantizer
+
+What comfy-kitchen's `int8_attention` does, done in `sol_attn`'s
+preprocess, so the routed steps stop needing a rebalance or a dense tail:
+
+- Rotate every q row and every k row by the same randomized H128 before
+  quantizing: kitchen's own device helpers (`apply_convrot_sign128`,
+  `convrot128` in `quant_qk_int8.cu`: fixed sign diagonal, then a
+  normalized Walsh-Hadamard over the 128 channels via warp shuffles) are
+  the implementation to lift. Orthogonal, same signs on both sides, so
+  every exact-branch score is unchanged; the INT8 tiles read rotated bytes
+  and need no change.
+- Apply it in `quant_q_rows`, `quant_k_rows` (after the key-mean
+  centring), `centroid_quant` and `prep_pooled_quant`, i.e. everywhere a
+  row becomes int8. The routing threshold, kmean, kcvar and the coarse
+  branch stay unrotated, exactly as `qk_balance` left them: they are read
+  against each other, never against an int8 carrier.
+- Layout: the per-row work in `quant_k_rows` is one thread per row over
+  128 channels; the Hadamard wants one warp per row (four channels per
+  lane). That is the one real change of shape, and the reason this is a
+  day and not an hour.
+- Expected result on the block-49 capture: at or below the rotated
+  kitchen kernel's row (0.0166), against balanced Sol's 0.0193 and plain
+  Sol's 0.0265, with per-token spikes handled too. `qk_balance` becomes
+  redundant with rotation on and can stay as it is.
+- Off by default behind a `rotate` flag until graded; the off path stays
+  bit-identical. Same grading path as Tier 1
+  (`bench/grade_channel_balance.py` gains a `rotated` row).
