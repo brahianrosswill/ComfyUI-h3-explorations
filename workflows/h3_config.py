@@ -1430,10 +1430,11 @@ def taomate_sigmas(shift: float) -> list[float]:
 
 
 #: The video sigmas as a `ManualSigmas` string. Only the video vector is
-#: wired: core derives each audio sigma through `time_shift_sigma` from 12 to
-#: 3, and because the shift is pointwise over the same base point that lands
-#: on `taomate_sigmas(3.0)`, the audio list upstream passes (reasoned;
-#: `bench/check_distill_settings.py` grades both).
+#: wired. Core derives each audio sigma from it through `time_shift_sigma`
+#: (12 to 3); the shift is pointwise over the same base point, so that lands
+#: on `taomate_sigmas(3.0)`, the audio list upstream passes. Reasoned, and
+#: graded by `bench/check_distill_grid.py::taomate_graphs_on_their_grid`,
+#: which checks the graph's vector and core's derivation against both lists.
 TAOMATE_MANUAL_SIGMAS = ", ".join(
     repr(round(s, 6)) for s in taomate_sigmas(TAOMATE_SHIFT["shift_video"]))
 
