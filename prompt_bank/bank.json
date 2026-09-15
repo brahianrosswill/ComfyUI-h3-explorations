@@ -483,6 +483,14 @@
       "tests": "fast physical action with liquid across a cut (throw, splash, drip), shouted lines and a scream owned by the right speaker, and a wide walk-out with a background character who stays silent. High motion, unlike t2va_diner_breakup, so it shows morphing and cloning where that one cannot."
     },
     {
+      "id": "t2va_cafe_kids",
+      "mode": "t2va",
+      "frames": 345,
+      "donor": null,
+      "brief": "An outside prompt rewritten into the house structure at the owner's request (2026-09-15): four children at a golden-hour diner table, two short lines, the background couple and waitress silent, a slow push-in, one shot. Rendered beside the verbatim original on PDD at 5 and 8 steps.",
+      "tests": "whether the house structure changes a dense, many-object scene against the same content written as a paragraph: four distinct children and their props, background figures, readable handheld screen, window street, and two lines owned by the right speakers."
+    },
+    {
       "id": "t2va_dancer_stream_243",
       "mode": "t2va",
       "frames": 243,
