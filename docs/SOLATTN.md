@@ -223,8 +223,8 @@ is that `bench/check_solattn_correctness.py` **hard-requires** it and
 `comfy_kitchen.sol_attn` **ships in the stock wheel ComfyUI pins**, since
 the pin reached `comfy-kitchen==0.2.33` (the tag's `comfy_kitchen/__init__.py`
 exports `sol_attn` and `sol_attn_chunked`); the pin is `0.2.34` as of
-2026-09-15 and the installed build is `0.2.34+sol.5284cfb` (the qk_balance
-commits on top of the blk_cnt ones, installed the same evening), see below. A local
+2026-09-15 and the installed build is `0.2.34+sol.757657f` (the qk_balance
+and rotate commits on top of the blk_cnt ones, both installed that day), see below. A local
 build is needed here for `blk_cnt`, the route observer's out-parameter,
 which upstream does not carry (and, since 2026-09-15, for `qk_balance`, the
 in-quantizer channel rebalancing, likewise ours): `bench/check_sol_kernel.py`'s `observable` case
