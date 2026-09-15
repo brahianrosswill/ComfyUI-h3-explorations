@@ -14,9 +14,12 @@ ComfyUI file's deltas sit from it.
 A rename: `{target}.lora_a` -> `diffusion_model.{target}.lora_A.weight`,
 `lora_b` -> `lora_B.weight`, and one `.alpha` F32 scalar per module, because
 ComfyUI reads alpha from a tensor and never from `__metadata__`
-(`bench/check_lora_alpha.py` carries the reason). `comfy/lora.py`'s MiniMaxH3
-branch maps a LoRA key to a model key by stripping `diffusion_model.` and
-`.weight`, so the target names must be the checkpoint's own names;
+(`bench/check_lora_alpha.py` carries the reason). The key map is built from the
+model's side: `comfy/lora.py::model_lora_keys_unet` strips `.weight` from each
+model key `diffusion_model.<module>.weight` to get a LoRA prefix, and
+`comfy/weight_adapter/lora.py::LoRAAdapter.load` then looks up
+`<prefix>.lora_B.weight`, `.lora_A.weight` and `.alpha` under it. So the
+target names must be the checkpoint's own names;
 `checkpoint_inventory` asserts they are, same set and same shapes.
 
 Three transforms `bench/convert_pdd_lora.py` needs are deliberately absent:
@@ -48,7 +51,7 @@ pointer.
   `src/taomate_h3/inference/fused_kernels.py` loads the gate from the first
   half), and core's `comfy/ops.py::_swiglu_eager` chunks the same way. The PDD
   swap exists because diffusers stores `[value; gate]`; this adapter was never
-  in diffusers naming. Source reads only.
+  in diffusers naming. Source reads, and on weights with `--release` (below).
 
 **The delta's statistics cannot settle either order; the base weights can.**
 Row norms, within-band correlations and row directions of the delta against
@@ -517,7 +520,9 @@ def main(argv=None) -> int:
         "qkv_layout": ("q|k|v row bands on both sides, no reorder: TaoMate trains on its "
                        "reorder_grouped_qkv_to_qkv module; core splits bands (anchored on a "
                        "fused LoRA that renders)"),
-        "swi_glu_mapping": "TaoMate [gate;up] -> ComfyUI [gate;up], no swap (source reads)",
+        "swi_glu_mapping": ("TaoMate [gate;up] -> ComfyUI [gate;up], no swap ("
+                            + ("source reads; checkpoint fc1 == release as stored"
+                               if release is not None else "source reads") + ")"),
         "release_layout": ("checkpoint qkv == release reordered to bands, fc1 == release as stored, at "
                            + ", ".join(RELEASE_PROBE_MODULES)) if release is not None else "not checked",
         "distilled_grid": json.dumps(distilled_grid()),
