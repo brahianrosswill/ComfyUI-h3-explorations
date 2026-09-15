@@ -1343,7 +1343,9 @@ given day. `head_patch_clash` is a free function taking the patch mapping, so
 `bench/check_pdd_head_selection.py` grades the predicate without a loaded H3 —
 including that an unrelated block-attention patch does NOT trip it, which
 matters because sage and Sol patch those on every shipped graph and a sloppy
-predicate would refuse every render.
+predicate would refuse every render. (*Since 2026-09-15* sage is on the sage
+arms only, and the default graphs carry Sol over core's Model Attention
+Backend; the predicate's rule is unchanged.)
 
 Guard adopted from `silveroxides/ComfyUI-UtilsCollection`.
 

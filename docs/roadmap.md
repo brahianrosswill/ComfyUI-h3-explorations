@@ -220,6 +220,12 @@ Standing from the day: the shipped chain (sage on the outer steps, Sol
 inside) is the leader; nothing beat it and nothing matched it faster. The
 bake stays as the PDD8 checkpoint on hygiene alone.
 
+*2026-09-15: superseded as the shipped chain.* The default is now core's
+Model Attention Backend on kitchen int8 under Sol, sage off, on capture
+grades and unscored renders rather than a blind verdict
+([`wiki/decisions.md`](wiki/decisions.md), 2026-09-15). The sentence above is
+what 2026-09-05 held.
+
 ## Current forward plan — 2026-09-03
 
 The short form, for a session that only wants the next action, is
