@@ -31,7 +31,10 @@ own below the rule.
       TaoMate renders. The stream reads as a normal distill with no duplicated
       people and no obvious artifacts
       (`bench/results/2026-09-15_taomate_stream_verdict.json`).
-    - **Still open:** the TaoMate-versus-PDD comparison on the same clips.
+    - **TaoMate against PDD: not comparable on this pair.** The stream framed
+      far tighter, "way too zoomed in".
+    - **Next, if wanted:** a framing-pinned prompt (wide, static, no push-in)
+      for both.
 - **Cafe prompt pair: the rewrite wins, and so does 8 steps.** An outside
   prompt verbatim against its house-structure rewrite (`t2va_cafe_kids`), PDD
   at 5 and 8 steps. The owner judged the rewrite way better at both counts,

@@ -345,8 +345,13 @@ The pieces:
   - **Reading (reasoned, not measured).** Both arms dropped sage and Sol, so
     that quantized attention stack was a large part of the section 6 failure.
     The streaming runtime adds stability on top.
-  - **Still to judge:** TaoMate against PDD at 5 and 8 steps on the same scene
-    and seed.
+  - **TaoMate against PDD could not be judged on this pair.** The owner found
+    them "totally different scenes": the stream is "way too zoomed in", while
+    PDD keeps a wide dancing shot. PDD 8-step showed way less morphing than
+    PDD 5-step.
+  - **Composition-matched arms.** A fair pairing needs a prompt that pins the
+    framing: a wide static shot with no push-in. The same prompt and seed do
+    not pin the composition across two distills.
 - **A fidelity review** of the port against upstream and core found no
   fidelity bug. Its runtime findings (host cache memory, allocation scope,
   silent masks) are fixed; see CHANGELOG 0.116.2.
