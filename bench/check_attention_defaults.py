@@ -123,6 +123,10 @@ DEVIATIONS = {
                                          "candidate graph (2026-09-05): Sol on two of "
                                          "the eight PDD steps; the window IS the arm, "
                                          "blinded as pdd_ladder_2026-09-04"),
+    "h3_probe_t2v_policy": (("mode",),
+                            "block-49 policy graph (2026-09-15, docs/h3_quant_policy.md "
+                            "Tier 0): sage in 'fp8++ balanced' plus the balance node and "
+                            "exact tail blocks; the mode IS part of the arm"),
     "h3_probe_t2v_balanced": (("mode",),
                               "block-49 probe (2026-09-15): sage in 'fp8++ balanced' "
                               "turns on the fork's per-head q/k channel rebalancing "

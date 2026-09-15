@@ -4962,6 +4962,12 @@ def main():
         ("h3_probe_t2v_exact_tail.json", "t2v-exact-tail", "t2v", LONG_T2V_PROMPT,
          dict(exact_blocks="45,48,49", out_prefix="Video/h3_probe_t2v_exact_tail"),
          "text -> video + audio, shipped chain with blocks 45/48/49 on exact bf16 attention"),
+        # Tier 0 of docs/h3_quant_policy.md: both free levers plus the three
+        # lopsided blocks on exact attention, in one graph.
+        ("h3_probe_t2v_policy.json", "t2v-policy", "t2v", LONG_T2V_PROMPT,
+         dict(channel_balance="loud blocks (from weights)", sage_mode="fp8++ balanced",
+              exact_blocks="45,48,49", out_prefix="Video/h3_probe_t2v_policy"),
+         "text -> video + audio, the block-49 policy: balance node + sage qk_balance + blocks 45/48/49 exact"),
 
         # **Candidates on trial, 2026-09-05.** The owner asked for canonical
         # graphs carrying the settings the lane currently thinks are its

@@ -311,6 +311,13 @@ In all three the woman's identity drifts over the clip; no arm touched
 that. The viewers' notes are filed verbatim in
 `bench/results/2026-09-15_block49_market_feedback.md`.
 
+The owner's later reading of the morph itself: the worse outputs never
+decide whether a crate is one deep box or two shallow trays, and the
+morphing is that indecision playing out over time; the ceiling arm commits
+to two stacked trays and stays consistent (at the cost of a physically
+implausible carry). That is a commitment-to-a-reading effect, which is what
+a sharper, less noisy read of the prompt at the last block would produce.
+
 The details that separated the arms are the prompt's own: the weight
 shift onto the hip, the coins into the tin, shoppers stepping aside. That
 is the prompt-adherence axis section 5 predicts, and the ranking follows

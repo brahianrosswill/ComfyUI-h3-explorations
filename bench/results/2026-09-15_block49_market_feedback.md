@@ -51,3 +51,19 @@ is about the originals in the order above.
 > with moving around the people walking toward him its just a better scene.
 
 Interpretation and caveats: `docs/h3_block49_quant_error.md`, section 6.
+
+## Owner, later: what was wrong with clip 2, and what the morph is
+
+> There is one very minor problem with the crates. He says he'll "take two".
+> In the worse outputs can't decide if a box is one horizontal segment or
+> two, and that's probably why it morphs and acts weird.
+>
+> In the best output, it decides a single tray or box is just one horizontal
+> segment, and they stack into two. It's much more consistent in this
+> depiction, however it would be impossible to carry them the way he is if
+> the segments are two separate trays stacked together. If he held it in the
+> middle like that, the bottom tray would fall.
+>
+> In the other gens, it seems like the two horizontal slats are meant to be
+> one deeper crate vs two shallow ones. Not sure which is more accurate for
+> that kind of market though.
