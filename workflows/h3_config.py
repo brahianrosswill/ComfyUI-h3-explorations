@@ -1384,10 +1384,15 @@ TAOMATE_LORA = "h3/minimax_h3_taomate_3step_rank128_comfy_bf16.safetensors"
 #: kijai's community resize of the same adapter, a per-module truncated SVD
 #: (the record's `comparison`). A comparison arm, never a default.
 TAOMATE_KIJAI_LORA = "h3/minimax_h3_taomate_3step_lora_avg_rank_19_bf16.safetensors"
-#: The functional control for the SwiGLU mapping: the converter's
-#: `--swap-fc1-halves` output, every `mlp.fc1` `lora_B` with its gate and up
-#: halves exchanged. It should render visibly worse than `TAOMATE_LORA`; if it
-#: does not, the source reads behind "no swap" are wrong.
+#: The converter's `--swap-fc1-halves` output: every `mlp.fc1` `lora_B` with
+#: its gate and up halves exchanged. Written as a functional control for the
+#: SwiGLU mapping, and it does not work as one. Its render (2026-09-15, arm
+#: `diner_control` of `bench/taomate_probe_arms.json`) is a coherent clip, not
+#: a broken one. fc1's delta is small against the base weight
+#: (`bench/results/2026-09-15_merge_noise_taomate.json`), so on the wrong rows
+#: it perturbs a working model rather than breaking it. The mapping's evidence
+#: is on weights: `bench/convert_taomate_lora.py --release`. Kept so that render
+#: reproduces; not worth another slot.
 TAOMATE_SWAPPED_CONTROL_LORA = ("h3/minimax_h3_taomate_3step_rank128_comfy_bf16"
                                 "_CONTROL_fc1_swapped.safetensors")
 #: Inherited: the runtime adds `update * alpha / rank` with no user multiplier

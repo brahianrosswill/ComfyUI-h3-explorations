@@ -64,8 +64,11 @@ for row under exactly one layout: qkv under TaoMate's reorder of the per-head
 interleaved release into bands, and fc1 as stored. That shows the tensor core
 loads is the tensor TaoMate installed its LoRA on. Both engines run that base
 correctly, so they read its rows the same way, and so the LoRA's rows line up
-too. A render with the fc1 halves deliberately swapped remains the functional
-control, which should look broken. `--swap-fc1-halves`
+too. A render with the fc1 halves deliberately swapped was meant as a
+functional control and cannot be one. fc1's delta is too small against the
+base weight for misplaced rows to break the model, and its render came out
+coherent (`h3_config.TAOMATE_SWAPPED_CONTROL_LORA` has the pointer).
+`--swap-fc1-halves`
 writes that file (`h3_config.TAOMATE_SWAPPED_CONTROL_LORA`) and stamps it as a
 control in its metadata.
 

@@ -132,9 +132,11 @@ Each arms file's `run` field holds its command.
    - kijai's
    - the PDD8 candidate, the chain the owner already renders with
 
-   The swapped-fc1 control runs on one scene. If it does not look clearly
-   worse than ours, the source reads behind "no swap" are wrong, and every
-   other arm is suspect.
+   The swapped-fc1 control ran on one scene. It was written expecting a
+   broken clip, and that expectation was wrong: its render is coherent
+   (2026-09-15). fc1's delta is too small against the base weight for
+   misplaced rows to break a working model, so the control cannot test the
+   mapping. `--release` tests it, on weights. Do not spend another slot on it.
 2. **Freeze arms, `bench/taomate_audio_freeze_arms.json`.** This is
    [`h3_audio_freeze.md`](h3_audio_freeze.md) section 5, idea 9. It uses that
    lane's dancer and voice scenes, seeds and tracks: TaoMate with the track
