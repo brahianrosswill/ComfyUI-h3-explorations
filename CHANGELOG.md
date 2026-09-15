@@ -4,6 +4,81 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.115.0
+
+### Changed
+
+- **Sage is out of the default attention chain** (owner, 2026-09-15). Every
+  video graph that names no mode now carries ComfyUI core's
+  `ModelAttentionBackend` at `h3_config.DENSE_BACKEND_NODE` ("comfy kitchen
+  attention", kitchen's `int8_attention`) as the dense kernel, with
+  `MiniMaxH3SolAttn` chained on top; the shipped, PDD, TaoMate, reference and
+  candidate graphs follow it. Kitchen's kernel rotates q/k before INT8 and is
+  immune to the block-49 loud-channel error
+  (`bench/results/2026-09-15_ck_int8_attention_block49.json`); its wall time
+  against the sage chain is one market render per arm
+  (`bench/results/2026-09-15_block49_community_chain.md`). The node rather
+  than `--use-ck-attention`, because the flag is server-global.
+  - `_attention_plan` defaults to the `"ck"` mode; the new `"sage_sol"` mode
+    is the old chain, for the arms that stay on it. A VSA arm must now name
+    its kernel.
+  - The backend node is id 58, and 59 on a split graph's plain chain, which
+    now mirrors it so both halves run the same kernel. The morning's three ck
+    probes carried it as 60, which is also `ManualSigmas`: with the backend in
+    every graph, the TaoMate and manual-sigmas graphs would silently have lost
+    one of the two.
+  - `SageChainAssert` treats the backend node like Sol without sage: override
+    required, no sage forward patch allowed (`_assert_inputs`).
+- **`SOL_RECOMMENDED_CUDA.qk_balance` is on.** Graded on captures: lower
+  quantization error on block 49, neutral on blocks 0 and 32
+  (`bench/results/2026-09-15_channel_balance_kernel_b{49,0,32}_s15.json`).
+- **Graphs kept off the default, each declared in
+  `bench/check_attention_defaults.py::FLOOR_STEMS`.** On sage:
+  - the two captures, because `h3_capture.py` records from the sage forward;
+  - both VSA arms;
+  - the sage-alone rungs: turbo, PDD8, baked PDD8 and SLA dense;
+  - `h3_probe_head_chunks`, whose knob is a sage-node input;
+  - `h3_probe_t2v_sol_core`, core's Sol node A/B'd with sage as the floor;
+  - the block-49 sage-chain arms `h3_probe_t2v_levers`, `h3_probe_t2v_policy`
+    and `h3_probe_t2v_exact_tail`; the last keeps Sol's balance off, as it
+    rendered.
+
+  On stock attention: `h3_probe_t2v_sol_nosage` and
+  `h3_candidate_t2v_sol_only`.
+- **`h3_probe_t2v_ck` now deviates from the default**, with Sol's
+  `qk_balance` off: the community chain as most people run it.
+  `h3_probe_t2v_ck_dense_tail` is the default plus its `dense_blocks`.
+- **`bench/bench_e2e_h3.py`:** `shipped` builds the backend node plus Sol.
+  `shipped_sage` is the old chain, `ck` and `ck+sol` are new arms, and
+  ad-hoc specs take a `ck+sol[...]` prefix.
+- **`bench/check_attention_defaults.py` grades the dense floor.** It checks
+  the backend's values against `DENSE_BACKEND_NODE`, and requires every
+  graph on sage or stock attention to be named in `FLOOR_STEMS`, asserted
+  both ways. The PDD reference-arm discriminator reads "no dense node", not
+  "no sage".
+- **`bench/check_bench_matches_shipped.py`** compares both dense nodes for
+  presence and values (`sage_matches`, `backend_matches`).
+- **`bench/check_widget_deviations.py`** declares the backend's value as a
+  HOUSE row pinned to `DENSE_BACKEND_NODE`, and `qk_balance` as an ARM row:
+  two graphs carry the node's False. It also declares the four block-49
+  probe values that were already undeclared: the sage mode, channel
+  balance, exact blocks and Sol `dense_blocks`.
+- **`bench/smoke_h3.py`** owes the sage line only on a graph with a sage
+  node, and the chain assert's "no sage" line on a graph with Sol or the
+  backend node and no sage. It reads only the log written during its own
+  run: matching the whole file let an earlier render's line stand in for
+  this one.
+
+### Removed
+
+- **`h3_probe_t2v_balanced`** (scored, and superseded by
+  `h3_probe_t2v_levers`) and **`h3_probe_t2v_ck_balanced`** (identical to the
+  new default). The records that name them are historical, not broken:
+  `bench/results/2026-09-15_block49_market_feedback.md`,
+  `2026-09-15_block49_diner_batch.md` and
+  `2026-09-15_block49_community_chain.md`. The generator in git history
+  rebuilds either graph.
+
 ## 0.114.0
 
 ### Added

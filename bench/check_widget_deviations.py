@@ -293,15 +293,43 @@ DECLARED: dict[tuple[str, str], tuple] = {
     ("SageChainAssert", "require_override"):
         ("ARM", "as above"),
     ("SageChainAssert", "require_no_forward_patch"):
-        ("ARM", "True on the Sol-over-stock arm (h3_probe_t2v_sol_nosage), where "
-                "the node forbids sage's forward patch and proves Sol's fallback "
-                "is stock attention; False elsewhere. Set by `_assert_inputs`"),
+        ("ARM", "True on every graph with Sol or core's ModelAttentionBackend and "
+                "no sage -- the default chain since 2026-09-15, and the "
+                "Sol-over-stock arms -- where the node forbids sage's forward "
+                "patch and proves no sage kernel takes a call; False on the sage "
+                "arms and the baselines. Set by `_assert_inputs`"),
     ("SageChainAssert", "require_absent"):
         ("ARM", "True on every arm that patches attention not at all -- the "
                 "true baseline and the PDD reference arms -- so the node proves "
-                "the graph is the baseline it claims to be; False wherever sage "
-                "or Sol is wired. Set by the generator's `_assert_inputs` from "
+                "the graph is the baseline it claims to be; False wherever sage, "
+                "Sol or core's ModelAttentionBackend is wired. Set by the generator's `_assert_inputs` from "
                 "the chain, since 2026-09-03 (Sol-alone state added 2026-09-04)"),
+    ("ModelAttentionBackend", "attention"):
+        ("HOUSE", "h3_config.DENSE_BACKEND_NODE: kitchen's int8_attention as the "
+                  "dense kernel under Sol, the default chain since 2026-09-15 "
+                  "(owner); bench/check_attention_defaults.py grades which graphs "
+                  "carry the node", h3_config.DENSE_BACKEND_NODE["attention"]),
+    ("MiniMaxH3SolAttn", "qk_balance"):
+        ("ARM", "True from h3_config.SOL_RECOMMENDED_CUDA since 2026-09-15 "
+                "(owner); two graphs declare it back at the node's False, "
+                "h3_probe_t2v_ck and h3_probe_t2v_exact_tail. NOT House for that "
+                "reason; the per-graph value is graded by "
+                "bench/check_attention_defaults.py::DEVIATIONS"),
+    ("MiniMaxH3SolAttn", "dense_blocks"):
+        ("ARM", "'45,48,49' on h3_probe_t2v_ck_dense_tail, the three lopsided "
+                "blocks handed to the dense backend (2026-09-15, "
+                "docs/h3_quant_policy.md)"),
+    ("MiniMaxH3SageAttention", "mode"):
+        ("ARM", "'fp8++ balanced' on the block-49 sage-chain arms "
+                "h3_probe_t2v_levers and h3_probe_t2v_policy: the fork's per-head "
+                "q/k rebalancing, the arms' subject (2026-09-15)"),
+    ("MiniMaxH3ChannelBalance", "balance"):
+        ("ARM", "'loud blocks (from weights)' on h3_probe_t2v_levers and "
+                "h3_probe_t2v_policy, the weights fold on the lopsided blocks "
+                "(2026-09-15, docs/h3_block49_quant_error.md)"),
+    ("MiniMaxH3ExactBlocks", "blocks"):
+        ("ARM", "'45,48,49' on h3_probe_t2v_exact_tail and h3_probe_t2v_policy, "
+                "the bf16 ceiling at the three lopsided blocks (2026-09-15)"),
 }
 
 #: **There is deliberately no exception table here.** One was written on

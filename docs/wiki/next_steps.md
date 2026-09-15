@@ -15,11 +15,20 @@ own below the rule.
 
 **2026-09-15:**
 
-- **TaoMate-H3: parked.** The probe and audio-freeze arms rendered, and the
-  owner judged PDD8 far better in every scene, with ours and kijai's
-  indistinguishable. `bench/results/2026-09-15_taomate_verdicts.json`;
-  [`../h3_taomate.md`](../h3_taomate.md) section 6. No render slot unless the
-  owner reopens it.
+- **TaoMate-H3: the whole-clip arms lost; the streaming runtime is being
+  ported.**
+  - **Verdict.** The owner judged PDD8 far better than the whole-clip TaoMate
+    arms in every scene, with ours and kijai's indistinguishable
+    (`bench/results/2026-09-15_taomate_verdicts.json`).
+  - **Reopened the same day** to port upstream's chunked, cached runtime
+    ([`../h3_taomate.md`](../h3_taomate.md) section 7). The sampler node is
+    built, and its whole-clip equality check matched core
+    (`bench/results/2026-09-15_taomate_verify_whole_clip.json`).
+  - **Next, when the card is free** (the sage fork has priority):
+    - the `control_text_only` control;
+    - a 124-frame throwaway stream at 864x480;
+    - the 243-frame dancer stream at 1344x768, beside PDD at 5 steps (tail5)
+      and a TaoMate whole-clip control with no attention patches.
 
 **2026-09-14:**
 
@@ -486,6 +495,11 @@ it is a memory lever (`sol_chunked_h3.py`), and at the trained canvas and
 length every arm above rendered on this card without it.
 
 ## Now
+
+*2026-09-15: the floor moved.* The default dense kernel under Sol is core's
+Model Attention Backend on kitchen int8 (`h3_config.DENSE_BACKEND_NODE`), sage
+off, Sol's `qk_balance` on (owner; [`decisions.md`](decisions.md)). The
+paragraph below is the 2026-09-04 state.
 
 **The routing policy is the lane, and sage is the floor.** Two owner
 decisions on 2026-09-04, recorded with what they change and the sequence

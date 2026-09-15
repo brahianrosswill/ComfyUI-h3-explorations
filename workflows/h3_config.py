@@ -700,14 +700,21 @@ SOL_RECOMMENDED_CUDA = dict(
     # (`bench/results/2026-09-04_sol_exact_random_1128df6_token_aug_timing.json`),
     # so the wider budgets buy nothing while switching it on at all costs.
     token_aug_blocks="",
-    # Off (2026-09-15). The kernel's own per-head q/k channel rebalancing
-    # inside its INT8 quantizers, carried on the owner's kitchen fork
-    # (h3-build) and graded on captures by bench/grade_channel_balance.py;
-    # exact for every attention score, so what it changes is the INT8
-    # error on the blocks whose K-norm is lopsided (docs/h3_block49_quant_error.md).
-    # An experiment under docs/SOLATTN.md's decision standard until a blind
-    # pair says otherwise; the policy graph carries it as an override.
-    qk_balance=False,
+    # On since 2026-09-15, owner decision; off from its introduction that
+    # morning. The kernel's own per-head q/k channel rebalancing inside its
+    # INT8 quantizers, carried on the owner's kitchen fork (h3-build) and
+    # graded on captures by bench/grade_channel_balance.py; exact for every
+    # attention score, so what it changes is the INT8 error on the blocks
+    # whose K-norm is lopsided (docs/h3_block49_quant_error.md). Measured on
+    # captures, not judged blind: it lowers Sol's quantization error on block
+    # 49 and is neutral on blocks 0 and 32, where its per-head gate stays shut
+    # (bench/results/2026-09-15_channel_balance_kernel_b{49,0,32}_s15.json),
+    # at no measurable wall time (bench/results/2026-09-15_block49_diner_batch.md).
+    # Adopted with the kitchen dense floor (DENSE_BACKEND_NODE below): with
+    # sage out of the default chain, Sol's routed steps are the only unrotated
+    # INT8 left on those blocks. h3_probe_t2v_ck and h3_probe_t2v_exact_tail
+    # carry False as declared deviations (bench/check_attention_defaults.py).
+    qk_balance=True,
 )
 
 
@@ -894,6 +901,22 @@ SOL_CUDA_DEFAULTS = dict(
 # node declares its inputs: the owner's editor-saved graphs map widget values
 # positionally.
 SAGE_NODE = dict(mode="auto", patch_token_refiner=False, head_chunks=1)
+
+# The dense attention kernel under Sol, on ComfyUI core's `ModelAttentionBackend`
+# node (`comfy_extras/nodes_model_advanced.py`). **The default chain since
+# 2026-09-15, owner decision, replacing `MiniMaxH3SageAttention`**, which now
+# appears only on graphs that declare why (bench/check_attention_defaults.py
+# `FLOOR_STEMS`). "comfy kitchen attention" is kitchen's `int8_attention`: it
+# rotates q and k before INT8, so no loud channel can own a shared scale, and
+# on the block-49 capture it is the most accurate INT8 attention this repo has
+# graded (bench/results/2026-09-15_ck_int8_attention_block49.json, measured).
+# Wall time against the sage chain: one market render per arm, same prompt and
+# seed (bench/results/2026-09-15_block49_community_chain.md, measured once).
+# The node rather than `--use-ck-attention`: the flag is server-global and
+# reaches every model, the node travels with the graph. It installs an
+# attention override, and Sol chains onto it, so this kernel also takes every
+# call Sol declines and every step outside Sol's window.
+DENSE_BACKEND_NODE = dict(attention="comfy kitchen attention")
 
 # Step caching, on ComfyUI core's EasyCache node (comfy_extras/
 # nodes_easycache.py). Added 2026-08-18. The node thresholds the relative

@@ -60,6 +60,18 @@ exempt filenames is the shape that goes stale silently, which is the objection
     have live Sol, that is a failure, not a pass. So an exemption that stops
     being true goes red instead of quietly covering a graph nobody checks.
 
+## The dense floor, since 2026-09-15
+
+Sol chains onto whatever attention override is already installed, so the
+kernel under it is part of the configuration too. Until 2026-09-15 that was
+sage on every graph; since then the default is ComfyUI core's
+`ModelAttentionBackend` at `h3_config.DENSE_BACKEND_NODE`. Each graph's floor
+is read from its live nodes (sage, backend, or neither for stock attention),
+the backend's values are graded, and a graph off the default must be named in
+`FLOOR_STEMS` with a mechanism, held to the same necessity rule as the
+exemptions: a graph that keeps sage without saying why fails, and so does a
+declaration the graph no longer needs.
+
 `workflows/bench/*_stamped_api.json`, the dense baselines, are outside
 `graph_paths()` entirely and so outside this check's scope. That is stated
 rather than exempted, because an exemption implies coverage.
@@ -94,6 +106,9 @@ WORKFLOWS = _REPO / "workflows"
 # which is a finding for this check rather than a second case to accept.
 SOL = "MiniMaxH3SolAttn"
 SAGE = "MiniMaxH3SageAttention"
+# ComfyUI core's node, the dense kernel under Sol since 2026-09-15; graded
+# against h3_config.DENSE_BACKEND_NODE.
+BACKEND = "ModelAttentionBackend"
 
 OUTPUT_TYPES = {"VHS_VideoCombine", "SaveImage", "PreviewImage", "SaveAudio",
                 "SaveAnimatedWEBP", "SaveWEBM", "SaveVideo", "PreviewAny",
@@ -123,25 +138,27 @@ DEVIATIONS = {
                                          "candidate graph (2026-09-05): Sol on two of "
                                          "the eight PDD steps; the window IS the arm, "
                                          "blinded as pdd_ladder_2026-09-04"),
-    "h3_probe_t2v_policy": (("mode", "qk_balance"),
+    "h3_probe_t2v_policy": (("mode",),
                             "block-49 policy graph (2026-09-15, docs/h3_quant_policy.md "
-                            "Tier 0/1): sage in 'fp8++ balanced', Sol with its own "
-                            "qk_balance on, plus the balance node and exact tail "
-                            "blocks; both modes ARE the arm"),
-    "h3_probe_t2v_ck_balanced": (("qk_balance",),
-                                 "community-chain probe (2026-09-15): kitchen int8 dense + Sol "
-                                 "with qk_balance on; the switch IS the arm"),
+                            "Tier 0/1), kept on the sage chain while its pair is scored: "
+                            "sage in 'fp8++ balanced' plus the balance node and exact "
+                            "tail blocks; the mode IS the arm"),
+    "h3_probe_t2v_ck": (("qk_balance",),
+                        "community-chain control (2026-09-15): kitchen int8 dense + Sol "
+                        "with qk_balance OFF, the chain as most people run it; the "
+                        "switch IS the arm"),
     "h3_probe_t2v_ck_dense_tail": (("dense_blocks",),
                                    "community-chain probe (2026-09-15): blocks 45/48/49 handed to "
                                    "the kitchen dense kernel; the list IS the arm"),
-    "h3_probe_t2v_levers": (("mode", "qk_balance"),
-                            "block-49 Tier 1 witness (2026-09-15, docs/h3_quant_policy.md): "
-                            "every free lever on and no exact blocks; both modes ARE the arm"),
-    "h3_probe_t2v_balanced": (("mode",),
-                              "block-49 probe (2026-09-15): sage in 'fp8++ balanced' "
-                              "turns on the fork's per-head q/k channel rebalancing "
-                              "in the INT8 quantizer; the mode IS the arm, paired "
-                              "same-seed against the shipped graph"),
+    "h3_probe_t2v_exact_tail": (("qk_balance",),
+                                "the scored ceiling arm of the sage chain (2026-09-15, "
+                                "bench/results/2026-09-15_block49_*): kept as it rendered, "
+                                "so Sol's qk_balance stays off; the switch predates the "
+                                "recipe's"),
+    "h3_probe_t2v_levers": (("mode",),
+                            "block-49 Tier 1 witness (2026-09-15, docs/h3_quant_policy.md), "
+                            "kept on the sage chain while its pair is scored: every free "
+                            "lever on and no exact blocks; the mode IS the arm"),
 }
 
 #: Graphs that legitimately ship without live Sol, by MECHANISM. The
@@ -207,6 +224,63 @@ SOL_EXEMPT_STEMS = {
         "probe set spans (Sol, router, dense)",
 }
 
+#: {graph stem: (floor, reason)} for graphs whose dense attention kernel is NOT
+#: `h3_config.DENSE_BACKEND_NODE` (core's ModelAttentionBackend on kitchen
+#: int8), the default chain since 2026-09-15. `floor` is what the graph must
+#: carry: "sage" (a live MiniMaxH3SageAttention) or "stock" (neither node, so
+#: ComfyUI's own attention). Held to the same two rules as the lists above: a
+#: graph off the default floor that is not listed fails, and a listed graph
+#: that is back on the default fails. The PDD reference-replication arms are
+#: derived, not listed, by the same mechanism as their Sol exemption.
+FLOOR_STEMS = {
+    # Rungs and controls that were rendered as sage alone, so their pair holds.
+    "h3_probe_t2v_turbo_v4_sage":
+        ("sage", "the turbo rung's pack arm, sage alone by construction "
+                 "(bench/turbo_rung_arms.json)"),
+    "h3_probe_t2v_turbo_lx12_sage":
+        ("sage", "the turbo rung's lightx2v arm, sage alone by construction"),
+    "h3_probe_t2v_pdd8_sage":
+        ("sage", "the sage-alone rung of the PDD ladder (bench/pdd_ladder_arms.json)"),
+    "h3_probe_t2v_pdd8_baked_sage":
+        ("sage", "the baked twin of h3_probe_t2v_pdd8_sage (bench/pdd_bake_arms.json)"),
+    "h3_probe_turbo_768p_sla_dense":
+        ("sage", "the SLA LoRA under sage alone, the comparative arm "
+                 "SOL_EXEMPT_STEMS describes"),
+    # Graphs where the sage node is part of the mechanism.
+    "h3_probe_capture_ref3":
+        ("sage", "h3_capture.py records from inside the sage forward, so a "
+                 "capture target needs the sage node"),
+    "h3_probe_capture_ref3_fl2va":
+        ("sage", "the capture twin on fl2va; the same reason"),
+    "h3_probe_vsa":
+        ("sage", "sage takes the two token-refiner blocks VSA does not replace, "
+                 "and the generator refuses the kitchen backend on a VSA arm"),
+    "h3_probe_vsa_dense":
+        ("sage", "the VSA arm's control, on the same floor as the arm"),
+    "h3_probe_head_chunks":
+        ("sage", "head_chunks is an input of MiniMaxH3SageAttention; the arm "
+                 "means nothing without the node"),
+    "h3_probe_t2v_sol_core":
+        ("sage", "core's BlockSparseAttention against ours with sage as the "
+                 "floor both fall back to (bench/sol_core_ab_arms.json); core's "
+                 "node over the kitchen backend has not been rendered here"),
+    # Block-49 arms on the sage chain, scored or still being scored there.
+    "h3_probe_t2v_levers":
+        ("sage", "block-49 Tier 1 witness on the sage chain; its pair with "
+                 "h3_probe_t2v_policy is still being scored"),
+    "h3_probe_t2v_policy":
+        ("sage", "block-49 Tier 0/1 policy graph on the sage chain; the same pair"),
+    "h3_probe_t2v_exact_tail":
+        ("sage", "the scored ceiling arm of the sage chain, kept as it rendered"),
+    # Sol over ComfyUI's own attention.
+    "h3_probe_t2v_sol_nosage":
+        ("stock", "the just-Sol arm of 2026-09-04 (bench/sol_nosage_arms.json): "
+                  "Sol over stock attention, which is not the kitchen chain"),
+    "h3_candidate_t2v_sol_only":
+        ("stock", "the just-Sol candidate blinded as sol_nosage_2026-09-04: "
+                  "stock attention on the step Sol leaves"),
+}
+
 
 def load(path):
     return json.loads(path.read_text())
@@ -269,14 +343,16 @@ def single_frame_dirs():
     return {d for d in h3_config.GRAPH_DIRS if d}
 
 
-def wires_sage(graph) -> bool:
-    """Whether this graph has a sage node at all.
+def wires_dense_kernel(graph) -> bool:
+    """Whether this graph has a dense attention node at all, sage or backend.
 
     The discriminator between the two PDD classes: a reference-replication arm
-    runs stock attention and carries neither sage nor Sol; a canonical arm runs
-    the repo default and carries both.
+    runs stock attention and carries no attention node; a canonical arm runs
+    the repo default and carries a dense node and Sol. It read the sage node
+    alone until 2026-09-15, when the default floor moved to the backend node
+    and every canonical PDD arm would have read as a reference arm.
     """
-    return any(isinstance(n, dict) and n.get("class_type") == SAGE
+    return any(isinstance(n, dict) and n.get("class_type") in (SAGE, BACKEND)
                for n in graph.values())
 
 
@@ -317,16 +393,20 @@ def main() -> int:
     # form would read as one with no Sol at all.
     paths = h3_config.graph_paths(WORKFLOWS, "*_api.json")
     img_dirs = single_frame_dirs()
-    problems, checked = [], {"sol": 0, "sage": 0, "graphs": 0, "single_frame": 0}
+    problems, checked = [], {"sol": 0, "sage": 0, "backend": 0, "graphs": 0,
+                             "single_frame": 0}
     exempt_seen = {k: False for k in SOL_EXEMPT_STEMS}
     dev_seen = {k: False for k in DEVIATIONS}
+    floor_seen = {k: False for k in FLOOR_STEMS}
+    floors = {"ck": 0, "sage": 0, "stock": 0}
 
     for p in paths:
         g = load(p)
         stem = p.stem[:-4] if p.stem.endswith("_api") else p.stem
         in_image = p.parent.name in img_dirs
         exempt_reason = SOL_EXEMPT_STEMS.get(stem)
-        if exempt_reason is None and loads_pdd(g) and not wires_sage(g):
+        pdd_reference = loads_pdd(g) and not wires_dense_kernel(g)
+        if exempt_reason is None and pdd_reference:
             # Narrowed 2026-08-26, hours after it was written. It exempted
             # EVERY PDD graph, which was right while they all ran dense and
             # wrong the moment the canonical arms took the repo default -- a
@@ -346,11 +426,51 @@ def main() -> int:
 
         sol = attn_nodes(g, SOL)
         sage = attn_nodes(g, SAGE)
+        backend = attn_nodes(g, BACKEND)
         checked["sol"] += len(sol)
         checked["sage"] += len(sage)
+        checked["backend"] += len(backend)
+
+        # --- dense_floor ----------------------------------------------------
+        # Which dense kernel the graph runs under Sol, read from its live
+        # nodes, against FLOOR_STEMS or the default. Since 2026-09-15 the
+        # default is the backend node; a graph that quietly kept sage, or lost
+        # its dense node and fell to stock attention, is a different
+        # experiment wearing the shipped name.
+        live_sage = [n for n in sage if n[2] == "live"]
+        live_backend = [n for n in backend if n[2] == "live"]
+        floor = ("both" if live_sage and live_backend else "sage" if live_sage
+                 else "ck" if live_backend else "stock")
+        declared = FLOOR_STEMS.get(stem)
+        if declared is not None:
+            floor_seen[stem] = True
+        if floor == "both":
+            problems.append(
+                f"{p.relative_to(_REPO)}: carries a live {SAGE} AND a live "
+                f"{BACKEND}; each installs the attention override, so one of "
+                f"them silently decides the kernel. Wire one.")
+        elif declared is not None and floor != declared[0]:
+            problems.append(
+                f"{p.relative_to(_REPO)}: FLOOR_STEMS declares {declared[0]!r} "
+                f"but the graph runs {floor!r}. The declaration is stale -- "
+                f"remove it or restore the arm.")
+        elif (declared is None and floor != "ck" and not in_image
+              and not (pdd_reference and floor == "stock")):
+            problems.append(
+                f"{p.relative_to(_REPO)}: dense floor is {floor!r}, the default "
+                f"is {BACKEND} at h3_config.DENSE_BACKEND_NODE. If this graph "
+                f"is a new exception, add it to FLOOR_STEMS with a mechanism.")
+        if floor in floors:
+            floors[floor] += 1
+        for nid, vals, _state in live_backend:
+            for k, want in h3_config.DENSE_BACKEND_NODE.items():
+                if vals.get(k) != want:
+                    problems.append(
+                        f"{p.relative_to(_REPO)}: node {nid} {BACKEND}.{k} is "
+                        f"{vals.get(k)!r}, h3_config.DENSE_BACKEND_NODE says {want!r}")
 
         # --- no_orphans: applies to EVERY graph, exempt or not -------------
-        for nid, _vals, state in sol + sage:
+        for nid, _vals, state in sol + sage + backend:
             if state == "orphaned":
                 problems.append(
                     f"{p.relative_to(_REPO)}: node {nid} is present but its MODEL "
@@ -449,9 +569,18 @@ def main() -> int:
             problems.append(
                 f"DEVIATIONS names {stem!r}, which matches no graph under "
                 f"graph_paths(). Remove the entry.")
+    for stem, seen in floor_seen.items():
+        if not seen:
+            problems.append(
+                f"FLOOR_STEMS names {stem!r}, which matches no graph under "
+                f"graph_paths(). Remove the entry.")
 
-    print(f"  {checked['graphs']} graphs, {checked['sol']} {SOL} and "
-          f"{checked['sage']} {SAGE} node(s)")
+    print(f"  {checked['graphs']} graphs, {checked['sol']} {SOL}, "
+          f"{checked['backend']} {BACKEND} and {checked['sage']} {SAGE} node(s)")
+    print(f"  dense floor: {floors['ck']} on {BACKEND} "
+          f"{h3_config.DENSE_BACKEND_NODE['attention']!r} (the default), "
+          f"{floors['sage']} on sage and {floors['stock']} on stock attention; "
+          f"{len(FLOOR_STEMS)} declared in FLOOR_STEMS, the PDD reference arms derived")
     print(f"  declared: sage mode {h3_config.SAGE_NODE['mode']!r}, "
           f"sol tau {h3_config.SOL_RECOMMENDED_CUDA['tau']}, "
           f"min_tokens {h3_config.SOL_RECOMMENDED_CUDA['min_tokens']}")

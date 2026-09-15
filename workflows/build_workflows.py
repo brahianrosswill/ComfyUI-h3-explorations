@@ -90,7 +90,7 @@ _OUR_NODES = {
 from prompts import text as _bank_prompt  # noqa: E402
 from h3_config import (  # noqa: E402
     CORE_LOADED_ENCODERS, IMAGE_VAE, CANVAS, FPS, LENGTH, LONG_LENGTH, MODELS,
-    SAMPLING, SAGE_NODE, SEED, SIGMA_SHIFT, SOL_CORE_NODE, SOL_CORE_DEFAULTS,
+    SAMPLING, SAGE_NODE, DENSE_BACKEND_NODE, SEED, SIGMA_SHIFT, SOL_CORE_NODE, SOL_CORE_DEFAULTS,
     VSA_KEEP_PERCENT,
     CACHE_NODE, CACHE_NODE_CLASS,
     TURBO_LORA, TURBO_LORA_STRENGTH, TURBO_SHIFT, TURBO_STEPS,
@@ -640,12 +640,16 @@ _SONG_FLICKER_TIMELINE = "\n".join((
 #: name, never a number (bench/check_literal_widgets.py's rule, applied to the
 #: generator's own extras).
 # "ck" (2026-09-15): the community chain. ComfyUI core's Model Attention
-# Backend node on "comfy kitchen attention" (kitchen's int8_attention, which
+# Backend node at h3_config.DENSE_BACKEND_NODE (kitchen's int8_attention, which
 # rotates q/k before INT8 and is immune to the loud-channel mechanism) as the
-# dense kernel, our Sol node on top, sage ABSENT. Exists to measure the
-# block-49 effect on the chain most people run, where only the routed
-# steps carry it; bench/results/2026-09-15_ck_int8_attention_block49.json.
-_DENSE_ATTN_MODES = ("none", "sage", "sol", "ck")
+# dense kernel, our Sol node on top, sage ABSENT. Added that morning to measure
+# the block-49 effect on the chain most people run
+# (bench/results/2026-09-15_ck_int8_attention_block49.json); **the default
+# since that evening, owner decision**, so an entry that names no mode gets it.
+# "sage_sol" (2026-09-15): the chain every video graph shipped until then, sage
+# under Sol, for the arms that must stay on it;
+# bench/check_attention_defaults.py::FLOOR_STEMS says which and why.
+_DENSE_ATTN_MODES = ("none", "sage", "sol", "ck", "sage_sol")
 
 
 def _sol_with_overrides(extra: dict) -> dict:
@@ -674,33 +678,44 @@ def _sol_with_overrides(extra: dict) -> dict:
 def _attention_plan(extra: dict) -> tuple[bool, bool, str | None, bool]:
     """(sage, sol_on, dense_mode, vsa_on) from one GRAPHS entry's extras.
 
-    Default: sage AND Sol, the repo's shipped chain. The owner's standing
-    direction (2026-08-17): Sol-Attn is on by default on every video
-    workflow; `sol_on=False` bypasses it for a named test.
+    Default, since 2026-09-15 (owner): "ck", core's Model Attention Backend
+    at h3_config.DENSE_BACKEND_NODE as the dense kernel and Sol on top, no
+    sage. Until then the default was sage AND Sol, which is "sage_sol" now.
+    The owner's standing direction (2026-08-17) is unchanged: Sol-Attn is on
+    by default on every video workflow; `sol_on=False` bypasses it for a
+    named test and leaves the dense kernel alone.
 
-    `dense_attn` names an arm that departs from that chain, and it is a
-    named mode rather than a flag because there are three of them:
+    `dense_attn` names the dense kernel, and it is a named mode rather than a
+    flag because there are five:
 
-      True or "none"  neither sage nor Sol: whatever kernel ComfyUI resolves
-                      on its own. For probes whose subject is a numerical
-                      mechanism elsewhere in the model, since both sage and
-                      Sol change attention numerics; and the PDD reference
+      "ck"            the default: the kitchen backend node, Sol on unless
+                      `sol_on=False`.
+      "sage_sol"      sage with Sol on top, the chain every video graph
+                      shipped until 2026-09-15, for the arms that must stay
+                      on it (bench/check_attention_defaults.py::FLOOR_STEMS).
+      True or "none"  neither a dense node nor Sol: whatever kernel ComfyUI
+                      resolves on its own. For probes whose subject is a
+                      numerical mechanism elsewhere in the model, since every
+                      attention node changes numerics; and the PDD reference
                       arms, which replicate the vendor's Diffusers path.
       "sage"          sage with Sol ABSENT. Absent rather than bypassed, for
                       PDD: Sol skips attention adaptively per step, which is
                       incoherent against a fixed fused block schedule, and a
                       bypassed node in the graph is an invitation to switch
                       it on.
-      "sol"           Sol with sage ABSENT (2026-09-04, the owner's "maybe
+      "sol"           Sol with no dense node (2026-09-04, the owner's "maybe
                       it's better to try without sage at all"): Sol as
                       shipped over ComfyUI's stock attention, so the steps
                       outside Sol's window and Sol's own fallback run stock.
                       On an armed server the probe's counterfactual becomes
-                      stock attention rather than sage.
+                      stock attention.
 
     A VSA arm suppresses Sol because the two are mutually exclusive at the
-    block forward; the builder refuses the pair rather than ordering them.
-    An image (single-frame) arm carries neither.
+    block forward; the builder refuses the pair rather than ordering them. It
+    must name its kernel ("sage" keeps the token-refiner blocks on sage): the
+    kitchen backend on a VSA arm has never been run, so the default is
+    refused there rather than inherited. An image (single-frame) arm, a
+    parked lane, carries what the archived image graphs carried: sage alone.
     """
     is_image = bool(extra.get("single_frame", False))
     dense = extra.get("dense_attn", False)
@@ -708,14 +723,19 @@ def _attention_plan(extra: dict) -> tuple[bool, bool, str | None, bool]:
     if dense_mode is not None and dense_mode not in _DENSE_ATTN_MODES:
         raise SystemExit(f"dense_attn={dense!r} is not one of {_DENSE_ATTN_MODES}")
     vsa_on = extra.get("vsa") is not None
-    if dense_mode in ("sol", "ck"):
+    if dense_mode is None:
+        if is_image:
+            return True, False, None, vsa_on
+        if vsa_on:
+            raise SystemExit("a VSA arm names its dense kernel (dense_attn='sage'); "
+                             "the kitchen default has never run beside VSA")
+        dense_mode = "ck"
+    if dense_mode in ("sol", "ck", "sage_sol"):
         if is_image or vsa_on:
             raise SystemExit(f"dense_attn={dense_mode!r} names a Sol-over-dense video arm; "
                              "it cannot be an image arm or carry VSA")
-        return False, bool(extra.get("sol_on", True)), dense_mode, vsa_on
-    sage = (dense_mode == "sage") if dense_mode else True
-    sol_on = False if (is_image or dense_mode or vsa_on) else bool(extra.get("sol_on", True))
-    return sage, sol_on, dense_mode, vsa_on
+        return dense_mode == "sage_sol", bool(extra.get("sol_on", True)), dense_mode, vsa_on
+    return dense_mode == "sage", False, dense_mode, vsa_on
 
 
 def _graph_dir(out, extra: dict):
@@ -1291,23 +1311,28 @@ def _check_geometry(length, canvas):
         )
 
 
-def _assert_inputs(sage: bool, sol_present: bool) -> dict:
+def _assert_inputs(sage: bool, sol_present: bool, backend: bool = False) -> dict:
     """`SageChainAssert`'s flags from what the chain in front of it holds.
 
     Three states, and the node's flags spell each:
 
       sage wired            require the override, the per-block forward
                             patches and the call-time probe; Sol or not.
-      neither sage nor Sol  `require_absent`: the render refuses if anything
+      nothing wired         `require_absent`: the render refuses if anything
                             patched attention. The true baseline and the PDD
                             reference arms (2026-09-03).
-      Sol alone, no sage    require the override (Sol installs one) and
+      Sol or the backend    require the override (Sol and core's Model
+      node, no sage         Attention Backend each install one) and
                             `require_no_forward_patch`: no sage forward patch
                             may be installed, and the exercise proves a probe
-                            below Sol's gate reaches no sage kernel. The five
-                            outer steps and Sol's own fallback run ComfyUI's
-                            stock attention. (Before the flag existed, on
-                            2026-09-04, this state was only permitted.)
+                            below Sol's gate reaches no sage kernel. The outer
+                            steps and Sol's own fallback run whatever the
+                            backend node chose, or ComfyUI's stock attention
+                            without it. (Before the flag existed, on
+                            2026-09-04, this state was only permitted. The
+                            backend joined it on 2026-09-15, the default
+                            chain since; the flags and the log line are
+                            unchanged, the latter still naming "Sol-over-stock".)
 
     `warn_only` is False in every state: a gate that always raises on the
     control arm would make the comparison impossible to run rather than safe,
@@ -1316,14 +1341,14 @@ def _assert_inputs(sage: bool, sol_present: bool) -> dict:
     if sage:
         return {"require_override": True, "require_forward_patch": True, "exercise": True,
                 "warn_only": False, "require_absent": False, "require_no_forward_patch": False}
-    if sol_present:
+    if sol_present or backend:
         return {"require_override": True, "require_forward_patch": False, "exercise": True,
                 "warn_only": False, "require_absent": False, "require_no_forward_patch": True}
     return {"require_override": False, "require_forward_patch": False, "exercise": False,
             "warn_only": False, "require_absent": True, "require_no_forward_patch": False}
 
 
-def _plain_model_chain(g, *, sage, sol, shift, head_chunks):
+def _plain_model_chain(g, *, sage, sol, shift, head_chunks, dense_backend=None):
     """A second model path off the same UNETLoader, WITHOUT the LoRA.
 
     The two-stage split runs a different model on each half, so it needs two
@@ -1341,6 +1366,12 @@ def _plain_model_chain(g, *, sage, sol, shift, head_chunks):
                "inputs": {"model": src,
                           **(shift if shift is not None else SIGMA_SHIFT)}}
     src = ["40", 0]
+    if dense_backend is not None:
+        # The primary chain's backend node (id 58) mirrored, so both halves of
+        # a split run the same dense kernel. Node id 59.
+        g["59"] = {"class_type": "ModelAttentionBackend",
+                   "inputs": {"model": src, "attention": dense_backend}}
+        src = ["59", 0]
     if sage:
         g["41"] = {"class_type": "MiniMaxH3SageAttention",
                    "inputs": {"model": src, **dict(
@@ -1353,7 +1384,8 @@ def _plain_model_chain(g, *, sage, sol, shift, head_chunks):
                    "inputs": {"model": src, **sol_api_inputs(sol)}}
         src = ["42", 0]
     g["43"] = {"class_type": "SageChainAssert",
-               "inputs": {"model": src, **_assert_inputs(sage, sol is not None)}}
+               "inputs": {"model": src, **_assert_inputs(sage, sol is not None,
+                                                         dense_backend is not None)}}
     return ["43", 0]
 
 
@@ -1905,10 +1937,14 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
     if dense_backend is not None:
         # Core's node: `set_model_optimized_attention`, which is the function
         # our Sol node's dense fallback calls, so Sol composes on top of it
-        # exactly as core's own block-sparse node would. Node id 60.
-        g["60"] = {"class_type": "ModelAttentionBackend",
+        # exactly as core's own block-sparse node would. Node id 58. It was 60
+        # for the three probes that carried it on 2026-09-15, which is also
+        # ManualSigmas' id below: harmless while no probe set both, a silent
+        # overwrite once every graph carried the backend. 50-57 are the typed
+        # reference appends (`_REF_APPEND_NODES`).
+        g["58"] = {"class_type": "ModelAttentionBackend",
                    "inputs": {"model": model_src, "attention": dense_backend}}
-        model_src = ["60", 0]
+        model_src = ["58", 0]
     if sage:
         g["20"] = {"class_type": "MiniMaxH3SageAttention",
                    "inputs": {"model": model_src, **dict(
@@ -1968,7 +2004,8 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
     # control arm, and a gate that always raises on the control makes the
     # comparison impossible to run rather than making it safe.
     g["23"] = {"class_type": "SageChainAssert",
-               "inputs": {"model": model_src, **_assert_inputs(sage, sol is not None)}}
+               "inputs": {"model": model_src, **_assert_inputs(sage, sol is not None,
+                                                               dense_backend is not None)}}
     model_src = ["23", 0]
     if exact_blocks is not None:
         # After the assert: it grades the sage/Sol composition as shipped, and
@@ -2071,7 +2108,8 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
 
         # `model_src` carries the LoRA. The second chain is the plain model.
         plain_src = _plain_model_chain(g, sage=sage, sol=sol, shift=shift,
-                                       head_chunks=head_chunks)
+                                       head_chunks=head_chunks,
+                                       dense_backend=dense_backend)
         # base_last: distilled student takes the high-noise majority, the plain
         #   base model finishes. This is the ordering for ref2v -- the
         #   student's measured deficit is high-frequency detail, resolved at
@@ -4020,7 +4058,7 @@ def main():
          LONG_T2V_PROMPT,
          dict(lora=(TURBO_SLA_LORA, TURBO_LORA_STRENGTH),
               steps=TURBO_SLA_STEPS, shift=TURBO_SLA_SHIFT,
-              sol_on=False,
+              dense_attn="sage",
               out_prefix="Video/h3_probe_turbo_768p_sla_dense"),
          "the SLA LoRA with Sol-Attn absent: sage only"),
 
@@ -4110,8 +4148,10 @@ def main():
         # REF_VIDEO_BUDGET, so they move with the other reference arms.
         ("h3_probe_capture_ref3.json", "probe-capture-ref3", "r2v",
          _ref_prompt(images=("character", "garment", "environment")),
-         # sol_on=False, and this is the ONE graph that earns the exception to
-         # the Sol-on-by-default rule: `h3_capture.py` records the activations a
+         # dense_attn="sage" (sol_on=False until 2026-09-15, when the default
+         # floor stopped being sage): Sol absent and sage KEPT, because
+         # `h3_capture.py` records from inside the sage forward. And this is
+         # the ONE graph that earns the exception to the Sol-on-by-default rule: `h3_capture.py` records the activations a
          # dense baseline is measured from, and a Sol arm gives sage only a
          # subset of the sampler's steps, so a capture taken through Sol is a
          # different trajectory than the one the analysis assumes.
@@ -4121,7 +4161,7 @@ def main():
          # regeneration silently reverted -- putting Sol back into the capture
          # chain with nothing going red. Declaring it here survives regeneration.
          dict(**REF_VIDEO_BUDGET, ref_images=CAPTURE_REF_IMAGES,
-              sol_on=False,
+              dense_attn="sage",
               out_prefix="Video/h3_probe_capture_ref3"),
          "3 references spanning 0.78-4.23 MP; the h3_capture.py target"),
 
@@ -4203,7 +4243,7 @@ def main():
         ("h3_probe_capture_ref3_fl2va.json", "probe-capture-ref3-fl2va", "r2v",
          _ref_prompt(images=("character", "garment", "environment")),
          dict(**REF_VIDEO_BUDGET, ref_images=CAPTURE_REF_IMAGES,
-              sol_on=False, unet=MODELS["unet_fl2va"],
+              dense_attn="sage", unet=MODELS["unet_fl2va"],
               out_prefix="Video/h3_probe_capture_ref3_fl2va"),
          "the capture twin on fl2va with no LoRA; the missing block-49 control"),
 
@@ -4609,7 +4649,8 @@ def main():
 
 
         # --- PDD, the arms to actually render with ------------------------
-        # The repo default: sage AND Sol.
+        # The repo default: a dense kernel AND Sol (sage until 2026-09-15, the
+        # kitchen backend node since; `_attention_plan`).
         #
         # These carried sage only until 2026-08-26, on the reasoning that Sol's
         # adaptive per-step skipping is incoherent against a fixed fused block
@@ -4632,7 +4673,7 @@ def main():
          dict(pdd=True, sampler_name="euler",
               lora=(PDD_FL2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS,
               out_prefix="Video/text_to_video_pdd"),
-         "text -> video + audio at 8 steps via PDD, sage on"),
+         "text -> video + audio at 8 steps via PDD, kitchen dense + Sol"),
 
         # **The PDD ladder's own rungs, added 2026-09-04.** The 2026-09-03
         # speedup ladder rendered PDD8 only as the shipped graph (sage plus
@@ -4750,7 +4791,7 @@ def main():
          dict(pdd=True, sampler_name="euler",
               lora=(PDD_FL2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS_FAST,
               out_prefix="Video/text_to_video_pdd_4step"),
-         "text -> video + audio at 4 steps via PDD, sage on"),
+         "text -> video + audio at 4 steps via PDD, kitchen dense + Sol"),
 
         ("h3_text_to_video_pdd_manual_sigmas.json", "texttovideopddmanualsigmas",
          "t2v", LONG_T2V_PROMPT,
@@ -4758,33 +4799,33 @@ def main():
               lora=(PDD_FL2VA_LORA, PDD_STRENGTH),
               manual_sigmas=PDD_MANUAL_SIGMAS, steps=PDD_MANUAL_EVALS,
               out_prefix="Video/text_to_video_pdd_manual_sigmas"),
-         "text -> video + audio on a tail-weighted PDD partition, sage on"),
+         "text -> video + audio on a tail-weighted PDD partition, kitchen dense + Sol"),
 
         ("h3_first_last_frame_to_video_pdd.json", "firstlastframetovideopdd", "i2v", None,
          dict(last_frame=True, **FL2V_CANVAS,
               pdd=True, sampler_name="euler",
               lora=(PDD_FL2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS,
               out_prefix="Video/first_last_frame_to_video_pdd"),
-         "first+last frame -> video + audio at 8 steps via PDD, sage on"),
+         "first+last frame -> video + audio at 8 steps via PDD, kitchen dense + Sol"),
 
         ("h3_first_last_frame_to_video_pdd_4step.json", "firstlastframetovideopdd4step", "i2v", None,
          dict(last_frame=True, **FL2V_CANVAS,
               pdd=True, sampler_name="euler",
               lora=(PDD_FL2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS_FAST,
               out_prefix="Video/first_last_frame_to_video_pdd_4step"),
-         "first+last frame -> video + audio at 4 steps via PDD, sage on"),
+         "first+last frame -> video + audio at 4 steps via PDD, kitchen dense + Sol"),
 
         ("h3_image_ref_plus_text_to_video_pdd.json", "imagerefplustexttovideopdd", "r2v", _ref_prompt(images=True),
          dict(pdd=True, sampler_name="euler",
               lora=(PDD_REF2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS,
               out_prefix="Video/image_ref_plus_text_to_video_pdd"),
-         "image references -> video + audio at 8 steps via PDD, sage on"),
+         "image references -> video + audio at 8 steps via PDD, kitchen dense + Sol"),
 
         ("h3_image_ref_plus_text_to_video_pdd_4step.json", "imagerefplustexttovideopdd4step", "r2v", _ref_prompt(images=True),
          dict(pdd=True, sampler_name="euler",
               lora=(PDD_REF2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS_FAST,
               out_prefix="Video/image_ref_plus_text_to_video_pdd_4step"),
-         "image references -> video + audio at 4 steps via PDD, sage on"),
+         "image references -> video + audio at 4 steps via PDD, kitchen dense + Sol"),
 
 
         ("h3_probe_ref2v_pdd.json", "r2v-pdd", "r2v", _ref_prompt(images=True),
@@ -4887,7 +4928,7 @@ def main():
         ("h3_probe_vsa.json", "t2v-vsa", "t2v", LONG_T2V_PROMPT,
          dict(width=1152, height=768, length=345, steps=4,
               unet=MODELS["unet_vsa"],
-              vsa=(VSA_KEEP_PERCENT, False),
+              vsa=(VSA_KEEP_PERCENT, False), dense_attn="sage",
               out_prefix="Video/h3_probe_vsa"),
          "FastVideo VSA -- EXPERIMENTAL, draft core PR, first run"),
 
@@ -4960,52 +5001,52 @@ def main():
         # only: it is driven by run_graph_arms (bench/sol_core_ab_arms.json),
         # and the UI builder draws no DynamicCombo for a core node.
         ("h3_probe_t2v_sol_core.json", "t2v-sol-core", "t2v", LONG_T2V_PROMPT,
-         dict(sol_impl="core", out_prefix="Video/h3_probe_t2v_sol_core"),
+         dict(sol_impl="core", dense_attn="sage_sol",
+              out_prefix="Video/h3_probe_t2v_sol_core"),
          "text -> video + audio, sage + core's BlockSparseAttention at its own defaults"),
 
         # **Block-49 probes, 2026-09-15** (docs/h3_block49_quant_error.md).
-        # Same prompt and seed as the shipped t2v graph, so the three form
-        # same-seed pairs against it. `balanced` turns on both free levers:
-        # the channel-balance node on the lopsided blocks and the sage fork's
-        # per-head qk_balance. `exact_tail` runs blocks 45, 48 and 49 on
-        # ComfyUI's own bf16 attention: the ceiling of what any fix at those
-        # blocks can do, at a few percent of render time. Neither is a
-        # default; both are the tinkerer's look before any protocol.
-        ("h3_probe_t2v_balanced.json", "t2v-balanced", "t2v", LONG_T2V_PROMPT,
-         dict(channel_balance="loud blocks (from weights)", sage_mode="fp8++ balanced",
-              out_prefix="Video/h3_probe_t2v_balanced"),
-         "text -> video + audio, shipped chain + channel balance node + sage qk_balance"),
+        # Same prompt and seed as the shipped t2v graph, so they form
+        # same-seed pairs against it. `exact_tail` runs blocks 45, 48 and 49
+        # on ComfyUI's own bf16 attention: the ceiling of what any fix at
+        # those blocks can do, at a few percent of render time. It, `levers`
+        # and `policy` were rendered and scored on the sage chain, the default
+        # that morning, so they stay on it ("sage_sol") now that the default
+        # is the kitchen chain, and `exact_tail` keeps Sol's balance off as it
+        # rendered. `balanced` (the balance node plus sage's qk_balance) stood
+        # here until the flip: scored, and superseded by `levers`.
         ("h3_probe_t2v_exact_tail.json", "t2v-exact-tail", "t2v", LONG_T2V_PROMPT,
-         dict(exact_blocks="45,48,49", out_prefix="Video/h3_probe_t2v_exact_tail"),
-         "text -> video + audio, shipped chain with blocks 45/48/49 on exact bf16 attention"),
+         dict(dense_attn="sage_sol", sol_overrides={"qk_balance": False},
+              exact_blocks="45,48,49", out_prefix="Video/h3_probe_t2v_exact_tail"),
+         "text -> video + audio, the sage chain with blocks 45/48/49 on exact bf16 attention"),
         # docs/h3_quant_policy.md. `levers` is Tier 1's witness: every free
         # lever on (the balance node, sage's qk_balance, Sol's qk_balance)
         # and NO exact blocks, the graph that has to match `exact_tail` for
         # the bf16 row to disappear. `policy` is Tier 0/1: the same levers
-        # plus the three lopsided blocks on exact attention.
+        # plus the three lopsided blocks on exact attention. Sol's qk_balance
+        # is the recipe's own since the flip, so neither overrides it.
         # The community chain (2026-09-15): kitchen's rotated INT8 kernel on
-        # the dense steps, Sol on the routed ones, no sage. Three arms: as
-        # most people run it, with Sol's qk_balance, and with the three
-        # lopsided blocks on the dense backend (the "leave 47-49 dense"
-        # recipe, corrected to the blocks the weights name).
+        # the dense steps, Sol on the routed ones, no sage. The default since
+        # that evening, so `ck` is now the arm that departs from it: Sol's
+        # qk_balance off, the chain as most people run it. `ck_dense_tail`
+        # hands the three lopsided blocks to the dense backend (the "leave
+        # 47-49 dense" recipe, corrected to the blocks the weights name).
+        # `ck_balanced` stood here until the flip made it the default.
         ("h3_probe_t2v_ck.json", "t2v-ck", "t2v", LONG_T2V_PROMPT,
-         dict(dense_attn="ck", out_prefix="Video/h3_probe_t2v_ck"),
-         "text -> video + audio, community chain: kitchen int8 attention dense + Sol, no sage"),
-        ("h3_probe_t2v_ck_balanced.json", "t2v-ck-balanced", "t2v", LONG_T2V_PROMPT,
-         dict(dense_attn="ck", sol_overrides={"qk_balance": True}, out_prefix="Video/h3_probe_t2v_ck_balanced"),
-         "text -> video + audio, community chain with Sol qk_balance on"),
+         dict(dense_attn="ck", sol_overrides={"qk_balance": False}, out_prefix="Video/h3_probe_t2v_ck"),
+         "text -> video + audio, community chain as most run it: kitchen int8 attention dense + Sol, qk_balance off"),
         ("h3_probe_t2v_ck_dense_tail.json", "t2v-ck-dense-tail", "t2v", LONG_T2V_PROMPT,
          dict(dense_attn="ck", sol_overrides={"dense_blocks": "45,48,49"}, out_prefix="Video/h3_probe_t2v_ck_dense_tail"),
-         "text -> video + audio, community chain with blocks 45/48/49 on the kitchen dense kernel"),
+         "text -> video + audio, the default chain with blocks 45/48/49 on the kitchen dense kernel"),
         ("h3_probe_t2v_levers.json", "t2v-levers", "t2v", LONG_T2V_PROMPT,
-         dict(channel_balance="loud blocks (from weights)", sage_mode="fp8++ balanced",
-              sol_overrides={"qk_balance": True}, out_prefix="Video/h3_probe_t2v_levers"),
-         "text -> video + audio, every free lever: balance node + sage qk_balance + Sol qk_balance, no exact blocks"),
+         dict(dense_attn="sage_sol", channel_balance="loud blocks (from weights)",
+              sage_mode="fp8++ balanced", out_prefix="Video/h3_probe_t2v_levers"),
+         "text -> video + audio, the sage chain with every free lever: balance node + sage and Sol qk_balance, no exact blocks"),
         ("h3_probe_t2v_policy.json", "t2v-policy", "t2v", LONG_T2V_PROMPT,
-         dict(channel_balance="loud blocks (from weights)", sage_mode="fp8++ balanced",
-              sol_overrides={"qk_balance": True},
+         dict(dense_attn="sage_sol", channel_balance="loud blocks (from weights)",
+              sage_mode="fp8++ balanced",
               exact_blocks="45,48,49", out_prefix="Video/h3_probe_t2v_policy"),
-         "text -> video + audio, the block-49 policy: balance node + sage qk_balance + blocks 45/48/49 exact"),
+         "text -> video + audio, the sage-chain block-49 policy: balance node + sage and Sol qk_balance + blocks 45/48/49 exact"),
 
         # **Candidates on trial, 2026-09-05.** The owner asked for canonical
         # graphs carrying the settings the lane currently thinks are its
@@ -5025,7 +5066,7 @@ def main():
         ("h3_candidate_t2v_sol_allrows.json", "t2v-candidate-sol-allrows", "t2v", LONG_T2V_PROMPT,
          dict(sol_overrides={"sink_conditioning": "exact_kv_and_all_rows"},
               out_prefix="Video/h3_candidate_t2v_sol_allrows"),
-         "CANDIDATE text -> video + audio: sage + Sol, text rows dense too"),
+         "CANDIDATE text -> video + audio: kitchen dense + Sol, text rows dense too"),
 
         ("h3_candidate_t2v_pdd8_sol_narrow.json", "t2v-candidate-pdd8-sol-narrow", "t2v", LONG_T2V_PROMPT,
          dict(pdd=True, sampler_name="euler",
@@ -5066,7 +5107,7 @@ def main():
               unet=MODELS["unet_fl2va_pdd8_baked"],
               lora=(PDD_FL2VA_STRIPPED_LORA, PDD_STRENGTH), steps=PDD_STEPS,
               out_prefix="Video/h3_candidate_t2v_pdd8_baked"),
-         "CANDIDATE text -> video + audio at 8 steps via PDD on the baked checkpoint, sage and Sol as shipped"),
+         "CANDIDATE text -> video + audio at 8 steps via PDD on the baked checkpoint, attention as shipped"),
 
         # Sol-Attn ON at full reference load: images + a reference video + its
         # soundtrack + standalone audio. This is the heaviest sink the model
@@ -5144,7 +5185,7 @@ def main():
         # from the archive and git history. See `docs/h3_image_editing.md`.
 
         ("h3_probe_head_chunks.json", "t2v-chunk4", "t2v", LONG_T2V_PROMPT,
-         dict(head_chunks=4, out_prefix="Video/h3_probe_chunk4"),
+         dict(head_chunks=4, dense_attn="sage_sol", out_prefix="Video/h3_probe_chunk4"),
          "the same render with the heads in 4 groups"),
     )
 
@@ -5224,7 +5265,8 @@ def main():
         wf = build_api(task, sage=sage_on,
                        prompt=prompt,
                        sol=(_sol_with_overrides(extra) if sol_on else None),
-                       **({"dense_backend": "comfy kitchen attention"} if _dense_mode == "ck" else {}),
+                       **({"dense_backend": DENSE_BACKEND_NODE["attention"]}
+                          if _dense_mode == "ck" else {}),
                        **{**api_extra, "length": graph_length(api_extra)})
         p = _graph_dir(out, extra) / fname.replace(".json", "_api.json")
         written.append((label, p, wf))

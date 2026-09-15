@@ -3,14 +3,18 @@
 
 Verification comes from the log lines, not the video.
 
-    [h3] ... sage routed a 2048-token probe on fp16_cuda      always
+    [h3] ... sage routed a 2048-token probe on fp16_cuda      graphs with a sage node
+    [h3] chain assert, call-time: no sage: ...                graphs with Sol or the backend, no sage
     [h3-sol] chaining onto an existing attention override     Sol graphs only
     [h3-sol] sparse (1, ..., 56, 128) tau=...                 Sol graphs only
 
-Line 1 says sage engaged. Line 3 says sparse engaged at the configured tau.
-**Line 2 is the order check** -- it prints only when Sol-Attn finds sage's
-override already installed. Missing on a Sol graph means the chain is
-reversed and you are silently paying full price, with no error anywhere.
+Line 1 says sage engaged. Line 2 says, on a graph with no sage node -- the
+default chain since 2026-09-15, core's ModelAttentionBackend under Sol -- that
+a probe through the composed override reached no sage kernel. Line 4 says
+sparse engaged at the configured tau. **Line 3 is the order check** -- it
+prints only when Sol-Attn finds an override already installed (sage's, or the
+backend node's). Missing on a Sol graph means the chain is reversed and you
+are silently paying full price, with no error anywhere.
 That seam is a protocol two third-party repos agree on and neither owns, so
 it is worth re-checking on every update rather than assuming.
 
@@ -86,15 +90,23 @@ from pathlib import Path
 
 WF = Path(__file__).resolve().parent.parent / "workflows"
 
-# (label, needle, needs_sol). The needles are matched against the ComfyUI log,
-# so they must be the strings the code actually emits -- `assert_chain.py`
-# for the sage one. Anything here that no longer appears in the source is a
-# stale needle, not a finding; grep before believing a MISSING.
+# (label, needle, gate). The needles are matched against the ComfyUI log
+# written during THIS run, so they must be the strings the code actually emits
+# -- `assert_chain.py` for the first two. Anything here that no longer appears
+# in the source is a stale needle, not a finding; grep before believing a
+# MISSING. `gate` is what the submitted graph must carry for the line to be
+# owed: "sage" a sage node; "nosage" no sage node but Sol or the backend node,
+# whose assert exercises the override (added 2026-09-15, when the default
+# chain dropped sage and the sage line stopped being owed on every run); "sol"
+# a Sol node.
 WANT = [
-    ("sage engaged", "sage routed a", False),
-    ("node order  ", "chaining onto an existing attention override", True),
-    ("sparse ran  ", "] sparse (", True),
+    ("sage engaged", "sage routed a", "sage"),
+    ("no sage     ", "chain assert, call-time: no sage:", "nosage"),
+    ("node order  ", "chaining onto an existing attention override", "sol"),
+    ("sparse ran  ", "] sparse (", "sol"),
 ]
+SAGE_NODE_IDS = ("MiniMaxH3SageAttention",)
+BACKEND_NODE_IDS = ("ModelAttentionBackend",)
 
 # Every Sol node id a graph on this box can carry: the Triton pack's, the
 # vendored CUDA one, and ours since 2026-08-30. A graph carrying any should
@@ -122,9 +134,8 @@ def main() -> int:
     ap.add_argument("--log", help="ComfyUI log file; if given, the lines are checked here")
     ap.add_argument("--workflow", default="h3_text_to_video_api.json",
                     help="API-format graph in workflows/ to submit. The default "
-                         "ships Sol OFF, so the two Sol lines are skipped and "
-                         "the run exits 2; pass a Sol graph to check the "
-                         "composition seam.")
+                         "carries the shipped chain (backend node + Sol), so "
+                         "every line it owes is checked.")
     args = ap.parse_args()
     base = f"http://{args.host}"
 
@@ -177,6 +188,14 @@ def main() -> int:
         if ct == "VHS_VideoCombine":
             n["inputs"]["filename_prefix"] = "Video/_smoketest"
 
+    # The log's size before submitting, so the needles are matched against what
+    # THIS run wrote. Matching the whole file let a line from an earlier render
+    # stand in for this one (CLAUDE.md: a log line can belong to someone else's
+    # run); found 2026-09-15, when the default dropped sage and an earlier
+    # render's sage line would still have matched.
+    log_path = Path(args.log) if args.log else None
+    log_start = log_path.stat().st_size if log_path and log_path.is_file() else 0
+
     pid = json.load(urllib.request.urlopen(urllib.request.Request(
         f"{base}/prompt", json.dumps({"prompt": wf, "client_id": str(uuid.uuid4())}).encode(),
         {"Content-Type": "application/json"}), timeout=60))["prompt_id"]
@@ -207,26 +226,36 @@ def main() -> int:
     if not args.log:
         print("\npass --log <comfyui.log> to check the three composition lines,")
         print("or read them in the terminal. The render succeeding does not")
-        print("prove sage or Sol-Attn engaged -- a silent bypass also succeeds.")
+        print("prove the attention chain engaged -- a silent bypass also succeeds.")
         return 0
 
     # Does the graph we actually submitted carry a Sol node? If not, the two
     # Sol lines are correctly absent and asserting them would fail a compliant
     # run -- Sol ships OFF and API graphs omit it entirely.
     has_sol = any(n["class_type"] in SOL_NODE_IDS for n in wf.values())
+    has_sage = any(n["class_type"] in SAGE_NODE_IDS for n in wf.values())
+    has_backend = any(n["class_type"] in BACKEND_NODE_IDS for n in wf.values())
+    owed = {"sol": has_sol, "sage": has_sage,
+            "nosage": not has_sage and (has_sol or has_backend)}
 
-    log_path = Path(args.log)
-    if not log_path.is_file():
+    if log_path is None or not log_path.is_file():
         print(f"\nrender succeeded, but --log does not exist: {log_path}")
         print("The attention-chain lines were NOT checked from a file. Read "
               "the live server terminal, or pass a path the launcher writes.")
         return 2
-    text = log_path.read_text(errors="replace")
+    with log_path.open("rb") as fh:
+        # A log rotated or truncated mid-run is shorter than the offset; read
+        # it whole rather than nothing.
+        fh.seek(log_start if log_path.stat().st_size >= log_start else 0)
+        text = fh.read().decode(errors="replace")
     missing, skipped = False, False
-    for label, needle, needs_sol in WANT:
-        if needs_sol and not has_sol:
-            print(f"  {label}  SKIP    no Sol node in the submitted graph")
-            skipped = True
+    for label, needle, gate in WANT:
+        if not owed[gate]:
+            if gate == "sol":
+                print(f"  {label}  SKIP    no Sol node in the submitted graph")
+                skipped = True
+            else:
+                print(f"  {label}  n/a     not owed by this graph's dense chain")
             continue
         ok = needle in text
         print(f"  {label}  {'ok' if ok else 'MISSING'}")
@@ -241,7 +270,7 @@ def main() -> int:
     if skipped:
         print("\nThe Sol lines were not checked, because the graph has no Sol")
         print("node, which every shipped video graph carries. Exit 2, not 0: this run")
-        print("verified sage and the render, not the composition seam.")
+        print("verified the dense chain and the render, not the composition seam.")
         print("Point --workflow at a Sol graph (h3_text_to_video_api.json) to check it.")
         return 2
     return 0

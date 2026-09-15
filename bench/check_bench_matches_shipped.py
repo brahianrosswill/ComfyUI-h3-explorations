@@ -131,18 +131,25 @@ else:
           f"differs: {diff} (graph, bench)" if diff else f"{len(want)} inputs agree")
 
 print()
-print("sage node:")
-want = node_inputs(SAGE_GRAPH, "MiniMaxH3SageAttention")
-got = built_inputs("MiniMaxH3SageAttention")
-if want is None or got is None:
-    check("sage_matches", False,
-          f"missing MiniMaxH3SageAttention in "
-          f"{'the graph' if want is None else 'the bench graph'}")
-else:
-    diff = {k: (want.get(k), got.get(k)) for k in set(want) | set(got)
-            if want.get(k) != got.get(k)}
-    check("sage_matches", not diff,
-          f"differs: {diff} (graph, bench)" if diff else f"{len(want)} inputs agree")
+print("dense kernel nodes:")
+# Both candidates, each compared for presence AND values. Since 2026-09-15 the
+# shipped chain carries core's ModelAttentionBackend and no sage node, so
+# "absent on both sides" is agreement; one side carrying a node the other lacks
+# is the 2026-08-13 shape again, a bench timing a floor nobody ships.
+for case, cls in (("sage_matches", "MiniMaxH3SageAttention"),
+                  ("backend_matches", "ModelAttentionBackend")):
+    want = node_inputs(SAGE_GRAPH, cls)
+    got = built_inputs(cls)
+    if want is None and got is None:
+        check(case, True, f"no {cls} on either side")
+    elif want is None or got is None:
+        check(case, False,
+              f"{cls} only in {'the bench graph' if want is None else 'the graph'}")
+    else:
+        diff = {k: (want.get(k), got.get(k)) for k in set(want) | set(got)
+                if want.get(k) != got.get(k)}
+        check(case, not diff,
+              f"differs: {diff} (graph, bench)" if diff else f"{len(want)} inputs agree")
 
 print("\nsol node:")
 sol_class, _ = bench.sol_node()

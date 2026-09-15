@@ -182,23 +182,21 @@
       "value": 4
     }
   },
-  "20": {
-    "class_type": "MiniMaxH3SageAttention",
+  "58": {
+    "class_type": "ModelAttentionBackend",
     "inputs": {
       "model": [
         "18",
         0
       ],
-      "mode": "auto",
-      "patch_token_refiner": false,
-      "head_chunks": 1
+      "attention": "comfy kitchen attention"
     }
   },
   "21": {
     "class_type": "MiniMaxH3SolAttn",
     "inputs": {
       "model": [
-        "20",
+        "58",
         0
       ],
       "selection": "adaptive tau",
@@ -213,7 +211,7 @@
       "verbose": false,
       "dense_blocks": "",
       "token_aug_blocks": "",
-      "qk_balance": false
+      "qk_balance": true
     }
   },
   "23": {
@@ -224,11 +222,11 @@
         0
       ],
       "require_override": true,
-      "require_forward_patch": true,
+      "require_forward_patch": false,
       "exercise": true,
       "warn_only": false,
       "require_absent": false,
-      "require_no_forward_patch": false
+      "require_no_forward_patch": true
     }
   },
   "26": {

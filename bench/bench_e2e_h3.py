@@ -227,6 +227,7 @@ def resolve_arm(name):
         sage+sol[tau=1.6]                 sage on, one override
         sage+sol[tau=2.0,int8_qk=1]       several
         sol[start_percent=0.1]            SolAttn without sage
+        ck+sol[tau=1.2]                   SolAttn over core's kitchen backend node
         kj+sol[tau=1.6]                   KJNodes' H3 patch instead of ours
 
     A `kj` prefix swaps the patching surface for KJNodes'
@@ -277,7 +278,8 @@ def resolve_arm(name):
         if base_sol is None:
             raise SystemExit(f"arm {base!r} has no Sol settings to override")
         return base_sage, dict(base_sol, **overrides)
-    return ("kj" if base.startswith("kj") else base.startswith("sage")), overrides
+    return ("kj" if base.startswith("kj") else "ck" if base.startswith("ck")
+            else base.startswith("sage")), overrides
 
 
 def pick_prompt(cfg):
@@ -341,7 +343,15 @@ def build_prompt(cfg, *, sage, seed, sol=None, head_chunks=1, ffn_chunks=1):
                           "format": "auto", "codec": "auto"}},
     }
     model_src = ["1", 0]
-    if sage == "kj":
+    if sage == "ck":
+        # ComfyUI core's ModelAttentionBackend at h3_config.DENSE_BACKEND_NODE,
+        # the shipped dense kernel since 2026-09-15, in the slot the sage node
+        # takes: the two are alternatives, never both in one graph. It installs
+        # an attention override, and Sol below chains onto it.
+        g["20"] = {"class_type": "ModelAttentionBackend",
+                   "inputs": {"model": model_src, **DENSE_BACKEND_NODE}}
+        model_src = ["20", 0]
+    elif sage == "kj":
         # KJNodes' patch as the attention surface instead of ours. It takes no
         # options -- no mode, no token-refiner switch -- and it calls this
         # install's sage kernels either way, so this arm swaps the wrapper,
@@ -423,6 +433,7 @@ def build_prompt(cfg, *, sage, seed, sol=None, head_chunks=1, ffn_chunks=1):
 # comparable. SOL_RECOMMENDED is what the shipped workflows run; arms opt
 # into it by name rather than by editing the baseline.
 from h3_config import (  # noqa: E402
+    DENSE_BACKEND_NODE,
     SAGE_NODE,
     SOL_BASELINE_124F as SOL_DEFAULTS,
     SOL_CUDA_DEFAULTS,
@@ -476,12 +487,18 @@ ARMS = {
     # quote a render time from, because it is the only one whose settings
     # are the ones you would actually open. Everything else here is a probe
     # that isolates one knob against the 124-frame baseline.
-    # "shipped" means what workflows/ actually wires, which since 2026-08-14
-    # is the CUDA node at SOL_RECOMMENDED_CUDA. The Triton config it replaced
+    # "shipped" means what workflows/ actually wires: since 2026-09-15 core's
+    # ModelAttentionBackend at h3_config.DENSE_BACKEND_NODE with the CUDA node
+    # at SOL_RECOMMENDED_CUDA on top, no sage. The sage chain it replaced is
+    # `shipped_sage`, with Sol's qk_balance as it was then. The Triton config
     # is still reachable as `shipped_triton`, which needs --sol-backend triton
     # and exists to reproduce a pre-migration number rather than to be run.
-    "shipped":   (True, dict(SOL_RECOMMENDED_CUDA)),
+    "shipped":   ("ck", dict(SOL_RECOMMENDED_CUDA)),
+    "shipped_sage": (True, dict(SOL_RECOMMENDED_CUDA, qk_balance=False)),
     "shipped_triton": (True, dict(SOL_RECOMMENDED)),
+    # The kitchen dense kernel alone, and under Sol at the node's knob defaults.
+    "ck":        ("ck", None),
+    "ck+sol":    ("ck", {}),
     "sage+sol+morton": (True, {"morton": True}),
     # int8_qk puts SolAttn's exact branch on INT8 QK instead of fp16, which
     # its own tooltip says helps at tau<=1.5 -- we run tau=1.2. Without it
