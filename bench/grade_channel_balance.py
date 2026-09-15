@@ -79,7 +79,15 @@ def factor_from_capture(q: torch.Tensor, k: torch.Tensor, alpha: float) -> torch
     return pair_equal_unit(rk.pow(alpha) / rq.pow(1 - alpha))
 
 
-def cuda_sol(q, k, v, tau):
+def kernel_takes_qk_balance() -> bool:
+    """Whether the installed kernel carries the in-quantizer balance (the
+    owner's fork, h3-build from 2026-09-15); a stock wheel does not."""
+    import inspect
+
+    return "qk_balance" in inspect.signature(load_cuda_kernel()).parameters
+
+
+def cuda_sol(q, k, v, tau, **extra):
     """comfy_kitchen.sol_attn as `sol_attn_h3._run` calls it on the served build.
 
     `analyze_sol_error.cuda_sol_kernel` still passes `centroid_tail=`, which
@@ -92,7 +100,8 @@ def cuda_sol(q, k, v, tau):
     to = dict(device="cuda", dtype=torch.bfloat16)
     out = sol_fn(q.to(**to).permute(0, 2, 1, 3).contiguous(), k.to(**to).permute(0, 2, 1, 3).contiguous(),
                  v.to(**to).permute(0, 2, 1, 3).contiguous(),
-                 tau=tau, scale=None, sink_blocks=[0, 0], sink_q=[0, 0], topk_ratio=0.0, tail=True)
+                 tau=tau, scale=None, sink_blocks=[0, 0], sink_q=[0, 0], topk_ratio=0.0, tail=True,
+                 **extra)
     return out.permute(0, 2, 1, 3).float().cpu()
 
 
@@ -154,6 +163,16 @@ def main() -> int:
         "balanced": dict(sparsity_l2=rel_l2_against(eager_b, dense_b, dn), quant_l2=rel_l2_against(cuda_b, eager_b, dn),
                          total_l2=rel_l2_against(cuda_b, dense_b, dn)),
     }
+    # The kernel's own per-head factor (`qk_balance=True`), on the UNMODIFIED
+    # inputs: no re-rounding, no weights fold, the same referents as `plain`.
+    # This is the arm the Sol node's `qk_balance` widget turns on; the two
+    # rows above are the weights fold the ChannelBalance node applies.
+    if kernel_takes_qk_balance():
+        cuda_k = cuda_sol(q, k, v, args.tau, qk_balance=True)
+        rows["kernel"] = dict(sparsity_l2=rows["plain"]["sparsity_l2"], quant_l2=rel_l2_against(cuda_k, eager_p, dn),
+                              total_l2=rel_l2_against(cuda_k, dense, dn))
+    else:
+        print("(kernel row skipped: the installed comfy_kitchen.sol_attn has no qk_balance)")
     try:
         sage_p, sage_b = sage_fp8pp(q, k, v), sage_fp8pp(qb, kb, v)
         rows["plain"]["sage_fp8pp_l2"] = rel_l2_against(sage_p, dense, dn)
@@ -166,7 +185,10 @@ def main() -> int:
     for arm, r in rows.items():
         print(f"{arm:10s}" + "".join(f"{r[c]:>15.4f}" if c in r else f"{'-':>15s}" for c in cols))
     qp, qb_ = rows["plain"]["quant_l2"], rows["balanced"]["quant_l2"]
-    print(f"Sol INT8 term: {qp:.4f} -> {qb_:.4f} ({100 * (qb_ - qp) / qp:+.1f}%)")
+    print(f"Sol INT8 term, weights fold: {qp:.4f} -> {qb_:.4f} ({100 * (qb_ - qp) / qp:+.1f}%)")
+    if "kernel" in rows:
+        qk_ = rows["kernel"]["quant_l2"]
+        print(f"Sol INT8 term, kernel qk_balance: {qp:.4f} -> {qk_:.4f} ({100 * (qk_ - qp) / qp:+.1f}%)")
 
     if args.json_out:
         Path(args.json_out).write_text(json.dumps({

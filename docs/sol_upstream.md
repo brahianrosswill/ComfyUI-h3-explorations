@@ -787,8 +787,11 @@ which is why it now points instead. The clone's checked-out branch need not be
 the built sha: the build record is what says which wheel runs.
 
 **Carried for good, current by rule (owner, 2026-09-11).** The `blk_cnt`
-commits stay in the fork whether or not PR 168 merges, and everything else
-tracks upstream: the carried commits sit on the tag ComfyUI's requirements
+commits stay in the fork whether or not PR 168 merges (and so, from
+2026-09-15, do the `qk_balance` commits: the per-head q/k channel rebalancing
+inside Sol's INT8 quantizers, `docs/h3_block49_quant_error.md` section 8,
+not offered upstream until it has a blind pair behind it), and everything
+else tracks upstream: the carried commits sit on the tag ComfyUI's requirements
 pin, because a build on any other version stops satisfying that pin and a
 requirements install puts the stock wheel back. `vendor/rebuild_kernel.sh`
 refuses any other source, and `vendor/rebuild_kernel.sh --check` reports

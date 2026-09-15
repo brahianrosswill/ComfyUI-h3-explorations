@@ -225,7 +225,7 @@ SOL_SELECTION_INPUTS = {
 SOL_TAIL_WIDGETS = ("start_percent", "end_percent", "min_tokens",
                     "sink_conditioning", "pooled_tail", "morton",
                     "morton_curve", "verbose", "dense_blocks",
-                    "token_aug_blocks")
+                    "token_aug_blocks", "qk_balance")
 
 
 def sol_widget_order(sol):
@@ -4962,10 +4962,18 @@ def main():
         ("h3_probe_t2v_exact_tail.json", "t2v-exact-tail", "t2v", LONG_T2V_PROMPT,
          dict(exact_blocks="45,48,49", out_prefix="Video/h3_probe_t2v_exact_tail"),
          "text -> video + audio, shipped chain with blocks 45/48/49 on exact bf16 attention"),
-        # Tier 0 of docs/h3_quant_policy.md: both free levers plus the three
-        # lopsided blocks on exact attention, in one graph.
+        # docs/h3_quant_policy.md. `levers` is Tier 1's witness: every free
+        # lever on (the balance node, sage's qk_balance, Sol's qk_balance)
+        # and NO exact blocks, the graph that has to match `exact_tail` for
+        # the bf16 row to disappear. `policy` is Tier 0/1: the same levers
+        # plus the three lopsided blocks on exact attention.
+        ("h3_probe_t2v_levers.json", "t2v-levers", "t2v", LONG_T2V_PROMPT,
+         dict(channel_balance="loud blocks (from weights)", sage_mode="fp8++ balanced",
+              sol_overrides={"qk_balance": True}, out_prefix="Video/h3_probe_t2v_levers"),
+         "text -> video + audio, every free lever: balance node + sage qk_balance + Sol qk_balance, no exact blocks"),
         ("h3_probe_t2v_policy.json", "t2v-policy", "t2v", LONG_T2V_PROMPT,
          dict(channel_balance="loud blocks (from weights)", sage_mode="fp8++ balanced",
+              sol_overrides={"qk_balance": True},
               exact_blocks="45,48,49", out_prefix="Video/h3_probe_t2v_policy"),
          "text -> video + audio, the block-49 policy: balance node + sage qk_balance + blocks 45/48/49 exact"),
 

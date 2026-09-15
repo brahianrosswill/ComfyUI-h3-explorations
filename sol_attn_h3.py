@@ -666,7 +666,7 @@ def _bthd(q, k, v, heads, skip_reshape):
 
 def _run(q, k, v, heads, skip_reshape, skip_output_reshape, scale,
          tau, min_tokens, verbose, sink_blocks=(0, 0), sink_q=(0, 0),
-         topk_ratio=0.0, tail=True, blk_cnt=None, token_aug=0):
+         topk_ratio=0.0, tail=True, blk_cnt=None, token_aug=0, qk_balance=False):
     """Returns the attention output, or None if this call should stay dense.
 
     `blk_cnt`, when given, is an int32 (B, H, ceil(T/64)) buffer the kernel
@@ -699,15 +699,18 @@ def _run(q, k, v, heads, skip_reshape, skip_output_reshape, scale,
     extra = {} if blk_cnt is None else {"blk_cnt": blk_cnt}
     if token_aug:
         extra["token_aug"] = int(token_aug)
+    if qk_balance:                      # same rule: False is the kernel's default
+        extra["qk_balance"] = True
     out = _ck.sol_attn(qs, ks, vs, tau=tau, scale=scale,
                        sink_blocks=list(sink_blocks), sink_q=list(sink_q),
                        topk_ratio=topk_ratio, tail=tail, **extra)      # BTHD
     _stats["sparse"] += 1
     if verbose:
         sel = (f"topk={topk_ratio:.3f}" if topk_ratio else f"tau={tau}")
-        _log_once((tuple(qs.shape), "sparse", tail, int(token_aug)),
+        _log_once((tuple(qs.shape), "sparse", tail, int(token_aug), bool(qk_balance)),
                   f"sparse {tuple(qs.shape)} {sel} cuda-int8"
                   + (f" token_aug={int(token_aug)}" if token_aug else "")
+                  + (" qk_balance" if qk_balance else "")
                   + ("" if tail else " NO POOLED TAIL (SLA/VSA fine stage)"))
 
     if skip_output_reshape:
@@ -774,7 +777,7 @@ def make_override(tau=1.0, min_tokens=4096,
                   sigma_start=None, sigma_end=None, verbose=False,
                   sink_conditioning="exact_kv", dense_blocks=frozenset(),
                   tau_profile=None, token_aug_profile=None,
-                  previous=None, topk_ratio=0.0, tail=True,
+                  previous=None, topk_ratio=0.0, tail=True, qk_balance=False,
                   settings=None):
     """Build an optimized_attention_override callable.
 
@@ -902,7 +905,7 @@ def make_override(tau=1.0, min_tokens=4096,
             out = _run(q, k, v, heads, skip_reshape, skip_output_reshape,
                        kwargs.get("scale", None), block_tau, min_tokens, verbose,
                        sink, sink_q, topk_ratio, tail, blk_cnt=counts,
-                       token_aug=block_aug)
+                       token_aug=block_aug, qk_balance=qk_balance)
         except Exception as exc:
             _stats["errors"] += 1
             _log_kernel_failure(exc)
@@ -1055,11 +1058,18 @@ def _install_compose_hooks(model, attn_attr):
 def _apply_patch(model, *, tau, start_percent, end_percent, min_tokens,
                  sink_conditioning, morton, morton_curve, dense_blocks,
                  verbose, tau_profile, token_aug_blocks="",
-                 topk_ratio=0.0, tail=True):
+                 topk_ratio=0.0, tail=True, qk_balance=False):
     # Before anything else: fail here if the installed kernel cannot take what
     # this node passes. Patch time is the only place that can be said -- see
     # `_require_kernel`.
     _require_kernel()
+    if qk_balance and "qk_balance" not in inspect.signature(_ck.sol_attn).parameters:
+        # Same shape as the token_aug check below: raised from the dispatch
+        # path it would become a silent dense render.
+        raise RuntimeError(
+            "qk_balance is on, but the installed comfy_kitchen.sol_attn has no "
+            "qk_balance argument. It is carried on the owner's fork (h3-build); "
+            "rebuild with vendor/rebuild_kernel.sh, or turn the widget off.")
     diffusion_model = model.get_model_object("diffusion_model")
     is_h3 = hasattr(diffusion_model, "rope_freqs") and hasattr(diffusion_model, "_forward")
 
@@ -1133,7 +1143,7 @@ def _apply_patch(model, *, tau, start_percent, end_percent, min_tokens,
     # dict, referenced by digest from every call row. Plain JSON types only.
     settings = {
         "node": "MiniMaxH3SolAttn", "tau": float(tau), "topk_ratio": float(topk_ratio),
-        "tail": bool(tail), "min_tokens": int(min_tokens),
+        "tail": bool(tail), "qk_balance": bool(qk_balance), "min_tokens": int(min_tokens),
         "sink_conditioning": sink_conditioning,
         "start_percent": float(start_percent), "end_percent": float(end_percent),
         "sigma_start": sigma_start, "sigma_end": sigma_end,
@@ -1159,7 +1169,8 @@ def _apply_patch(model, *, tau, start_percent, end_percent, min_tokens,
                       verbose=verbose, sink_conditioning=sink_conditioning,
                       dense_blocks=dense, tau_profile=profile,
                       token_aug_profile=aug, previous=previous,
-                      topk_ratio=topk_ratio, tail=tail, settings=settings)
+                      topk_ratio=topk_ratio, tail=tail, qk_balance=qk_balance,
+                      settings=settings)
     if reorder:
         m.model_options["transformer_options"]["sol_morton"] = True
         m.model_options["transformer_options"]["sol_morton_curve"] = morton_curve
@@ -1270,6 +1281,23 @@ class MiniMaxH3SolAttn(io.ComfyNode):
                                      "calls are far above either. Drop it to 0 only "
                                      "if you deliberately want the refiner blocks "
                                      "routed too."),
+                io.Boolean.Input("qk_balance", optional=True, default=False,
+                                 tooltip=(
+                                     "Rebalance q/k channels inside the kernel's INT8 "
+                                     "quantizers, per head and per call. On MiniMax H3 "
+                                     "the last block carries most of its K energy in "
+                                     "four channels, and the kernel's one scale per key "
+                                     "row leaves the other channels a few levels; this "
+                                     "scales q up and k down on exactly those channels, "
+                                     "which changes no attention score in exact "
+                                     "arithmetic and leaves the routing threshold "
+                                     "alone. Heads without loud channels are untouched. "
+                                     "Off by default: an experiment under docs/SOLATTN.md's "
+                                     "decision standard, graded on captures by "
+                                     "bench/grade_channel_balance.py. Needs a kernel "
+                                     "build that takes qk_balance; the node refuses at "
+                                     "patch time otherwise."),
+                                 ),
                 io.Combo.Input("sink_conditioning",
                                options=list(SINK_CONDITIONING_MODES),
                                default="exact_kv_and_rows",
@@ -1334,7 +1362,7 @@ class MiniMaxH3SolAttn(io.ComfyNode):
     @classmethod
     def execute(cls, model, selection, start_percent, end_percent, min_tokens,
                 sink_conditioning, pooled_tail, morton, morton_curve, verbose,
-                dense_blocks, token_aug_blocks="") -> io.NodeOutput:
+                dense_blocks, token_aug_blocks="", qk_balance=False) -> io.NodeOutput:
         topk = selection["selection"] == "top-k (SLA)"
         return _apply_patch(
             model, tau=selection.get("tau", 1.0),
@@ -1344,4 +1372,4 @@ class MiniMaxH3SolAttn(io.ComfyNode):
             verbose=verbose, tau_profile=selection.get("tau_profile"),
             token_aug_blocks=token_aug_blocks,
             topk_ratio=selection["keep_percent"] / 100.0 if topk else 0.0,
-            tail=pooled_tail)
+            tail=pooled_tail, qk_balance=bool(qk_balance))

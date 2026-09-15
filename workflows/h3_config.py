@@ -700,6 +700,14 @@ SOL_RECOMMENDED_CUDA = dict(
     # (`bench/results/2026-09-04_sol_exact_random_1128df6_token_aug_timing.json`),
     # so the wider budgets buy nothing while switching it on at all costs.
     token_aug_blocks="",
+    # Off (2026-09-15). The kernel's own per-head q/k channel rebalancing
+    # inside its INT8 quantizers, carried on the owner's kitchen fork
+    # (h3-build) and graded on captures by bench/grade_channel_balance.py;
+    # exact for every attention score, so what it changes is the INT8
+    # error on the blocks whose K-norm is lopsided (docs/h3_block49_quant_error.md).
+    # An experiment under docs/SOLATTN.md's decision standard until a blind
+    # pair says otherwise; the policy graph carries it as an override.
+    qk_balance=False,
 )
 
 

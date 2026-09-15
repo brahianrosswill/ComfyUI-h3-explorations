@@ -95,3 +95,14 @@ Not today: Tier 2 and Tier 3.
 
 - 2026-09-15: page created; Tier 0 graph added to the generator; Tier 1
   kernel work started in the kitchen fork.
+- 2026-09-15, later: Tier 1 built. Sol's quantizer takes `qk_balance` on the
+  kitchen fork branch `h3-qk-balance` (off `h3-build`): the per-head factor
+  computed in the preprocess from the call's own q/k, applied inside the
+  pooled, Q and K quantizers, threshold and coarse branch left unbalanced.
+  Off path bit-identical to the served build on twelve shapes and option
+  mixes; the fork's Sol suite gained ten cases (gate per head, shut gate
+  reproduces plain bytes, loud channels improve, route invariant, dead rows
+  count for nothing). The Sol node carries the switch as `qk_balance`, off;
+  the policy graph and a new all-levers witness (`h3_probe_t2v_levers`)
+  turn it on. Not yet graded on captures (the card was rendering the diner
+  batch); not installed; not merged to `h3-build`.

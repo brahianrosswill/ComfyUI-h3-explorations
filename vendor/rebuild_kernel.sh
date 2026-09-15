@@ -71,7 +71,8 @@ ARCH="${1:-89}"
 # The owner's fork (the clone's `origin`) holds exactly:
 #
 #   main            a mirror of upstream main; never built
-#   h3-build        ComfyUI's pinned tag plus our blk_cnt commits: what we build
+#   h3-build        ComfyUI's pinned tag plus our commits (blk_cnt, and from
+#                   2026-09-15 qk_balance): what we build
 #   sol-blk-cnt-pr  PR 168's head, our commits on upstream main; for the PR
 #                   only, and deleted when the PR closes
 #   archive/* tags  retired builds that records here cite by sha, kept
