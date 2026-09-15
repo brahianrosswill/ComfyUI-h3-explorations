@@ -92,3 +92,13 @@ those blocks runs without Sol's routing and without INT8.
 
 No arm effect: all six within about two LU. The market scene's louder
 ceiling arm was that take, not the tail.
+
+## Stacks
+
+Captioned vertical stacks (video only, `bench/stack_labeled_clips.py`), one
+per seed: `Video/block49_diner/stack_diner_s<seed>_default_rebalanced_bf16tail.mp4`.
+Band order: default (no rebalance), rebalanced in its earlier form (node +
+sage `qk_balance`; Sol's own factor did not exist yet when these
+rendered), bf16 on blocks 45/48/49 with no rebalance. Note the arms are
+NOT the market and kitchen stacks' arms: there the middle band has Sol
+balanced too and the third band is rebalanced plus the bf16 tail.
