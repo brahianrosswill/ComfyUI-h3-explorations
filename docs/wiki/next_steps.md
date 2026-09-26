@@ -41,39 +41,22 @@ none tried:
    every row still attends to every other, so the owner's attention concern
    applies in full.
 3. **Switch by step instead of by shot**, for example a motion distill's early
-   steps for layout and PDD's late steps for detail. This is a different axis,
-   with the same mixed-adapter caveat.
+   steps for layout and PDD's late steps for detail. Every frame carries the
+   same adapter within each pass, so nothing mixes across frames. The risk is
+   the handoff instead: the second model receives the first one's
+   intermediate state ([`../h3_ref2v_distillation.md`](../h3_ref2v_distillation.md)
+   §3, written for base and distill). The mechanics exist: two passes on one
+   split sigma list (`split_at` in `build_api`), the same
+   `MiniMaxH3SigmaShift` on both, no noise added at the second. The handoff
+   sigma must be a point both distills are trained at. For example,
+   FlashGen's first two steps (1.0, 0.9655, 0.8889) land within 0.011 of
+   PDD8's knot 0.878, after which PDD8's own last three steps
+   (0.878, 0.8, 0.632, 0) finish. That is five evaluations
+   (`h3_config.FLASHGEN_MANUAL_SIGMAS`; PDD8 is `simple` at shift 12,
+   `bench/check_pdd_sigmas.py`).
 
 The cheap first step is the owner's other half: a short "which distill for
 which shot" note, once a second seed confirms the pattern.
-
-**2026-09-26 (owner idea, saved for later: use each distill where it is
-strong).** The owner: "pdd is good when motion sits still, then flashgen and
-maybe fasth3 do better at motion/large deltas ... pdd looks great when its
-closeups or medium shots - lots of detail and good color - sucks at motion".
-The notes this rests on are one seed, unblinded
-(`../../bench/results/2026-09-26_distill_compare_s1.md`, "The owner's look").
-Not started. Three ways to act on it, cheapest first:
-- **Document it** as a per-distill guide (close-ups and medium shots to PDD,
-  large motion to FlashGen or FastH3), once more than one seed agrees.
-- **Switch by denoising time, not by shot.** Motion and composition are
-  settled at high sigma, and detail and colour at low sigma. So: FlashGen or
-  FastH3 for the early steps, PDD for the finish, as a two-pass split
-  (`split_at` in `build_api`). The handoff risk is written up for the base
-  model in [`../h3_ref2v_distillation.md`](../h3_ref2v_distillation.md) §3.
-  Here both halves are distills, so the handoff sigma must lie on both
-  schedules (`check_distill_settings.py`).
-- **Switch by shot.** Two forms:
-  - Each shot rendered as its own clip on its own distill, joined by
-    continuation ([`../open_experiments.md`](../open_experiments.md) #32).
-  - One clip with an adapter masked to some frames' tokens. `lora_branch.py`
-    applies the LoRA at the call, so the delta could be gated per token. But
-    every frame attends to every other and all frames share one sigma
-    schedule, so a masked adapter changes its neighbours too. The owner's
-    caveat: "you change attention along the way maybe unless the strength is
-    low".
-- PDD quality work is a parked lane (`../roadmap.md`). This uses PDD as it
-  ships, and the owner raised it.
 
 **2026-09-26 (the prompt bank fix, 0.151.1 and 0.151.2).** Every flagged prompt is
 fixed (`../../CHANGELOG.md`, 0.151.2). One gap is still open:
