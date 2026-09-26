@@ -45,15 +45,36 @@ none tried:
    same adapter within each pass, so nothing mixes across frames. The risk is
    the handoff instead: the second model receives the first one's
    intermediate state ([`../h3_ref2v_distillation.md`](../h3_ref2v_distillation.md)
-   §3, written for base and distill). The mechanics exist: two passes on one
-   split sigma list (`split_at` in `build_api`), the same
-   `MiniMaxH3SigmaShift` on both, no noise added at the second. The handoff
-   sigma must be a point both distills are trained at. For example,
-   FlashGen's first two steps (1.0, 0.9655, 0.8889) land within 0.011 of
-   PDD8's knot 0.878, after which PDD8's own last three steps
-   (0.878, 0.8, 0.632, 0) finish. That is five evaluations
-   (`h3_config.FLASHGEN_MANUAL_SIGMAS`; PDD8 is `simple` at shift 12,
-   `bench/check_pdd_sigmas.py`).
+   §3, written for base and distill).
+
+   **How it would be built** (agreed with the VAE session, 2026-09-26):
+   - **A new generator arm, not `split_at`.** `split_at` splits one
+     `BasicScheduler` schedule between a base pass and a single LoRA pass,
+     and bypasses the PDD node's own sigmas. This needs two model chains:
+     FlashGen through `MiniMaxH3LoRABranch` and PDD through
+     `MiniMaxH3PDDLoRA`, each with its own ManualSigmas, and `DisableNoise` on
+     pass 2. Both chains keep the same `MiniMaxH3SigmaShift` at 12/3, or the
+     audio stream's noise levels drift from the video's.
+   - **The handoff sigma.** Pass 1 is FlashGen's own first two steps: 1.0,
+     0.9655, 0.8889 (`h3_config.FLASHGEN_MANUAL_SIGMAS`). Pass 2 starts where
+     pass 1 left the latent, so there is no noise mismatch: 0.8889, then 0.8,
+     0.632, 0. The last two intervals are PDD8's own knots (`simple` at shift
+     12, `bench/check_pdd_sigmas.py`). That is five evaluations. Bending
+     FlashGen's second step to PDD8's 0.878 was the alternative, and it would
+     move a 4-step student off its trained points.
+   - **PDD's heads absorb the offset.**
+     - Core's `FinalLayer` picks heads from each pass's own `sample_sigmas`,
+       and `pdd_lora`'s tracker reads the same sub-schedule.
+     - `pdd_math.schedule_knots([0.8889, 0.8, 0.6316, 0], 12, 32)` gives
+       [19, 24, 28, 32], against [20, 24, 28, 32] from 0.878. So the first
+       step fuses heads 19 to 23.
+     - Head 19 spans 0.8914 to 0.878 and gets its whole interval's dt,
+       although the step starts at 0.8889, so it is slightly overweighted.
+   - **Time the handoff.** Pass 1's branch-patched model and pass 2's
+     int8-merged PDD model are two patched states, so the card re-patches,
+     reloads or re-stages between them. The five-evaluation cost leaves that
+     out. Arm `H3_TELEMETRY` for the first render: it records per-node model
+     residency and the load and staging lines.
 
 The owner's other half is written: `../h3_distills.md` (2026-09-26, one seed; revised when the second seed lands).
 
