@@ -122,6 +122,14 @@
       "tests": "fast motion: a fast tracking shot with strong shake and a fast push in; on-screen text; the surface where approximated attention is expected to hurt most."
     },
     {
+      "id": "t2va_subway_chase_short",
+      "mode": "t2va",
+      "frames": 124,
+      "donor": null,
+      "brief": "The five-second twin of t2va_subway_chase, at FlashGen's trained length (5.2 s; 124 frames is the grid length): 2 shots; the same two people and path; one short comms line; tracking shot, shake strongly, push in.",
+      "tests": "whether a 4-step distill trained on 5-second clips follows the chase's roles and direction at its trained length, against the 14-second parent"
+    },
+    {
       "id": "t2va_frontier_standoff",
       "mode": "t2va",
       "frames": 345,

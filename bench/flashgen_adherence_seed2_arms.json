@@ -1,0 +1,15 @@
+{
+ "what": "The seed half of the FlashGen adherence test: base and the shipped FlashGen on the rewritten t2va_subway_chase at a second seed, 111222333 (bench/measure_audio_seed_spread.py's second seed). If FlashGen follows the prompt here and base does not, or both do, seed 730451892 was luck rather than the model. Companion: bench/flashgen_adherence_arms.json.",
+ "why": "One seed cannot separate a model's adherence from its draw.",
+ "arms": {
+  "base_s2": "workflows/h3_text_to_video_api.json",
+  "flashgen_s2": "workflows/h3_text_to_video_flashgen_api.json"
+ },
+ "patches": [
+  "base_s2:MiniMaxH3Conditioning.prompt=@bank:t2va_subway_chase",
+  "flashgen_s2:MiniMaxH3Conditioning.prompt=@bank:t2va_subway_chase"
+ ],
+ "seeds": {"first": 111222333, "note": "held"},
+ "run": "run_graph_arms.py --manifest bench/flashgen_adherence_seed2_arms.json --runs 1 --seed 111222333 --hold-seed --no-alternate --out bench/results/2026-09-26_flashgen_adherence_s1.jsonl",
+ "predictions": "none registered"
+}
