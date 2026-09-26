@@ -47,6 +47,34 @@ none tried:
 The cheap first step is the owner's other half: a short "which distill for
 which shot" note, once a second seed confirms the pattern.
 
+**2026-09-26 (owner idea, saved for later: use each distill where it is
+strong).** The owner: "pdd is good when motion sits still, then flashgen and
+maybe fasth3 do better at motion/large deltas ... pdd looks great when its
+closeups or medium shots - lots of detail and good color - sucks at motion".
+The notes this rests on are one seed, unblinded
+(`../../bench/results/2026-09-26_distill_compare_s1.md`, "The owner's look").
+Not started. Three ways to act on it, cheapest first:
+- **Document it** as a per-distill guide (close-ups and medium shots to PDD,
+  large motion to FlashGen or FastH3), once more than one seed agrees.
+- **Switch by denoising time, not by shot.** Motion and composition are
+  settled at high sigma, and detail and colour at low sigma. So: FlashGen or
+  FastH3 for the early steps, PDD for the finish, as a two-pass split
+  (`split_at` in `build_api`). The handoff risk is written up for the base
+  model in [`../h3_ref2v_distillation.md`](../h3_ref2v_distillation.md) §3.
+  Here both halves are distills, so the handoff sigma must lie on both
+  schedules (`check_distill_settings.py`).
+- **Switch by shot.** Two forms:
+  - Each shot rendered as its own clip on its own distill, joined by
+    continuation ([`../open_experiments.md`](../open_experiments.md) #32).
+  - One clip with an adapter masked to some frames' tokens. `lora_branch.py`
+    applies the LoRA at the call, so the delta could be gated per token. But
+    every frame attends to every other and all frames share one sigma
+    schedule, so a masked adapter changes its neighbours too. The owner's
+    caveat: "you change attention along the way maybe unless the strength is
+    low".
+- PDD quality work is a parked lane (`../roadmap.md`). This uses PDD as it
+  ships, and the owner raised it.
+
 **2026-09-26 (the prompt bank fix, 0.151.1 and 0.151.2).** Every flagged prompt is
 fixed (`../../CHANGELOG.md`, 0.151.2). One gap is still open:
 `bench/grade_prompt_text.py` passed the refview2 twins while their unmarked
