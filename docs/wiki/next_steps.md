@@ -55,8 +55,7 @@ none tried:
    (`h3_config.FLASHGEN_MANUAL_SIGMAS`; PDD8 is `simple` at shift 12,
    `bench/check_pdd_sigmas.py`).
 
-The cheap first step is the owner's other half: a short "which distill for
-which shot" note, once a second seed confirms the pattern.
+The owner's other half is written: `../h3_distills.md` (2026-09-26, one seed; revised when the second seed lands).
 
 **2026-09-26 (the prompt bank fix, 0.151.1 and 0.151.2).** Every flagged prompt is
 fixed (`../../CHANGELOG.md`, 0.151.2). One gap is still open:
