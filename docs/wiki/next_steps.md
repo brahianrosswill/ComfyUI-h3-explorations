@@ -13,6 +13,40 @@ pointer goes; this list is stale the moment the roadmap disagrees with it.
 Items from the `mrpink` helper lane first; `evalman`'s render lane appends its
 own below the rule.
 
+**Idea saved for later, 2026-09-26: pick the distill by what the shot does.**
+From the owner's unblinded looks at one seed:
+- **PDD8** "looks great when its closeups or medium shots - lots of detail and
+  good color - sucks at motion", and "seems to do great at low
+  movement/deltas" (`../../bench/results/2026-09-26_subway_v2_s1.md`,
+  `../../bench/results/2026-09-26_distill_compare_s1.md`). An older finding
+  agrees: PDD's artifact severity tracks inter-frame delta
+  (`../../bench/measure_clip_delta.py`, docstring).
+- **FlashGen and FastH3** hold large motion better. FlashGen keeps the base's
+  colour but loses the prompt's roles on subway. FastH3 runs warmer and more
+  saturated than the base (`../../bench/results/2026-09-26_distill_tone.md`).
+
+**The owner's idea:** route adapters by shot, PDD on the still shots and
+FlashGen or FastH3 on the moving ones. Or at least document which distill
+suits which kind of shot. The owner's own caveat: switching adapters changes
+attention along the way, unless the strength is low.
+
+**What is in the way.** H3 generates every frame of a clip in one joint pass,
+so a clip has no "shot 2" to give its own weights. Three routes could work,
+none tried:
+1. **Render shots separately, each on its distill, and join them.** This
+   needs the continuation or keyframe path for the join, and a cut hides the
+   seam.
+2. **Row-masked adapters.** `lora_branch.py` already adds the LoRA per token
+   row, so it could scale it by each row's frame index. That is untrained, and
+   every row still attends to every other, so the owner's attention concern
+   applies in full.
+3. **Switch by step instead of by shot**, for example a motion distill's early
+   steps for layout and PDD's late steps for detail. This is a different axis,
+   with the same mixed-adapter caveat.
+
+The cheap first step is the owner's other half: a short "which distill for
+which shot" note, once a second seed confirms the pattern.
+
 **2026-09-26 (the prompt bank fix, 0.151.1 and 0.151.2).** Every flagged prompt is
 fixed (`../../CHANGELOG.md`, 0.151.2). One gap is still open:
 `bench/grade_prompt_text.py` passed the refview2 twins while their unmarked
