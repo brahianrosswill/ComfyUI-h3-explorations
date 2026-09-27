@@ -913,6 +913,10 @@ length every arm above rendered on this card without it.
     (`../../bench/results/2026-09-27_reverse_switch.md`). One scene so far;
     the lamp-lit interiors where PDD8 is flattest are next.
   - **PDD6 as the faster PDD** (`../../bench/results/2026-09-27_ladder.md`).
+  - **O1's splotchy blacks come from the encoder, not the distills.** The
+    save node's 8-bit h264 at crf 19
+    (`../../bench/results/2026-09-27_o1_lossless.md`). A lower crf or a
+    10-bit format is the owner's call.
   - **Deprioritised builds on disk, for the owner to keep or delete.** They
     rest on the retracted time-embedder inference: the two dial checkpoints
     `fastvideo_fasth3_8step_v2_pruned_int8_convrot_temb_a{05,075}`, the two
