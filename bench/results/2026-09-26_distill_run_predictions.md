@@ -152,8 +152,26 @@ the unusual one, more than PDD8's or FastH3's does.*
   - Six has 8's last step at fewer evaluations.
   - Fails if 6 sits halfway between 4 and 8, which would mean the count, not
     the tail.
+
+  *Verdict, 2026-09-27: failed on clones, and the step-count question
+  answered another way.* From the VAE session's `2026-09-27_ladder.md`, on
+  subway, slapstick and samurai.
+  - The subway clone appears at 4, 6 and 8 steps, merged or exact, so clones
+    do not follow the tail (and F5 put this one at step 1).
+  - On quality: fine detail runs PDD4 < PDD6 < PDD8.
+    - PDD6 is within 5-10% of PDD8, with level motion, at three quarters of
+      the evaluations.
+    - PDD4 is 22-32% below, with the least motion and more boil.
+  - PDD6 is the candidate for the owner's faster PDD path.
+  - Contrast barely moves with step count, so PDD8's flat grade is not a
+    step-count effect.
 - **F4. PDD8 exact vs merged moves the output less than FlashGen's switch
-  did.** PDD's delta is a larger fraction of an int8 step, so the merge lost
+  did.**
+
+  *Verdict, 2026-09-27: not measurable as written.* Final-latent distance is
+  divergence (the method note). Merged against exact on subway is 0.58, a
+  different take with the same character: both double the figure at
+  latents 8-9 (the VAE session's merged preview, `2026-09-27_ladder.md`). PDD's delta is a larger fraction of an int8 step, so the merge lost
   less of it.
 - **F5. In the per-step capture, the double image first appears at PDD8's
   last two steps, not in the early ones.**
