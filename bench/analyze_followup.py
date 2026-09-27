@@ -13,6 +13,15 @@ runs the tool each prediction names
   reference and PDD4, PDD6 and merged PDD8 against it (P1, P5).
 - `vsa`: `measure_clip_temporal.py`, `measure_block_period.py` and
   `measure_clip_tone.py` on FastH3 with VSA on and off (P7).
+- `collapse`: seed spread for the owner's O2 ("way overfit on too little
+  data"; `bench/followup_seed_collapse_arms.json`). Per model, the latent
+  distance between its renders of `subway_chase_short` at seeds 892, 893
+  and 894, with 892 as the reference. FlashGen's 892 is the rerun's
+  `subway_chase_short__flashgen`. Smaller distances than PDD8's would mean
+  FlashGen collapses across seeds.
+- `reverse`: the reverse step switch on `subway_chase`
+  (`bench/followup_reverse_switch_arms.json`). Both handoffs and FlashGen
+  alone are read against PDD8 (exact) as the reference.
 
 Scenes whose prompts ask for frame-to-frame brightness change are left out of
 temporal reads, per the manifest's `analysis_notes`. An arm that has not
@@ -76,9 +85,9 @@ def run(tool: str, args: list, json_out: Path):
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--group", action="append", choices=("looks", "ladder", "vsa"))
+    ap.add_argument("--group", action="append", choices=("looks", "ladder", "vsa", "collapse", "reverse"))
     args = ap.parse_args()
-    groups = args.group or ["looks", "ladder", "vsa"]
+    groups = args.group or ["looks", "ladder", "vsa", "collapse", "reverse"]
     out_root = comfy_output()
     if not ROWS.exists():
         print(f"no rows yet: {ROWS.relative_to(REPO)} does not exist")
@@ -125,6 +134,30 @@ def main() -> int:
             run("measure_block_period.py", pairs, OUT / "2026-09-26_followup_vsa_block.json")
             print("== vsa: tone")
             run("measure_clip_tone.py", pairs, OUT / "2026-09-26_followup_vsa_tone.json")
+
+    if "collapse" in groups:
+        seeds = ("730451892", "730451893", "730451894")
+        for model in ("pdd8", "flashgen"):
+            labs = [f"subway_chase_short__{model}__s{s}" for s in seeds]
+            if model == "flashgen":
+                labs[0] = "subway_chase_short__flashgen"
+            lats = [latent(l, out_root) for l in labs]
+            if not all(lats):
+                missing.append(f"collapse {model}: " + ", ".join(l for l, x in zip(labs, lats) if not x))
+                continue
+            print(f"== collapse: {model}, seed 892 as the reference")
+            run("latent_path_distance.py", lats, OUT / f"2026-09-26_followup_collapse_{model}.json")
+
+    if "reverse" in groups:
+        ref = latent("subway_chase__pdd8", out_root)
+        others = [latent(l, out_root) for l in
+                  ("subway_chase__rev_h063", "subway_chase__rev_h080", "subway_chase__flashgen")]
+        if ref and all(others[:2]):
+            print("== reverse: against PDD8 (exact) on subway_chase")
+            run("latent_path_distance.py", [ref, *[o for o in others if o]],
+                OUT / "2026-09-26_followup_reverse_switch.json")
+        else:
+            missing.append("reverse switch latents")
 
     if missing:
         print("not landed or not found:", ", ".join(missing))
