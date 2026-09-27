@@ -10,7 +10,8 @@ every cell of a capture set, same inputs, same fp32 referent:
     python bench/grade_dense_kernels_on_captures.py <capture dir> [--heads 8] [--json out]
 
 Kernels: comfy_kitchen.int8_attention (Model Attention Backend), sage fp8++
-(sageattn_qk_int8_pv_fp8_cuda, pv fp32+fp16, as the Sage node ships it),
+(sageattn_qk_int8_pv_fp8_cuda, pv fp32+fp16), the same with `qk_rotate` (the
+Sage node's "fp8++ rotated" and "auto" modes),
 and bf16 SDPA on the same bf16 inputs (the "dense" arm; its error is the
 bf16 output rounding plus torch's own accumulation, the floor). Sol is not
 here: it is the routed-step kernel, graded elsewhere.
@@ -42,6 +43,16 @@ def sage_fp8pp(q, k, v):
         pv_accum_dtype="fp32+fp16", smooth_k=False).float().cpu()
 
 
+def sage_fp8pp_rotated(q, k, v):
+    # The Sage node's "fp8++ rotated" (and "auto") mode, `attention.py`: the
+    # same call with the fork's fixed q/k rotation (added 2026-09-27, for the
+    # Sol redesign's dense-tail question, audit section 9b).
+    import sageattention
+    return sageattention.sageattn_qk_int8_pv_fp8_cuda(
+        q.cuda(), k.cuda(), v.cuda(), tensor_layout="HND", is_causal=False,
+        pv_accum_dtype="fp32+fp16", smooth_k=False, qk_rotate=True).float().cpu()
+
+
 def bf16_sdpa(q, k, v):
     outs = []
     for hh in range(q.shape[1]):
@@ -50,7 +61,8 @@ def bf16_sdpa(q, k, v):
     return torch.cat(outs, dim=1)
 
 
-KERNELS = {"kitchen_int8": kitchen_int8, "sage_fp8pp": sage_fp8pp, "bf16_sdpa": bf16_sdpa}
+KERNELS = {"kitchen_int8": kitchen_int8, "sage_fp8pp": sage_fp8pp,
+           "sage_fp8pp_rotated": sage_fp8pp_rotated, "bf16_sdpa": bf16_sdpa}
 
 
 def main() -> int:
