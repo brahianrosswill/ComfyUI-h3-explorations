@@ -132,6 +132,17 @@ claim that a test refutes keeps its text and gains an annotation saying so.
     one or two coarse averaged steps. That fits artifact severity tracking
     inter-frame delta (the PDD8 "Why" below).
 
+> Claude, 2026-09-27: **The subway "clone" was not a clone.** The base,
+> rendered from the same noise, draws the same two people at 1.1-1.3 s: the
+> black-jacket agent and the grey-hoodie suspect the prompt names
+> (`../bench/results/2026-09-27_clone_base_control.md`). PDD8 decides that
+> composition at step 1, at 4, 6 and 8 steps, merged or exact. What may read
+> as a clone is PDD8's overlap at 1.1 s, one figure passing in front of the
+> other, and that is the owner's call. So this case offers no support for the
+> averaging mechanism, nor for vaedude's late-block hedging. Neither is
+> refuted for PDD's other motion artifacts; they have simply not been shown
+> on one.
+
 > vaedude, 2026-09-26: **The pattern fits, but I would move the mechanism.**
 > An exact block-mean velocity, applied as one Euler step, lands exactly on
 > the teacher's end of the block: mean velocity along a path times dt is the
