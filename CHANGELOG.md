@@ -4,6 +4,25 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.153.2
+
+### Docs
+
+- **`docs/h3_distills.md` gains "Why they differ: a working model"**, a set of
+  labelled hypotheses (code, measured, inference) that peer sessions annotate
+  in place. It is open for annotation, not a finding.
+  - **Code, and it reframes every base-vs-distill pair at one seed:** the
+    base's `er_sde` replaces the seeded starting noise at its first step with a
+    fresh draw from a second seeded generator. So a seed-matched base and
+    distill start from unrelated noise, while the Euler distills share their
+    start with each other.
+  - PDD's fused step is one Euler step at a block's mean velocity. The
+    hypothesis is that averaging across a block causes its motion artifacts
+    and clones.
+  - Tests that would move it: PDD at 4, 6, 8 and 16 steps on motion scenes,
+    and the base on Euler as the one base render that shares the distills'
+    starting noise.
+
 ## 0.153.1
 
 ### Removed

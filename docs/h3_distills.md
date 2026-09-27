@@ -45,6 +45,120 @@ The numbers live in the records, not here:
 
 The sampler times per model are in the two subway records' `sampler_s`.
 
+## Why they differ: a working model, open for annotation
+
+Written 2026-09-26 as a set of hypotheses, not findings. Each claim is
+labelled **measured** (with its record), **code** (read from the source) or
+**inference**. A peer session annotates in place, never by rewriting: add a
+dated, signed blockquote under the claim (`> vaedude, 2026-09-26: ...`). A
+claim that a test refutes keeps its text and gains an annotation saying so.
+
+### Why the same seed gives a different scene
+
+- **Code: the base and the distills do not share starting noise, even at the
+  same seed.**
+  - Both draw the same starting tensor from the seed (`Noise_RandomNoise`).
+  - Every distill steps with Euler, which adds no noise, so that tensor
+    carries through the whole render.
+  - The base samples with `er_sde` (`comfy/k_diffusion/sampling.py::sample_er_sde`),
+    which adds fresh noise after every step but the last. The fresh noise
+    comes from a second generator seeded with the same number, so the base
+    still reproduces run to run.
+  - At `er_sde`'s first step the carry factor on the starting tensor
+    (`r_alpha * r`, with the first sigma offset just below 1) is vanishingly
+    small, and the fresh draw takes its place. Drive that function's
+    arithmetic at the base schedule to see the factors.
+  - So a seed-matched base clip and distill clip start from unrelated noise.
+    Distills at one seed do share their start with each other.
+- **Inference: the first steps, at noise near 1, settle the layout**: camera,
+  who stands where, the overall grade.
+  - Between the base and a distill, the start differs, so the scene would
+    differ even with identical weights.
+  - Between two distills, the start is the same, and the weights alone move
+    the scene. Every distill changes what the model predicts from that noise.
+
+### PDD8: the teacher's path in coarse averaged steps
+
+- **Code** (`h3_pdd.md` "What it is"):
+  - PDD keeps a 32-point grid and one output head per interval of it.
+  - Each sampling step fuses a contiguous block of those heads into one
+    output. That output is the block's mean velocity, weighted by each
+    interval's step size.
+  - PDD8 fuses 4 heads per step, so each step covers an eighth of the grid by
+    index. In noise terms the steps are very uneven: under shift 12 the last
+    step is by far the widest, and it is wider at 4 steps than at 8 or 16. The
+    schedules come from `pdd_lora.emit_sigmas(12, 32, width)`, and
+    `h3_pdd.md` lists them.
+- **Code** (`h3_pdd.md`, the section on sub-steps): every head in a block reads
+  the same hidden state. A fused step is therefore exactly one Euler step at
+  the mean velocity, and nothing inside the block reacts to what the frame
+  becomes.
+- **Measured** (`evidence.md`, "Settled about H3"): PDD quality is governed by
+  how coarse the schedule's tail is, not by the evaluation count.
+- **Measured, with a caveat** (`h3_pdd.md`, the partition table dated
+  2026-08-28): PDD8 already sits far from PDD's own 32-step path (width 1, no
+  fusion). The table was taken at 39 frames with Sol inert, so treat it as a
+  direction, not a size.
+- **Inference: the averaging explains PDD's motion failures.**
+  - For a still or slow scene the velocity barely changes across a block, so
+    the mean is a good stand-in. Hence the good close-ups, detail and colour.
+  - When something moves, the velocity inside a block changes a lot, and the
+    mean of two positions can put a person in both. The clone at 1 s on subway
+    would be that: an averaging artifact, not a prompt problem. Mangled text
+    on moving signage would be the same thing at fine scale.
+  - The widest blocks come last, so fine detail on moving things is decided in
+    one or two coarse averaged steps. That fits artifact severity tracking
+    inter-frame delta (the PDD8 "Why" below).
+- **Inference, not yet read in the paper:** PDD is the only one of the three
+  that tries to reproduce the teacher's path. It was the closest to the base
+  in every scene measured (`2026-09-26_distill_compare_s1.md`), but that
+  comparison started from unrelated noise (above). So the closeness is
+  shared prompt and grade, not a shared path, and the shipped base is not
+  PDD's target.
+
+### FlashGen and FastH3: matching the distribution, not the path
+
+- **Code / release:** both are distribution-matching distills. FlashGen is
+  VSD (`research/2026-09-26_flashgen.md`) and FastH3 is DMD2 with VSA sparse
+  attention (`h3_config.FASTH3_CONTRACT_VSA`). They are trained so their few
+  steps land on outputs the teacher would plausibly produce. They are not
+  trained to land where the teacher would from the same noise.
+- **Inference: what that would explain.**
+  - **Motion stays coherent:** no averaged velocities, so no ghosting from
+    that cause.
+  - **The look gets bolder:** likely outputs are high-contrast, saturated and
+    conventionally framed. That would give the grade in
+    `2026-09-26_distill_tone.md` and "a very different scene".
+  - **Adherence weakens:** unusual instructions (who chases whom, which way
+    they run) are exactly what "likeliest" tends to override.
+  - **FastH3's grainy texture:** VSA lets each video cube attend in full to
+    only the fraction of cubes `FASTH3_CONTRACT_VSA` keeps, with a coarse
+    summary covering the rest. Fine texture is then partly invented locally.
+
+### Tests that would move this section
+
+- **PDD's schedule, on motion scenes** (the owner, 2026-09-26: "we should
+  absolutely do the faster path"). The same file runs at several schedules:
+  - 4 steps, width 8, the coarsest tail;
+  - 6 steps (`PDD_MANUAL_SIGMAS`): 8's tail at fewer evaluations;
+  - 8 steps, width 4;
+  - 16 steps, width 2, the finest tail.
+
+  If the clones are averaging artifacts, they get worse as the tail gets
+  coarser. If the tail matters rather than the count (`evidence.md`), 6 steps
+  should match 8, not sit between 4 and 8. Judged blind across scenes, as the
+  box at the top requires. The unjudged `C2_pdd4_nosol` / `C2_pdd8_nosol`
+  pair (`research/pdd/queued_arms.md`, three seeds each) is a zero-card-time
+  first look.
+- **Base on Euler over PDD's grid, same seeds.** This is the only base render
+  that shares the distills' starting noise, so it is the controlled pair for
+  every distill, not only PDD. If PDD8 lands much closer to it than FlashGen
+  or FastH3 do, PDD is following its teacher. If all three stay far, the
+  scene difference is the weights.
+- **FlashGen strength and module arms** in the 2026-09-26 run
+  (`../bench/distill_run_arms.json`): whether the grade and adherence move
+  with the LoRA's strength, or without its adaln.
+
 ## PDD8
 
 **Good.** The owner, 2026-09-26: "looks great when its closeups or medium
