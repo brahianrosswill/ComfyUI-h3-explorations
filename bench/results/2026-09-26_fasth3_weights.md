@@ -113,3 +113,29 @@ Each output was reopened and compared with its donor byte for byte (the
 Both would be rendered on FastH3's contract (10/3, the rungs, euler), with
 FastH3 and the base at 8 steps as the endpoints. Not queued: the follow-up
 batch is at the owner's cap.
+
+## #4 from the unpruned weights (2026-09-26)
+
+Record: `2026-09-26_fasth3_weights_adaln_unpruned.json`, from
+`bench/compare_adaln_unpruned.py`. It compares the diffusers-form fl2va
+transformer (MiniMaxAI release, root `transformer/`) with FastH3 V2's
+(`FastVideo/FastVideo-FastH3-8-Step-V2`, `transformer/`), both evaluated as
+core evaluates a non-curve checkpoint, at the pruned tables' 1025 t.
+
+- **Both conversions are near exact.** Each pruned file is within 2e-4 of its
+  own unpruned modulation (`conv_base`, `conv_oth`). The caveat on P1 is
+  gone: the 5% seen on the pruned files is training, not conversion.
+- **FastH3's conditioning change is all in the time embedder.** The base's
+  per-block projections on FastH3's time embedding reproduce the whole change
+  (`temb_only` equals `train` in every block). FastH3's projections on the
+  base's time embedding move modulation by about 1e-4 (`proj_only`), the same
+  order as its backbone linears.
+
+So FastH3 V2 is, to first order, the base with one retrained MLP (the shared
+time embedder, 256 to 5376 to 2688), the 50 VSA gates, and near-zero drift
+everywhere else. The `fasth3adaln` swap checkpoint above is therefore
+"base plus FastH3's time embedder", and the #2 α dial reduces to blending
+two time embeddings. In curve form that blend is exact without a refit: put
+both tables side by side (16 columns) and the two projections side by side,
+weighted 1-α and α. Core reads the table width as `time_embed_dim`
+(`comfy/model_detection.py`).
