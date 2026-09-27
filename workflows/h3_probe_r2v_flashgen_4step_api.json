@@ -218,7 +218,11 @@
         0
       ],
       "lora_name": "h3/minimax_h3_flashgen_4step_v1.0_768p_ref2va_pruned_rank64_comfy.safetensors",
-      "strength": 1.0
+      "strength": 1.0,
+      "modules": "all",
+      "blocks": "all",
+      "start_percent": 0.0,
+      "end_percent": 1.0
     }
   },
   "19": {

@@ -1913,9 +1913,12 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
                 g["61"] = {"class_type": "PrimitiveInt",
                            "inputs": {"value": _resolved_steps}}
         elif lora_branch:
+            # The granular inputs are written at their defaults, so a graph says
+            # what it does and a runner patch can reach them (0.152.0).
             g["18"] = {"class_type": LORA_BRANCH_NODE,
                        "inputs": {"model": model_src, "lora_name": lora[0],
-                                  "strength": lora[1]}}
+                                  "strength": lora[1], "modules": "all", "blocks": "all",
+                                  "start_percent": 0.0, "end_percent": 1.0}}
         else:
             g["18"] = {"class_type": "LoraLoaderModelOnly",
                        "inputs": {"model": model_src, "lora_name": lora[0],
