@@ -131,7 +131,9 @@ quantizer sees. The code has also changed a great deal since (owner,
 2026-09-27). So this grade is about those activations. The owner's
 best-defaults rule wants a measured best on what ships, so the default stays
 `balanced` until a capture of the current PDD8 graph is graded with the same
-script. Test 2's capture session is where that happens.
+script. Test 2's capture session is where that happens. (Done the same
+night: `2026-09-27_sol_redesign_test2.md`. PDD8 ranks the quantizers the
+same way.)
 
 Two more things to settle before `rotated` becomes the default:
 

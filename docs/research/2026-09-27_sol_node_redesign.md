@@ -221,7 +221,10 @@ restarted on the new kitchen before anything runs.
      becomes on.
    - Bit-identity is a yes/no answer for the prompts run. The gate depends on
      activations, so a second scene is what generalizes it.
-2. **One capture session.**
+2. **One capture session.** Done 2026-09-27: `../../bench/results/2026-09-27_sol_redesign_test2.md`.
+   On PDD8, `rotated` is the better quantizer, but the choice barely moves
+   total error. Kitchen int8 beats sage on the dense tail on every cell.
+   Flipping the default is the owner's call.
    - Blocks 40 and 44 to 49, at steps 4 and 15, in each mode, on the
      current PDD8 graphs. (Blocks 44 to 48 were captured on 2026-09-19, but
      from a base-model render on older code. Those captures gave a

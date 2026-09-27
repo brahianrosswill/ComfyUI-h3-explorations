@@ -4,6 +4,21 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.165.1
+
+### Added
+
+- **Sol redesign test 2** (`bench/results/2026-09-27_sol_redesign_test2.md`),
+  graded on captures of the shipped PDD8 t2v and ref2va graphs.
+  - On the Sol blocks, `rotated` has a lower quantization error than
+    `balanced` and `plain` on all 28 cells, at a smaller kernel cost than
+    `balanced`. Its effect on Sol's total error is small.
+  - The default stays `balanced` pending the owner's call.
+  - On the dense tail, kitchen int8 is more accurate than sage fp8++,
+    rotated or not, on all 12 cells.
+- `bench/grade_dense_kernels_on_captures.py` grades sage fp8++ with
+  `qk_rotate`, the Sage node's "fp8++ rotated" and "auto" modes.
+
 ## 0.165.0
 
 ### Added
