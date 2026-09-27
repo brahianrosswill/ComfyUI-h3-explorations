@@ -1609,6 +1609,10 @@ IMAGE_VAE = "minimax_h3_t1_image_vae_step1597.safetensors"
 # frame count follows the same 17k+5 rule as the real decoder). Inherited from
 # core (`comfy/latent_formats.py::MiniMaxH3Video.taesd_decoder_name`).
 #
+# **Retired as a shipped graph 2026-09-26** (owner: "not worth it"; the INT8
+# VAE left a draft about 15 s cheaper per discarded seed, and taeh3 ghosts). Kept
+# for `bench/compare_vae_decoders.py` and the `draft_decode` switch.
+#
 # **A draft clip is for choosing which seed to keep, never for judging.** It
 # is an approximation of the real decoder, and a graph with `draft_decode`
 # saves the sampled latent so a keeper gets the real decode from

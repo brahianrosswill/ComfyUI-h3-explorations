@@ -5126,15 +5126,6 @@ def main():
               manual_sigmas=FLASHGEN_MANUAL_SIGMAS,
               out_prefix="Video/text_to_video_flashgen"),
          "text -> video + audio at 4 steps via FlashGen at full rank, applied at the call, kitchen dense + Sol"),
-        # The same graph for scouting seeds (owner, 2026-09-26): the video
-        # decoded by h3_config.DRAFT_VAE and the latent saved, so a keeper gets
-        # the real decode from h3_decode_saved_latent without sampling again.
-        ("h3_text_to_video_flashgen_draft.json", "texttovideoflashgendraft", "t2v", LONG_T2V_PROMPT,
-         dict(lora=(FLASHGEN_R64_LORA, FLASHGEN_STRENGTH), lora_branch=True,
-              steps=FLASHGEN_STEPS, sampler_name=FLASHGEN_SAMPLER,
-              manual_sigmas=FLASHGEN_MANUAL_SIGMAS, draft_decode=True,
-              out_prefix="Video/text_to_video_flashgen_draft"),
-         "the FlashGen graph for scouting: taeh3 decode, latent saved for a real decode later"),
 
         # FlashGen beyond T2VA, 2026-09-26, the owner: "even if it wasnt
         # trained with that, its worth testing". Both are the shipped t2v
@@ -5689,13 +5680,15 @@ def main():
         written.append((label, p, wf))
         print(f"  {p.name}: {note}")
 
-    # The keeper half of `draft_decode`. Its latent names are placeholders in
-    # the shape SaveLatent writes for the draft graph's first run; set both to
-    # the pair a draft run wrote (the counters advance together).
+    # Decodes a saved latent pair (`draft_decode` or `save_latents`) with no
+    # sampling. Its latent names are placeholders in the shape SaveLatent writes
+    # for a `_savelat` twin's first run; set both to the pair a run wrote (the
+    # counters advance together). The shipped draft graph was retired on
+    # 2026-09-26 (owner: not worth it); the switch and this graph stay.
     if not alt_chain:
-        _draft = "latents/text_to_video_flashgen_draft"
-        wf = build_decode_saved_latent(f"{_draft}_video_00001_.latent [output]",
-                                       f"{_draft}_audio_00001_.latent [output]")
+        _saved = "latents/text_to_video_flashgen_savelat"
+        wf = build_decode_saved_latent(f"{_saved}_video_00001_.latent [output]",
+                                       f"{_saved}_audio_00001_.latent [output]")
         p = out / "h3_decode_saved_latent_api.json"
         written.append(("decodesavedlatent", p, wf))
         print(f"  {p.name}: a draft's saved latents through the real video decoder, no sampling")

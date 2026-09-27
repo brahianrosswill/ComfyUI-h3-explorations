@@ -8,7 +8,7 @@ Scenes are ordered by how many graphs carry them, so the defaults that reach the
 
 | scene | bank id | graphs | words | shots | speakers | markers |
 |---|---|---|---|---|---|---|
-| [`LONG_T2V_PROMPT`](#long-t2v-prompt) | `t2va_covered_market` | 53 | 290 | 3 | 2 | `<d>` |
+| [`LONG_T2V_PROMPT`](#long-t2v-prompt) | `t2va_covered_market` | 61 | 290 | 3 | 2 | `<d>` |
 | [`ref2va_role_character_garment_environment`](#ref2va-role-character-garment-environment) | `ref2va_role_character_garment_environment` | 13 | 173 | 1 | 0 | — |
 | [`ref2va_role_character_environment`](#ref2va-role-character-environment) | `ref2va_role_character_environment` | 12 | 135 | 1 | 0 | — |
 | [`ref2va_image_video_audio_music`](#ref2va-image-video-audio-music) | `ref2va_image_video_audio_music` | 5 | 264 | 1 | 0 | — |
@@ -48,7 +48,7 @@ Scenes are ordered by how many graphs carry them, so the defaults that reach the
 
 ## LONG_T2V_PROMPT
 
-Carried by **53** graph(s). Sections: `integrated_multimodal_description`, `overall_soundscape`, `non_diegetic_music`.
+Carried by **61** graph(s). Sections: `integrated_multimodal_description`, `overall_soundscape`, `non_diegetic_music`.
 
 <details><summary>graphs</summary>
 
@@ -72,14 +72,18 @@ Carried by **53** graph(s). Sections: `integrated_multimodal_description`, `over
 - `h3_probe_t2v_fasth3_8step_contract_api`
 - `h3_probe_t2v_fasth3_8step_contract_attn_api`
 - `h3_probe_t2v_fasth3_8step_contract_sampling_api`
+- `h3_probe_t2v_fasth3_8step_contract_savelat_api`
 - `h3_probe_t2v_flashgen_4step_api`
 - `h3_probe_t2v_flashgen_4step_audio_refine_api`
+- `h3_probe_t2v_flashgen_4step_audio_refine_savelat_api`
 - `h3_probe_t2v_flashgen_4step_audio_refine_uncached_api`
 - `h3_probe_t2v_flashgen_r64_4step_api`
 - `h3_probe_t2v_flashgen_r64_4step_branch_dense_api`
+- `h3_probe_t2v_flashgen_r64_4step_branch_dense_savelat_api`
 - `h3_probe_t2v_levers_api`
 - `h3_probe_t2v_no_dense_tail_api`
 - `h3_probe_t2v_pdd8_audio_refine_api`
+- `h3_probe_t2v_pdd8_audio_refine_savelat_api`
 - `h3_probe_t2v_pdd8_baked_sage_api`
 - `h3_probe_t2v_pdd8_dense_api`
 - `h3_probe_t2v_pdd8_sage_api`
@@ -87,6 +91,8 @@ Carried by **53** graph(s). Sections: `integrated_multimodal_description`, `over
 - `h3_probe_t2v_rotate_api`
 - `h3_probe_t2v_sage_rotate_api`
 - `h3_probe_t2v_sol_nosage_api`
+- `h3_probe_t2v_step_switch_flashgen_pdd8_api`
+- `h3_probe_t2v_step_switch_flashgen_pdd8_savelat_api`
 - `h3_probe_t2v_turbo_lx12_sage_api`
 - `h3_probe_taomate_3step_api`
 - `h3_probe_taomate_3step_audio_freeze_api`
@@ -100,10 +106,12 @@ Carried by **53** graph(s). Sections: `integrated_multimodal_description`, `over
 - `h3_text_to_video_audio_freeze_2windows_api`
 - `h3_text_to_video_audio_freeze_api`
 - `h3_text_to_video_flashgen_api`
-- `h3_text_to_video_flashgen_draft_api`
+- `h3_text_to_video_flashgen_savelat_api`
 - `h3_text_to_video_pdd_4step_api`
 - `h3_text_to_video_pdd_api`
 - `h3_text_to_video_pdd_manual_sigmas_api`
+- `h3_text_to_video_pdd_savelat_api`
+- `h3_text_to_video_savelat_api`
 - `h3_text_to_video_turbo_api`
 
 </details>

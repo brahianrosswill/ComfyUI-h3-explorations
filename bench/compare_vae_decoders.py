@@ -24,7 +24,8 @@ Controls, and the reading depends on them:
 
 Needs the GPU with no server holding it (`POST /free` first) and the ComfyUI
 venv. The latent is a `SaveLatent` file of the VIDEO half, as
-`h3_text_to_video_flashgen_draft` writes it.
+a `_savelat` twin writes it (the draft graph that first wrote it was retired
+2026-09-26).
 
     python bench/compare_vae_decoders.py LATENT.latent --out bench/results/<date>_<what>.json
 """

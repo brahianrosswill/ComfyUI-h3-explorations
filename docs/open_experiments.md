@@ -2398,7 +2398,7 @@ FlashGen graphs decode is a much larger share of a render than #28 sized on
 the base step count. Compare `decode_s` against `total_s` in
 `bench/results/2026-09-26_flashgen_lora_path_s1.jsonl` with #28's command.
 
-**Built the same day, and unmeasured.** `h3_text_to_video_flashgen_draft` is
+**Built the same day, and unmeasured.** *(The graph was retired on 2026-09-26 with the decline above.)* `h3_text_to_video_flashgen_draft` was
 the shipped FlashGen graph with the video decoded by `h3_config.DRAFT_VAE`
 (core's taeh3, loaded whole by stock `VAELoader`). It also saves the
 sampled latent in two halves under `latents/`, and

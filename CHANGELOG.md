@@ -4,6 +4,19 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.153.1
+
+### Removed
+
+- `h3_text_to_video_flashgen_draft`, the taeh3 scouting graph (owner,
+  2026-09-26: not worth it). The INT8 VAE left a draft only about 15 s cheaper
+  per discarded seed, and taeh3 ghosts. `docs/open_experiments.md` #31 is
+  declined.
+  - `build_api(draft_decode=True)`, `save_latents`, `h3_config.DRAFT_VAE` and
+    `bench/decode_draft_keepers.py` stay.
+  - `h3_decode_saved_latent`'s placeholder now names a `_savelat` twin's
+    latents.
+
 ## 0.153.0
 
 ### Added

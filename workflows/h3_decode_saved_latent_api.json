@@ -14,13 +14,13 @@
   "104": {
     "class_type": "LoadLatent",
     "inputs": {
-      "latent": "latents/text_to_video_flashgen_draft_video_00001_.latent [output]"
+      "latent": "latents/text_to_video_flashgen_savelat_video_00001_.latent [output]"
     }
   },
   "105": {
     "class_type": "LoadLatent",
     "inputs": {
-      "latent": "latents/text_to_video_flashgen_draft_audio_00001_.latent [output]"
+      "latent": "latents/text_to_video_flashgen_savelat_audio_00001_.latent [output]"
     }
   },
   "11": {
