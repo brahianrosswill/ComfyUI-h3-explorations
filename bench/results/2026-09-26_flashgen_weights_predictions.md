@@ -98,3 +98,30 @@ The numbers are in `2026-09-26_flashgen_weights.json`, from
   `MiniMaxH3LoRABranch.blocks`, FlashGen on 0-33 only against 34-49 only. It
   asks whether FlashGen's look and its adherence loss live where its
   high-rank change is.
+
+## FT1, the block transplant (registered 2026-09-26, before it rendered)
+
+The owner approved it ("Yes i agree work with vaedude on it"). FlashGen goes
+through `MiniMaxH3LoRABranch.blocks` on `t2va_look_anchor` (grade) and
+`t2va_slapstick_moving_piano` (motion), at 730451892, as three arms.
+
+| arm | `blocks` | what it keeps |
+|---|---|---|
+| blocks 0-49 | "0-49" | every DiT block, no refiner or final layer |
+| early | "0-33" | FlashGen's high-rank change |
+| late | "34-49" | the near-rank-2 change FastH3 shares |
+
+A block list drops the token refiner and the final layer, so "0-49" is the
+control for that, against the full `<scene>__flashgen` rows.
+
+- **Prediction:**
+  - The late-only arm carries most of FlashGen's grade shift away from a
+    plain-looking render: contrast and saturation by `measure_clip_tone`.
+  - The early-only arm renders closer to a neutral grade while keeping
+    FlashGen's layout and motion.
+  - "0-49" is nearly the full FlashGen.
+- **Fails if** the grade shift sits in the early arm, or in neither.
+
+A caveat on reading it. On its own, a late-only arm runs an almost-base model
+through FlashGen's 4 steps, which the base never trained for. A poor render
+there shows the schedule mismatch, not the late blocks.

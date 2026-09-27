@@ -1,0 +1,37 @@
+{
+ "what": "FT1: FlashGen block transplant, blocks 0-49 / 0-33 / 34-49, on look_anchor and slapstick at 730451892.",
+ "why": "Owner-approved 2026-09-26. Does the grade shift live in the late blocks, where FlashGen and FastH3 share a direction (bench/results/2026-09-26_fasth3_weights_map.json)? Predictions: bench/results/2026-09-26_flashgen_weights_predictions.md, FT1.",
+ "arms": {
+  "look_anchor__flashgen_blk0_49": "workflows/h3_text_to_video_flashgen_savelat_api.json",
+  "look_anchor__flashgen_blk0_33": "workflows/h3_text_to_video_flashgen_savelat_api.json",
+  "look_anchor__flashgen_blk34_49": "workflows/h3_text_to_video_flashgen_savelat_api.json",
+  "slapstick_moving_piano__flashgen_blk0_49": "workflows/h3_text_to_video_flashgen_savelat_api.json",
+  "slapstick_moving_piano__flashgen_blk0_33": "workflows/h3_text_to_video_flashgen_savelat_api.json",
+  "slapstick_moving_piano__flashgen_blk34_49": "workflows/h3_text_to_video_flashgen_savelat_api.json"
+ },
+ "patches": [
+  "look_anchor__flashgen_blk0_49:MiniMaxH3Conditioning.prompt=@bank:t2va_look_anchor",
+  "look_anchor__flashgen_blk0_49:MiniMaxH3Resolution.length=345",
+  "look_anchor__flashgen_blk0_49:MiniMaxH3LoRABranch.blocks=\"0-49\"",
+  "look_anchor__flashgen_blk0_33:MiniMaxH3Conditioning.prompt=@bank:t2va_look_anchor",
+  "look_anchor__flashgen_blk0_33:MiniMaxH3Resolution.length=345",
+  "look_anchor__flashgen_blk0_33:MiniMaxH3LoRABranch.blocks=\"0-33\"",
+  "look_anchor__flashgen_blk34_49:MiniMaxH3Conditioning.prompt=@bank:t2va_look_anchor",
+  "look_anchor__flashgen_blk34_49:MiniMaxH3Resolution.length=345",
+  "look_anchor__flashgen_blk34_49:MiniMaxH3LoRABranch.blocks=\"34-49\"",
+  "slapstick_moving_piano__flashgen_blk0_49:MiniMaxH3Conditioning.prompt=@bank:t2va_slapstick_moving_piano",
+  "slapstick_moving_piano__flashgen_blk0_49:MiniMaxH3Resolution.length=345",
+  "slapstick_moving_piano__flashgen_blk0_49:MiniMaxH3LoRABranch.blocks=\"0-49\"",
+  "slapstick_moving_piano__flashgen_blk0_33:MiniMaxH3Conditioning.prompt=@bank:t2va_slapstick_moving_piano",
+  "slapstick_moving_piano__flashgen_blk0_33:MiniMaxH3Resolution.length=345",
+  "slapstick_moving_piano__flashgen_blk0_33:MiniMaxH3LoRABranch.blocks=\"0-33\"",
+  "slapstick_moving_piano__flashgen_blk34_49:MiniMaxH3Conditioning.prompt=@bank:t2va_slapstick_moving_piano",
+  "slapstick_moving_piano__flashgen_blk34_49:MiniMaxH3Resolution.length=345",
+  "slapstick_moving_piano__flashgen_blk34_49:MiniMaxH3LoRABranch.blocks=\"34-49\""
+ ],
+ "seeds": {
+  "first": 730451892,
+  "note": "held"
+ },
+ "run": "run_graph_arms.py --manifest bench/flashgen_transplant_arms.json --runs 1 --seed 730451892 --hold-seed --no-alternate --out bench/results/2026-09-26_flashgen_transplant.jsonl"
+}
