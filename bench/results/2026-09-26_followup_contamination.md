@@ -22,3 +22,14 @@ appears twice, read the later row.
 The owner's reads of the valid clips, 2026-09-26: FastH3's look_anchor is
 "super high detail like almost way too much causing it to look a bit ai
 generated in polish".
+
+**Beyond this batch** (the VAE session, 2026-09-26):
+- `h3_probe_t2v_step_switch_flashgen_pdd8` chains FlashGen's branch and PDD
+  in one graph, which is exactly this shape. A render of it counts only on
+  0.154.8 or later. None had rendered by the time of the fix.
+- Before 0.154.0, PDD merged its backbone rather than patching forwards, so
+  no earlier graph stacked two branches.
+- The 2026-09-26 cross-process FlashGen reproducibility pair ran the same
+  load sequence in both processes, a FlashGen-only warmup then the render.
+  It stands as "the same sequence reproduces" and says nothing about another
+  load order.
