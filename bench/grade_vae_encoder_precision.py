@@ -93,6 +93,14 @@ def _delta(a, b):
             "bit_identical": bool(__import__("torch").equal(a.float(), b.float()))}
 
 
+def _kitchen_version():
+    try:
+        import importlib.metadata as m
+        return m.version("comfy_kitchen")
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def main() -> int:
     import argparse
     ap = argparse.ArgumentParser()
@@ -100,11 +108,17 @@ def main() -> int:
     # the shipped file's baseline: whether swapping the FILE moves the latent.
     # Added 2026-09-26 for the INT8 ConvRot file, whose decoder is quantized.
     ap.add_argument("--against", action="append", default=[], metavar="VAE_NAME")
+    # Experiment #33 (docs/open_experiments.md): the fp16 encode with
+    # `--fast fp16_accumulation`'s switch on, as start.sh launches the server.
+    # kitchen's fp16_conv3d only runs on CUDA with the switch on, so this arm
+    # needs the card; comparing it across kitchen builds is the experiment.
+    ap.add_argument("--fp16-accumulation", action="store_true",
+                    help="add the fp16-accumulate encode as an arm (#33); needs CUDA")
     ap.add_argument("--out", type=Path,
                     help="record path; required with --against so the 2026-08-21 record is not overwritten")
     args = ap.parse_args()
-    if args.against and args.out is None:
-        ap.error("--against needs --out")
+    if (args.against or args.fp16_accumulation) and args.out is None:
+        ap.error("--against and --fp16-accumulation need --out")
     try:
         import torch
         import comfy.sd  # noqa: F401
@@ -138,6 +152,24 @@ def main() -> int:
               f"mean {r['mean']:.8f}  rel {rel}  "
               f"{'identical' if r['bit_identical'] else ''}")
 
+    if args.fp16_accumulation:
+        if not torch.cuda.is_available():
+            print("--fp16-accumulation needs CUDA: kitchen's fp16_conv3d never runs on the CPU")
+            return 2
+        torch.backends.cuda.matmul.allow_fp16_accumulation = True
+        try:
+            lat, dt = _encode(vae_name, None, pixels)
+        finally:
+            torch.backends.cuda.matmul.allow_fp16_accumulation = False
+        rows["fp16_accumulation"] = r = {"encoder_dtype": str(dt), **_delta(base, lat)}
+        fp32_lat, _ = _encode(vae_name, "fp32", pixels)
+        r["from_fp32"] = _delta(fp32_lat, lat)
+        r["baseline_from_fp32"] = _delta(fp32_lat, base)
+        print(f"  fp16_accumulation  encoder {str(dt):<15} max {r['max']:.6f}  mean {r['mean']:.8f}  "
+              f"{'identical' if r['bit_identical'] else ''}\n"
+              f"    from fp32: accumulate mean {r['from_fp32']['mean']:.8f} against plain fp16 "
+              f"{r['baseline_from_fp32']['mean']:.8f}")
+
     for other in args.against:
         lat, dt = _encode(other, None, pixels)
         if lat is None:
@@ -160,6 +192,8 @@ def main() -> int:
     record = {
         "question": "does promoting the H3 video VAE encoder change the latent?",
         "vae": vae_name, "input": {"seed": SEED, "size": list(SIZE)},
+        "device": str(__import__("comfy.model_management").model_management.get_torch_device()),
+        "comfy_kitchen": _kitchen_version(),
         "baseline_encoder_dtype": str(base_dtype),
         "arms": rows,
         "controls": {"determinism_holds": det_ok, "direction_holds": order_ok},
