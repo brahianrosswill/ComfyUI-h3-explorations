@@ -40,7 +40,13 @@ wrong, and it carries a dated note.
   (`2026-09-26_flashgen_rerender_repro_seed891.json`, `_seed892.json`). It
   also reproduced within one process: `text_to_video_flashgen_ship_diner_00001`
   against `h3_probe_t2v_flashgen_r64_4step_branch_r64_branch_00001`, a real
-  re-render (sampler 141.4 s, not a cache hit), per the fastdude session. The
+  re-render (sampler 141.4 s, not a cache hit), per the fastdude session.
+  *Caveat, 2026-09-26 later: those renders ran before 0.154.8, whose fix stops
+  a LoRA branch installing on top of another model's still-applied branch in
+  the same process (`2faed1a8`). A matching pair shows both processes built
+  the same model; it does not show that model was FlashGen alone. The
+  reproducibility reading stands; which weights it reproduced is unverified.*
+  The
   2026-09-25 pair was PDD8, with 308 merged weight patches, at 0.141.0.
   Whether PDD8 reproduces today is unmeasured. The merged patches' stochastic
   requantization is seeded per module (`comfy/ops.py`,
