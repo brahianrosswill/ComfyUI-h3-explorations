@@ -13,6 +13,30 @@ pointer goes; this list is stale the moment the roadmap disagrees with it.
 Items from the `mrpink` helper lane first; `evalman`'s render lane appends its
 own below the rule.
 
+**Idea saved for later, 2026-09-26: fix PDD's weakness with the other
+distills' strengths.** The owner: "i wonder if you could make pdd better by
+fixing its bad with the complements from flashgen and/or fasth3 ... and maybe
+the other way around but my gut says pdd".
+- **PDD first, FlashGen finishing (the reverse of route 3 below).**
+  - PDD's early blocks integrate the smallest share of the trajectory
+    (`../h3_pdd.md`, the arc table), so they are its most accurate, and PDD is
+    the distill that follows the teacher's layout.
+  - FlashGen's mode-seeking final jump commits moving things instead of
+    hedging, which is where the working model in
+    [`../h3_distills.md`](../h3_distills.md) puts PDD's clones.
+  - The same graph also answers "the other way around": FlashGen's weakness
+    is adherence, and the layout comes from the early steps.
+  - Two handoffs, both on PDD's own knots: 0.632 (PDD 7 of 8 steps, then
+    FlashGen's one step) and 0.8 (PDD 6 steps, FlashGen two).
+  - The x0 capture on `subway_chase__pdd8` (the follow-up batch) shows the
+    step where the clone enters, and so which handoff to try.
+  - Built only on 0.154.8 or later: two branch models in one graph.
+- **PDD video, FastH3 audio.** Re-render the audio on FastH3 with the video
+  frozen (the audio-refine pass). The owner rates FastH3's audio highest.
+- **Not weight blending.** On 2026-09-26 the stacking bug ran FlashGen with
+  PDD's backbone half and no PDD heads, and the owner saw it as "blocky as
+  hell" (`../../bench/results/2026-09-26_followup_contamination.md`).
+
 **Idea saved for later, 2026-09-26: fit the schedule to how much of the frame
 changes.** The owner, on PDD's coarse last steps: "our sigma schedule needs to
 adjust based on a ton of pixels all needing to change at the same time
