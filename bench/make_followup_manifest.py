@@ -50,7 +50,6 @@ G = {
     "route3": W + "h3_probe_t2v_step_switch_flashgen_pdd8_savelat_api.json",
     "pdd8_refine": W + "h3_probe_t2v_pdd8_audio_refine_savelat_api.json",
     "flashgen_refine": W + "h3_probe_t2v_flashgen_4step_audio_refine_savelat_api.json",
-    "turbo": W + "h3_text_to_video_turbo_api.json",
 }
 #: Per-role patches beyond prompt and length.
 EXTRA = {
@@ -122,10 +121,6 @@ def main() -> int:
         fn()
         groups.append({"group": name, "why": why, "arms": list(arms)[start:]})
 
-    def g_smoke():
-        # A turbo file through the branch, once, at the warmup scene's length.
-        add("turbo", WARMUP_SCENE, label="smoke_turbo_branch")
-
     def g_core():
         for role in ("pdd8", "flashgen", "fasth3"):
             warm(role)
@@ -166,7 +161,9 @@ def main() -> int:
             for s in ["t2va_courtroom_verdict", "t2va_kpop_dance_studio"]:
                 add(role, s)
 
-    group("smoke", "a turbo file loads and renders through the branch", g_smoke)
+    # The "smoke" group (a lightx2v turbo file through the branch) left with the
+    # turbo graphs on 2026-09-26; its row in 2026-09-26_followup.jsonl and
+    # bench/followup_arms.json stay as the record of what ran.
     group("looks_core", "the owner's priority: black and white, rich blacks, shadows and "
           "lighting across the distills (F7, O1)", g_looks(LOOKS_CORE))
     group("core", "the distill run's remaining arms on the 0.154.0 code: FlashGen "

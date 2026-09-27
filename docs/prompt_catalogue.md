@@ -8,9 +8,9 @@ Scenes are ordered by how many graphs carry them, so the defaults that reach the
 
 | scene | bank id | graphs | words | shots | speakers | markers |
 |---|---|---|---|---|---|---|
-| [`LONG_T2V_PROMPT`](#long-t2v-prompt) | `t2va_covered_market` | 76 | 290 | 3 | 2 | `<d>` |
-| [`ref2va_role_character_garment_environment`](#ref2va-role-character-garment-environment) | `ref2va_role_character_garment_environment` | 13 | 173 | 1 | 0 | — |
-| [`ref2va_role_character_environment`](#ref2va-role-character-environment) | `ref2va_role_character_environment` | 12 | 135 | 1 | 0 | — |
+| [`LONG_T2V_PROMPT`](#long-t2v-prompt) | `t2va_covered_market` | 72 | 290 | 3 | 2 | `<d>` |
+| [`ref2va_role_character_environment`](#ref2va-role-character-environment) | `ref2va_role_character_environment` | 10 | 135 | 1 | 0 | — |
+| [`ref2va_role_character_garment_environment`](#ref2va-role-character-garment-environment) | `ref2va_role_character_garment_environment` | 9 | 173 | 1 | 0 | — |
 | [`ref2va_image_video_audio_music`](#ref2va-image-video-audio-music) | `ref2va_image_video_audio_music` | 5 | 264 | 1 | 0 | — |
 | [`I2V_PROMPT`](#i2v-prompt) | `i2va_lighthouse_keyframe` | 4 | 90 | 1 | 0 | — |
 | [`MARKET_REF2V_PROMPT`](#market-ref2v-prompt) | `ref2va_market_stallholder` | 3 | 598 | 3 | 2 | `<d>` |
@@ -48,7 +48,7 @@ Scenes are ordered by how many graphs carry them, so the defaults that reach the
 
 ## LONG_T2V_PROMPT
 
-Carried by **76** graph(s). Sections: `integrated_multimodal_description`, `overall_soundscape`, `non_diegetic_music`.
+Carried by **72** graph(s). Sections: `integrated_multimodal_description`, `overall_soundscape`, `non_diegetic_music`.
 
 <details><summary>graphs</summary>
 
@@ -62,8 +62,6 @@ Carried by **76** graph(s). Sections: `integrated_multimodal_description`, `over
 - `h3_probe_canvas_portrait_api`
 - `h3_probe_canvas_ultrawide_api`
 - `h3_probe_head_chunks_api`
-- `h3_probe_split_base_first_api`
-- `h3_probe_split_base_last_api`
 - `h3_probe_square_canvas_api`
 - `h3_probe_t2v_base_euler16_api`
 - `h3_probe_t2v_base_euler16_savelat_api`
@@ -105,13 +103,12 @@ Carried by **76** graph(s). Sections: `integrated_multimodal_description`, `over
 - `h3_probe_t2v_sol_nosage_api`
 - `h3_probe_t2v_step_switch_flashgen_pdd8_api`
 - `h3_probe_t2v_step_switch_flashgen_pdd8_savelat_api`
-- `h3_probe_t2v_turbo_lx12_sage_api`
+- `h3_probe_t2v_step_switch_pdd8_flashgen_h063_api`
+- `h3_probe_t2v_step_switch_pdd8_flashgen_h063_savelat_api`
+- `h3_probe_t2v_step_switch_pdd8_flashgen_h080_api`
+- `h3_probe_t2v_step_switch_pdd8_flashgen_h080_savelat_api`
 - `h3_probe_taomate_3step_api`
 - `h3_probe_taomate_3step_audio_freeze_api`
-- `h3_probe_turbo_768p_owner_api`
-- `h3_probe_turbo_768p_sla_api`
-- `h3_probe_turbo_768p_sla_dense_api`
-- `h3_probe_turbo_home_canvas_api`
 - `h3_probe_vsa_api`
 - `h3_probe_vsa_dense_api`
 - `h3_text_to_video_api`
@@ -127,7 +124,6 @@ Carried by **76** graph(s). Sections: `integrated_multimodal_description`, `over
 - `h3_text_to_video_pdd_savelat_api`
 - `h3_text_to_video_pdd_x0_api`
 - `h3_text_to_video_savelat_api`
-- `h3_text_to_video_turbo_api`
 
 </details>
 
@@ -141,9 +137,51 @@ non_diegetic_music:
 N/A
 ```
 
+## ref2va_role_character_environment
+
+Carried by **10** graph(s). Sections: `subject_definitions`, `summary`, `retention_analysis`, `detailed_description`, `overall_soundscape`, `non_diegetic_music`.
+
+<details><summary>graphs</summary>
+
+- `h3_image_ref_plus_text_to_video_api`
+- `h3_image_ref_plus_text_to_video_pdd_4step_api`
+- `h3_image_ref_plus_text_to_video_pdd_api`
+- `h3_probe_r2v_flashgen_4step_api`
+- `h3_probe_ref2v_pdd_345_api`
+- `h3_probe_ref2v_pdd_8s_api`
+- `h3_probe_ref2v_pdd_api`
+- `h3_probe_ref2v_pdd_headfree_api`
+- `h3_probe_reference_upscale_api`
+- `h3_probe_sol_on_refs_api`
+
+</details>
+
+```text
+subject_definitions:
+<Subject 1> is the main character in <Picture 1>, whose face, hair, and clothing are carried into the target video.
+<Subject 2> is the environment in <Picture 2>, which provides the setting for the target video.
+
+summary:
+[reference generation] The target video places <Subject 1> inside <Subject 2> for a single continuous shot.
+
+retention_analysis:
+<Subject 1> (appears in [Shot 1]): fully_preserved - face, hair, and clothing are retained.
+<Subject 2> (appears in [Shot 1]): fully_preserved - the visual setting is retained.
+
+detailed_description:
+The target video is in a cinematic live-action style.
+[Shot 1] A medium shot establishes <Subject 2>, then <Subject 1> enters from the left and stops at the center of the frame. The camera trucks right with small amplitude at slow speed.
+
+overall_soundscape:
+Natural ambient atmosphere continues throughout the shot.
+
+non_diegetic_music:
+N/A
+```
+
 ## ref2va_role_character_garment_environment
 
-Carried by **13** graph(s). Sections: `subject_definitions`, `summary`, `retention_analysis`, `detailed_description`, `overall_soundscape`, `non_diegetic_music`.
+Carried by **9** graph(s). Sections: `subject_definitions`, `summary`, `retention_analysis`, `detailed_description`, `overall_soundscape`, `non_diegetic_music`.
 
 <details><summary>graphs</summary>
 
@@ -154,10 +192,6 @@ Carried by **13** graph(s). Sections: `subject_definitions`, `summary`, `retenti
 - `h3_probe_ref_pathway_native_encoder_api`
 - `h3_probe_ref_pathway_typed_both_api`
 - `h3_probe_ref_pathway_typed_encoder_api`
-- `h3_probe_ref_turbo768p_fl2va_api`
-- `h3_probe_ref_turbo768p_hybrid_adaln_all_api`
-- `h3_probe_ref_turbo768p_hybrid_b30_api`
-- `h3_probe_ref_turbo768p_ref2va_api`
 - `h3_probe_ref_vae_encoder_fp16_api`
 - `h3_probe_ref_vae_encoder_fp32_api`
 
@@ -180,50 +214,6 @@ retention_analysis:
 detailed_description:
 The target video is in a cinematic live-action style.
 [Shot 1] A medium shot establishes <Subject 3>, then <Subject 1> enters from the left wearing <Subject 2> and stops at the center of the frame. The camera trucks right with small amplitude at slow speed.
-
-overall_soundscape:
-Natural ambient atmosphere continues throughout the shot.
-
-non_diegetic_music:
-N/A
-```
-
-## ref2va_role_character_environment
-
-Carried by **12** graph(s). Sections: `subject_definitions`, `summary`, `retention_analysis`, `detailed_description`, `overall_soundscape`, `non_diegetic_music`.
-
-<details><summary>graphs</summary>
-
-- `h3_image_ref_plus_text_to_video_api`
-- `h3_image_ref_plus_text_to_video_pdd_4step_api`
-- `h3_image_ref_plus_text_to_video_pdd_api`
-- `h3_image_ref_plus_text_to_video_turbo_4step_api`
-- `h3_probe_r2v_flashgen_4step_api`
-- `h3_probe_ref2v_pdd_345_api`
-- `h3_probe_ref2v_pdd_8s_api`
-- `h3_probe_ref2v_pdd_api`
-- `h3_probe_ref2v_pdd_headfree_api`
-- `h3_probe_ref2v_turbo_api`
-- `h3_probe_reference_upscale_api`
-- `h3_probe_sol_on_refs_api`
-
-</details>
-
-```text
-subject_definitions:
-<Subject 1> is the main character in <Picture 1>, whose face, hair, and clothing are carried into the target video.
-<Subject 2> is the environment in <Picture 2>, which provides the setting for the target video.
-
-summary:
-[reference generation] The target video places <Subject 1> inside <Subject 2> for a single continuous shot.
-
-retention_analysis:
-<Subject 1> (appears in [Shot 1]): fully_preserved - face, hair, and clothing are retained.
-<Subject 2> (appears in [Shot 1]): fully_preserved - the visual setting is retained.
-
-detailed_description:
-The target video is in a cinematic live-action style.
-[Shot 1] A medium shot establishes <Subject 2>, then <Subject 1> enters from the left and stops at the center of the frame. The camera trucks right with small amplitude at slow speed.
 
 overall_soundscape:
 Natural ambient atmosphere continues throughout the shot.

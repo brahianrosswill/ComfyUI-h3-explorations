@@ -162,8 +162,8 @@ upstream runs it: `../research/2026-09-26_flashgen.md`.
   the int8 checkpoint loses most of FlashGen's delta
   (`../../bench/results/2026-09-26_int8_lora_requant.json`). Applied at the call,
   it renders a different take.
-- **Then:** a second seed and scene; the same pair for a LightX2V Turbo LoRA; a
-  125-frame arm at FlashGen's trained length.
+- **Then:** a second seed and scene; a 125-frame arm at FlashGen's trained
+  length.
 - **FlashGen off T2VA** (0.147.0): i2v and ref2va probes rendered and hold up by
   eye (`../../bench/results/2026-09-26_flashgen_tasks_s1.md`). Still owed: the
   owner's look, same-seed base or PDD renders to compare, and prompts with sound
@@ -210,7 +210,7 @@ seed.
   dense baseline, a second seed, and blinded pairs. The throwaway timings put
   it at a few hours of GPU with the baseline included.
 - **Open, a cheap probe:** do LoRA'd layers stay on the int8 path at run time?
-  That decides whether the PDD, FlashGen and Turbo arms run the base graphs'
+  That decides whether the PDD and FlashGen arms run the base graphs'
   numerics (`../research/2026-09-25_temporal_offset_and_adaln_rounding.md`,
   last section).
 - **Open, a cheap control:** the refine arms' video is about 46 dB from their
@@ -824,17 +824,11 @@ Items from the `evalman` render lane:
 
 Items from the PDD backbone bake lane (the alibaba-pai PDD LoRA folded into the fl2va int8 checkpoint; the peer session that built it happens to share a name with the larryvrh turbo LoRA, which is a different artifact and not part of this bake):
 
-- **The turbo rung is RENDERED and BLINDED** (owner decision 3 in
-  `../roadmap.md`; run records `bench/results/2026-09-05_turbo_rung_{s1,s2,floor_s2}.jsonl`,
-  judged JSONLs beside them, every arm present, night of 2026-09-05). The
-  owner scores `turbo_rung_s1_2026-09-05` and `turbo_rung_s2_2026-09-05`
-  under the output folder's blind directory, 15 pairs each, pairs only.
-  Then `bench/score_session.py` on each export, graded against the
-  manifest's `predictions` block, and the frontier table per seed
-  (`bench/frontier_table.py` with the run's outputs record; build that with
-  `bench/build_outputs_record.py` against the server that rendered, which
-  is the one up now). Closes with the two verdict records and a frontier
-  row per arm.
+- **The turbo rung closes unscored** (2026-09-26, with the lightx2v lane;
+  `../roadmap.md`, "Closed lanes"). Both of its arms were turbo LoRAs (the
+  larryvrh pack, gone 2026-09-23, and lightx2v v1.2). The run records
+  `bench/results/2026-09-05_turbo_rung_*.jsonl` and the two blind sessions
+  in the output folder stay as they are; nothing was deleted.
 
 - The bake script's open review candidates: a control-before-bake gate,
   the contract check's retyped filenames now that `h3_config` names the

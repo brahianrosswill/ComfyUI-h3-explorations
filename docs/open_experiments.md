@@ -1394,8 +1394,9 @@ below -- it patched `diffusion_model.blocks`, 50 of the 52 `Attention`
 modules the LoRA adapts, so it never answered the question it was named
 for). **The second half is still open and still reachable**: whether the
 Turbo-SLA LoRA behaves differently under Sol-Attn than under dense
-attention, which the two shipped `h3_probe_turbo_768p_sla*` arms address
-without the node. Sol's `top-k (SLA)` selection is NOT a substitute for
+attention. The two `h3_probe_turbo_768p_sla*` arms that addressed it were
+retired unrendered with the lightx2v turbo lane on 2026-09-26, so it stays
+open and is not pursued. Sol's `top-k (SLA)` selection is NOT a substitute for
 the router -- it keeps a pooled term for every unpicked block, which
 `docs/SOLATTN.md` records as making it a third attention rather than a
 cheaper spelling.

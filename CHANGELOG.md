@@ -4,6 +4,31 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.156.0
+
+### Removed
+
+- **The lightx2v turbo and Turbo-SLA lane** (owner, 2026-09-26: "lightx and
+  turbo stuff irrelevant"). Fourteen generated graphs, listed in
+  `docs/wiki/decisions.md` under that date, and every `TURBO_*` constant
+  with `SPLIT_AT` from `h3_config.py`. `TURBO_SAMPLER` is renamed
+  `DISTILL_SAMPLER` (still euler, what every distilled arm runs); the rebuilt
+  graphs are otherwise byte-identical.
+  - `check_distill_settings.py` fails any graph loading a turbo LoRA. Its
+    `LEGAL` / `UNATTESTED` / `OWNER_RECIPE` tables, the vendor-README and
+    LightX2V-config controls and the classify cases went; it grades PDD,
+    FlashGen, FastH3, TaoMate and the base. It exits 0 or 1 now.
+  - `check_distill_grid.py` keeps the flow-shift anchor and the PDD and
+    TaoMate grids; the turbo population, owner-recipe arms, exemptions and
+    the split-arm shift case went. `build_api(split_at=...)` stays, ungraded.
+  - `check_attention_defaults.py` and `check_widget_deviations.py` lost the
+    retired stems and rows. The `shift_video` deviation row now names FastH3's
+    10.0, which it had been covering unnamed.
+  - `make_followup_manifest.py` no longer emits the turbo smoke arm; the
+    rendered row and `bench/followup_arms.json` stay as the record.
+  - `docs/roadmap.md` "Closed lanes" carries the lane; the turbo rung in
+    `docs/wiki/next_steps.md` closes unscored.
+
 ## 0.155.0
 
 ### Added

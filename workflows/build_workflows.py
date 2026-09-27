@@ -94,19 +94,13 @@ from h3_config import (  # noqa: E402
     SAMPLING, SAGE_NODE, DENSE_BACKEND_NODE, DENSE_CHAINS, DEFAULT_DENSE_CHAIN, SEED, SIGMA_SHIFT, SOL_CORE_NODE, SOL_CORE_DEFAULTS,
     VSA_KEEP_PERCENT, REF_VIDEO_LOADER,
     CACHE_NODE, CACHE_NODE_CLASS,
-    TURBO_LORA, TURBO_LORA_STRENGTH, TURBO_SHIFT, TURBO_STEPS,
-    TURBO_768P_LORA, TURBO_768P_SHIFT, TURBO_768P_STEPS,
-    TURBO_768P_STRENGTH, TURBO_768P_V12_LORA, TURBO_768P_V12_STEPS,
-    TURBO_SLA_LORA, TURBO_SLA_SHIFT, TURBO_SLA_STEPS,
-    TURBO_OWNER_STRENGTH, TURBO_OWNER_SCHEDULER,
-    TURBO_HOME_CANVAS, TURBO_SAMPLER, DISTILL_SAMPLING, SPLIT_AT,
+    DISTILL_SAMPLING,
     REF_VIDEO_BUDGET,
     CAPTURE_REF_IMAGES,
     DIALOGUE_REF_IMAGES, REFVIEW2_SCENES,
     PDD_MANUAL_EVALS,
     PDD_MANUAL_SIGMAS,
     sol_for_graph,
-    TURBO_REF2VA_LORA, TURBO_REF2VA_STEPS, TURBO_REF2VA_SHIFT,
     PDD_FL2VA_LORA, PDD_REF2VA_LORA, PDD_STEPS, PDD_STEPS_FAST,
     PDD_STRENGTH, PDD_FL2VA_STRIPPED_LORA,
     TAOMATE_LORA,
@@ -3626,26 +3620,6 @@ _MARKER_PROSE = {
 }
 
 
-# **`_NOTE_TURBO_768P` and `_NOTE_FL2V_TURBO` stood here and are deleted as of
-# 2026-08-31**, with the two `turbo_4step_768p` graphs that were their only
-# consumers (`e9098fb`). Deleted rather than moved into `docs/`, which was the
-# tempting option: all three things they held already live somewhere with an
-# assertion behind them, so relocating them would have moved a cache rather
-# than retired one.
-#
-#   the LoRA -> shift/steps table  `bench/check_distill_settings.py`'s `LEGAL`,
-#                                  all five rows, graded against the vendor's
-#                                  README with a declared `UNATTESTED` list
-#   "a turbo LoRA inherits the    that check's own docstring, verbatim, and it
-#    sampler's shift"             raises with the same language
-#   the canvas argument           `docs/h3_ref2v_distillation.md`
-#
-# The note also claimed `check_distill_settings.py` "grades the table above".
-# It does not -- it grades the same facts from its own source and never read
-# that table. A markdown table nothing can invalidate is the exact shape
-# `docs/config_drift.md` is about.
-
-
 # --------------------------------------------------------------------------
 _PKG_NAME = Path(__file__).resolve().parent.parent.name
 
@@ -4243,96 +4217,9 @@ def main():
               out_prefix="Video/h3_l2v", **FL2V_CANVAS),
          "last frame + text -> video + audio (the closing frame is the anchor)"),
 
-        # **`h3_first_last_frame_to_video_turbo_4step_768p` was here and is gone
-        # as of 2026-08-31, with its t2v sibling below.** Owner's call: a stem
-        # saying `_Nstep` must name the evaluations the graph denoises, with no
-        # exception, and these two said 4 while running
-        # `TURBO_768P_STEPS` = 6.
-        #
-        # The name was TRUE when written and went stale three days later.
-        # `bench/results/2026-08-20_power_limit_pair_verdict.json` describes
-        # this graph as "4 steps", and the recipe moved to six on 2026-08-23
-        # ("owner-selected... provisional"). Nothing carried the rename, which
-        # is this repo's usual failure with a fact that has two homes.
-        #
-        # Nothing is lost: `h3_probe_turbo_768p_owner` runs the same
-        # `TURBO_768P_LORA` at the same shift and step count, so the 768p turbo
-        # is still covered by a graph whose name claims no step count at all.
-        # The dated records above are history and keep naming the old path.
-        # t2v deliberately: the note explains that matching the LoRA's 544p
-        # means leaving H3's own canvas rule, and MiniMaxH3KeyframeCanvas is
-        # the node that refuses to, so an i2v turbo graph could not show the
-        # choice it is describing.
-        ("h3_text_to_video_turbo.json", "t2v-turbo", "t2v", LONG_T2V_PROMPT,
-         dict(lora=(TURBO_LORA, TURBO_LORA_STRENGTH), steps=TURBO_STEPS,
-              shift=TURBO_SHIFT, out_prefix="Video/h3_t2v_turbo_8step"),
-         "text -> video + audio, via the 8-step turbo LoRA"),
-
-        # **`h3_text_to_video_turbo_4step_768p` was here and is gone as of
-        # 2026-08-31.** See the note on its fl2v sibling above for why. The
-        # argument this comment used to make for keeping it -- that "change the
-        # shift when you change the LoRA" is the instruction everyone drops, so
-        # a graph with it already right beats a paragraph saying to do it --
-        # still holds, and `h3_probe_turbo_768p_owner` is the graph that makes
-        # it, at the same LoRA, shift and step count.
-
-        # The recipe the 2026-08-20 blind session supports: the vendor row with
-        # the vendor's sampler. It differed from the since-removed
-        # h3_text_to_video_turbo_4step_768p
-        # in one widget (er_sde -> euler) until 2026-08-27, when euler became the
-        # default for every distilled arm and the two converged; it still differs
-        # from the owner graph below in scheduler and strength, which the session
-        # found indistinguishable at 20% more sampler time. Ships whatever TURBO_768P_LORA names, which
-        # has been v1.1 since 2026-08-23 -- this comment said it ships v1.0
-        # "because only v1.0 has an attested row", which was the argument for
-        # not adopting v1.1 and is no longer the state.  The row is now
-        # inherited rather than attested; see check_distill_settings.UNATTESTED.
-        # The owner's working recipe on the same LoRA, as a graph with a sha
-        # so bench arms can patch the LoRA file onto it. Three knobs differ
-        # from the row above; see TURBO_OWNER_STRENGTH in h3_config.
-        ("h3_probe_turbo_768p_owner.json", "t2v-turbo768-owner", "t2v",
-         LONG_T2V_PROMPT,
-         dict(lora=(TURBO_768P_LORA, TURBO_OWNER_STRENGTH),
-              steps=TURBO_768P_STEPS, shift=TURBO_768P_SHIFT,
-              sampler_name=TURBO_SAMPLER, scheduler_name=TURBO_OWNER_SCHEDULER,
-              out_prefix="Video/h3_probe_turbo_768p_owner"),
-         f"the 768p turbo LoRA at the owner's recipe: euler, beta, "
-         f"{TURBO_768P_STEPS} steps, strength {TURBO_768P_STRENGTH:g}"),
-
-        # The SLA release on the same row. A probe rather than a shipped
-        # variant because nothing is known about how a LoRA distilled under
-        # a top-k block router behaves under Sol's threshold router, and the
-        # first render is the first datum. See h3_config.TURBO_SLA_LORA.
-        ("h3_probe_turbo_768p_sla.json", "t2v-turbo768-sla", "t2v",
-         LONG_T2V_PROMPT,
-         dict(lora=(TURBO_SLA_LORA, TURBO_LORA_STRENGTH),
-              steps=TURBO_SLA_STEPS, shift=TURBO_SLA_SHIFT,
-              out_prefix="Video/h3_probe_turbo_768p_sla"),
-         "the 768p turbo graph with lightx2v's SLA-distilled LoRA swapped in"),
-
-        # The router arm was RETIRED 2026-08-28 by owner decision ("we don't
-        # use it"), and the reason is worth keeping because it is not disuse
-        # alone: the arm was an INCOMPLETE reproduction of what the LoRA was
-        # distilled under. The Turbo-SLA LoRA's 208 modules are the 50 DiT
-        # blocks PLUS the 2 token_refiner blocks (read from the artifact
-        # header, 2026-08-28), and `MiniMaxH3SLARouter` patches
-        # `diffusion_model.blocks` only. So the arm answered "the LoRA under a
-        # router like the one it was trained with" rather than the question it
-        # was named for. `docs/open_experiments.md` #20 owns that gap.
-        #
-        # The two remaining SLA arms below do NOT use the router node: they run
-        # the SLA-distilled LoRA under our own attention, which is a different
-        # and still-live question. The node stays registered -- `node_id` is
-        # append-only and saved graphs bind to it -- and is marked deprecated
-        # in its own schema.
-
-        ("h3_probe_turbo_768p_sla_dense.json", "t2v-turbo768-sla-dense", "t2v",
-         LONG_T2V_PROMPT,
-         dict(lora=(TURBO_SLA_LORA, TURBO_LORA_STRENGTH),
-              steps=TURBO_SLA_STEPS, shift=TURBO_SLA_SHIFT,
-              dense_attn="sage",
-              out_prefix="Video/h3_probe_turbo_768p_sla_dense"),
-         "the SLA LoRA with Sol-Attn absent: sage only"),
+        # **The lightx2v turbo and SLA graphs were here and are retired as of
+        # 2026-09-26** (owner: "lightx and turbo stuff irrelevant"); the list is
+        # in docs/wiki/decisions.md under that date and the entries in git.
 
         # TaoMate-H3 (docs/h3_taomate.md): the full-rank conversion on the
         # plain fl2va checkpoint, at the adapter's own three distilled sigmas
@@ -4575,34 +4462,6 @@ def main():
             )
         ],
 
-        # Reference transfer of the fl2v distill, four checkpoints, one
-        # variable. The LoRA file is patched at run time; see the note.
-        *[
-            (f"h3_probe_ref_turbo768p_{tag}.json", f"r2v-turbo768-{tag}", "r2v",
-             _ref_prompt(images=("character", "garment", "environment")),
-             dict(**REF_VIDEO_BUDGET, ref_images=CAPTURE_REF_IMAGES,
-                  unet=MODELS[key],
-                  lora=(TURBO_768P_LORA, TURBO_768P_STRENGTH),
-                  steps=TURBO_768P_STEPS, shift=TURBO_768P_SHIFT,
-                  sampler_name=TURBO_SAMPLER,
-                  out_prefix=f"Video/h3_probe_ref_turbo768p_{tag}"),
-             f"the capture request on {label} with the 4-step 768p turbo LoRA")
-            for tag, key, label, what in (
-                ("fl2va", "unet_fl2va", "fl2va",
-                 "The checkpoint the LoRA was distilled on, and one that never "
-                 "saw a reference row."),
-                ("hybrid_b30", "unet_hybrid_b30", "the HF hybrid b30-49",
-                 "fl2va's linears with ref2va's modulation in the last twenty "
-                 "blocks."),
-                ("hybrid_adaln_all", "unet_hybrid_adaln_all",
-                 "the locally built all-adaln hybrid",
-                 "fl2va's linears with ref2va's modulation in every block and "
-                 "the final layer -- the adaln-only hypothesis as a file."),
-                ("ref2va", "unet_ref2va", "ref2va",
-                 "The checkpoint the task belongs to, with linears the LoRA "
-                 "was not fitted against."),
-            )
-        ],
 
         # The same capture on the fl2va checkpoint with no LoRA: the control
         # the block-49 attribution was missing. The 2026-08-17 capture was
@@ -4745,27 +4604,6 @@ def main():
 
         # --- probes: pairs, one variable, run against the named twin ---
 
-        ("h3_probe_split_base_last.json", "t2v-split-baselast", "t2v",
-         LONG_T2V_PROMPT,
-         dict(lora=(TURBO_LORA, TURBO_LORA_STRENGTH), steps=TURBO_STEPS,
-              shift=TURBO_SHIFT, split_at=SPLIT_AT, split_base_last=True,
-              out_prefix="Video/h3_probe_split_baselast"),
-         "distilled high-noise, plain base model finishes"),
-
-        ("h3_probe_split_base_first.json", "t2v-split-basefirst", "t2v",
-         LONG_T2V_PROMPT,
-         dict(lora=(TURBO_LORA, TURBO_LORA_STRENGTH), steps=TURBO_STEPS,
-              shift=TURBO_SHIFT, split_at=SPLIT_AT, split_base_last=False,
-              out_prefix="Video/h3_probe_split_basefirst"),
-         "plain base high-noise, distilled finish (the Krea 2 ordering)"),
-
-        ("h3_probe_turbo_home_canvas.json", "t2v-turbo-544p", "t2v",
-         LONG_T2V_PROMPT,
-         dict(lora=(TURBO_LORA, TURBO_LORA_STRENGTH), steps=TURBO_STEPS,
-              shift=TURBO_SHIFT, **TURBO_HOME_CANVAS,
-              out_prefix="Video/h3_probe_turbo_544p"),
-         "the 8-step turbo LoRA at the 544p it was distilled at"),
-
         # The equal-cost shape control. 21:9, 16:9 and 9:16 are all
         # (w//32)*(h//32) = 1008 tokens/frame, so all three run at the SAME
         # sequence length and the same attention cost while the long edge goes
@@ -4779,23 +4617,6 @@ def main():
         ("h3_probe_canvas_portrait.json", "t2v-9by16", "t2v", LONG_T2V_PROMPT,
          dict(width=768, height=1344, out_prefix="Video/h3_probe_9by16"),
          "9:16 portrait, the same cost as the default canvas"),
-
-        ("h3_probe_ref2v_turbo.json", "r2v-turbo", "r2v", _ref_prompt(images=True),
-         dict(lora=(TURBO_LORA, TURBO_LORA_STRENGTH), steps=TURBO_STEPS,
-              shift=TURBO_SHIFT,
-              out_prefix="Video/h3_probe_r2v_turbo"),
-         "ref2v with an fl2v turbo LoRA -- deliberately out of distribution"),
-        # The twin of the arm above, and the only difference that matters is
-        # WHICH turbo LoRA. That one is an fl2v distill touching 208 modules,
-        # none of them the conditioning-modulation path. This one touches 259,
-        # the extra 51 being every `adaln_proj.linear` including
-        # `final_layer`'s -- exactly where fl2va and ref2va diverge most.
-        # See docs/h3_ref2v_distillation.md for the header measurement.
-        #
-        # Its own README claims t2v and i2v only and never mentions ref2va, so
-        # this arm is OUR experiment, not the author's claim. Settings are the
-        # pack's own; the graph differs from its twin in the two nodes the
-        # pack requires, not in shift, canvas, seed or prompt.
 
         # --- Parallel Decoding Distillation -----------------------------
         # Not a step distillation. The trajectory stays a 32-point grid; the
@@ -4846,28 +4667,6 @@ def main():
         # Fact B -- an fl2v distill aimed at the wrong weights -- does not
         # apply to this one. Facts A and C do not follow from that and are
         # untouched.
-
-        # The arm PDD is actually claiming to beat, matched to
-        # h3_image_ref_plus_text_to_video_pdd_4step on every axis a comparison
-        # needs: same canvas, length, prompt, seed, sampler, scheduler, shift
-        # and step count. The LoRA is the only thing that differs.
-        #
-        # Both are ref2v-NATIVE distills, which matters: docs/h3_ref2v_distillation.md
-        # is about fl2v turbos being aimed at the wrong weight partition, and
-        # neither of these is. So this pair asks about the METHOD rather than
-        # about partition mismatch.
-        #
-        # sage on and Sol absent, matching its twin. Sol skips attention
-        # adaptively per step and that is incoherent against a 4-step schedule
-        # for either distill, so leaving it in would vary attention as well as
-        # the LoRA.
-        ("h3_image_ref_plus_text_to_video_turbo_4step.json", "r2v-turbo4", "r2v",
-         _ref_prompt(images=True),
-         dict(sampler_name="euler",
-              lora=(TURBO_REF2VA_LORA, 1.0), steps=TURBO_REF2VA_STEPS,
-              shift=TURBO_REF2VA_SHIFT,
-              out_prefix="Video/h3_r2v_turbo_4step"),
-         "the ref2v turbo at 4 steps, matched to the PDD 4-step arm"),
 
         # --- the market scene as ref2va, base and both PDD step counts ------
         # The t2v market rewrite (d5be353) was rendered at 16 steps on
@@ -5065,19 +4864,6 @@ def main():
         # or without sage, so the loss attributes to nothing narrower than
         # the shipped graph. These two are the missing rungs. Their prompts
         # are patched per scene from the bank by bench/pdd_ladder_arms.json.
-        # **The turbo rung, 2026-09-05** (docs/roadmap.md, "Owner decisions,
-        # 2026-09-05 evening"; bench/turbo_rung_arms.json): a step-reduction
-        # distill that is NOT PDD, under sage alone with Sol absent so the
-        # pair against the sage floor differs in the distill and its step
-        # count only. The rung's other arm, the larryvrh pack, went with the
-        # pack on 2026-09-23. The prompts are patched per scene from the bank by the
-        # manifest; the seed comes from the runner.
-        ("h3_probe_t2v_turbo_lx12_sage.json", "t2v-turbo-lx12-sage", "t2v", LONG_T2V_PROMPT,
-         dict(dense_attn="sage",
-              lora=(TURBO_768P_V12_LORA, TURBO_LORA_STRENGTH),
-              steps=TURBO_768P_V12_STEPS, shift=TURBO_768P_SHIFT,
-              out_prefix="Video/h3_probe_t2v_turbo_lx12_sage"),
-         "text -> video + audio at four steps via lightx2v turbo v1.2 768p, sage alone"),
 
         ("h3_probe_t2v_pdd8_sage.json", "t2v-pdd8-sage", "t2v", LONG_T2V_PROMPT,
          dict(pdd=True, dense_attn="sage", sampler_name="euler",

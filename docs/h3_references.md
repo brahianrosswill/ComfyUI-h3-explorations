@@ -1344,9 +1344,7 @@ last four vary **what the prompt asks for**, holding the wiring roughly still.
 | `h3_ref_video_motion` | 2 | yes | | | **motion transfer** |
 | `h3_ref_audio_voice` | 2 | | | yes | **voice timbre** |
 
-All load the `ref2va` checkpoint. One deliberate exception elsewhere:
-`h3_probe_ref2v_turbo` runs `ref2va` with an `fl2v` distill LoRA — an
-experiment, documented in its own note.
+All load the `ref2va` checkpoint.
 
 The `h3_probe_ref_pathway_*` family (section "Encoder-only references") is
 the other exception: two of its arms wire core's `MiniMaxH3ReferenceToVideo`

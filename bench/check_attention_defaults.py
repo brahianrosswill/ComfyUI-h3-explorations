@@ -241,10 +241,6 @@ SOL_EXEMPT_STEMS = {
         "the checkpoint and sidecar swapped for the bake, sage on every step "
         "and Sol absent so the pair differs in the weights alone. Its twin "
         "with Sol as shipped is h3_candidate_t2v_pdd8_baked, not exempt",
-    "h3_probe_t2v_turbo_lx12_sage":
-        "the turbo rung's lightx2v arm (bench/turbo_rung_arms.json): the v1.2 "
-        "768p 4-step file at the vendor's count and strength under sage "
-        "alone, Sol absent, the same footing as h3_probe_t2v_pdd8_sage",
     "h3_probe_t2v_pdd8_sage":
         "the sage-alone rung of the PDD ladder (bench/pdd_ladder_arms.json): "
         "PDD8 with sage on every step and Sol absent, so that the shipped "
@@ -252,10 +248,6 @@ SOL_EXEMPT_STEMS = {
         "be attributed. Its twin with Sol is h3_text_to_video_pdd; its twin "
         "with neither kernel is h3_probe_t2v_pdd8_dense, exempt by mechanism "
         "below rather than by this list",
-    "h3_probe_turbo_768p_sla_dense":
-        "comparative arm: the Turbo-SLA LoRA under sage alone, the repo's "
-        "dense-baseline convention, one of three attention regimes the SLA "
-        "probe set spans (Sol, router, dense)",
 }
 
 #: {graph stem: (floor, reason)} for graphs whose dense attention kernel is NOT
@@ -268,16 +260,10 @@ SOL_EXEMPT_STEMS = {
 #: derived, not listed, by the same mechanism as their Sol exemption.
 FLOOR_STEMS = {
     # Rungs and controls that were rendered as sage alone, so their pair holds.
-    "h3_probe_t2v_turbo_lx12_sage":
-        ("sage", "the turbo rung's lightx2v arm, sage alone by construction "
-                 "(bench/turbo_rung_arms.json)"),
     "h3_probe_t2v_pdd8_sage":
         ("sage", "the sage-alone rung of the PDD ladder (bench/pdd_ladder_arms.json)"),
     "h3_probe_t2v_pdd8_baked_sage":
         ("sage", "the baked twin of h3_probe_t2v_pdd8_sage (bench/pdd_bake_arms.json)"),
-    "h3_probe_turbo_768p_sla_dense":
-        ("sage", "the SLA LoRA under sage alone, the comparative arm "
-                 "SOL_EXEMPT_STEMS describes"),
     # Graphs where the sage node is part of the mechanism.
     "h3_probe_capture_ref3":
         ("sage", "h3_capture.py records from inside the sage forward, so a "

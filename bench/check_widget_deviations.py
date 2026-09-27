@@ -219,10 +219,6 @@ DECLARED: dict[tuple[str, str], tuple] = {
     ("MiniMaxH3Resolution", "shape.ultrawide_resolution"):
         ("ARM", "1536x672 on the ultrawide canvas probe, at the same "
                 "1008 tok/frame budget as the trained canvas."),
-    ("MiniMaxH3Resolution", "shape.width"):
-        ("ARM", "960 on the turbo home-canvas probe; h3_config.TURBO_HOME_CANVAS"),
-    ("MiniMaxH3Resolution", "shape.height"):
-        ("ARM", "544 on the turbo home-canvas probe; h3_config.TURBO_HOME_CANVAS"),
     ("MiniMaxH3AppendRefImage", "size_policy.allow_upscale"):
         ("ARM", "False on h3_probe_reference_upscale, the probe that exists "
                 "to price the vendor's upscale by turning it off, and on the "
@@ -250,8 +246,8 @@ DECLARED: dict[tuple[str, str], tuple] = {
                      "partition; its 6dp rounding is load-bearing and "
                      "bench/check_pdd_sigmas.py asserts the derivation"),
     ("MiniMaxH3SigmaShift", "shift_video"):
-        ("ARM", "6.0 on the 768p turbo arms, which were distilled at that "
-                "shift; h3_config.TURBO_768P_SHIFT"),
+        ("ARM", "10.0 on the FastH3 V2 graphs, its trainer's shift; "
+                "h3_config.FASTH3_SHIFT"),
     ("MiniMaxH3PDDLoRA", "patch_heads"):
         ("ARM", "False on the headfree control arm, which is the whole point "
                 "of that graph"),
@@ -276,8 +272,6 @@ DECLARED: dict[tuple[str, str], tuple] = {
                   "rate the model works at", 24.0),
     (h3_config.REF_VIDEO_LOADER, "frame_load_cap"):
         ("ARM", "the arm's frame count; h3_config.REF_VIDEO_LENGTH"),
-    ("SplitSigmas", "step"):
-        ("HOUSE", "h3_config.SPLIT_AT, the two-pass split point", 2),
     ("MiniMaxH3SageAttention", "head_chunks"):
         ("ARM", "4 on h3_probe_head_chunks, the one graph that exists to "
                   "exercise head chunking. It is a MEASURED group count, not "
@@ -303,10 +297,6 @@ DECLARED: dict[tuple[str, str], tuple] = {
         ("ARM", "'merge' on h3_probe_t2v_pdd8_merge alone, the control for the "
                 "0.154.0 default 'exact branch': PDD's backbone merged into the int8 "
                 "weight as every PDD graph did before. Only this input differs."),
-    ("MiniMaxH3LoRABranch", "strength"):
-        ("ARM", "1.0 on most graphs and h3_config.TURBO_OWNER_STRENGTH 0.75 "
-                "on the owner's turbo recipe graphs. Classified HOUSE first on "
-                "the stock loader; the pinned-value rule caught the second value."),
     ("EasyCache", "verbose"):
         ("HOUSE", "h3_config.CACHE_NODE['verbose'] -- the cache logs what it "
                   "skipped, which is the only way to see it worked", True),

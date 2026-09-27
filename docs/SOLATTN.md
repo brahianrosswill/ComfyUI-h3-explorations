@@ -375,10 +375,11 @@ for seeing anything is ~60k tokens; `bench_e2e_h3.py` warns below it.
 nothing".**
 
 Note this is a *token* floor, not a frame floor — 250 frames is 72,576 tokens
-at 1344x768 but only 44,928 at 832x768, on opposite sides of the line. Two
-shipped graphs stay under it even at 362: `h3_probe_square_canvas` (768x768,
-58,752 at 345) and `h3_probe_turbo_home_canvas` (960x544, 52,020 at 345). Neither enables
-Sol-Attn today, and enabling it on either would measure nothing.
+at 1344x768 but only 44,928 at 832x768, on opposite sides of the line. One
+shipped graph stays under it even at 362: `h3_probe_square_canvas` (768x768,
+58,752 at 345). It does not enable Sol-Attn, and enabling it would measure
+nothing. (`h3_probe_turbo_home_canvas`, 960x544, was the second until its
+retirement on 2026-09-26.)
 
 ---
 

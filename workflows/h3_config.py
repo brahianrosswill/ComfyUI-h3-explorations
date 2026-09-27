@@ -691,9 +691,10 @@ SOL_RECOMMENDED_CUDA = dict(
     # the sparsity.
     #
     # **Unmeasured here at False, and deliberately so.** The arm that would
-    # justify False is a Turbo-SLA LoRA arm, where the model HAS been distilled
-    # against exactly that routing; on the base model it is a strictly worse
-    # approximation with no compensating training. See docs/SOLATTN.md.
+    # justify False was a Turbo-SLA LoRA arm, where the model HAS been distilled
+    # against exactly that routing (retired unrendered 2026-09-26); on the base
+    # model it is a strictly worse approximation with no compensating training.
+    # See docs/SOLATTN.md.
     pooled_tail=True, verbose=True,
     # Empty again by owner decision on 2026-09-02. `0-2,32` shipped from
     # 2026-08-29 until this correction, but it came from an EXPERIMENT rather
@@ -1068,209 +1069,26 @@ CACHE_NODE = dict(reuse_threshold=0.2, start_percent=0.15, end_percent=0.95,
 # Flow shifts, on `MiniMaxH3SigmaShift` (display name ModelSamplingMiniMaxH3).
 # 12/3 are the base checkpoint's training shifts and the node's own defaults,
 # so these values change nothing on their own. The node is in the graph so the
-# shift is *visible and switchable*, because the turbo LoRAs were distilled at
-# their own shifts and inherit the sampler's, not the base model's:
+# shift is *visible and switchable*, because a distill runs at its trainer's
+# shift, not the base model's: FastH3 at `FASTH3_SHIFT`, PDD and FlashGen at
+# these. The lightx2v turbo LoRAs and their 6/3 rows were retired 2026-09-26
+# (docs/wiki/decisions.md); their table is in git.
 #
-#   FL2VA Turbo 4-step v0.1     544p mixed aspect   12 / 3   4 steps
-#   FL2VA Turbo 8-step v1.0     544p                12 / 3   8 or 4 steps
-#   FL2VA Turbo 4-step v1.0     768p (1344x768)      6 / 3   4 steps  <- v1.1 inherits this row
-#   Ref2VA Turbo 4-step v0.1    544p mixed aspect   12 / 3   4 steps
-#   FL2VA Turbo 4-step v0.1 SLA 768p (1344x768)      6 / 3   4 steps
-#
-# The 768p ones are the trap, and they are the ones that match CANVAS below.
-# Their video shift is 6, half the default, so loading one into a graph that
-# leaves this at 12 samples it off a schedule it was never distilled for. A
-# graph with no shift node at all gives you no place to notice.
-#
-# Steps move with the LoRA too: SAMPLING["steps"] = 16 is a base-model number
-# and the whole point of these LoRAs is 4 or 8. Changing shift without
-# changing steps, or the reverse, is not a partial improvement.
-# Source: coderef/Minimax-H3-Turbo README, model specs table, for the first
-# four. The SLA row is from a different vendor repo (lightx2v's
-# Minimax-h3-Turbo-SLA card) and its LightX2V inference config; see
-# TURBO_SLA_LORA below for how `bench/check_distill_settings.py` grades it.
-#
-# **2.22 is not one of these, and it will be offered to you.** DiffSynth's H3
+# **2.22 is not a trained shift here, and it will be offered to you.** DiffSynth's H3
 # pipeline defaults to flow shift 2.22 and applies it to video and audio alike
 # (`coderef/DiffSynth-Studio/diffsynth/diffusion/flow_match.py::set_timesteps_minimax_h3`
-# -- a source read, not a build). ComfyUI and every vendor row above use 12/3,
-# or 6/3 for the 768p students. The disagreement is only the CONSTANT: DiffSynth
-# builds `linspace(1, 0, N+1)[:-1]`, which is the Turbo README's own
-# `q_i = (N - i) / N`, then applies the same shift algebra, so all three agree
-# on the rule. Nothing in this repo runs at 2.22, and a port that adopted it as
+# -- a source read, not a build). ComfyUI uses 12/3. The disagreement is only
+# the CONSTANT: DiffSynth builds `linspace(1, 0, N+1)[:-1]`, then applies the
+# same shift algebra, so both agree on the rule. Nothing in this repo runs at 2.22, and a port that adopted it as
 # "the MiniMax default" was reverted on 2026-08-23; it also carries a Gaussian
 # center-weighted LOSS weight (`set_training_weight`) with no inference
 # analogue at all. If a schedule here ever reads 2.22, it came from that path
 # and not from anything we sample.
 #
-# **v1.1 is the 768p arm.** It is what every 768p graph loads, what every note
-# names, and the only 768p file this repo treats as current. v1.0 is
-# historical: it is the row the vendor documented and the file earlier runs
-# were measured on, and it is not a fallback -- nothing here should offer it,
-# reach for it, or describe the shipped graph as loading it.
-#
-# What v1.1 inherits rather than owns is its schedule. The vendor README
-# carries no v1.1 row (checked 2026-08-23), so the 6/3 shift and 4 steps below
-# come from v1.0's row on the strength of the filename family. That is
-# declared, not assumed: `bench/check_distill_settings.py::UNATTESTED` names
-# the row, the vendor case FAILS if a LEGAL row is neither found in a source
-# nor declared there, and it fails again if a vendor source later carries the
-# row and the declaration is left standing.
 SIGMA_SHIFT = dict(shift_video=12.0, shift_audio=3.0)
 
-# The turbo graph. This is the 8-step v1.0; the others are listed in the
-# note the graph carries.
-#
-# Path: the lightx2v releases are foldered by HF repo under `h3/` since
-# 2026-08-20 (`lightx2v_Minimax-h3-Turbo/` and `lightx2v_Minimax-h3-Turbo-SLA/`),
-# because the SLA release shipped as a separate repo with a filename the
-# first one could have collided with. ComfyUI's loader walks the folder
-# recursively and follows symlinked directories (`folder_paths.recursive_search`
-# passes `followlinks=True`), so the sub-folder and the symlink both resolve.
-#
-# Its shift is 12/3, the same as base, so the shift node does not move for
-# this LoRA. Only the steps do: 8 instead of 16. That is worth stating plainly
-# because "turbo LoRA" and "change the shift" got learned together, and for
-# two of the three checkpoints the shift is already right.
-#
-# Strength 1.0 is the reference's own default (`--lora-scale` defaults to 1.0
-# in Minimax-H3-Turbo's inference script). Not swept here.
-TURBO_LORA = "h3/lightx2v_Minimax-h3-Turbo/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors"
-TURBO_LORA_STRENGTH = 1.0
-TURBO_STEPS = 8
-TURBO_SHIFT = dict(shift_video=12.0, shift_audio=3.0)
-
-# The other released turbo LoRA, and one of the two whose shift is not 12/3
-# (the SLA one below is the other). Constants rather than values typed into a
-# graph because the filename, the shift and the step count have to move
-# together -- `bench/check_distill_settings.py` grades this triple against the
-# vendor's own README and fails if any of the three drifts. Distilled at
-# 1344x768, which is `CANVAS`, so unlike the 8-step it is already at home on
-# the default canvas.
-# v1.1 since 2026-08-23; see the note above SIGMA_SHIFT for why, and for what
-# is inherited rather than attested about its shift.
-TURBO_768P_LORA = "h3/lightx2v_Minimax-h3-Turbo/minimax_h3_fl2v_turbo_4step_v1.1_768p_comfyui_bf16.safetensors"
-# **Training provenance, kept separate from the render recipe below.** This is
-# the NFE the v1.0 row documents and the count v1.1 inherits: it is what the
-# student was distilled to do, and it is what `check_distill_settings.LEGAL`
-# holds. Nothing renders at it today. Keeping it named means the vendor row
-# stays gradeable against the vendor while the recipe moves independently -- a
-# single `TURBO_768P_STEPS` would have made changing the recipe look like
-# rewriting the vendor's row.
-TURBO_768P_DISTILLED_STEPS = 4
-
-# **v1.2 of the same 768p 4-step family, landed 2026-09-05** for the turbo
-# rung (docs/roadmap.md, "Owner decisions, 2026-09-05 evening"). It shares
-# v1.1's rank, base `minimax_h3_fl2va_bf16`, qkv fusion and SwiGLU mapping,
-# but NOT its alpha: the vendor's own exports declare different `alpha`
-# values, the converted files carry them as `training_alpha` and
-# `training_scale`, and ComfyUI scales each delta by its own alpha/rank, so
-# equal strength is not an equal scale factor (read each file's
-# `__metadata__`). Corrected 2026-09-10: this said v1.2's metadata was v1.1's
-# line for line, quoting v1.2's alpha and scale as both files'. The vendor
-# publishes no row for it, so `bench/check_distill_settings.py` grades it on
-# a row INHERITED from the v1.0 768p one and says so in UNATTESTED. Rendered
-# at the vendor's own count and strength (4 steps, 1.0), never the owner
-# recipe above, so the rung compares the file the vendor ships as they ship
-# it. Kept beside v1.1 rather than replacing it: the owner graphs and the
-# check's history name v1.1.
-TURBO_768P_V12_LORA = "h3/lightx2v_Minimax-h3-Turbo/minimax_h3_fl2v_turbo_4step_v1.2_768p_comfyui_bf16.safetensors"
-TURBO_768P_V12_STEPS = TURBO_768P_DISTILLED_STEPS
-
-# **The render recipe: owner-selected, 2026-08-23, and provisional.** Six steps
-# at strength 0.75 on the owner's own trials -- "it seems to be working best".
-# Not a vendor number and not measured here against a distribution, so it is
-# declared as a recipe rather than folded into the row above.
-#
-# **Six does not divide the 1,000-step training grid** (1000 % 6 == 4), so
-# these graphs are NOT exact vendor-grid arms and must not be graded as one.
-# `bench/check_distill_grid.py` routes them down a separate owner-recipe path
-# that still asserts `simple` is the nearest scheduler at this count, rather
-# than loosening the tolerance that makes the vendor-grid claim mean anything.
-TURBO_768P_STEPS = 6
-
-# Dedicated, NOT `TURBO_LORA_STRENGTH`. That constant is the vendor's own
-# default of 1.0 and is what the 8-step and every other turbo arm loads;
-# pointing the 768p arm at it and then changing it would have moved every arm
-# at once. `TURBO_OWNER_STRENGTH` is also not this: that belongs to the
-# `h3_probe_turbo_768p_owner` graph, which additionally moves the sampler and
-# the scheduler and exists to be judged against the vendor recipe.
-TURBO_768P_STRENGTH = 0.75
-
-TURBO_768P_SHIFT = dict(shift_video=6.0, shift_audio=3.0)
-
-
-
-# The SLA release (lightx2v/Minimax-h3-Turbo-SLA, 2026-08-20). Same tensor
-# keys, rank, alpha and base as the 768p arm -- header read 2026-08-20
-# against v1.0, which was the 768p file at the time: 624 tensors, attn+mlp of all 50 blocks plus the refiner, rank
-# 128, alpha 128, `base_model: minimax_h3_fl2va_bf16` -- so it loads through
-# the stock loader exactly as that one does. What differs is how it was
-# trained, and that is the whole point of wiring it.
-#
-# SLA is "sparse-linear attention": the student was distilled with its
-# attention running a top-k block router -- the card says an 85% sparsity
-# ratio, and LightX2V's config for it sets `dynamic_sparse_attn` with
-# `sparsity_ratio 0.85` and `operator sage2`, whose router keeps the top 15%
-# of 64/128-token key blocks per query block by mean-pooled q.(k - mean k)
-# score (`coderef/LightX2V/.../attn/utils/sla_util.py::get_block_map`; a
-# source read, not a build, and the training code is not in that checkout).
-# So this LoRA was fitted to produce attention that survives a fixed-budget
-# block cut. Three regimes follow, and nothing on this box measures any of
-# them:
-#   - under SLA's own router: what it was trained for; no kernel here runs it
-#   - under Sol-Attn (how every shipped video graph runs it): a different
-#     router -- threshold on pooled scores with a dense fallback, not a fixed
-#     top-k -- so the LoRA's sparsity is not Sol's sparsity
-#   - under dense attention: every block it learned to do without is back
-# The probe graph `h3_probe_turbo_768p_sla.json` is the 768p graph with only
-# this file swapped, Sol on per the repo default, so the first render
-# answers "does it work at all under Sol" and nothing finer.
-#
-# Shift 6/3 and 4 steps are the 768p v1.0's row, and that is not a guess:
-# LightX2V's SLA config carries `video_flow_shift 6.0 / audio_flow_shift 3.0`,
-# and its `infer_steps 5` is their N+1 convention (`h3_step_update:
-# training_euler`), the same 5 their 768p v1.0 configs carry for a LoRA the
-# README lists at 4. `bench/check_distill_settings.py` grades this triple
-# against that config rather than the Turbo README, which has no SLA row.
-TURBO_SLA_LORA = "h3/lightx2v_Minimax-h3-Turbo-SLA/minimax_h3_fl2v_turbo_4step_v0.1_768p_sla_comfyui_bf16.safetensors"
-TURBO_SLA_STEPS = 4
-TURBO_SLA_SHIFT = dict(shift_video=6.0, shift_audio=3.0)
-
-# The owner's working recipe for the 768p students as of 2026-08-20, from
-# their own t2v trials: euler, `beta`, 4 steps, strength 0.75. Shipped as
-# `h3_probe_turbo_768p_owner.json` so it is a graph with a sha rather than a
-# memory of widget values, and so bench arms can patch the LoRA file onto
-# it. Three things differ from the vendor row the 768p graph ships
-# (er_sde -> euler, simple -> beta, 1.0 -> 0.75), and two of them carry a
-# known cost that the note on the graph states:
-#
-#   - strength below 1.0 at 4 steps under-distills a schedule that only
-#     works distilled (docs/h3_ref2v_distillation.md's "below ~0.5 you pay 8
-#     steps for a model that needs 16" applies harder at 4);
-#   - `beta` halves Sol's sparse steps at 4 steps and shift 6. Arithmetic
-#     from the shift-6 sigma grid and the 0.2/0.9 window (sigma 0.96 down to
-#     0.40): `simple` puts 3 of 4 steps inside the window, `beta` puts 2 of
-#     4, because beta's second sigma is 0.966, just above the ceiling. At 6
-#     steps it is 4/6 against 3/6. The 16-step figure in the SAMPLING note
-#     above (11/5 against 9/7) does not transfer.
-#
-# Whether the recipe is better is the owner's preference over a blind
-# distribution, not a measurement here; the vendor-recipe arm in the same
-# session is what it is judged against. Not the scheduler of SAMPLING and
-# not a new default.
-TURBO_OWNER_STRENGTH = 0.75
-TURBO_OWNER_SCHEDULER = "beta"
-
-# Where the 8-step v1.0 was actually distilled: 544p, mixed aspect. This is
-# *below* H3's own canvas rule (768 short edge), so `adapt_canvas` never
-# returns it and the base model is outside its trained family here -- which is
-# the whole tension the turbo note describes. The vendor's own ComfyUI graph
-# ships 960x544 for t2va, so this is their answer to it, not ours.
-# 510 tokens/frame against 1008 at 1344x768, i.e. 0.26x the attention.
-TURBO_HOME_CANVAS = dict(width=960, height=544)
-
-# The sampler the vendor ships on both its turbo graphs, against `SAMPLING`'s
+# The sampler for every distilled arm (inherited: the lightx2v turbo vendor
+# shipped it on both its graphs, since retired), against `SAMPLING`'s
 # res_multistep which came from core's base template. A distilled model is
 # trained so one Euler step from sigma_i lands at sigma_i+1, so a multistep
 # integrator corrects a discretization error that is not the dominant error
@@ -1293,15 +1111,15 @@ TURBO_HOME_CANVAS = dict(width=960, height=544)
 #
 # Applied by `DISTILL_SAMPLING` below rather than by each call site
 # remembering, which is how the turbo arms ended up split across two samplers
-# in the first place.
-TURBO_SAMPLER = "euler"
+# in the first place. Named `TURBO_SAMPLER` until 2026-09-26.
+DISTILL_SAMPLER = "euler"
 
 #: Sampler and scheduler for any arm carrying a distillation LoRA. The builder
 #: applies these whenever one is wired, so a new distilled arm cannot forget
 #: and a `sampler_name=` at the call site is only needed to DEVIATE. Same shape
 #: as `SOL_END_PERCENT_BY_STEPS`: a value the generator derives from what the
 #: graph is, not one a person retypes per graph.
-DISTILL_SAMPLING = dict(sampler=TURBO_SAMPLER, scheduler="simple")
+DISTILL_SAMPLING = dict(sampler=DISTILL_SAMPLER, scheduler="simple")
 
 # Parallel Decoding Distillation (alibaba-pai), the acceleration LoRA that is
 # not a step distillation. The trajectory stays a 32-point grid; what changes
@@ -1313,8 +1131,7 @@ DISTILL_SAMPLING = dict(sampler=TURBO_SAMPLER, scheduler="simple")
 # it -- bit-identical, because `linspace(1, 0, 33)[::4]` is `linspace(1, 0, 9)`
 # and the shift is pointwise. So this is the only accelerator here that moves
 # nothing but the step count: shift stays at the base 12/3, scheduler stays
-# where it is, and `MiniMaxH3SigmaShift` does not budge. Contrast the 768p
-# turbo, which needs 6/3 and therefore changes two things at once.
+# where it is, and `MiniMaxH3SigmaShift` does not budge.
 #
 # **The published files do not load.** Their keys are diffusers-side with bare
 # `lora_down`/`lora_up` suffixes, which no ComfyUI weight adapter matches, so
@@ -1353,30 +1170,6 @@ PDD_FL2VA_LORA = "h3/minimax_h3_fl2va_pdd_8step_comfy.safetensors"
 # fails at execute rather than rendering. Until 2026-09-05 this comment said
 # no such constant could exist because no bake did; the bake now does.
 PDD_FL2VA_STRIPPED_LORA = "h3/minimax_h3_fl2va_pdd_8step_stripped_comfy.safetensors"
-# The ref2v turbo, on disk since 2026-08-18 and NAMED here for the first time
-# on 2026-08-26. It exists to be the thing PDD is measured against.
-#
-# **This is the comparison the PDD release is actually making.** alibaba-pai's
-# README is a three-column table -- base, lightx2v Turbo, PDD Acc-8Step -- run
-# on test cases taken from the Turbo repo's own examples. Speed over base is
-# the premise both distills already share; the claim being made is quality
-# against the other distill. Everything in this repo compared PDD against PDD
-# until this row existed.
-#
-# Its row in check_distill_settings: 544p mixed aspect, shift 12/3, 4 steps.
-# The shift and the step count MATCH the PDD 4-evaluation arm exactly, which is
-# what makes a matched pair possible at all -- and the vendor's own demo does
-# not match them, showing 8-step PDD against 4-step turbo.
-#
-# **Stated confound:** it was distilled at 544p mixed aspect and the paired arm
-# renders 1344x768, so the turbo is outside its training canvas there. Run at
-# 768p anyway because that is where the vendor compared, and because PDD's own
-# training canvas is not stated in its metadata -- so moving to 544p would swap
-# a known confound for an unknown one.
-TURBO_REF2VA_LORA = "h3/lightx2v_Minimax-h3-Turbo/minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors"
-TURBO_REF2VA_STEPS = 4
-TURBO_REF2VA_SHIFT = dict(shift_video=12.0, shift_audio=3.0)
-
 PDD_REF2VA_LORA = "h3/minimax_h3_ref2va_pdd_8step_comfy.safetensors"
 # The step counts one converted file serves. The published grid is 32 points,
 # so any divisor is a legal arm from the same weights and each lands exactly on
@@ -1854,14 +1647,6 @@ ASPECTS = {
     "1x1":   (768, 768),
 }
 
-# Where a two-stage split cuts the shared schedule, in steps. 2 of 8 is the
-# shipped starting point, not a finding. H3's schedule is far more
-# front-loaded than the model the split pattern came from: at video shift 12
-# and 8 steps, seven of the eight evaluation points sit at sigma >= 0.8 and
-# the final interval alone covers the bottom 63% of the range. Krea 2's
-# k=2-3 sweet spot was still sigma 0.84 there; here k=3 is 0.9524. So the
-# useful boundary is lower here and the sweep starts at 1.
-SPLIT_AT = 2
 
 # **`REF_VIDEO_LENGTH` was deleted on 2026-08-16, REINTRODUCED on 2026-08-22
 # (`f9d63c59`), and is defined about a hundred lines below with its own
@@ -2028,7 +1813,7 @@ REF_VIDEO_CANVAS = dict(width=1024, height=768)
 # **This is NOT the 2026-08-10 global move to 345 that was reverted on
 # 2026-08-16.** That one capped every render at diffusers' emit limit and broke
 # comparability with measurements taken at 362. `LONG_LENGTH` is untouched and
-# t2v, keyframe and turbo graphs still render 362; only the graphs wired to
+# t2v and keyframe graphs still render 362; only the graphs wired to
 # this clip move, because only they have a clip to match.
 REF_VIDEO_LENGTH = 345
 

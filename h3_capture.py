@@ -409,7 +409,7 @@ def _step_at(block, advance):
     # ships. At 20 steps it fired MID-render, so real steps 16-19 were
     # recorded as 0-3 and a file named `_s3` ended up holding step 19: a
     # corrupted capture whose filename lied. Below 16 it never fired
-    # (`TURBO_STEPS` is 8, `TURBO_768P_STEPS` is 4), so a second render in
+    # (the turbo graphs of the time ran 8 and 4), so a second render in
     # the same server process kept counting upward and captured nothing.
     #
     # Nothing here can infer it: the step count varies per graph, and with

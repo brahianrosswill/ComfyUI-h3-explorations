@@ -17,6 +17,24 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-26
 
+- **The lightx2v turbo and Turbo-SLA LoRAs are retired, and turbo LoRAs are
+  a closed lane** (owner: "lightx and turbo stuff irrelevant"; on SLA, "i
+  thought we stopped that ages ago"). The distill lanes are FastH3, PDD and,
+  undecided, FlashGen. Fourteen graphs went (0.156.0): `h3_text_to_video_turbo`,
+  `h3_probe_turbo_768p_owner`, `_sla`, `_sla_dense`, `h3_probe_turbo_home_canvas`,
+  `h3_probe_t2v_turbo_lx12_sage`, `h3_probe_split_base_first` and `_last`,
+  `h3_probe_ref2v_turbo`, `h3_image_ref_plus_text_to_video_turbo_4step`, and
+  the four `h3_probe_ref_turbo768p_*`. What prose claimed and no longer does:
+  `h3_config.py`'s shift note carried the five-row lightx2v shift table and
+  said the 768p students were "the trap" at 6/3; `docs/SOLATTN.md` counted two
+  shipped graphs under the token floor; `docs/open_experiments.md` #20 said the
+  two shipped SLA arms addressed its open half; `docs/h3_references.md` named
+  `h3_probe_ref2v_turbo` as the one ref2va exception. The SLA probes had been
+  generated since 2026-08-20 and never rendered. `check_distill_settings.py`
+  now fails any graph loading a turbo LoRA, and its vendor-row grading left
+  with the rows. The 2026-09-05 turbo rung closes unscored; its records and
+  blind sessions stay. The model files are still on disk; deleting them is
+  the owner's call.
 - **Bug, fixed in 0.154.8: the exact branch stacked on another model's
   branch.** When one server process rendered Turbo, then PDD, then FlashGen,
   each wrapped the previous model's still-applied forward. The owner caught it

@@ -224,8 +224,9 @@ through the pack's loader, one of them with the base checkpoint running the
 opening steps. No judged render of either is recorded in `bench/results/`, and
 both were removed with the pack on 2026-09-23, so the question stays open. The weight
 analysis says only that v4 *touches* the right modules, not that it touches
-them *well*. `h3_probe_ref2v_turbo` runs ref2va with an fl2v distill, which is
-the arm the community reports as the failing one.
+them *well*. `h3_probe_ref2v_turbo` ran ref2va with an fl2v distill, the arm
+the community reports as the failing one; it was retired with the lightx2v
+turbo lane on 2026-09-26, unjudged.
 
 Reproduce with the checkpoints in `models/diffusion_models/` and the LoRA in
 `models/loras/`: dequantise each `*.weight` by its `*.weight_scale`, then
@@ -360,10 +361,9 @@ own schedule, which is the precise silent failure
 `bench/check_distill_settings.py` exists to catch. It also confounds: move
 shift and strength together and you cannot attribute the result.
 
-If you want a shift-6 arm, the honest way to get it is the 768p turbo LoRA
-(`h3_config.TURBO_768P_LORA`, v1.1 since 2026-08-23), whose family was
-*distilled* at 6/3 and at 1344x768, matching the ref2v canvas. That is one
-coherent configuration rather than a mismatched one. The measured rows above
+The one shift-6 arm this repo had was the 768p lightx2v turbo LoRA, whose
+family was *distilled* at 6/3 and at 1344x768; that lane is closed as of
+2026-09-26 (`docs/roadmap.md`, "Closed lanes"). The measured rows above
 were taken on v1.0, the 768p file at the time, and are left as recorded.
 
 ---

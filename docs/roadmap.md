@@ -38,6 +38,7 @@ session logs) is deliberate and is not drift to clean up.
 | single-frame image generation and editing | 2026-08-27 | `docs/h3_image_editing.md` records what moved to `archive/`. Reference-image video graphs are live and not part of this |
 | calibrating or quantising our own encoder (the llm-compressor AWQ/GPTQ lane) | 2026-08-27 | the encoder is `h3_config.MODELS["clip"]`; the lane's record is under `docs/research/qwen3-vl-special-tokens-post-training/`. **Closed after a badly executed attempt, not because the approach was refuted** (owner, 2026-09-20, `docs/wiki/decisions.md`); calibration data is the untapped part |
 | PDD quality work | parked 2026-09-05 | "Owner decisions, 2026-09-05 evening" below, and `docs/research/pdd/2026-09-05_bake_plan.md` |
+| turbo LoRAs: the lightx2v family (8-step, 768p v1.0 to v1.2, ref2v, Turbo-SLA) and any other "turbo" LoRA | 2026-09-26 (owner: "lightx and turbo stuff irrelevant"; the larryvrh pack went 2026-09-23) | the distill lanes are FastH3, PDD and, undecided, FlashGen. `check_distill_settings.py` fails any graph loading a turbo LoRA; the 14 graphs, the `TURBO_*` constants and their vendor-row grading are in git at 0.155.0 |
 | `bench/restart_comfy.sh` | disabled 2026-09-02 | restart by hand, `docs/comfy_notes.md` |
 | a hook that blocks pattern kills (`pkill`, `killall`) | tried and removed 2026-09-03 | kill one pid, found from the port owner |
 
@@ -468,7 +469,6 @@ All in `workflows/h3_config.py`, all single switches, all regenerate with
 | `CANVAS_TIER` | `full` | full / near / fast / draft | 1.00 / 0.91 / 0.73 / 0.58 attention |
 | length | 362 | 17n+5 grid | linear in tokens |
 | `SOL_RECOMMENDED_CUDA` / `SOL_PDD_CUDA` / `SOL_CUDA_DEFAULTS` | Sol **on** in every video graph since 2026-08-14; `tau` 1.0 from 2026-08-20 by owner decision. **Two shipped configs from 2026-08-29, one again since 2026-09-11**, when `end_percent` moved to 1.0 on every graph, adopting upstream (sglang's `sol_attn` and core's `BlockSparseAttention` agree); `h3_config.sol_for_graph` is still the resolver | tau, window, sinks, dense blocks | see `docs/SOLATTN.md`; 1.3 returns only if it shows no difference from 1.0 on the distilled LoRAs while buying meaningful speed. The PDD split is an owner reading of rendered arms, four knobs moved together, so nothing in it attributes an effect to one knob -- a blind distribution per knob is what would |
-| `TURBO_LORA` / `TURBO_768P_*` / `TURBO_SLA_*` | none shipped by default; probe graphs | the lightx2v rows `bench/check_distill_settings.py` attests | 4-8 steps against 16 |
 | `CACHE_NODE` | probe graphs only, **not canonical** (owner decision 2026-08-20) | EasyCache threshold/window | 1.56-1.74x on deterministic samplers at 16 steps; a 16-step lever with nothing to skip at 4 |
 
 **The PDD Sol recipe is four eyeballed knobs, and two of them have a

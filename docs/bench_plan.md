@@ -786,8 +786,9 @@ by a four-line dialogue scene and, in the second, a `MiniMaxH3VendorTokens`
 node inserted between the CLIP loader and the conditioning node. Nothing else
 differs. (**That base graph was removed on 2026-08-31** -- its stem said
 `4step` while it ran six. The arms above were built when it existed and this
-record is left as written; `workflows/h3_probe_turbo_768p_owner_api.json` runs the
-same LoRA, shift and step count today.) `run_graph_arms.py` bumps the seed per run, so `--runs N` gives N
+record is left as written. The graph that ran the same LoRA afterwards,
+`h3_probe_turbo_768p_owner`, was retired with the lightx2v turbo lane on
+2026-09-26.) `run_graph_arms.py` bumps the seed per run, so `--runs N` gives N
 distinct samples per arm and the same N seeds to both.
 
 **The score sheet, fixed now.** Per clip, per line, one of:
