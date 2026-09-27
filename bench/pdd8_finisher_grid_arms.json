@@ -1,0 +1,43 @@
+{
+ "what": "The PDD8 finisher grid (board direction pdd8-finisher-grid, the owner's consolidation 2026-09-27), part 1. PDD8 pass 1 then {none, full FlashGen from sigma 0.8 (rev_h080), FlashGen on blocks 34-49 (rev_late_h080), the base (part 2, #37, once its graph exists)}. Scenes noodle_bar, radio_drama, courtroom_verdict and subway_chase already have none/full/late (2026-09-26_followup.jsonl, 2026-09-27_late_switch.jsonl); this adds subway_chase_short and spec_unusual (spec_unusual__pdd8 exists). Plus the two i2v graphs from 0.157.0 at their defaults (1-man.png, 345 frames): PDD8 alone and PDD8 then FlashGen from 0.8. Plus #46's own question, which is not a finisher question: FlashGen ALONE on blocks 34-49 (flashgen_late) against the existing full-FlashGen rows on subway_chase, subway_chase_short and spec_unusual. Seed 730451892, written lengths.",
+ "why": "One grid answers how to finish PDD8 (#34 done, #37, reverse-interiors, the i2v switch). #46 asks whether FlashGen's prompt-following trouble (the owner's O2) lives in its early blocks, which only FlashGen alone can show: after PDD8, PDD8 has already set the composition.",
+ "arms": {
+  "subway_chase_short__pdd8": "workflows/distill_experiments/h3_text_to_video_pdd_savelat_api.json",
+  "subway_chase_short__rev_late_h080": "workflows/distill_experiments/h3_probe_t2v_step_switch_pdd8_flashgen_late_h080_savelat_api.json",
+  "subway_chase_short__rev_h080": "workflows/distill_experiments/h3_probe_t2v_step_switch_pdd8_flashgen_h080_savelat_api.json",
+  "spec_unusual__rev_late_h080": "workflows/distill_experiments/h3_probe_t2v_step_switch_pdd8_flashgen_late_h080_savelat_api.json",
+  "spec_unusual__rev_h080": "workflows/distill_experiments/h3_probe_t2v_step_switch_pdd8_flashgen_h080_savelat_api.json",
+  "i2v__pdd8": "workflows/distill_experiments/h3_first_frame_to_video_pdd_api.json",
+  "i2v__rev_h080": "workflows/distill_experiments/h3_probe_i2v_step_switch_pdd8_flashgen_h080_api.json",
+  "subway_chase__flashgen_late": "workflows/distill_experiments/h3_text_to_video_flashgen_late_blocks_api.json",
+  "subway_chase_short__flashgen_late": "workflows/distill_experiments/h3_text_to_video_flashgen_late_blocks_api.json",
+  "spec_unusual__flashgen_late": "workflows/distill_experiments/h3_text_to_video_flashgen_late_blocks_api.json"
+ },
+ "patches": [
+  "subway_chase_short__pdd8:MiniMaxH3Conditioning.prompt=@bank:t2va_subway_chase_short",
+  "subway_chase_short__pdd8:MiniMaxH3Resolution.length=124",
+  "subway_chase_short__rev_late_h080:MiniMaxH3Conditioning.prompt=@bank:t2va_subway_chase_short",
+  "subway_chase_short__rev_late_h080:MiniMaxH3Resolution.length=124",
+  "subway_chase_short__rev_h080:MiniMaxH3Conditioning.prompt=@bank:t2va_subway_chase_short",
+  "subway_chase_short__rev_h080:MiniMaxH3Resolution.length=124",
+  "spec_unusual__rev_late_h080:MiniMaxH3Conditioning.prompt=@bank:t2va_spec_unusual",
+  "spec_unusual__rev_late_h080:MiniMaxH3Resolution.length=124",
+  "spec_unusual__rev_h080:MiniMaxH3Conditioning.prompt=@bank:t2va_spec_unusual",
+  "spec_unusual__rev_h080:MiniMaxH3Resolution.length=124",
+  "subway_chase__flashgen_late:MiniMaxH3Conditioning.prompt=@bank:t2va_subway_chase",
+  "subway_chase__flashgen_late:MiniMaxH3Resolution.length=345",
+  "subway_chase_short__flashgen_late:MiniMaxH3Conditioning.prompt=@bank:t2va_subway_chase_short",
+  "subway_chase_short__flashgen_late:MiniMaxH3Resolution.length=124",
+  "spec_unusual__flashgen_late:MiniMaxH3Conditioning.prompt=@bank:t2va_spec_unusual",
+  "spec_unusual__flashgen_late:MiniMaxH3Resolution.length=124"
+ ],
+ "seeds": {
+  "first": 730451892,
+  "note": "held"
+ },
+ "run": "run_graph_arms.py --manifest bench/pdd8_finisher_grid_arms.json --runs 1 --seed 730451892 --hold-seed --no-alternate --out bench/results/2026-09-27_finisher_grid.jsonl",
+ "server": "start with H3_TELEMETRY=dir=<capture root>/telemetry_2026-09-27_finisher_grid (#39); raw telemetry stays under the capture root, only bench/telemetry_report.py summaries are committed",
+ "gate": "only after lookingdude's bit-identity check passes on MiniMaxH3Sol: every comparison row rendered on MiniMaxH3SolAttn",
+ "owner_picks": "#46 names two more checklisted scenes of the owner's pick; add them as <scene>__flashgen_late when chosen",
+ "order": "PDD-chain arms first, grouped per scene so the two switch arms share the cached PDD8 pass; FlashGen-alone arms last (one checkpoint switch)."
+}
