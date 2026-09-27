@@ -75,8 +75,25 @@ The numbers are in `2026-09-26_flashgen_weights.json`, from
     like full FlashGen, and Claude's P3 in the run predictions ("without
     adaln: less contrast") is probably wrong. That is inference until the arm
     lands.
-- **FP2** waits for the VAE session's change map, and **FP4** for the
-  strength arms.
+- **FP2, change map: held on size and order, failed on the ceiling.** From
+  the VAE session's map (`2026-09-26_fasth3_weights_map.json`, all 200
+  backbone linears, at strength 1).
+  - FlashGen's median ||dW||/||W|| is 4.5e-4, against PDD's 4.8e-3 and
+    FastH3's 1.1e-4.
+  - **Held:** its median cosine with PDD's delta is near zero (1.4e-3).
+  - **Held:** its cosine with FastH3's is above PDD's (median 9.0e-3).
+  - **Failed:** "both under 0.1" does not hold in the late blocks.
+    FlashGen·FastH3 climbs to 0.043 in blocks 30-39 and 0.099 in 40-49,
+    peaking at 0.162 (blocks.43.mlp.fc1). Chance for matrices this size is
+    about 1e-4.
+  - **Inference, the finding worth testing:** two data-free
+    distribution-matching distills of one teacher share a direction in the
+    late blocks, exactly where FlashGen's change is nearly rank 2. That
+    shared direction is a candidate for the look both carry: a bolder grade
+    than the base's. The block transplant below is the test: if the grade
+    lives there, FlashGen on blocks 0-33 alone keeps its motion and loses the
+    grade shift.
+- **FP4** waits for the strength arms.
 - **Suggested by the rank map, not yet run:** a block transplant through
   `MiniMaxH3LoRABranch.blocks`, FlashGen on 0-33 only against 34-49 only. It
   asks whether FlashGen's look and its adherence loss live where its
