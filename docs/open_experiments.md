@@ -1,6 +1,6 @@
 # Open experiments
 
-Last updated: 2026-09-27 (#33 closed; #34 to #42 added); #28 status 2026-09-19; otherwise 2026-09-11
+Last updated: 2026-09-27 (#33 closed; #34 to #46 added); #28 status 2026-09-19; otherwise 2026-09-11
 
 > **Several of these are now scheduled rather than parked.** The working plan
 > and the render scenes that would settle the quality-blocked ones live in
@@ -2745,3 +2745,193 @@ up. It was fastdude's P2 (`../bench/results/2026-09-26_distill_run_predictions.m
 - **Blocker:** the owner's go (base Euler 32 at 345 frames is about 16 min
   per render).
 
+## 43. Does the picture settle later where the frame changes most
+
+Added 2026-09-27 (fastdude's held-back list,
+`../internal/postmortems/2026-09-26_session_distill-followup-and-attention-parity.md`,
+addendum). It tests the premise under the owner's motion-adaptive schedule,
+saved in `wiki/next_steps.md` ("fit the schedule to how much of the frame
+changes"). The idea only pays if frames that change a lot are still being
+decided late in the schedule, where PDD's tail is coarse. Nobody has checked
+that premise.
+
+- **Models:** `h3_config.MODELS["unet_fl2va"]`; PDD8 through
+  `h3_config.PDD_FL2VA_LORA`. The base on Euler 32 is the undistilled control.
+- **Workflows, existing (`distill_experiments/`):**
+  - `h3_text_to_video_pdd_x0` (PDD8);
+  - `h3_probe_t2v_base_euler32_x0`.
+  Both save every step's x0 and the final latent (`probe_step_x0`, through
+  `step_x0_observer.py`).
+- **Data already on disk, a pilot with no render:** subway_chase on both
+  (`../bench/results/2026-09-26_x0_steps_subway_pdd8.json`,
+  `../bench/results/2026-09-27_x0_steps_subway_base_euler32.json`).
+- **Bench:**
+  - existing: `bench/x0_step_frames.py` (per latent frame, each step's
+    `to_final` and `change`) and `bench/measure_clip_delta.py --json` (the
+    per-frame delta series and cut times, from the mp4);
+  - to build: `bench/analyze_settle_vs_delta.py`. It maps each latent frame
+    to its video frames (the packing `x0_step_frames` already uses) and takes
+    the frame's settle step, the first step where `to_final` falls under a
+    threshold, reported at several thresholds rather than one chosen. It
+    ranks that against the frame's mean delta, with cut frames reported
+    apart from the rest.
+- **Scenes, after the pilot:**
+  - two high-delta: slapstick_moving_piano, samurai_bamboo_duel;
+  - two low-delta: courtroom_verdict, radio_drama;
+  - seed 730451892, 345 frames, both models.
+  - A manifest is to build (`bench/make_followup_manifest.py` roles).
+- **Measures:**
+  - per render, the rank correlation between delta and settle step;
+  - the settle step of cut frames against their neighbours;
+  - per scene, where the last quarter of `change` falls.
+- **Decision it changes.**
+  - If high-delta frames settle later on PDD8 and not on the base, PDD's
+    coarse tail is where motion gets short-changed. A per-scene partition
+    (`pdd_lora.envelope_partition`, a finer tail on moving scenes) is then
+    worth building.
+  - If settle step does not follow delta on either model, the adaptive
+    schedule has no target in the sampler, and the idea closes as a sampler
+    lever.
+  - Cut frames settling at the first steps would mean a cut is a composition
+    decision. That would support the owner's "pixel wipe" reading of why
+    cuts must be prompted.
+- **Blocker:** none for the pilot (CPU, existing latents). The scene renders
+  need the owner's go, and base Euler 32 is the long one (see #42).
+
+## 44. Timestamps inside a shot
+
+Added 2026-09-27 (the same list). The owner's hypothesis: a change inside a
+shot has to be timed for the same reason a cut has to be prompted, because
+the model changes much of the frame at once. The house rule allows a time
+only inside a shot (`prompting.md` section 3.1). The one measured pair timed
+shot headers, not beats inside a shot
+(`../bench/results/2026-09-18_timestamps_diner.md`).
+
+- **Models:** `h3_config.MODELS["unet_fl2va"]`, with PDD8 and FlashGen
+  (`h3_config.FLASHGEN_R64_LORA`), both on the exact branch. The base comes
+  later, only if a distill shows a difference (the owner's no-base rule for
+  this batch).
+- **Prompts, to build:** one new single-shot T2VA prompt with three agented
+  beats, in two bank entries, `t2va_<scene>_beats_timed` and
+  `_beats_untimed`, identical except for the times.
+  - It is written per `prompting.md` sections 3.1 and 5.10, with times
+    fitted to the scene, not a template.
+  - It needs a new `bench/adherence_checklists.json` entry, one line per
+    beat, with its intended time.
+- **Workflows, existing:**
+  - `distill_experiments/h3_text_to_video_pdd_savelat`;
+  - `distill_experiments/h3_text_to_video_flashgen_savelat`.
+  Both are patched with `MiniMaxH3Conditioning.prompt=@bank:...`.
+- **Seeds:** two (730451892 and 730451893). The comparison is between
+  prompts, so a second seed separates the prompt's effect from one take's
+  luck. A seed is not being used to probe adherence here.
+- **Bench:**
+  - existing: `bench/make_followup_manifest.py`,
+    `bench/measure_clip_delta.py --json` (the delta peaks give each beat's
+    rendered time), `bench/grade_prompt_text.py` (grades both texts before
+    render);
+  - to build: nothing, unless reading beat times off the delta series by
+    hand proves unreliable.
+- **Measures:**
+  - per beat: present, in order, and rendered time against written time;
+  - the owner's eye on whether the beats land.
+- **Decision it changes.**
+  - If the timed version lands its beats in order and near their times more
+    often on both distills, `prompting.md` recommends times for multi-beat
+    shots. That extends the house rule from allowed to advised.
+  - If there is no difference, the rule stays as written.
+- **Blocker:** the owner's go (8 renders at 345 frames).
+
+## 45. Is part of FastH3's over-polish the kitchen's VSA selection
+
+Added 2026-09-27 (the same list). The owner reads FastH3 as "super high
+detail like almost way too much" (`../bench/results/2026-09-26_followup_contamination.md`).
+Turning VSA off roughly halves its fine detail (F6 in
+`../bench/results/2026-09-26_distill_run_predictions.md`). Core's VSA, which
+runs on kitchen, departs from FastVideo's training in three ways
+(`../bench/results/2026-09-27_attention_parity.md`):
+- it keeps `round(0.2n)` blocks plus a tie back-off, where FastVideo uses
+  `ceil`;
+- it forces the ±1 diagonal exact;
+- it runs Q/K/V in int8, where FastVideo uses bf16.
+
+Inference, not measured: if kitchen keeps blocks FastVideo would not, the
+render carries attention FastH3 never trained with, which could add detail.
+
+- **Models:** `h3_config.MODELS["unet_fasth3_v2"]`.
+- **Workflow, existing:**
+  `distill_experiments/h3_probe_t2v_fasth3_8step_contract_savelat`, core's
+  `BlockSparseAttention` at `h3_config.FASTH3_CONTRACT_VSA`.
+- **Capture, to build:** `h3_capture.maybe_capture` is called only from our
+  own attention paths (`attention.py`, `exact_blocks.py`), not from core's
+  sparse path. So a FastH3 capture needs one of two things:
+  - an observer override that records q/k/v and then calls core's override
+    unchanged, as `exact_blocks.py` does for the stock kernel;
+  - or `pre=1` capture at the block input, where the selection's own
+    inputs are reconstructed.
+  Blocks 0, 24 and 49, at an early and a late step.
+- **Bench, to build:** `bench/grade_vsa_selection_on_capture.py`.
+  - A torch reference selection: fp32 pooled scores, `ceil`, no forced
+    diagonal.
+  - Kitchen's selection on the same q/k, through the kernel core calls.
+  - Per cell: the kept-block overlap, how many blocks each keeps, and each
+    output's error against exact dense attention and against the other.
+- **Measures:** the capture grade first. A render only if the grade shows
+  the selections differ materially. That render is the reference node
+  (`MiniMaxH3VSAAttention` rewritten, the board's "vsa-fastvideo-reference"),
+  on look_anchor and slapstick at 730451892. It is read with
+  `bench/measure_clip_resolution.py` (hf, moved_share) against the kitchen
+  render.
+- **Decision it changes.**
+  - If the selections match on nearly every cell, FastH3's detail is trained,
+    not ours, and the reference node is not worth building.
+  - If kitchen keeps materially more blocks or its output diverges, the
+    reference node is justified. A kitchen `ceil` or diagonal flag becomes a
+    fork candidate.
+- **Blocker:** the capture hook. After that, one FastH3 render with
+  `H3_CAPTURE` set (disk for three blocks at two steps). It is sequenced
+  after the Sol redesign's own capture session.
+
+## 46. Late-only FlashGen on the adherence scenes, then as its own file
+
+Added 2026-09-27 (the same list). The owner's theory O2: FlashGen is overfit
+to a narrow distribution, so it follows unusual prompts poorly
+(`../bench/results/2026-09-26_distill_run_predictions.md`, "The owner").
+FT1 found FlashGen's early blocks carry a large high-rank change that makes
+its haze, while its late blocks carry the 4-step finish
+(`../bench/results/2026-09-26_flashgen_weights_predictions.md`). If O2 lives
+in the early blocks, late-only FlashGen should follow prompts better. The
+specificity ladder could not see "weird" by measure
+(`../bench/results/2026-09-27_followup_summary.md`), so this is the owner's
+eye.
+
+- **Models:** `h3_config.MODELS["unet_fl2va"]`, `h3_config.FLASHGEN_R64_LORA`.
+- **Workflows, existing:**
+  - `distill_experiments/h3_text_to_video_flashgen_late_blocks` (blocks
+    34-49, 0.157.0);
+  - `h3_text_to_video_flashgen` (full), and its `_savelat` twin.
+- **Scenes:**
+  - subway_chase and subway_chase_short, where FlashGen lost the prompt's
+    roles (`../bench/results/2026-09-26_subway_v2_s1.md`);
+  - the specificity ladder's unusual rung;
+  - two more checklisted scenes, the owner's pick.
+  Seed 730451892, where the full FlashGen rows already exist.
+- **Bench, existing:** `bench/make_followup_manifest.py`,
+  `bench/adherence_checklists.json`. The blind path (`bench/blind_batch.py`,
+  `bench/blind_score_app.py`) applies if #41 runs.
+- **Measures:** checklist beats and roles per clip, from the owner's eye.
+  Tone and temporal as a side read (`bench/analyze_followup.py`).
+- **Then, only if late-only is preferred: its own file.**
+  - To build: `bench/extract_lora_blocks.py`, which writes a LoRA holding
+    only the keys `lora_branch.select` keeps for `blocks="34-49"` (block
+    keys only; the refiner and final layer drop, as they do today).
+  - Control: the stripped file at `blocks="all"` must give a final latent
+    `torch.equal` to the full file at `blocks="34-49"`, same seed and graph.
+  - Then the late-blocks graph points at the file, and the loader's
+    `blocks` input goes back to its default.
+- **Decision it changes.**
+  - If late-only follows the checklists better, O2 sits in the early blocks,
+    and late-only is the FlashGen to ship.
+  - If not, FT1 stays a tone result and O2 is a property of the whole
+    adapter.
+- **Blocker:** the owner's go (4 renders); then the owner's scoring.
