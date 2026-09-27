@@ -17,6 +17,69 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-27
 
+- **PDD6 is a low-motion and close-up option, not the default** (owner:
+  "closeups like that are fine for pdd6 - low motion, not a ton of stuff to
+  keep track of"; chose "Low-motion option"). PDD8 won all three motion
+  scenes: a sword touched on samurai, a missing hand on slapstick, morphing on
+  subway (finding ow-fd-11). The graph stays;
+  `../h3_distills.md`, "Rules of thumb", says when to use it.
+- **The PDD8 finish: full FlashGen from sigma 0.8 on t2v, none on i2v** (the
+  owner's review, ow-fd-08 and ow-fd-09).
+  - On t2v the finishes were near indistinguishable by eye. Either FlashGen
+    finish fixed sign text that PDD8 alone and the base finish garbled.
+  - On i2v the finish's brightening "looked off", so PDD8 alone stays.
+  - Warm, it costs no sampling time: its evaluations replace PDD8's.
+  - Whether it replaces the default t2v PDD graph is the owner's call.
+  - `../../bench/results/2026-09-27_finisher_grid.md`, "The owner's review".
+- **Closed, no change: late-only FlashGen as PDD8's finisher (#34) and the
+  base finish (#37).**
+  - Late-only matched full FlashGen as a finisher on seven scenes, and the
+    full finish added no haze for it to remove
+    (`../../bench/results/2026-09-27_late_switch.md`).
+  - The base finish barely moved PDD8 and showed face morphing on courtroom.
+- **Closed: late-only FlashGen alone (#46); no stripped LoRA is built**
+  (owner's review, ow-fd-10).
+  - Late-only was more natural on the single-figure beach ladder, and more so
+    on the unusual rung, where full FlashGen walked in slow motion.
+  - It lost coherence where people and objects must hold: a third person on
+    subway_chase_short, and an unrecognisable piano on FT1's slapstick.
+  - O2 (FlashGen overfit) stays open, not refuted. FT1's "half the haze" does
+    not generalise at 124 frames (annotated in its record).
+- **Answered for selection: #45, the kitchen's VSA against FastVideo's.**
+  - At blocks 0 and 24 the kitchen matches a FastVideo-exact reference to
+    within about 1%, so the selection deviations do not explain FastH3's
+    over-polish.
+  - At block 49 the gap is int8 on the text rows, not selection.
+  - Building the reference node, to see whether that is visible, is the
+    owner's call.
+  - `../../bench/results/2026-09-27_vsa_selection_grade.md`.
+
+- **The save format stays H.264 8-bit crf 19** (owner, #38). H.265 10-bit
+  at crf 22 measured about half the dark blocking at half the size
+  (`bench/results/2026-09-27_encode_format_ab.md`), and the owner saw no
+  difference in the pair: "Dont think I can see a difference". The two
+  encodes differ by under one level in the darks. So O1's `dark_block8`
+  excess of about +0.05 is below the owner's eye (vd-m12), and O1's
+  "splotchy blacks" are not the codec's 8 px blocking; that question is open
+  on a clip the owner names.
+- **PDD8 then full FlashGen from sigma 0.8 becomes a top-level t2v graph**
+  (owner: "then yeah switch it"; 0.167.0), as
+  `workflows/h3_text_to_video_pdd8_flashgen_finish_api.json`. The finisher
+  grid review found it better than PDD8 alone on three t2v scenes and never
+  worse. Full and late-only finishes were indistinguishable, so the full
+  one, as trained. Fresh runs sample in the same time as PDD8, since its 7
+  PDD8 plus 2 FlashGen evaluations replace PDD8's 8. It is an additional
+  graph: `h3_text_to_video_pdd` stays the default until the owner says
+  otherwise. i2v stays PDD8 alone, because the finish brightens the frame at
+  once.
+- **The base-model finish (#37) closes with no change** (owner's review,
+  vd-v01). It was never preferred, and it morphed a face on courtroom. It is
+  not inert: it matched the FlashGen finishes on noodle_bar and partly fixed
+  spec_unusual's sign text. PDD8's coarse tail is part of its weakness, and
+  FlashGen fixes it better. The measures called it gentle and missed the
+  legibility gain. `step_switch_to="base"` stays in the generator for the
+  bench.
+
 - **Sol's default quantizer is `rotated`** (owner, 0.166.0). It was
   `balanced`, inherited from `qk_balance=True` (2026-09-15). The owner chose
   it from test 2's grade on the shipped PDD8 graphs: lowest quantization
