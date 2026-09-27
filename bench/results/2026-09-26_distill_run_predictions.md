@@ -16,6 +16,23 @@ Two facts constrain what the run can say:
   noise), so comparisons among them are the fairest this run offers. They
   still differ in weights, so each is its own scene.
 
+## The owner
+
+In the owner's words, 2026-09-26:
+- FastH3 "perceptively looked like it was lower resolution and then some parts
+  of pdd did", and "my eyes see it as like... low bitrate streaming video".
+- "its always in shows like the witcher on netflix where dark/night scenes
+  looked so blocky and splotchy" -- "of what you could look for. thats my
+  theory."
+- On the encode: "i dont think its the video this was just an example."
+
+**O1, as a testable statement:** the distills render dark and night regions
+blocky and splotchy, the way a starved streaming encode does, and the base
+does not. It shows most in the look family's low-key anchor and night
+variants. By the owner's reading, FastH3 is worst, and parts of PDD show it.
+Fails if the base's shadows are as blocky as the distills' on the same look
+variants.
+
 ## Claude (this session)
 
 ### Tonight's run
