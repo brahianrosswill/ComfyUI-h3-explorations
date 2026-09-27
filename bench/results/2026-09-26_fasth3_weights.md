@@ -86,6 +86,12 @@ the public checkout. So "trained through the shared forward" is inferred.
 
 ## What this means for the owner's #2-#5
 
+**Superseded 2026-09-27 by the swap renders** (`2026-09-27_fasth3_swap.md`).
+The conditioning swap is functionally near-inert, and the gates and backbone
+carry FastH3. The planning below was built on the weight-norm inference and
+is kept as written.
+
+
 - **#3's lead arm is an adaln transplant:** FastH3's modulation on base
   weights, and the reverse. Finding 4 says that is where FastH3 lives, and a
   backbone-only transplant would move almost nothing.
