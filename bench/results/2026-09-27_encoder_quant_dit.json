@@ -333,5 +333,6 @@
    "video_rel_l2": 0.143186,
    "audio_rel_l2": 0.066212
   }
- ]
+ ],
+ "off_trajectory_caveat": "Only step 0 is on a real trajectory. At a later probe the harness hands the sampler the seeded noise and the empty latent with sigmas[k:k+2], so the DiT sees sigma_k * noise, not the real x_k a render reaches there; steps 8 and 15 therefore measure sensitivity on an input no real run produces, which may inflate them. The step-0 rows are the on-trajectory reading and agree with the rest: treatment at or below the control and below the scale row on both scenes. The real x_k can be rebuilt from a full run's per-step x0 (euler, no injected noise: x_{k+1} = x_k + (s_{k+1} - s_k)(x_k - x0_k)/s_k; build_api(probe_step_x0=True) makes the twin). Raised by fastdude, 2026-09-27; bench/measure_marker_epsilon.py's one_forward, which this imports, has the same property."
 }
