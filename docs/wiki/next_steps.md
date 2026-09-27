@@ -926,7 +926,20 @@ length every arm above rendered on this card without it.
   on blocks 34-49), are in
   `../../bench/results/2026-09-27_evening_takeaways.md`.
   What stays open:
-  - **FastH3: gates or backbone drift?** The conditioning swap is near-inert
+  - **The VAE session's held-back list, 2026-09-27: `../open_experiments.md`
+    #34 to #42.** Each entry has its models, workflows, bench code (existing
+    or to build), measures and the decision it changes. In the VAE session's
+    order of value:
+    - #34 PDD8 finished by late-block FlashGen;
+    - #38 the save format measured (no render);
+    - #36 a strength dial on FastH3's gates;
+    - #35 gates against backbone;
+    - #37 PDD8 finished by the base;
+    - #39 telemetry on a mixed batch;
+    - #40 a second seed;
+    - #41 blind pairs;
+    - #42 PDD fusion cost.
+  - **FastH3: gates or backbone drift?** (#35) The conditioning swap is near-inert
     (`../../bench/results/2026-09-27_fasth3_swap.md`). The next split is fl2va
     plus FastH3's 50 gates, against FastH3 without them. Both are CPU builds;
     rendering them is the owner's go.

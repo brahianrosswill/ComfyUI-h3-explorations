@@ -1,6 +1,6 @@
 # Open experiments
 
-Last updated: 2026-09-26 (#31 to #33 added); #28 status 2026-09-19; otherwise 2026-09-11
+Last updated: 2026-09-27 (#33 closed; #34 to #42 added); #28 status 2026-09-19; otherwise 2026-09-11
 
 > **Several of these are now scheduled rather than parked.** The working plan
 > and the render scenes that would settle the quality-blocked ones live in
@@ -2492,4 +2492,256 @@ digit, because core's H3 encoder always tiles at 256 px. Its 512-channel
 convs launch at 16x16 tiles, where #192's small-launch rule keeps fp32
 accumulation. It reopens if core encodes H3 untiled or with much larger
 tiles.
+
+
+## 34. PDD8 finished by late-block FlashGen
+
+Added 2026-09-27 (the VAE session's held-back list,
+`../internal/postmortems/2026-09-26_session_distill-weights-and-render-dataset.md`,
+addendum). It combines the night's two best recipes:
+- the reverse switch lifts PDD8's highlights (white .918 to .958 on subway,
+  `../bench/results/2026-09-27_reverse_switch.md`);
+- FlashGen on blocks 34-49 alone keeps the 4-step finish with about half the
+  haze (fastdude's FT1, `../bench/results/2026-09-27_inventory_fastdude.md`).
+
+Full FlashGen as the finisher may be adding its haze back.
+
+- **Models:**
+  - `minimax_h3_fl2va_pruned_int8_convrot`;
+  - `loras/h3/minimax_h3_fl2va_pdd_8step_comfy` (PDD pass);
+  - `loras/h3/minimax_h3_flashgen_4step_v1.0_768p_fl2va_pruned_rank64_comfy`
+    (finish).
+- **Workflow, to build:** a generator entry
+  `h3_probe_t2v_step_switch_pdd8_flashgen_late_h080`. It is the existing
+  `_reverse` h080 entry plus `step_switch_blocks="34-49"`, which `build_api`
+  takes since 0.157.0, and it routes to `distill_experiments/` with a
+  `_savelat` twin. The declared `MiniMaxH3LoRABranch.blocks` row in
+  `bench/check_widget_deviations.py` has to name this graph too.
+- **Bench, to build:** a manifest on noodle_bar, radio_drama and
+  courtroom_verdict (PDD8's largest contrast gaps, per the signatures record)
+  plus subway_chase, at the followup seed 730451892. The comparison rows
+  already exist: `<scene>__pdd8` (the followup rerun) and
+  `subway_chase__rev_h080`.
+- **Measures:**
+  - `bench/measure_clip_tone.py`: white, rms_contrast, haze, shadow and mid;
+  - `bench/measure_clip_resolution.py`: hf and moved_share;
+  - `bench/measure_clip_temporal.py`: boil;
+  - `bench/compare_audio_pairs.py`.
+  - Read against PDD8 and rev_h080 per scene. A clip x0 preview is not
+    needed.
+- **Decision it changes.** Take this recipe if it matches rev_h080's
+  highlight lift with less haze than rev_h080 on most scenes. If haze matches
+  rev_h080, full FlashGen stays as the finisher.
+- **Blocker:** the owner's go (card time: about 5 min per render at 345
+  frames).
+
+## 35. FastH3: gates or backbone drift
+
+Added 2026-09-27. The conditioning swap (`../bench/results/2026-09-27_fasth3_swap.md`)
+showed that FastH3's speed and look live in its 50 VSA gates and its small
+backbone drift (about 1e-4 relative) together. fastdude's VSA-off arm removes
+sparsity and gates at once. This splits the two.
+
+- **Models, to build:**
+  - (a) fl2va plus FastH3's gates. Add the 150 `blocks.N.attn.to_gate_compress.{weight,
+    weight_scale, comfy_quant}` tensors (int8 with per-row fp32 scales) from
+    `fastvideo_fasth3_8step_v2_pruned_int8_convrot` to
+    `minimax_h3_fl2va_pruned_int8_convrot`. Core's detection turns
+    `gate_compress` on from the keys.
+  - (b) FastH3 without its gates. Drop those 150 tensors; core's VSA node
+    then warns and runs the fine stage only.
+  - Both go under `models/diffusion_models/h3_research/`.
+- **Bench, to build:** `bench/build_checkpoint_keys.py`, generalising
+  `bench/build_adaln_swap.py` to add or drop a key set by regex, with the same
+  streaming and byte verification.
+- **Workflow:** the existing `distill_experiments/h3_probe_t2v_fasth3_8step_contract_savelat_api.json`
+  with a per-arm `UNETLoader.unet_name` patch, as the swap did.
+- **Manifest, to build:** the swap's three scenes (look_anchor,
+  slapstick_moving_piano, radio_drama), seed 730451892. FastH3 and base rows
+  exist.
+- **Measures:** `measure_clip_resolution.py` (hf, loss4, moved_share) and
+  `measure_clip_tone.py` (detail, chroma, sat, haze), against FastH3
+  (`__fasth3`) and base (`__fl2va_contract`).
+- **Decision it changes.**
+  - If (a) reaches FastH3's hf within 10% on all three scenes, the gates
+    carry FastH3. A "FastH3 lite" is then the base checkpoint plus about
+    1.9 GB of int8 gates (50 x 7168 x 5376), and #36's dial is the detail
+    control.
+  - If (b) keeps FastH3's look, the backbone drift carries it and no light
+    variant exists.
+- **Blocker:** the owner's go; two CPU builds (about 1 min each) and six
+  renders.
+
+## 36. A strength dial on FastH3's gates
+
+Added 2026-09-27. FastH3 carries the most fine detail of the distills on 13
+of 13 scenes, and the owner reads it as too polished. The time-embedder dial
+built on 2026-09-27 targeted conditioning the swap then showed to be inert.
+The gates are the live target.
+
+Core computes the gate as a plain linear with no activation
+(`comfy_extras/nodes_sparse_attention.py`: `coarse_gate = gate(xc)`), and
+kitchen multiplies the coarse term by it with no sigmoid. That second half is
+per the 2026-09-26 forward-parity audit and was not re-read here. The gate
+weights are int8 with per-row fp32 `weight_scale`, so multiplying each
+`weight_scale` by α scales the gate output by exactly α (a byte-level edit,
+not a refit), and the coarse term by α if the kitchen reading holds.
+
+- **Models, to build:** FastH3 with the 50 `to_gate_compress.weight_scale`
+  tensors scaled by α in {0.5, 0.75} (0 approximates #35's (b)). Same builder
+  as #35, with a `--scale` mode.
+- **Workflow:** the FastH3 contract `_savelat` graph with a `unet_name`
+  patch.
+- **Measures:** hf, detail and chroma (the over-polish axes) and moved_share
+  against FastH3 at α = 1. Then the owner's eye on "too polished", in blind
+  pairs (#41).
+- **Decision it changes.** If detail falls monotonically with α while motion
+  holds, an α below 1 becomes FastH3's shipped setting.
+- **Blocker:** best after #35. If the gates do not carry the look, this dial
+  moves little.
+
+## 37. PDD8 finished by the base model
+
+Added 2026-09-27. PDD's trained blocks force a coarse final step, σ 0.632 to
+0 at shift 12. PDD8 cannot give that tail more resolution, and the reverse
+switch gives it to FlashGen instead. Finishing with the undistilled base is
+the clean test of whether the tail is PDD's problem.
+
+- **Models:** fl2va int8 and the PDD sidecar (pass 1); fl2va with no LoRA
+  (pass 2).
+- **Workflow, to build:**
+  - `build_api` gains `step_switch_to="base"`; today it accepts only pdd8
+    and flashgen.
+  - Pass 1 is PDD8 to 0.631579 (`STEP_SWITCH_REV["h063"][0]`). Pass 2 is the
+    base on Euler over `0.631579, 0.553846, 0.444444, 0.279070, 0.0`: the
+    32-grid's last four intervals at shift 12, 4 evaluations.
+  - `h3_config.STEP_SWITCH_REV` or `STEP_SWITCH_PAIRS` gains the pair, so
+    `bench/check_distill_settings.py` and `bench/check_distill_grid.py`
+    accept it.
+  - Graph: `h3_probe_t2v_step_switch_pdd8_base_h063`, with a `_savelat`
+    twin.
+- **Bench:** a manifest on subway_chase plus the #34 interiors, against
+  `subway_chase__rev_h063` (the FlashGen finish at the same handoff) and
+  PDD8.
+- **Measures:** as #34, plus the time cost (4 base evaluations, about 25 s at
+  345 frames).
+- **Decision it changes.**
+  - If the base finish lifts highlights and detail as much as FlashGen's
+    without its haze, the tail is PDD's weakness and the finisher is a free
+    choice.
+  - If it looks like PDD8, the dim highlights are not the tail's.
+- **Blocker:** the owner's go; a small generator change.
+
+## 38. The save format, measured
+
+Added 2026-09-27. O1 (`../bench/results/2026-09-27_o1_lossless.md`) put the
+dark blocking on the save: 8-bit 4:2:0 h264 at crf 19. The fix was handed to
+the owner as a choice with no measurement of either option.
+
+- **Models:** none. It re-encodes decoded frames.
+- **Bench, to build:** `bench/encode_format_ab.py`.
+  - It decodes a `_savelat` latent through the video VAE on the GPU, as
+    `distill_experiments/h3_decode_saved_latent_api.json` does. The CPU path
+    took 7.4 h for 22 frames.
+  - It encodes the frames at crf 19 (today), crf 14 and crf 10, and as 10-bit
+    (`libx264 yuv420p10le`, and `libx265` 10-bit).
+- **Inputs:** look_noir and look_anchor latents on PDD8 and FlashGen (dark
+  scenes; FlashGen lifts blacks), from `latents/`.
+- **Measures:**
+  - the block-edge ratios `o1_lossless_blocking.py` already computes (dark
+    and bright, 8 and 16 px) against the lossless frames;
+  - mean absolute luma error;
+  - file size per second.
+- **Decision it changes.** Pick the setting that brings dark_block8 within
+  0.02 of lossless at the smallest size, then change `VHS_VideoCombine`'s
+  `crf`/`format`/`pix_fmt` in the generator and rebuild. Check the owner's
+  players first for 10-bit.
+- **Blocker:** a few minutes of GPU for the decodes; no render.
+
+## 39. Telemetry armed on a mixed-model batch
+
+Added 2026-09-27. The owner's first question on 2026-09-26 was what gets
+offloaded and reloaded on a 24 GB card with 128 GB of RAM.
+`pipeline_telemetry.py` was built for it, and the overnight batch swapped
+among PDD, FlashGen and FastH3 all night with it off.
+
+- **Models and workflows:** whatever the next mixed batch runs (#34, #35,
+  #37 and #40 all switch checkpoints and LoRAs).
+- **Bench, existing:**
+  - arm by starting the server with `H3_TELEMETRY=dir=<capture root>`
+    (`../docs/pipeline_telemetry.md`);
+  - report with `bench/telemetry_report.py`;
+  - `bench/record_render_substrate.py` for cache position.
+- **Measures:** per render, load and offload time per model, VRAM peak, RAM
+  resident, PCIe traffic, and cache hits, across model switches.
+- **Decision it changes.** It tells whether batches should be ordered to
+  minimise checkpoint switches, and whether FastH3's separate checkpoint
+  costs a full reload each time. It answers the owner's question with
+  numbers.
+- **Blocker:** none beyond a batch to ride on. It costs almost nothing
+  (`../bench/results/2026-09-26_telemetry_first_records.md` has the overhead).
+
+## 40. A second seed on the recipes we would ship
+
+Added 2026-09-27. Every recommendation in
+`../bench/results/2026-09-27_evening_takeaways.md` rests on seed 730451892.
+
+- **Workflows, existing:**
+  - `distill_experiments/h3_text_to_video_flashgen_late_blocks_api.json`;
+  - `distill_experiments/h3_probe_t2v_step_switch_pdd8_flashgen_h080_savelat_api.json`;
+  - `h3_text_to_video_pdd_manual_sigmas_api.json` (PDD6);
+  - and their references: PDD8, full FlashGen.
+- **Bench:** the existing manifests (`bench/flashgen_transplant_arms.json`,
+  `bench/followup_reverse_switch_arms.json`) re-run with
+  `run_graph_arms.py --seed <second seed>` on the same scenes.
+- **Measures:** the same tone, resolution and temporal measures. The read is
+  sign agreement across seeds per scene, via `bench/distill_signatures.py`
+  or a small comparison.
+- **Decision it changes.** A recipe whose effect keeps its sign at the second
+  seed on most scenes can become a default; one that flips stays a probe.
+- **Blocker:** the owner's go.
+
+## 41. Blind pairs for the owner on the leading recipes
+
+Added 2026-09-27. Last night's verdicts are measures plus a few unblinded
+reads.
+
+- **Pairs:**
+  - FlashGen full against late-blocks;
+  - PDD8 against the reverse switch h080;
+  - FastH3 against FastH3 at gate α 0.75 (after #36);
+  - PDD8 against PDD6.
+  All on the #40 renders, so both seeds.
+- **Bench, existing:** `bench/blind_batch.py --pairs`,
+  `bench/blind_score_app.py` and `bench/score_session.py`, per
+  `docs/eval_comparison.md` section 3 and the `h3-ab-session` skill.
+- **Measures:** the owner's free-text verdicts, tallied per pair; notes
+  first.
+- **Decision it changes.** It turns the measured leads into defaults.
+- **Blocker:** the #40 renders; the owner's time.
+
+## 42. What PDD's head fusion costs, against the same model unfused
+
+Added 2026-09-27. It was cut by the 2026-09-26 batch's cap and never picked
+up. It was fastdude's P2 (`../bench/results/2026-09-26_distill_run_predictions.md`).
+
+- **Workflows, existing (`distill_experiments/`):**
+  - `h3_probe_t2v_pdd16_savelat`;
+  - `h3_probe_t2v_pdd32_savelat` (PDD at width 1, no fusion);
+  - `h3_probe_t2v_base_euler16_savelat`;
+  - `h3_probe_t2v_base_euler32_savelat`.
+- **Bench, existing:** `bench/make_followup_manifest.py` has the `pdd16`,
+  `pdd32`, `base_euler16` and `base_euler32` roles; a manifest selecting them
+  on two scenes is to build.
+- **Measures:**
+  - look and temporal measures against PDD8;
+  - `bench/x0_step_frames.py` for events;
+  - not final-latent distance, which is divergence
+    (`../bench/analyze_followup.py`'s note).
+- **Decision it changes.**
+  - If PDD32 looks like base Euler 32 while PDD8 does not, the fusion into 8
+    blocks is where PDD's quality goes.
+  - If PDD32 already looks like PDD8, the LoRA itself is the cost.
+- **Blocker:** the owner's go (base Euler 32 at 345 frames is about 16 min
+  per render).
 
