@@ -1,0 +1,35 @@
+[
+ {
+  "id": "shots",
+  "label": "Per shot, what you see",
+  "type": "text",
+  "primary": true,
+  "help": "One line per shot, with its time: 'shot 2, 0:05-0:09: ...'. Motion, detail, colour, artifacts, clones, who does what. Per shot rather than per clip, so a distill's still-shot and moving-shot behaviour can be told apart."
+ },
+ {
+  "id": "adherence",
+  "label": "Did it follow the prompt?",
+  "type": "choice",
+  "options": ["follows", "mostly", "partly", "breaks"],
+  "help": "Against the scene's beat checklist (bench/adherence_checklists.json, shown beside the clip): roles, cast count, direction, counts, text, the shot plan."
+ },
+ {
+  "id": "beats_missed",
+  "label": "Beats missed",
+  "type": "text",
+  "help": "The checklist beats it did not do, or did wrong. Number them from the checklist if easier."
+ },
+ {
+  "id": "tags",
+  "label": "Quick tags",
+  "type": "tags",
+  "options": ["clone or extra person", "roles swapped", "wrong direction", "artifacty", "oversaturated", "washed out", "good motion", "good detail", "good colour"],
+  "help": "Click any that apply."
+ },
+ {
+  "id": "flag",
+  "label": "Reject outright",
+  "type": "flag",
+  "help": "Garbage, noise, audio missing or desynced. Leave off if none."
+ }
+]
