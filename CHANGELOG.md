@@ -4,6 +4,25 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.165.0
+
+### Added
+
+- **`bench/grade_vsa_selection_on_capture.py`** (open_experiments #45). On a
+  `core_sparse_capture` capture it grades, against exact fp32 attention,
+  core's kitchen VSA call replayed on the captured projection (with and
+  without the coarse gate) and a FastVideo-exact torch reference. The
+  reference keeps `ceil` of the video tiles, never forces the diagonal and
+  computes in fp32. It also grades kitchen against reference. A control on the
+  first cell requires the reference with every tile kept to equal exact
+  attention on sampled query tiles. Needs the GPU.
+
+### Changed
+
+- `check_capture_manifest_controls.py` skips, rather than asserts, when
+  ComfyUI's input directory cannot be resolved: no server on 8188 and
+  `H3_COMFY_INPUT` unset (lookingdude).
+
 ## 0.164.4
 
 ### Fixed

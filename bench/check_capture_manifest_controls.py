@@ -99,6 +99,17 @@ def _check(d: Path, verify: bool) -> str | None:
 
 
 def main() -> int:
+    # The generator reads the render's input directory. With no server on
+    # 8188 and H3_COMFY_INPUT unset it refuses, which is a missing input, not a
+    # failed control: say so and skip rather than assert (lookingdude,
+    # 2026-09-27: the CPU sweep hits this whenever the card is idle).
+    from _paths import comfy_input
+    try:
+        comfy_input()
+    except SystemExit as exc:
+        print(f"SKIP: the generator cannot resolve ComfyUI's input directory. Set H3_COMFY_INPUT "
+              f"or start the server. ({str(exc)[:120]})")
+        return 2
     results = []
     stamp_a = {"argv": ["main.py", "--fast", "fp16_accumulation"], "torch": "x", "cuda": "y",
                "comfy_kitchen": "z", "pid": 1}
