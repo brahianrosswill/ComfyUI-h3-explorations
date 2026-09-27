@@ -1,0 +1,32 @@
+{
+ "what": "Seed-collapse test for the owner's O2 (bench/results/2026-09-26_distill_run_predictions.md): t2va_subway_chase_short at FlashGen's trained 5 s, PDD8 at three seeds and FlashGen at two more; FlashGen at 730451892 is subway_chase_short__flashgen in the follow-up rerun.",
+ "why": "An overfit, mode-collapsed distill gives nearly the same scene whatever the seed; compare FlashGen's spread across seeds with PDD8's.",
+ "arms": {
+  "subway_chase_short__pdd8__s730451892": "workflows/h3_text_to_video_pdd_savelat_api.json",
+  "subway_chase_short__pdd8__s730451893": "workflows/h3_text_to_video_pdd_savelat_api.json",
+  "subway_chase_short__pdd8__s730451894": "workflows/h3_text_to_video_pdd_savelat_api.json",
+  "subway_chase_short__flashgen__s730451893": "workflows/h3_text_to_video_flashgen_savelat_api.json",
+  "subway_chase_short__flashgen__s730451894": "workflows/h3_text_to_video_flashgen_savelat_api.json"
+ },
+ "patches": [
+  "subway_chase_short__pdd8__s730451892:MiniMaxH3Conditioning.prompt=@bank:t2va_subway_chase_short",
+  "subway_chase_short__pdd8__s730451892:MiniMaxH3Resolution.length=124",
+  "subway_chase_short__pdd8__s730451892:RandomNoise.noise_seed=730451892",
+  "subway_chase_short__pdd8__s730451893:MiniMaxH3Conditioning.prompt=@bank:t2va_subway_chase_short",
+  "subway_chase_short__pdd8__s730451893:MiniMaxH3Resolution.length=124",
+  "subway_chase_short__pdd8__s730451893:RandomNoise.noise_seed=730451893",
+  "subway_chase_short__pdd8__s730451894:MiniMaxH3Conditioning.prompt=@bank:t2va_subway_chase_short",
+  "subway_chase_short__pdd8__s730451894:MiniMaxH3Resolution.length=124",
+  "subway_chase_short__pdd8__s730451894:RandomNoise.noise_seed=730451894",
+  "subway_chase_short__flashgen__s730451893:MiniMaxH3Conditioning.prompt=@bank:t2va_subway_chase_short",
+  "subway_chase_short__flashgen__s730451893:MiniMaxH3Resolution.length=124",
+  "subway_chase_short__flashgen__s730451893:RandomNoise.noise_seed=730451893",
+  "subway_chase_short__flashgen__s730451894:MiniMaxH3Conditioning.prompt=@bank:t2va_subway_chase_short",
+  "subway_chase_short__flashgen__s730451894:MiniMaxH3Resolution.length=124",
+  "subway_chase_short__flashgen__s730451894:RandomNoise.noise_seed=730451894"
+ ],
+ "seeds": {
+  "note": "per arm, by patch; run WITHOUT --seed, which would override them"
+ },
+ "run": "run_graph_arms.py --manifest bench/followup_seed_collapse_arms.json --runs 1 --no-alternate --out bench/results/2026-09-26_followup.jsonl"
+}
