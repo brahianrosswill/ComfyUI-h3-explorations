@@ -47,6 +47,7 @@ from .frozen_video_cache import MiniMaxH3FrozenVideoCache
 from .lora_branch import MiniMaxH3LoRABranch
 from .denoise_mask_probe import MiniMaxH3DenoiseMaskProbe
 from .step_x0_observer import MiniMaxH3StepX0Observer
+from .core_sparse_capture import MiniMaxH3CoreSparseCapture
 from .preflight import MiniMaxH3Preflight
 from .provenance import MiniMaxH3ProvenanceStamp
 from .quant_observe import MiniMaxH3QuantObserve
@@ -334,7 +335,10 @@ class H3ExplorationsExtension(ComfyExtension):
                 MiniMaxH3StepX0Observer,
                 # appended 2026-09-27, the redesigned Sol node (sol_attn_h3.py;
                 # docs/research/2026-09-27_sol_node_redesign.md)
-                MiniMaxH3Sol]
+                MiniMaxH3Sol,
+                # appended 2026-09-27, capture on core's sparse producer path
+                # (core_sparse_capture.py; open_experiments #45)
+                MiniMaxH3CoreSparseCapture]
 
 
 async def comfy_entrypoint() -> H3ExplorationsExtension:

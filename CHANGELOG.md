@@ -4,6 +4,28 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.164.0
+
+### Added
+
+- **`MiniMaxH3CoreSparseCapture`** (`core_sparse_capture.py`, open_experiments
+  #45).
+  - It captures q/k/v on core's `BlockSparseAttention` sparse producer path,
+    which projects them inside the kitchen kernel, so no hook of ours saw them.
+  - It wraps core's per-block patch and gives it a capturing `attention`. That
+    callable projects the fused qkv to the host in core's chunk size, only for
+    a call `H3_CAPTURE` requests, writes it through `maybe_capture_pre`, counts
+    the call and runs core's attention unchanged.
+  - It is inert unless `H3_CAPTURE` is set with `pre=`.
+  - `h3_capture` gains `wants_pre` and `count_call`, and its `chunk_check`
+    accepts a host-held projection.
+  - Checked by `bench/check_core_sparse_capture.py` on stand-in blocks, with
+    a planted double count.
+- **`workflows/distill_experiments/h3_probe_t2v_fasth3_8step_contract_capture_api.json`**
+  (`build_api(probe_core_sparse_capture=True)`): FastH3's contract graph with
+  the node after the attention node. `bench/fasth3_vsa_capture_arms.json` is
+  the one-render arm for the capture session.
+
 ## 0.163.2
 
 ### Added

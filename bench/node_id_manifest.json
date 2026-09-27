@@ -135,6 +135,15 @@
       "Output"
     ]
   },
+  "MiniMaxH3CoreSparseCapture": {
+    "inputs": [
+      "model"
+    ],
+    "node_id": "MiniMaxH3CoreSparseCapture",
+    "outputs": [
+      "model"
+    ]
+  },
   "MiniMaxH3DenoiseMaskProbe": {
     "inputs": [
       "model"

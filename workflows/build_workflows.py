@@ -1510,6 +1510,10 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
               # moving person first appears twice (docs/h3_distills.md). About
               # 40 MB a step: probe twins only.
               probe_step_x0: bool = False,
+              # Capture on core's sparse producer path (MiniMaxH3CoreSparseCapture,
+              # node 114, after the attention node): inert unless H3_CAPTURE is set
+              # with pre=; for open_experiments #45 on FastH3's contract graph.
+              probe_core_sparse_capture: bool = False,
               out_prefix: str | None = None, **canvas) -> dict:
     """API-format graph, submittable as {"prompt": <this>} to POST /prompt.
 
@@ -2433,6 +2437,16 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
         g["9"]["inputs"]["model"] = ["113", 0]
         if "8" in g and g["8"]["inputs"].get("model") == src:
             g["8"]["inputs"]["model"] = ["113", 0]
+
+    if probe_core_sparse_capture:
+        src = g["9"]["inputs"]["model"]
+        if g.get(src[0], {}).get("class_type") != "BlockSparseAttention":
+            raise SystemExit("probe_core_sparse_capture wraps core's BlockSparseAttention; "
+                             f"the guider's model comes from {g.get(src[0], {}).get('class_type')}")
+        g["114"] = {"class_type": "MiniMaxH3CoreSparseCapture", "inputs": {"model": src}}
+        g["9"]["inputs"]["model"] = ["114", 0]
+        if "8" in g and g["8"]["inputs"].get("model") == src:
+            g["8"]["inputs"]["model"] = ["114", 0]
 
     if probe_frozen_rows:
         if not audio_refine:
@@ -5458,6 +5472,14 @@ def main():
                        dict(extra, save_latents=True, probe_step_x0=True,
                             out_prefix=extra.get("out_prefix", f"Video/{stem}") + "_x0"),
                        f"{note}; saves every step's x0 and the final latent (one or two renders only)"))
+    # FastH3's contract graph with a capture node on core's sparse path
+    # (open_experiments #45, 2026-09-27): inert unless H3_CAPTURE is set with
+    # pre=, and saves its latents so the captured render can be checked.
+    _f = _by_name["h3_probe_t2v_fasth3_8step_contract.json"]
+    _twins.append(("h3_probe_t2v_fasth3_8step_contract_capture.json", _f[1] + "-capture", _f[2], _f[3],
+                   dict(_f[4], save_latents=True, probe_core_sparse_capture=True,
+                        out_prefix=_f[4].get("out_prefix", "Video/h3_probe_t2v_fasth3_8step_contract") + "_capture"),
+                   f"{_f[5]}; captures q/k/v on core's sparse path when H3_CAPTURE is armed (#45)"))
     # The reverse step switch, one per handoff (h3_config.STEP_SWITCH_REV),
     # each with its savelat twin. PDD first, FlashGen finishing.
     _reverse = tuple(

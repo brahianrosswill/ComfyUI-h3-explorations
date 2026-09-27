@@ -511,12 +511,43 @@ def _chunk_check(module, x, qkv):
         part = module.qkv_proj(x[:n])
         identical, worst = True, 0.0
         for i in range(0, n, 512):
-            a, b = part[i:i + 512], qkv[i:min(i + 512, n)]
+            # `.to(qkv.device)` is a no-op for a projection held on the card;
+            # `core_sparse_capture.py` builds its projection on the host.
+            a, b = part[i:i + 512].to(qkv.device), qkv[i:min(i + 512, n)]
             identical = identical and bool(torch.equal(a, b))
             worst = max(worst, float((a.float() - b.float()).abs().max()))
     del part
     return {"rows": n, "producer_chunk": int(PRODUCER_CHUNK),
             "identical": identical, "max_abs_diff": worst}
+
+
+def wants_pre(module) -> bool:
+    """Whether `maybe_capture_pre` would write for this call of `module`.
+
+    For a caller that has to compute the fused projection itself
+    (`core_sparse_capture.py`, on core's sparse producer path, which never
+    materialises it): the projection is only worth its cost on a call that will
+    be written. Reads the (block, step) without advancing, like
+    `maybe_capture_pre`."""
+    _sync_spec()
+    if not enabled or not _config.get("pre"):
+        return False
+    with _lock:
+        block, step = _block_step(module, advance=False)
+        return (block in _config["blocks"] and step in _config["steps"]
+                and (_render, block, step, "pre") not in _written)
+
+
+def count_call(module) -> None:
+    """Advance `module`'s per-block step counter once, for a caller with no
+    post-RoPE tensors to hand to `maybe_capture` (`core_sparse_capture.py`).
+    `maybe_capture` advances the counter itself, so a call path must use one or
+    the other, never both, or every step is counted twice."""
+    _sync_spec()
+    if not enabled:
+        return
+    with _lock:
+        _block_step(module, advance=True)
 
 
 def maybe_capture_pre(module, qkv, x, rope_freqs, transformer_options=None,

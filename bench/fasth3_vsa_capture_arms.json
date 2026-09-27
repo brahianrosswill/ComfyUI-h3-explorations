@@ -1,0 +1,18 @@
+{
+ "what": "open_experiments #45: one FastH3 V2 render on its contract (core BlockSparseAttention, VSA keep 20% from step 0) with MiniMaxH3CoreSparseCapture after the attention node, so q/k/v on core's sparse producer path are captured. slapstick_moving_piano at seed 730451892 and 345 frames (a high-motion scene where FastH3's detail is highest).",
+ "arms": {
+  "slapstick_moving_piano__fasth3_capture": "workflows/distill_experiments/h3_probe_t2v_fasth3_8step_contract_capture_api.json"
+ },
+ "patches": [
+  "slapstick_moving_piano__fasth3_capture:MiniMaxH3Conditioning.prompt=@bank:t2va_slapstick_moving_piano",
+  "slapstick_moving_piano__fasth3_capture:MiniMaxH3Resolution.length=345"
+ ],
+ "seeds": {
+  "first": 730451892,
+  "note": "held"
+ },
+ "server_env": "H3_CAPTURE must carry pre=1 or pre=only (core_sparse_capture writes qkvpre_ files only), cycle=8 (FastH3's contract runs 8 steps, as PDD8 does), and blocks including 0, 24 and 49 for #45 (an early and a late step, e.g. steps 1 or 2, and 6). With lookingdude's Sol test 2 spec (blocks 0:8:40:44:45:46:47:48:49, steps 2:6) this render writes blocks 0 and 49 only; add 24 if the session's spec allows.",
+ "cost": "each qkvpre file holds the fused projection of every row in bf16 (about 3 GB at 345 frames on 1344x768); host RAM holds one at a time; the card holds one PRODUCER_CHUNK",
+ "check": "the render's saved final latent should be torch.equal to an unarmed render of the same graph: the node changes no output (bench/check_core_sparse_capture.py proves it on stand-ins)",
+ "run": "run_graph_arms.py --manifest bench/fasth3_vsa_capture_arms.json --runs 1 --seed 730451892 --hold-seed --no-alternate --out bench/results/2026-09-27_fasth3_vsa_capture.jsonl"
+}
