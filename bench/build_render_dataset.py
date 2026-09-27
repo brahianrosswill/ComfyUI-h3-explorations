@@ -36,7 +36,7 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(REPO / "workflows"))
-from render_inventory import apply_patches, describe, graph_at, outputs  # noqa: E402
+from render_inventory import apply_patches, describe, graph_at, graph_prefixes, outputs  # noqa: E402
 from _paths import comfy_output  # noqa: E402
 sys.path.insert(0, str(REPO / "workflows"))
 from prompts import identify as prompt_id_of, sha256 as prompt_sha  # noqa: E402
@@ -151,8 +151,23 @@ def renders(root: Path, substrate: dict) -> list[dict]:
                 "valid_timing": not (contaminated or interleaved or r.get("warmup") or r.get("error")
                                      or r.get("suspect_cache_hit")),
                 "prompt_id": r.get("prompt_id"),
-                "outputs": outputs(root, label),
+                "outputs": outputs(root, label, ts, graph_prefixes(patched)),
             })
+    # A file two rows both matched (a label rendered twice whose second render
+    # left no files of its own) goes to the row that finished nearest to it.
+    import datetime as _dt
+    owners: dict = {}
+    for r in out:
+        t = _dt.datetime.fromisoformat(r["ts"]).timestamp() if r["ts"] else None
+        for kind in ("video", "latents"):
+            folder = root / ("Video" if kind == "video" else "latents")
+            for name in r["outputs"][kind]:
+                gap = abs((folder / name).stat().st_mtime - t) if t else float("inf")
+                if name not in owners or gap < owners[name][0]:
+                    owners[name] = (gap, r["render_id"])
+    for r in out:
+        for kind in ("video", "latents"):
+            r["outputs"][kind] = [n for n in r["outputs"][kind] if owners[n][1] == r["render_id"]]
     return out
 
 
