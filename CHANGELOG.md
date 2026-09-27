@@ -4,6 +4,24 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.159.1
+
+### Fixed
+
+- **The provenance stamp recorded no Sol settings from 2026-09-19 to
+  2026-09-27.** Since b3a15bd1 (the capture seam), the Sol override is a
+  wrapper, and its knobs live one closure down, in `_decide_and_run`.
+  `provenance._sol_state` read one level, so every Sol knob (tau,
+  dense_blocks, qk_balance, and the rest) was stamped "not detected" on every
+  render in that window. `bench/check_provenance_stamp.py`
+  (`closure_is_read_not_declared`) failed on it the whole time.
+  - `_closure_values` now reads nested closures, and does not follow a
+    chained `previous` override.
+  - The output of those renders is unaffected. Only the record of their
+    settings is missing, and the git head each stamp carries dates them.
+  - Found by the Sol node redesign
+    (`docs/research/2026-09-27_sol_node_redesign.md`).
+
 ## 0.159.0
 
 ### Added

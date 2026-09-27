@@ -119,6 +119,39 @@ STAMP_SCHEMA_VERSION = 4
 # retired signature while the stamp drifted. The guard was repointed at the live
 # node on 2026-08-31 and went red immediately. Derive this list from
 # `make_override`, never from memory of what the node used to take.
+def _closure_values(fn, names, depth=4):
+    """`names` found in `fn`'s closure and in the closures of functions it
+    closes over, nearest first. Read, not declared: these are the values the
+    running override uses.
+
+    Nested because the Sol override has been a thin wrapper since b3a15bd1
+    (2026-09-19, the capture seam): the knobs live one closure down, in
+    `_decide_and_run`, and a one-level read recorded every one of them as
+    'not detected' on every render stamped from then until 2026-09-27
+    (`bench/check_provenance_stamp.py`, `closure_is_read_not_declared`).
+    A cell named `previous` is not followed: that is the chained override
+    underneath, whose settings are not Sol's."""
+    found, queue, seen = {}, [(fn, 0)], set()
+    while queue:
+        f, d = queue.pop(0)
+        if id(f) in seen:
+            continue
+        seen.add(id(f))
+        code = getattr(f, "__code__", None)
+        cells = getattr(f, "__closure__", None) or ()
+        for name, cell in zip(getattr(code, "co_freevars", ()) or (), cells):
+            try:
+                value = cell.cell_contents
+            except ValueError:            # empty cell
+                continue
+            if name in names and name not in found:
+                found[name] = value
+            if (name != "previous" and d < depth and callable(value)
+                    and getattr(value, "__code__", None) is not None):
+                queue.append((value, d + 1))
+    return found
+
+
 SOL_CLOSURE_KEYS = (
     "tau", "min_tokens", "sigma_start", "sigma_end", "verbose",
     "sink_conditioning", "dense_blocks", "tau_profile",
@@ -198,15 +231,8 @@ def _sol_state(transformer_options, sigmas):
     state["morton"] = bool(transformer_options.get("sol_morton", False))
     state["morton_curve"] = _jsonable(transformer_options.get("sol_morton_curve"))
 
-    freevars = getattr(getattr(override, "__code__", None), "co_freevars", ()) or ()
-    cells = getattr(override, "__closure__", None) or ()
-    reached = {}
-    for name, cell in zip(freevars, cells):
-        if name in SOL_CLOSURE_KEYS:
-            try:
-                reached[name] = _jsonable(cell.cell_contents)
-            except ValueError:  # empty cell
-                pass
+    reached = {name: _jsonable(value)
+               for name, value in _closure_values(override, SOL_CLOSURE_KEYS).items()}
     # setdefault, not a plain dict build: an upstream rename drops the name out
     # of co_freevars, and this turns that into an explicit "cannot tell" rather
     # than a key that quietly disappears from the record.
