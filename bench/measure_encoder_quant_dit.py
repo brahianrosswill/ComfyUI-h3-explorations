@@ -184,6 +184,12 @@ def _run(graph: dict, label: str) -> None:
         raise SystemExit(f"{label}: {json.dumps(st)[:1500]}")
 
 
+def kitchen_build() -> str:
+    """The comfy_kitchen build this process would load, read from the install."""
+    from importlib.metadata import version
+    return version("comfy_kitchen")
+
+
 def capture(args) -> int:
     out = Path(args.capture_dir)
     try:
@@ -210,7 +216,8 @@ def capture(args) -> int:
                 frames[fname] = {"frame": idx,
                                  "sha256": hashlib.sha256(p.read_bytes()).hexdigest()}
                 _upload_temp(p)
-    manifest = {"source_video": Path(args.source_video).name if args.source_video else None,
+    manifest = {"kitchen_build_at_capture": kitchen_build(),
+                "source_video": Path(args.source_video).name if args.source_video else None,
                 "frames": frames, "encoders": ENCODERS, "captures": []}
     for scene in args.scenes:
         base = scene_graph(scene)
@@ -356,6 +363,7 @@ def forward(args) -> int:
         "schedule": {"scheduler": SAMPLING["scheduler"], "steps": SAMPLING["steps"],
                      "probe_steps": probe_steps},
         "seed": args.seed,
+        "kitchen_build_at_forward": kitchen_build(),
         "does_not_establish": [
             "visibility: a per-step prediction delta can wash out or compound by the final frame",
             "the scale row is one text edit, not a bound; do not quote the treatment as a fraction of it",
