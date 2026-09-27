@@ -33,6 +33,11 @@ the other way around but my gut says pdd".
   - Built only on 0.154.8 or later: two branch models in one graph.
 - **PDD video, FastH3 audio.** Re-render the audio on FastH3 with the video
   frozen (the audio-refine pass). The owner rates FastH3's audio highest.
+- *Annotation, 2026-09-27: the two figures below are the prompt's suspect and
+  agent, not a clone* (`../../bench/results/2026-09-27_clone_base_control.md`).
+  The base draws the same two. The open question is only PDD8's overlap at
+  1.1 s, by the owner's eye. The reverse switch's value is its highlight
+  repair (`../../bench/results/2026-09-27_reverse_switch.md`).
 - **Update, the same night: the subway clone is born early.** The x0 capture
   shows two figures already at PDD8's step 1 of 8
   (`../../bench/results/2026-09-26_x0_steps_subway_pdd8.json`).

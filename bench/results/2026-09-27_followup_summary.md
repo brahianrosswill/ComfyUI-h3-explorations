@@ -45,19 +45,30 @@ people's records are cited, not restated.
 - **A faster PDD:** PDD6 keeps detail within 5 to 10% of PDD8, at three
   quarters of the steps (`2026-09-27_ladder.md`, the VAE session). PDD4
   loses more.
-- **PDD's subway clone is decided at step 1 of 8** (the F5 verdict,
-  `2026-09-26_x0_steps_subway_pdd8.json`).
-  - It appears at 4, 6 and 8 steps, merged or exact.
-  - Late handoffs cannot remove it.
-  - The base clone control says whether it is PDD's choice or the seed and
-    prompt's.
+- **The subway "clone" is the prompt's two people** (the VAE session's
+  `2026-09-27_clone_base_control.md`).
+  - The base draws the same suspect and agent at 1.1-1.3 s, from the same
+    noise.
+  - PDD8 decides that composition at step 1, at every step count, merged or
+    exact.
+  - What can read as a clone is PDD8's overlap at 1.1 s, one figure passing
+    in front of the other: the owner's call.
+  - The clone lane closes.
+- **FastH3's timestep conditioning is near-inert** (`2026-09-27_fasth3_swap.md`,
+  the VAE session). Swapping it either way leaves each model as it was, so
+  FastH3's look and speed live in its VSA gates and backbone. That fits its
+  VSA-off result below, and falsifies the earlier reading that its time
+  embedder carried the look.
+- **PDD strength** (`2026-09-27_pdd_strength.md`, the VAE session): 0.85 and
+  0.7 lose fine detail and some motion, and contrast does not move. 1.0
+  stays. The reverse switch is the fix for PDD8's dim highlights.
 - **PDD first, FlashGen finishing (the owner's idea) repairs PDD8's dim
   highlights without changing the scene** (`2026-09-27_reverse_switch.md`,
   the VAE session).
   - Both handoffs keep PDD8's composition, motion and saturation.
   - Highlights lift to FlashGen's and FastH3's level, and fine detail rises.
-  - The clone survives, as predicted before it rendered: it is born at step
-    1.
+  - The two-figure composition survives, as predicted before it rendered.
+    It is the prompt's two people, decided at step 1 (below).
   - So part of PDD8's dim-highlight signature is its coarse tail.
   - A candidate route for PDD's lamp-lit interiors. The owner's call.
 - **Specificity ladder (the owner's O2)** (`2026-09-27_spec_ladder.md`):
@@ -84,10 +95,11 @@ people's records are cited, not restated.
   effect size. A 0.1% modulation change still lands 0.57 away. Verdicts on
   magnitude use tone, temporal and the owner's eye.
 
-## Still rendering or unread when this was written
+## Server
 
-- The FastH3 conditioning swap, the base clone control and PDD strength: the
-  VAE session's records.
+Stopped by the VAE session after the last runner. The substrate record is
+`2026-09-27_followup_substrate.json` (dd7e71ea), and the raw history is in
+`internal/history/`.
 
 ## For the owner's eye
 
@@ -95,5 +107,7 @@ people's records are cited, not restated.
   until each actor speaks, and is it funny?
 - FlashGen's clean looks, to confirm the blockiness is gone.
 - The specificity ladder, typical against unusual, per distill.
+- PDD8's subway overlap at 1.1 s (`subway_chase__pdd8`): a motion artefact,
+  or two people passing?
 - FlashGen late-only against full, on look_anchor and slapstick
   (`*_flashgen_blk34_49` against `*__flashgen`).

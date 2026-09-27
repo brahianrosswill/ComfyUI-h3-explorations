@@ -191,6 +191,15 @@ the unusual one, more than PDD8's or FastH3's does.*
   first block or early model might: route 3, FlashGen first. Whether the base
   makes the same choice from this seed and prompt is the open control.
   Registered before the reverse-switch renders land.
+
+  *Annotation, 2026-09-27: the "two figures" are the prompt's two people.*
+  The VAE session's base control (`2026-09-27_clone_base_control.md`) found,
+  at full resolution, a black-jacket agent and a grey-hoodie suspect in both
+  the base and PDD8, as the prompt names them. So step 1 decides the
+  two-person composition, and that is not a clone. The verdict "failed"
+  stands (nothing appears late). "The clone is decided at step 1" was the
+  wrong framing. What remains is PDD8's overlap at about 1.1 s, where one
+  figure passes in front of the other: the owner's call by eye.
 - **F6. FastH3 with VSA off shows less temporal texture instability and the
   same grade.** Sparsity would explain the texture, and the weights the
   grade.
