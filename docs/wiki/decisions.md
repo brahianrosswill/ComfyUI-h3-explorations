@@ -17,6 +17,14 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-27
 
+- **`qk_balance` is not inert behind the dense tail** (Sol redesign test 1,
+  0.163.1). The audit (§4 item 1), the redesign doc, `docs/SOLATTN.md` and
+  `docs/h3_block49_quant_error.md` had said or implied that the balance gate
+  opens only on blocks 45, 48 and 49, so the shipped dense tail left it
+  nothing to do. Renders in three modes and a gate measurement on captures
+  refute that. Each of those docs now keeps a dated note.
+  `bench/results/2026-09-27_sol_redesign_test1.md`.
+
 - **TaoMate-H3 is deprecated and removed** (owner: "taomate is deprecated
   you can remove everything from it here. we're not gonna pursue it
   anymore."; 0.161.0). Removed: the `MiniMaxH3TaoMateStreamSampler` node and its runtime

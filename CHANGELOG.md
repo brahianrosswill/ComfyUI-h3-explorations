@@ -4,6 +4,30 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.163.1
+
+### Added
+
+- **Sol redesign test 1** (`bench/results/2026-09-27_sol_redesign_test1.md`).
+  `quantizer` balanced changes the render in t2v, i2va and ref2va, and each
+  balanced render reproduces bit for bit across server processes. So
+  `qk_balance` is not inert behind the dense tail.
+- `bench/measure_qk_balance_gate_on_capture.py` reads the kernel's per-head
+  balance gate off captured K. The gate opens on some heads of every
+  captured block.
+- `bench/grade_sol_quantizer_on_capture.py` grades the four quantizers on
+  every head of a captured cell. On the 2026-09-19 base-model captures,
+  `rotated` has the lowest quantization error on every Sol block, and
+  `balanced` stays near `plain`. The default stays `balanced` until the
+  current PDD8 graph is captured and graded (test 2).
+
+### Fixed
+
+- **Prose that said the balance gate opens only on blocks 45, 48 and 49**, or
+  that the balance is inert on ordinary blocks. Dated notes now sit in the
+  audit, the redesign doc, `docs/SOLATTN.md` and
+  `docs/h3_block49_quant_error.md`.
+
 ## 0.163.0
 
 ### Added

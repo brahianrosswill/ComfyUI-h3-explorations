@@ -27,7 +27,9 @@ problems:
 2. **Two knobs overlap.** `qk_balance` and `rotate` compose, and rotation
    does most of balance's work (audit §4.4). The shipped `qk_balance=True` is
    probably a no-op behind the dense tail, because its gate is recorded as
-   opening only on the blocks we send dense.
+   opening only on the blocks we send dense. (Wrong, 2026-09-27: test 1
+   found it changes every render, and the gate opens on some heads of every
+   block. `../../bench/results/2026-09-27_sol_redesign_test1.md`.)
 3. **One default is wrong by the owner's rule.** The node defaults
    `qk_balance` off and 129 of 131 graphs turn it on, which breaks "best
    defaults end to end".
@@ -220,8 +222,11 @@ restarted on the new kitchen before anything runs.
    - Bit-identity is a yes/no answer for the prompts run. The gate depends on
      activations, so a second scene is what generalizes it.
 2. **One capture session.**
-   - Blocks 40 and 44 to 49 (45 to 48 were never captured), at steps 4 and
-     15, in each mode.
+   - Blocks 40 and 44 to 49, at steps 4 and 15, in each mode, on the
+     current PDD8 graphs. (Blocks 44 to 48 were captured on 2026-09-19, but
+     from a base-model render on older code. Those captures gave a
+     provisional grade in which `rotated` wins:
+     `../../bench/results/2026-09-27_sol_redesign_test1.md`.)
    - Graded offline for Sol under the four quantizers, against kitchen int8
      and sage rotated as the dense kernel.
    - It decides the `quantizer` default, whether the dense tail pays under
@@ -302,7 +307,7 @@ Every entry is from the audit. The workflow census is the one in audit §1:
 | 5 | **Node:** patches `PackedLayout.__init__` and `model._forward` process-wide whenever the sink is on | Every shipped Sol graph | fix in the redesign |
 | 6 | **Node:** a kernel exception becomes a logged dense render | Any graph, whenever the kernel fails | fix in the redesign |
 | 7 | **Node:** the "all blocks" gate requires `rotate` as well as `qk_balance`, but the record supports needing balance only | None (off everywhere) | re-derive after #1 |
-| 8 | **Node:** default `qk_balance=False` against True shipped | 129 graphs deviate from the node default | test 1 decides |
+| 8 | **Node:** default `qk_balance=False` against True shipped | 129 graphs deviate from the node default | **resolved**: `quantizer` defaults to balanced, the shipped state. Test 1 found it is not inert; whether it beats plain is graded on captures (`../../bench/results/2026-09-27_sol_redesign_test1.md`) |
 | 9 | **Core:** `block_index` is never cleared, so refiner calls see a stale index | Output-neutral while `min_tokens` exceeds the refiner length | recorded, not ours to fix |
 | 11 | **Node:** our sink patches `PackedLayout.__init__` process-wide, and so does the LongMedia pack (`coderef/ComfyUI-MiniMax-H3-LongMedia/motion_context_layout_patch.py`, which only knows how to defer to KJNodes' `._morton_h3` patch) | Any install with both packs: two process-global patches stacked on one constructor | fix in the redesign (the sink reads core's layout) |
 | 13 | **Upstream kitchen tests:** 12 binding-validation tests expect errors no binding raises (at v0.2.35 and at upstream main). Their short-buffer cases then run the kernel into an illegal memory access that poisons the process. `test_topk_ties_over_select` also fails. | None in the pipelines: tests only. A kitchen test run must exclude or isolate them | recorded (CHANGELOG 0.159.2); upstream's to fix |

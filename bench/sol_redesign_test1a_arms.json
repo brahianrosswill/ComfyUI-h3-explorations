@@ -1,0 +1,19 @@
+{
+  "what": "Sol redesign test 1, session A (docs/research/2026-09-27_sol_node_redesign.md): quantizer balanced (the shipped default, qk_balance on) against plain on i2va and ref2va PDD8 graphs, plus t2v plain against test 0's balanced slapstick latent. One render per arm; each arm differs from the one before in graph or quantizer, so no cache hit.",
+  "why": "qk_balance's gate is recorded as opening on blocks 45/48/49 only, which the shipped dense_blocks sends off Sol. If balanced and plain are bit-identical in every mode, qk_balance is inert in the shipped graphs. Session B (after a restart) repeats the balanced i2va/ref2va arms for cross-process determinism, which a difference needs before it can be read as an effect.",
+  "arms": {
+    "i2va_balanced": "workflows/distill_experiments/h3_first_frame_to_video_pdd_api.json",
+    "i2va_plain": "workflows/distill_experiments/h3_first_frame_to_video_pdd_api.json",
+    "ref2va_balanced": "workflows/h3_image_ref_plus_text_to_video_pdd_api.json",
+    "ref2va_plain": "workflows/h3_image_ref_plus_text_to_video_pdd_api.json",
+    "t2v_slapstick_plain": "workflows/distill_experiments/h3_text_to_video_pdd_savelat_api.json"
+  },
+  "patches": [
+    "i2va_plain:MiniMaxH3Sol.quantizer=plain",
+    "ref2va_plain:MiniMaxH3Sol.quantizer=plain",
+    "t2v_slapstick_plain:MiniMaxH3Conditioning.prompt=@bank:t2va_slapstick_moving_piano",
+    "t2v_slapstick_plain:MiniMaxH3Resolution.length=345",
+    "t2v_slapstick_plain:MiniMaxH3Sol.quantizer=plain"
+  ],
+  "run": "run_graph_arms.py --manifest bench/sol_redesign_test1a_arms.json --runs 1 --seed 730451892 --hold-seed --no-alternate --out bench/results/2026-09-27_sol_redesign_test1.jsonl"
+}

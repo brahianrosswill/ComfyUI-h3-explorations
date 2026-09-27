@@ -540,6 +540,9 @@ and k exactly once, so the multiply is free. Built there as `qk_balance`
   group's.
 - No calibration, no capture, no RoPE-pair constraint (it acts after
   RoPE), no per-block list: blocks 45, 48 and 49 open on their own.
+  (2026-09-27: not only those. Some heads open on every captured block, as
+  the table below already shows for blocks 0 and 40;
+  `../bench/results/2026-09-27_qk_balance_gate_on_capture.json`.)
 
 ### What it measured
 

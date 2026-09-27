@@ -198,6 +198,13 @@ behind the §5.1 bug.
    - **So with the shipped dense tail, shipped `qk_balance=True` is probably
      a no-op.** This is inferred, not measured: blocks 1-44, 46 and 47 were
      never captured. §6 gives the bit-identity test that settles it.
+   - **Refuted, 2026-09-27 (test 1 of the redesign).** Balanced and plain
+     render differently in every mode, and the gate opens on some heads of
+     every captured block (`2026-09-27_sol_redesign_test1.md`). The two
+     sources above did not say what this bullet read into them. The
+     block-49 page's own table moves blocks 0 and 40 at the default gate,
+     and the b0 record's `kernel` row differs from its `plain` row. Blocks
+     44 to 48 had also been captured, on 2026-09-19.
 2. **The sigma window runs before everything.** Outside it, every block is
    dense. Morton still permutes every forward regardless (`:633-640`). That
    is invisible to exact attention and changes only int8 rounding.
@@ -472,6 +479,7 @@ override. Sol wraps that forward in its compose gate
 ## 10. Not verified here
 
 - That `qk_balance`'s gate stays shut on blocks 1-44, 46 and 47 (§4.1).
+  It does not: measured 2026-09-27, `2026-09-27_sol_redesign_test1.md`.
 - How large §5.3 is.
 - Whether #208 changes int8 numerics for H3's call (fastdude's after-run).
 - Kijai's reason for leaving `morton` out of the merged node. It is recorded
