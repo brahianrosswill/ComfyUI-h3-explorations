@@ -66,25 +66,28 @@ to the new one.
 
 | Input | Form | Reason |
 |---|---|---|
-| `method` | DynamicCombo: adaptive tau (`tau`) / top-k (`keep_percent`, `pooled_tail`) | The tail only means something under top-k. Top-k and its two sub-inputs go entirely if the owner closes the SLA lane. |
+| `tau` | float | The only selection method left. The SLA lane closed on 2026-09-27, taking top-k, `keep_percent` and `pooled_tail` with it (the tail stays on, as every shipped graph has it). |
 | `quantizer` | plain / balanced / rotated / balanced+rotated | Replaces two booleans that interact. The default is chosen by test 2. |
 | `dense_blocks` | text | Kept. Its default is chosen by test 2 for each dense chain, not carried over from the kitchen chain. |
 | `sink_conditioning` | as today, including `exact_kv_and_all_rows` | Kept. Its default flips if pair C of `bench/sol_core_ab_arms.json` says so. Upstream makes every conditioning row dense (audit §9). |
 | `token_routing` | off / measured blocks / all / custom (the list as a sub-input) | The list stops being a top-level string. The requirement "all" makes of the quantizer is re-derived after the kernel fix (test 3). |
 | `start_percent`, `end_percent`, `min_tokens`, `verbose` | advanced | They mean the same as core's. |
-| `reorder` | none / 3d, advanced | Replaces `morton` + `morton_curve`. See "Morton" below. |
 
-**Retired from the node:** `tau_profile`, the `2d_frame` and `hilbert`
-curves, and, if the SLA lane closes, top-k with `keep_percent` and
-`pooled_tail`.
+**Retired from the node:**
+- `tau_profile`;
+- top-k with `keep_percent` and `pooled_tail`: the SLA lane closed
+  2026-09-27;
+- `morton` and `morton_curve`: Morton closed 2026-09-27 (see "Morton"
+  below).
 
 **Plumbing:**
 - **Re-install the override on top at every step,** as core does
   (ON_PREPARE_STATE). That closes the silent takeover.
 - **Read core's `minimax_h3_layout` and `block_index`** instead of patching
   `PackedLayout` and `model._forward`. The sink needs only the layout.
-  Morton's hooks move to `add_object_patch`, and install only when `reorder`
-  is on. A shipped graph then patches nothing in core.
+  Morton's hooks go with Morton. The node then patches nothing in core
+  process-wide. That also removes a collision: the LongMedia pack patches
+  `PackedLayout` process-wide too (bug #11).
 - **Write the dense kernel into provenance.** The node stays chainable, so
   both dense chains keep working. It detects which dense kernel sits under it
   (kitchen int8, a sage mode, bf16) and records that in each render's
@@ -123,44 +126,35 @@ re-traced when it is removed.
 | Input | Code that reaches it today |
 |---|---|
 | `tau_profile` | `sol_attn_h3.py` (`parse_tau_profile`, the `block_tau` path), `sol_chunked_h3.py`, `provenance.py`, `bench/check_sol_kernel.py`, `bench/check_sol_observe.py` |
+| `morton`, `morton_curve` (all curves) | `install_h3_morton`, `morton_perm` and `_perm_for` in `sol_attn_h3.py`; `sol_curves.py`; `bench/check_sol_reorder_equivalence.py` and the `morton`/`morton_curve` entries in `provenance.py`, `h3_config.py`, `build_workflows.py`, `bench_e2e_h3.py`, `check_sol_observe.py`. The sink moves to core's `minimax_h3_layout` **before** any of it is deleted: today `install_h3_morton` is also what gives the sink its layout. The curve rows below are the same retirement. |
 | `2d_frame`, `hilbert` | `sol_curves.py`, `sol_attn_h3.py`, `sol_block_probe.py`, `workflows/h3_config.py`; the analysis scripts `bench/sweep_sol_orderings_on_capture.py`, `analyze_routing.py`, `analyze_capture.py`, `analyze_morton.py`, `analyze_canvas_geometry.py`, `gen_figures.py`, `_live_sol.py`, `bench_e2e_h3.py` |
-| top-k, `keep_percent`, `pooled_tail` (if the SLA lane closes) | the node path in `sol_attn_h3.py`, `build_workflows.py`, `h3_config.py`, `render_inventory.py`, `check_widget_deviations.py`, `check_sol_node_equivalence.py`. The kernel's `topk_ratio` stays: VSA and core use it. The capture instruments that sweep it are reviewed one by one. |
+| top-k, `keep_percent`, `pooled_tail` | the node path in `sol_attn_h3.py`, `build_workflows.py`, `h3_config.py`, `render_inventory.py`, `check_widget_deviations.py`, `check_sol_node_equivalence.py`. The kernel's `topk_ratio` stays: VSA and core use it. The capture instruments that sweep it are reviewed one by one. |
 
 `vendor/sol_attn_minimax.py` is not ours. It is the pristine upstream
 reference and stays byte-identical.
 
 ## Morton
 
-Morton gets its own section because the case is mixed.
-- **The captures favour it.** `3d` has lower Sol error at equal routed
-  density on every captured cell (`bench/results/2026-09-17_sol_orderings.md`).
-- **The eye doesn't, at the same tau.** The blind panel found no defect
-  removed on full-length clips (`bench/results/2026-09-18_sol_reorder_panel.md`).
-- **One short clip is the exception:** a single on-length short scene lost a
-  ghost figure with `3d`, and the short-clip panel is unscored.
-- **Upstream runs no reordering on H3**, and core's merged node never had it
-  (audit §9).
+**Closed 2026-09-27, so the node loses it** (owner: "if morton doesnt exist
+anywhere or has no traction and you see no value it can go").
 
-The plan:
-1. **Fold it into one `reorder` input,** none or 3d, advanced. Retire the
-   other curves and their code.
-2. **Decouple the sink from Morton's machinery,** as above, so the default
-   path patches nothing.
-3. **Give it one chance as a speed lever,** the use nobody has tested. The
-   captures say `3d` reaches plain order's error with fewer routed blocks,
-   and Sol's time follows routed density
-   (`bench/results/2026-09-17_sol_stage_profile.md`). The gates run in order:
-   1. **Bound the prize.** From the existing 2026-09-17 sweep data, find the
-      tau at which `3d` matches plain order's error at tau 1.0, and read off
-      the density saving. That saving applies to Sol's share of the render
-      only. If it is small, stop.
-   2. **Time a pair:** plain order at tau 1.0 against `3d` at the matched
-      tau, same scene, comparing sampler time.
-   3. **Score a blind panel** at the prompts' written length, short clips
-      included. It passes if the owner calls it a tie or better.
-4. **Remove Morton entirely** (mechanism, checks, prose) if neither the
-   short-clip panel nor the speed gates favour it. The capture result stays
-   a recorded property of `3d`: closed, not refuted.
+- **Upstream.** No H3 implementation anywhere reorders tokens:
+  - core's only Morton code sorts meshes (`comfy_extras/nodes_mesh_postprocess.py`);
+  - kitchen has none;
+  - NVLabs' GB200 H3 profile lists per-call Morton as deliberately not done;
+  - LightX2V refuses it for H3.
+
+  It ships only for Wan and Hunyuan.
+- **The one measured advantage** is lower Sol error at equal routed density
+  on every captured cell (`bench/results/2026-09-17_sol_orderings.md`). That
+  could only ever buy speed on Sol's share of a render. It was never tested
+  as such, and the blind panel at the same tau found no defect removed
+  (`bench/results/2026-09-18_sol_reorder_panel.md`).
+- **The cost** is the node's most intrusive plumbing: process-wide
+  `PackedLayout` and `_forward` patching.
+
+Closed, not refuted: the capture result stands as a recorded property of the
+`3d` order, and the records keep citing the deleted code by commit.
 
 ## Tests, in order
 
@@ -197,10 +191,11 @@ restarted on the new kitchen before anything runs.
 3. **The kernel fix, then a re-grade of token routing** per quantizer on the
    same captures. This decides the token-routing gate and whether routing
    becomes a default anywhere.
-4. **Renders, last,** only where captures cannot decide: the chain choice
-   (the coin beat), sink pair C, and the Morton panel. Each is blind, with
-   matched seeds, at least two seeds and two scenes
-   (`docs/eval_comparison.md`).
+4. **Test renders, last,** only where captures cannot decide: the chain
+   choice (the coin beat) and sink pair C. These are ordinary test renders
+   for the owner to look at, not blind panels (owner, 2026-09-27: "I dont
+   need blind renders just test renders"). Matched seeds, at least two
+   scenes.
 
 **Test material** (fastdude, 2026-09-27; checked before use):
 
@@ -250,7 +245,7 @@ restarted on the new kitchen before anything runs.
 What each result can claim:
 - Tests 0 and 1 are exact for what they ran.
 - Test 2 is exact on the captured cells and inference elsewhere.
-- Test 4 is a verdict with a sample size, never certainty.
+- Test 4 is the owner's look at a few seeds, never certainty.
 
 ## Bugs and issues found, by reach into `workflows/`
 
@@ -268,6 +263,7 @@ Every entry is from the audit. The workflow census is the one in audit §1:
 | 7 | **Node:** the "all blocks" gate requires `rotate` as well as `qk_balance`, but the record supports needing balance only | None (off everywhere) | re-derive after #1 |
 | 8 | **Node:** default `qk_balance=False` against True shipped | 129 graphs deviate from the node default | test 1 decides |
 | 9 | **Core:** `block_index` is never cleared, so refiner calls see a stale index | Output-neutral while `min_tokens` exceeds the refiner length | recorded, not ours to fix |
+| 11 | **Node:** our sink patches `PackedLayout.__init__` process-wide, and so does the LongMedia pack (`coderef/ComfyUI-MiniMax-H3-LongMedia/motion_context_layout_patch.py`, which only knows how to defer to KJNodes' `._morton_h3` patch) | Any install with both packs: two process-global patches stacked on one constructor | fix in the redesign (the sink reads core's layout) |
 | 10 | **Prose** that lost to code (audit §5.4) | n/a | correct with the redesign |
 
 Anything the tests turn up is added here with its reach.

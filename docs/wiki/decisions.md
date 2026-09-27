@@ -17,6 +17,16 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-27
 
+- **Closed: the SLA lane and Morton** (owner: "SLA is closed unless you see
+  some reason not to"; "Morton seems dead too unless you see remnants of it").
+  Checked first:
+  - kitchen's top-k has been unchanged since 2026-09-04, and it lacks SLA's
+    learned linear branch;
+  - no H3 implementation in core, kitchen or `coderef/` reorders tokens.
+  The new Sol node drops top-k, `keep_percent`, `pooled_tail`, `morton`,
+  `morton_curve` and the code only they reach. Both are in `docs/roadmap.md`
+  "Closed lanes". The redesign's tests use **test renders, not blind panels**
+  (owner: "I dont need blind renders just test renders").
 - **Approved: redesign `MiniMaxH3SolAttn` as a new node and freeze the old one**
   (owner: "I'm good with this approach"). Retiring an input retires the code
   only it reaches, with its checks and prose ("since its all git tracked
