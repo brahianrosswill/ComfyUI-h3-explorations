@@ -43,7 +43,8 @@ stays the shipped default.
     `workflows/h3_text_to_video_pdd8_flashgen_finish_api.json` (vaedude).
     Whether it replaces the default t2v PDD graph is still the owner's call.
     On fresh runs, where both passes sampled, it samples in the same time as
-    PDD8 alone at the same length, and the FlashGen LoRA node adds 0.1-3 s
+    PDD8 alone at the same length (6 PDD8 plus 2 FlashGen evaluations, 8 like
+    PDD8's own), and the FlashGen LoRA node adds 0.1-3 s
     (vaedude, fastdude; `../../bench/results/2026-09-27_finisher_grid.md`).
     i2v stays PDD8 alone.
   - PDD6 is a low-motion and close-up option, not the default
