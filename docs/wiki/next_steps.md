@@ -13,6 +13,10 @@ pointer goes; this list is stale the moment the roadmap disagrees with it.
 Items from the `mrpink` helper lane first; `evalman`'s render lane appends its
 own below the rule.
 
+**The Sol node redesign (owner, 2026-09-27):** tests 0 to 3 of
+[`../research/2026-09-27_sol_node_redesign.md`](../research/2026-09-27_sol_node_redesign.md),
+then the new node. They start when fastdude frees the card.
+
 **Next, from the 2026-09-26 night** (`../../bench/results/2026-09-27_takeaways.md`),
 each small, in order of return:
 1. **The save setting.** The blocky darks are the 8-bit h264 encode

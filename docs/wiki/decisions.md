@@ -17,6 +17,12 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-27
 
+- **Approved: redesign `MiniMaxH3SolAttn` as a new node and freeze the old one**
+  (owner: "I'm good with this approach"). Retiring an input retires the code
+  only it reaches, with its checks and prose ("since its all git tracked
+  anyway"). Morton becomes one `reorder` input, with one test as a speed
+  lever before removal. The plan, reasons, tests and bug list:
+  `docs/research/2026-09-27_sol_node_redesign.md`.
 - **Reversed: the kitchen build tracks upstream main, not ComfyUI's pinned
   tag** (owner: "I want to be able to stay on the frontier here... So long as
   we know what exists where and why"). It used to be that untagged main was
