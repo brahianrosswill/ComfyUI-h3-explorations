@@ -4,6 +4,27 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.164.2
+
+### Changed
+
+- **Capture manifest schema 1.8.0: the `coarse_gate` kind.**
+  - `generate_capture_manifest.py` lists `gate_*.pt` beside `qkv_` and
+    `qkvpre_` records, and reads their sequence off axis 0.
+  - `check_capture_manifest.py` accepts 1.8.0 and reads a `coarse_gate`
+    record's sequence off axis 0.
+  - `recycle_captures.py` deletes `gate_*.pt` with the rest, so an expired
+    #45 capture leaves no orphans.
+  - The schema doc says what the kind holds. Found by lookingdude: the first
+    #45 manifest listed only the qkvpre files.
+
+### Verified
+
+- The armed #45 capture render (`slapstick_moving_piano__fasth3_capture`) is
+  bit-identical, video and audio, to the unarmed contract render of
+  2026-09-26. `MiniMaxH3CoreSparseCapture` changes no output while it writes,
+  and FastH3 reproduces across the kitchen move to `fc32da2`.
+
 ## 0.164.1
 
 ### Added

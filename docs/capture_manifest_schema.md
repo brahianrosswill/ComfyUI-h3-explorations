@@ -307,6 +307,13 @@ New keys, all required from 1.5.0 and checked by
   names, and a manifest older than 1.6.0 carries no kind and reads as `qkv`.
   These records exist for `bench/grade_sol_impl_on_capture.py`, which grades
   ComfyUI core's chunked-producer Sol path against ours on identical inputs.
+- `captured_tensors[].kind` `coarse_gate` (1.8.0): the VSA coarse-branch
+  gate's output, `to_gate_compress(x)` on the call's attention input, which
+  `core_sparse_capture.py` writes beside each `qkvpre_` record on a model with
+  VSA gates (`gate_*.pt`, one `[S, H*D]` tensor under `gate`, sequence on
+  axis 0, the same block and step as its qkvpre file). VSA's output is
+  fine + coarse * gate, and the gate's int8 weights are not in the qkvpre
+  record. For open_experiments #45.
 
 Three checker holes closed the same day, on Codex's second review: the
 recorded `captured_tensors[].sha256` is recomputed under `--verify-hashes`

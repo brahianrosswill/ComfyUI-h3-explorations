@@ -115,7 +115,10 @@ def assert_substrate(block: dict, keys: set, where: str) -> None:
 #: supplies the chain's dense attention, read from the graph, so a file tagged
 #: with a route reason says which kernel ran. Required from 1.7.0; older
 #: manifests lack it and are not back-filled.
-SCHEMA_VERSIONS = ("1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0")
+#: 1.8.0 (2026-09-27) adds the kind `coarse_gate`: the VSA coarse-branch gate's
+#: output `core_sparse_capture.py` writes beside each qkvpre record
+#: (`gate_*.pt`, shape [S, H*D], sequence on axis 0).
+SCHEMA_VERSIONS = ("1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.8.0")
 DENSE_NODE_SINCE = "1.7.0"
 DENSE_NODE_STATES = ("wired", "both_wired", "none_wired")
 
@@ -368,7 +371,7 @@ def check_manifest(manifest_path: Path):
             assert got == t["sha256"], f"sha256 mismatch for {pt_file.name}: manifest {t['sha256'][:12]}, file {got[:12]}"
         # The sequence axis by kind (1.6.0): axis 0 of a fused pre-norm
         # `qkv_pre` record, axis 2 of a post-RoPE [B, H, S, D] one.
-        axis = 0 if t.get("kind") == "qkv_pre" else 2
+        axis = 0 if t.get("kind") in ("qkv_pre", "coarse_gate") else 2
         assert t["shape"][axis] == tokens["total_sequence_length"], (
             f"Tensor shape sequence dimension {t['shape'][axis]} (axis {axis}, kind "
             f"{t.get('kind', 'qkv')}) does not match total_sequence_length {tokens['total_sequence_length']}"

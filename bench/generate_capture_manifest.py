@@ -669,21 +669,26 @@ def _record_meta(pt_path: Path) -> dict:
     elif data.get("qkv") is not None:
         out["shape"] = list(data["qkv"].shape)
         out["dtype"] = str(data["qkv"].dtype)
+    elif data.get("gate") is not None:              # 1.8.0: a `coarse_gate` record
+        out["shape"] = list(data["gate"].shape)
+        out["dtype"] = str(data["gate"].dtype)
     return out
 
 
 def _seq_axis(kind) -> int:
     """Where the sequence sits in a record's `shape`, by its kind."""
-    return 0 if kind == "qkv_pre" else 2
+    return 0 if kind in ("qkv_pre", "coarse_gate") else 2
 
 
 def _capture_files(cap_dir) -> list[str]:
     """Every tensor record h3_capture.py writes that a manifest lists: the
-    post-RoPE `qkv_*.pt` and, from schema 1.6.0, the pre-norm `qkvpre_*.pt`.
+    post-RoPE `qkv_*.pt`, from schema 1.6.0 the pre-norm `qkvpre_*.pt`, and
+    from 1.8.0 the VSA coarse-gate `gate_*.pt` (`core_sparse_capture.py`).
     One place, so the listing, the render join and the sequence length cannot
     each glob a different set."""
     return (sorted(glob.glob(str(Path(cap_dir) / "qkv_*.pt")))
-            + sorted(glob.glob(str(Path(cap_dir) / "qkvpre_*.pt"))))
+            + sorted(glob.glob(str(Path(cap_dir) / "qkvpre_*.pt")))
+            + sorted(glob.glob(str(Path(cap_dir) / "gate_*.pt"))))
 
 
 def _sequence_length(pt_files) -> int | None:
@@ -835,7 +840,7 @@ def main():
     models["sha256"] = hash_model_files(models)
 
     manifest = {
-        "schema_version": "1.7.0",
+        "schema_version": "1.8.0",
         "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "provenance": {
             "git_commit": get_git_commit(),
