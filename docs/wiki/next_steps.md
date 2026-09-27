@@ -13,6 +13,16 @@ pointer goes; this list is stale the moment the roadmap disagrees with it.
 Items from the `mrpink` helper lane first; `evalman`'s render lane appends its
 own below the rule.
 
+**Encoder int8 against bf16 at the DiT (owner, 2026-09-27):** running
+`bench/measure_encoder_quant_dit.py`; its record lands in `bench/results/`
+with the predictions filed before the first comparison. It decides whether the image-conditioned
+graphs (i2v, fl2va, ref2va) keep `ENCODER_INT8` or move to the bf16 pruned
+file (more RAM). If int8 reads well above the matched-noise control, it also
+decides whether to reopen the encoder lane narrowly: bf16 on the layers that
+produce the image tail, `../open_experiments.md` #23's decomposition first.
+A render comparison comes only after a default is in question
+(`../eval_comparison.md`).
+
 **The Sol node redesign (owner, 2026-09-27):** tests 0 to 3 of
 [`../research/2026-09-27_sol_node_redesign.md`](../research/2026-09-27_sol_node_redesign.md),
 then the new node. They start when fastdude frees the card.
