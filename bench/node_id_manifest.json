@@ -461,29 +461,6 @@
       "Output"
     ]
   },
-  "MiniMaxH3SolAttn": {
-    "inputs": [
-      "model",
-      "selection",
-      "start_percent",
-      "end_percent",
-      "token_aug_blocks",
-      "min_tokens",
-      "sink_conditioning",
-      "pooled_tail",
-      "morton",
-      "morton_curve",
-      "verbose",
-      "dense_blocks",
-      "qk_balance",
-      "rotate",
-      "token_routing"
-    ],
-    "node_id": "MiniMaxH3SolAttn",
-    "outputs": [
-      "Output"
-    ]
-  },
   "MiniMaxH3SolChunked": {
     "inputs": [
       "model",

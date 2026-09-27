@@ -18,7 +18,8 @@ per widget. Measured before building: across all 80 API graphs, 34 (class,
 widget) pairs match the node default everywhere, **25 deviate**, 23 have no
 declared default. Of the 25, **eighteen take exactly one value in every graph**;
 only four vary by graph, two of those are identity, and the fourth is
-`MiniMaxH3SolAttn.end_percent`, which `sol_for_graph` already resolves. And
+the Sol node's `end_percent`, which `sol_for_graph` already resolves. (Counts
+from 2026-08-31, when the node was `MiniMaxH3SolAttn`.) And
 `head_strength` was single-valued -- so a resolver keyed on graph kind returns
 the same wrong value for every kind and catches nothing. The failure was an
 UNDECLARED DEVIATION, so declaration is what is graded.
@@ -55,7 +56,8 @@ is the point:
     0   graphs were checked and every deviation is declared
     1   a real finding -- undeclared deviation, stale row, or stem mismatch
     2   this check DID NOT RUN and nothing was validated (no reachable
-        /object_info, or no graphs found)
+        /object_info, no graphs found, or a class the graphs wire that the
+        schema does not know)
 
 **Node defaults come from the live schema, never from a mirror kept here.**
 `h3_config` cannot hold them: it imports without torch by design and node
@@ -225,18 +227,18 @@ DECLARED: dict[tuple[str, str], tuple] = {
                 "video-bearing reference arms through h3_config.REF_VIDEO_BUDGET, "
                 "which keep a long reference video inside 24 GB. The node "
                 "default is True since 2026-09-13 (vendor parity)."),
-    ("MiniMaxH3SolAttn", "end_percent"):
+    ("MiniMaxH3Sol", "end_percent"):
         ("ARM", "0.6 on the narrow-window PDD8 candidate (2026-09-05); 1.0, "
                 "the node default, everywhere else since 2026-09-11. Declared "
                 "per graph in bench/check_attention_defaults.py::DEVIATIONS, "
                 "which grades the deviation as real"),
-    ("MiniMaxH3SolAttn", "start_percent"):
+    ("MiniMaxH3Sol", "start_percent"):
         ("ARM", "0.0 on the just-Sol candidate (Sol from the first step) and "
                 "0.3 on the narrow-window PDD8 candidate, both 2026-09-05; the "
                 "recipe's 0.2 elsewhere. Declared per graph in "
                 "bench/check_attention_defaults.py::DEVIATIONS, which grades "
                 "the deviation as real"),
-    ("MiniMaxH3SolAttn", "sink_conditioning"):
+    ("MiniMaxH3Sol", "sink_conditioning"):
         ("ARM", "exact_kv_and_all_rows on the all-rows candidate (2026-09-05), "
                 "every conditioning query row dense; the recipe's "
                 "exact_kv_and_rows elsewhere. Declared per graph in "
@@ -312,18 +314,19 @@ DECLARED: dict[tuple[str, str], tuple] = {
                   "dense kernel under Sol, the default chain since 2026-09-15 "
                   "(owner); bench/check_attention_defaults.py grades which graphs "
                   "carry the node", h3_config.DENSE_BACKEND_NODE["attention"]),
-    ("MiniMaxH3SolAttn", "qk_balance"):
-        ("ARM", "True from h3_config.SOL_RECOMMENDED_CUDA since 2026-09-15 "
-                "(owner); two graphs declare it back at the node's False, "
-                "h3_probe_t2v_ck and h3_probe_t2v_exact_tail. NOT House for that "
-                "reason; the per-graph value is graded by "
-                "bench/check_attention_defaults.py::DEVIATIONS"),
-    ("MiniMaxH3SolAttn", "rotate"):
-        ("ARM", "True on h3_probe_t2v_rotate (the Tier 2 witness) and on "
-                "h3_probe_t2v_sage_rotate (the sage chain with every lever): Sol's "
+    ("MiniMaxH3Sol", "quantizer"):
+        ("ARM", "'plain' (no qk_balance) on h3_probe_t2v_ck and "
+                "h3_probe_t2v_exact_tail, which keep the chain as most people run "
+                "it and the arm as it rendered; 'balanced+rotated' on "
+                "h3_probe_t2v_rotate (the Tier 2 witness) and "
+                "h3_probe_t2v_sage_rotate (the sage chain with every lever), Sol's "
                 "Hadamard rotation of q/k before INT8 (2026-09-15, "
-                "docs/h3_quant_policy.md); off everywhere else"),
-    ("MiniMaxH3SolAttn", "dense_blocks"):
+                "docs/h3_quant_policy.md). The node default 'balanced' "
+                "(sol_attn_h3.SOL_QUANTIZER_DEFAULT) everywhere else. Replaced the "
+                "qk_balance and rotate rows with the 2026-09-27 node redesign; "
+                "the per-graph value is graded by "
+                "bench/check_attention_defaults.py::DEVIATIONS"),
+    ("MiniMaxH3Sol", "dense_blocks"):
         ("ARM", "'' (every block on Sol) on h3_probe_t2v_no_dense_tail, the control "
                 "for the 2026-09-25 dense-tail default, and on h3_probe_t2v_ck and "
                 "h3_probe_t2v_exact_tail, which keep the chain as most people run "
@@ -416,7 +419,7 @@ def declared_default(oi: dict, cls: str, key: str, node_inputs: dict | None = No
     "no declared default" and reported 23 ungradeable inputs -- and they were
     not a random 23. They were `qwen_view`/`qwen_short_edge`,
     `size_policy`/`allow_upscale`/`dit_short_edge`, `MiniMaxH3Resolution.shape`
-    and `MiniMaxH3SolAttn.selection`/`tau`: precisely the knobs `CLAUDE.md`
+    and the old Sol node's `selection`/`tau`: precisely the knobs `CLAUDE.md`
     spends the most words warning about. A check blind to exactly the inputs
     with the worst history is worse than no check, because its green reads as
     coverage.
@@ -496,6 +499,7 @@ def main(argv=None) -> int:
     stem_bad: list[str] = []
     house_bad: list[str] = []
     no_default: set[tuple[str, str]] = set()
+    unknown_classes: dict[str, str] = {}
     checked = 0
 
     for path in paths:
@@ -510,6 +514,8 @@ def main(argv=None) -> int:
 
         for node in graph.values():
             cls = node.get("class_type", "")
+            if cls not in oi:
+                unknown_classes.setdefault(cls, stem)
             for key, val in node.get("inputs", {}).items():
                 if isinstance(val, list) or key in IDENTITY:
                     continue
@@ -543,6 +549,19 @@ def main(argv=None) -> int:
                     house_bad.append(
                         f"{stem}: {cls}.{key} is {val!r}, the declared house "
                         f"value is {row[2]!r}")
+
+    # **A class the schema does not know grades nothing, silently**: every one
+    # of its widgets lands in "no declared default". That is what a server
+    # running older code than the graphs looks like (the Sol node's rename to
+    # MiniMaxH3Sol on 2026-09-27 against a server still loading
+    # MiniMaxH3SolAttn), so it is reported as not run, never as a pass.
+    if unknown_classes:
+        print("DID NOT RUN: the schema source does not know "
+              f"{len(unknown_classes)} class(es) the graphs wire, so none of their "
+              "widgets were graded. Is the server running this checkout's code?")
+        for cls, stem in sorted(unknown_classes.items()):
+            print(f"      {cls} (e.g. {stem})")
+        return 2
 
     missing_value = sorted(k for k, r in DECLARED.items()
                            if r[0] == "HOUSE" and len(r) < 3)

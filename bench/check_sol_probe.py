@@ -203,6 +203,10 @@ def _load_pack():
 
 def controls() -> int:
     import torch
+    if not torch.cuda.is_available():
+        # The fixtures are CUDA tensors and the pack's entrypoint needs a device.
+        print("SKIP: --controls needs CUDA; the fixtures run the kernel and sage")
+        return 2
     probe, _attn, solh3 = _load_pack()
 
     def exact(q, k, v, heads, mask=None, attn_precision=None, skip_reshape=False, skip_output_reshape=False, **kw):
@@ -212,7 +216,7 @@ def controls() -> int:
 
     fn, kw = _attn.build_kernel("auto")
     sage_override = _attn.make_sage_override(fn, kw, previous=None)
-    settings = {"node": "MiniMaxH3SolAttn", "tau": 1.0, "n_blocks": 4, "dense_blocks": [2]}
+    settings = {"node": "MiniMaxH3Sol", "tau": 1.0, "n_blocks": 4, "dense_blocks": [2]}
     torch.manual_seed(0)
     B, H, T, D = 1, 8, 4096, 128
     q = (torch.randn(B, H, T, D, device="cuda") * 0.5).bfloat16()
@@ -220,10 +224,14 @@ def controls() -> int:
     v = torch.randn(B, H, T, D, device="cuda").bfloat16()
     k[:, :, 0] *= 8   # a sink-like key so routing is non-trivial
     sample_sigmas = [1.0, 0.8, 0.5, 0.2, 0.0]
+    import types
+    # Core's packed layout for this call, as long as the call, so the block
+    # index core publishes beside it is trusted (`h3_layout`).
+    layout = types.SimpleNamespace(
+        seq_len=T, segments=[(0, 128, "text"), (128, 256, "audio"), (256, T, "video")])
     def opts(block, sigma=0.5):
-        return {"sigmas": torch.tensor([sigma]), "sample_sigmas": sample_sigmas, "sol_block": block,
-                "h3_segments": [(0, 128, "text"), (128, 256, "audio"), (256, T, "video")],
-                "sol_h3_video_span": (256, T), "sol_h3_audio_span": (128, 256)}
+        return {"sigmas": torch.tensor([sigma]), "sample_sigmas": sample_sigmas,
+                "block_index": block, "minimax_h3_layout": layout}
     results = []
     def case(name, ok, detail=""):
         results.append(ok); print(f"  {'ok  ' if ok else 'FAIL'}  {name:44} {detail}")

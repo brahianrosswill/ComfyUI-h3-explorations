@@ -4,10 +4,11 @@
 ## What this covers that `check_solattn_correctness.py` does not
 
 That file grades the KERNEL against the algorithm's eager reference. This
-grades everything our node does AROUND the kernel: the BHND-to-BTHD transpose
-and back, the scale it forwards, the sink pair it derives, and the tail flag it
-passes. A defect in any of those produces a plausible tensor of the right shape
-and a successful render.
+grades everything our node (`MiniMaxH3Sol`) does AROUND the kernel: the
+BHND-to-BTHD transpose and back, the scale it forwards, the sink pair it
+derives from core's layout, and the selection it passes (tau, with the pooled
+tail on and top-k off, always: `_TAIL`, `_TOPK_RATIO`). A defect in any of
+those produces a plausible tensor of the right shape and a successful render.
 
 The distinction is the reshape. `optimized_attention` hands H3's attention over
 as BHND with `skip_reshape=True`, the kernel wants BTHD, and the output goes
@@ -49,21 +50,30 @@ the more durable control anyway and one this repo already trusts.
 
 Claims, i.e. what breaks if a case is deleted:
 
-  dispatch == kernel       our node's `_run` produces the SAME BYTES as calling
-                           `comfy_kitchen.sol_attn` directly with the transpose
-                           done by hand. Catches a transpose, a dropped scale,
-                           or a sink pair built wrong.
-  top-k dispatch           the same through the other selection, which no
-                           shipped graph uses and a bench arm can reach.
+  dispatch == kernel       the node's override (`make_override`, as
+                           `_apply_sol` builds it) produces the SAME BYTES as
+                           calling `comfy_kitchen.sol_attn` directly with the
+                           transpose done by hand, the tail on, and the sink
+                           pair `sink_ranges` gives for the layout core
+                           published. Catches a transpose, a dropped scale, a
+                           sink pair built wrong or not derived, or a
+                           selection other than tau-with-tail. A dense
+                           fallback that raises stands in for the chained
+                           kernel, so a declined call fails the case rather
+                           than matching by accident.
   sink pair reaches        a non-zero sink must change the output. The sink is
     the kernel             derived from H3's layout and passed through two
                            call frames; if it stopped arriving, every
                            conditioning row would be routed sparsely and the
                            render would merely look worse.
-  pooled_tail reaches      RED CONTROL. `tail` is the argument the fork added.
-    the kernel             If turning it off does not move the output, it is
-                           not connected and every case above is comparing a
-                           knob that does nothing.
+  tau reaches the kernel   RED CONTROL. tau is the node's one selection knob.
+                           If a different tau does not move the output, it is
+                           not connected and the equality above compares a
+                           knob that does nothing. (Replaced the pooled_tail
+                           control on 2026-09-27: the node no longer exposes
+                           the tail, so its one live knob carries the control.
+                           The top-k dispatch case went with top-k, which the
+                           node no longer reaches.)
   (an OOM exits 2, not 1)  a resident model or a render in flight can leave
                            too little VRAM for these shapes. That is an
                            environment state, not a result. Until 2026-09-04
@@ -188,7 +198,7 @@ def sink_cases(node, check):
         refused = True
     check("an unknown mode is refused, not run as exact_kv", refused)
     try:
-        schema = node.MiniMaxH3SolAttn.define_schema()
+        schema = node.MiniMaxH3Sol.define_schema()
         combo = next(i for i in schema.inputs if i.id == "sink_conditioning")
         options, default = list(combo.options), combo.default
     except Exception as exc:                                  # noqa: BLE001
@@ -218,11 +228,10 @@ def load_node():
 # Every kernel case by name, in the order they run, so an OOM can say which
 # were not graded rather than "every case".
 KERNEL_CASES = (
-    "dispatch == kernel at the shipped selection",
-    "dispatch == kernel under top-k",
+    "dispatch == kernel through the node's override",
     "dispatch with blk_cnt == dispatch without",
     "sink pair reaches the kernel",
-    "pooled_tail reaches the kernel",
+    "tau reaches the kernel",
     "a transposed oracle is caught",
 )
 
@@ -237,7 +246,8 @@ def kernel_cases(node, ck, check, device="cuda", shape=(1, 8, 16384, 128)):
     q, k, v = (torch.randn(b, h, t, d, device=device, dtype=torch.bfloat16)
                for _ in range(3))
     common = dict(skip_reshape=True, skip_output_reshape=True, scale=None,
-                  min_tokens=12288, verbose=False)
+                  min_tokens=12288, verbose=False,
+                  topk_ratio=node._TOPK_RATIO, tail=node._TAIL)
 
     def dispatch(**kw):
         return node._run(q, k, v, h, **{**common, "tau": 1.0, **kw})
@@ -253,14 +263,39 @@ def kernel_cases(node, ck, check, device="cuda", shape=(1, 8, 16384, 128)):
     print("our node's dispatch against the kernel call it should be making:")
     print(f"  B={b} H={h} T={t} D={d} bf16, bitwise\n")
 
-    for label, kw in (("at the shipped selection", dict(tau=1.0)),
-                      ("under top-k", dict(tau=1.0, topk_ratio=0.10))):
-        got, want = dispatch(**kw), kernel(**{**kw, "tail": True})
-        same = torch.equal(got, want)
-        check(f"dispatch == kernel {label}", same,
-              "same bytes" if same else
-              f"DIFFER: max abs "
-              f"{float((got.float() - want.float()).abs().max()):.3e}")
+    # Through the override the node installs, on a layout shaped as core
+    # publishes it: [text][audio][video], so the sink is derived, not passed.
+    import types
+    segments = [(0, 320, "text"), (320, 640, "audio"), (640, t, "video")]
+    options = {"minimax_h3_layout": types.SimpleNamespace(seq_len=t, segments=segments),
+               "block_index": 0}
+    mode = "exact_kv_and_rows"
+    sink_kv, sink_q = node.sink_ranges((640, t), (320, 640), t, mode)
+
+    def declined(*a, **kw):
+        raise AssertionError("the override declined the call and ran the dense fallback")
+
+    override = node.make_override(tau=1.0, min_tokens=12288, sink_conditioning=mode,
+                                  qk_balance=False, rotate=False)
+    try:
+        got = override(declined, q, k, v, h, skip_reshape=True, skip_output_reshape=True,
+                       transformer_options=options)
+    except torch.OutOfMemoryError:
+        raise
+    except Exception as exc:                                  # noqa: BLE001
+        # The override wraps a kernel failure in a RuntimeError; an OOM under
+        # it is still the busy-card state `graded_kernel_cases` reports.
+        if isinstance(exc.__cause__, torch.OutOfMemoryError):
+            raise exc.__cause__
+        check("dispatch == kernel through the node's override", False,
+              f"{type(exc).__name__}: {exc}")
+    else:
+        want = kernel(tau=1.0, tail=True, sink_blocks=list(sink_kv), sink_q=list(sink_q))
+        same = torch.equal(got, want) and sink_kv != (0, 0)
+        check("dispatch == kernel through the node's override", same,
+              f"same bytes, sink {sink_kv} dense rows {sink_q}" if same else
+              f"DIFFER: max abs {float((got.float() - want.float()).abs().max()):.3e}, "
+              f"sink {sink_kv}")
 
     # The observer's passthrough: a count buffer handed to `_run` reaches the
     # kernel, comes back bounded, and moves no byte of the output. Graded here
@@ -283,13 +318,13 @@ def kernel_cases(node, ck, check, device="cuda", shape=(1, 8, 16384, 128)):
 
     print("\nred controls:")
     base = dispatch(tau=1.0)
-    off = dispatch(tau=1.0, tail=False)
-    moved = not torch.equal(base, off)
-    c = cosine(base, off)
-    check("pooled_tail reaches the kernel", moved,
-          f"cos {c:.6f} against tail=True -- connected" if moved else
-          "turning the pooled tail off changed nothing; it is not reaching "
-          "the kernel and every case above is vacuous")
+    other = dispatch(tau=2.0)
+    moved = not torch.equal(base, other)
+    c = cosine(base, other)
+    check("tau reaches the kernel", moved,
+          f"cos {c:.6f} between tau 1.0 and 2.0 -- connected" if moved else
+          "a different tau changed nothing; it is not reaching the kernel and "
+          "every case above is vacuous")
 
     swapped = kernel(transpose_oracle=True, tau=1.0, tail=True)
     caught = not (swapped.shape == base.shape and torch.equal(base, swapped))

@@ -12,9 +12,9 @@ still succeeds. The number still prints.
 
 So two things are checked, and neither of them needs a GPU, a model or a server:
 
-1. **The contract still exists in the vendored source.** Both compose sites --
-   `_apply_patch`'s patch-time loop and `_install_compose_hooks`'s run-time
-   pre_hook -- must still read `_uses_optimized_attention`. Parsed from the
+1. **The contract still exists in the Sol node's source.** Both compose
+   sites -- `_apply_sol`'s patch-time loop and `_install_compose_hooks`'s
+   run-time pre_hook -- must still read `_uses_optimized_attention`. Parsed from the
    AST rather than grepped, so a mention inside a comment or docstring does not
    satisfy it.
 
@@ -47,10 +47,11 @@ REPO = Path(__file__).resolve().parent.parent
 SOL_SRC = REPO / "sol_attn_h3.py"
 FLAG = "_uses_optimized_attention"
 
-# The two functions in the vendored module that must keep skipping our forward.
+# The two functions in the Sol node that must keep skipping our forward.
 # Named rather than "any function", so a guard moving out of one of them is a
-# failure rather than being covered by the other.
-COMPOSE_SITES = ("_apply_patch", "_install_compose_hooks")
+# failure rather than being covered by the other. `_apply_sol` replaced
+# `_apply_patch` with the node redesign (2026-09-27).
+COMPOSE_SITES = ("_apply_sol", "_install_compose_hooks")
 
 
 def _functions(tree):
@@ -73,7 +74,7 @@ def check_contract(problems):
     for site in COMPOSE_SITES:
         if site not in funcs:
             problems.append(
-                f"vendor/sol_attn_minimax.py has no {site}(); the compose site "
+                f"{SOL_SRC.name} has no {site}(); the compose site "
                 f"MiniMaxH3ExactBlocks documents was renamed or removed, so its "
                 f"ordering claim needs re-deriving against the new shape")
             continue
@@ -105,7 +106,7 @@ def check_contract(problems):
                     found = True
         if not found:
             problems.append(
-                f"vendor/sol_attn_minimax.py::{site} no longer reads {FLAG!r}. "
+                f"{SOL_SRC.name}::{site} no longer reads {FLAG!r}. "
                 f"MiniMaxH3ExactBlocks relies on that skip to stay uncomposed; "
                 f"without it, its blocks silently fall back to sage and the "
                 f"render still succeeds. Re-derive the ordering before shipping.")
@@ -156,8 +157,12 @@ def check_forward(problems):
     saved = sys.modules.get("comfy.ldm.minimax.model")
     sys.modules["comfy.ldm.minimax.model"] = fake_comfy
     try:
+        # What core puts beside the override for a DiT block call: the block
+        # index and the packed layout Sol reads it through (`h3_layout`).
+        layout = types.SimpleNamespace(seq_len=4096, segments=[(0, 4096, "video")])
         caller_options = {"optimized_attention_override": "SENTINEL",
-                          "sigmas": [1.0], "sol_block": 49}
+                          "sigmas": [1.0], "block_index": 49,
+                          "minimax_h3_layout": layout}
         fwd(object(), "X", rope_freqs=None, transformer_options=caller_options)
     finally:
         if saved is None:
@@ -209,7 +214,8 @@ def check_forward(problems):
     else:
         print("  ok    preference    a checkpoint-named kernel is set aside, then restored")
 
-    dropped = [k for k in ("sigmas", "sol_block") if k not in passed]
+    dropped = [k for k in ("sigmas", "block_index", "minimax_h3_layout")
+               if passed.get(k) is not caller_options[k]]
     for key in dropped:
         problems.append(f"_exact_forward dropped {key!r} on the way down; "
                         f"it must remove ONLY the override")

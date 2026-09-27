@@ -51,6 +51,7 @@ import inspect
 import shutil
 import sys
 import tempfile
+import types
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
@@ -152,9 +153,14 @@ def main() -> int:
         return base
 
     def opts(t, block=7, sigma=1.0, **extra):
+        # Core publishes `block_index` beside the packed layout; `h3_layout`
+        # trusts the index only when the call is as long as the layout, so the
+        # stub's `seq_len` is the call's `t`. Video only: no conditioning rows.
+        layout = types.SimpleNamespace(seq_len=t, segments=[(0, t, "video")])
         o = {"sigmas": torch.tensor([sigma]), "sample_sigmas": torch.tensor([2.0, 1.0, 0.5, 0.0]),
-             "sol_block": block, "sol_compose": {"sigma_start": 10.0, "sigma_end": 0.1,
-                                                 "min_tokens": 64, "settings": settings()}}
+             "block_index": block, "minimax_h3_layout": layout,
+             "sol_compose": {"sigma_start": 10.0, "sigma_end": 0.1,
+                             "min_tokens": 64, "settings": settings()}}
         o.update(extra)
         return o
 

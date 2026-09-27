@@ -224,8 +224,11 @@ def main():
     # 4-7 grade paths that were DEAD before comfy-kitchen#117 and are live
     # after it, which is the one class no existing case can cover by
     # construction: until the merge there was nothing to call. Each is
-    # reachable from `MiniMaxH3SolAttn` or from the VSA node, so a silent
-    # disagreement here reaches a render.
+    # reachable from core's BlockSparseAttention (its VSA and top-k
+    # selections pass tail=False and a topk_ratio) or from this pack's VSA
+    # node, so a silent disagreement here reaches a render. Our Sol node,
+    # `MiniMaxH3Sol`, reaches none of them: it always runs tau with the tail
+    # on (`sol_attn_h3._TAIL`, `_TOPK_RATIO`), which cases 1-3 grade.
 
     # 4. `tail=False` -- upstream's tests call it "the SLA / VSA fine stage".
     #    Softmax over the routed blocks only, no pooled correction.
@@ -243,8 +246,9 @@ def main():
            cosine(cuda_notail, ref_notail), args.notail_bar)
 
     # 5. Top-k selection with no tail. Not an arbitrary pair: it is what SLA
-    #    IS, and it is the exact call `MiniMaxH3SolAttn` makes for its
-    #    "top-k (SLA)" selection once `tail` is off.
+    #    IS. A KERNEL case, kept after the node stopped making this call: the
+    #    old node's "top-k (SLA)" selection made it until the SLA lane closed
+    #    (2026-09-27), and the kernel entry still takes it from any caller.
     cuda_sla = cuda_sol(q, k, v, topk_ratio=args.topk, tail=False)
     ref_sla = reference(q, k, v, topk_ratio=args.topk, tail=False)
     report(f"cuda == reference at topk {args.topk}, tail=False",

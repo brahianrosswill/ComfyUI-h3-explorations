@@ -20,7 +20,10 @@ Claims, i.e. what breaks if a case is deleted:
       one row per override call for every exit -- masked, dense_block,
       outside_range, ineligible, sol, kernel_error -- with the route name and a
       reason, plus header and config rows. A recorder that only saw Sol calls
-      would report a render as all-Sol.
+      would report a render as all-Sol. The kernel_error call RAISES out of the
+      override with the kernel's exception as its cause and never reaches the
+      dense fallback: a failed Sol call rendered dense is a render that
+      succeeds and is not a Sol render.
   identity_does_not_mix_prompts
       two calls under two executing contexts carry two prompt ids, read at
       call time; the conditioning uuids and cond_or_uncond lists are recorded
@@ -38,15 +41,28 @@ Claims, i.e. what breaks if a case is deleted:
       `_require_kernel` raises when armed against a `sol_attn` without
       `blk_cnt`, and passes unarmed. Otherwise an armed server on a stale wheel
       renders and records nothing.
-  stale_block_label_is_cleared
-      after block 49's forward completes, `sol_block` is absent; a following
-      refiner-shaped call is recorded with no block and `scope: unknown`; the
-      block's output is bit-identical. The outer forward's `finally` also
-      drops `h3_segments` with the two spans.
-  observer_only_block_indexing
-      armed with empty dense_blocks and no tau profile, `_apply_patch` still
-      installs the block hooks, and a synthetic block call records its true
-      index.
+  stale_block_index_is_not_trusted   (CPU)
+      core publishes `block_index` before each DiT block and never clears it,
+      so the next step's text-only refiner calls see the last block's index
+      beside a layout they are shorter than. A refiner-shaped call under
+      `block_index` 49 is recorded with no block, `scope: unknown` and no sink
+      pair; the same options on a full-length call record block 49 and the
+      layout's sink pair, which is the red control that the gate is not simply
+      dropping every index. Replaced `stale_block_label_is_cleared`, whose
+      subject (the node's own `sol_block` hooks and the Morton forward's
+      `finally`) was deleted with the old node on 2026-09-27.
+  apply_sol_records_core_block_and_fallback   (CPU)
+      `_apply_sol` on a real ModelPatcher, armed, with empty dense_blocks:
+      the installed override records the block index core published (7), and
+      the config row names the node and its dense fallback. Then a foreign
+      override is put on the hook, as an attention node placed after Sol
+      would; the node's ON_PREPARE_STATE callback puts Sol back on top with
+      the foreign override as its fallback (a short call reaches it), a second
+      run is idempotent, and the next config row names the foreign override
+      as `dense_fallback`. Red control: before the callback runs, the foreign
+      override IS on top, so the case sees the takeover it exists to undo.
+      Replaced `observer_only_block_indexing`, whose subject (the old node's
+      block hooks) was deleted.
   raw_off_writes_no_sidecar
       `raw=0` leaves no `.u16` file and no raw pointer, and the row is
       otherwise complete.
@@ -58,9 +74,11 @@ Claims, i.e. what breaks if a case is deleted:
       outside-window step. Drives `_compose_module_patch` with a foreign
       forward: outside the window and below min_tokens the foreign forward
       runs, the stock forward does not, and one `route: composed_patch` row
-      appears with the true block index and the gate's verdict leading the
-      reason; inside the window the stock forward runs and the wrapper
-      writes nothing (the override records that call in a real render).
+      appears with the gate's verdict leading the reason. The full-length call
+      carries core's block index; the short one (below min_tokens, so
+      refiner-shaped) is shorter than the layout and records no block. Inside
+      the window the stock forward runs and the wrapper writes nothing (the
+      override records that call in a real render).
   forced_metadata_is_computed_not_inferred
       `forced.sink` is the clamped sink cardinality and `diag_min/max` the
       diagonal contribution outside sink_q: no sink gives 0 / 2 / 3, a sink
@@ -89,8 +107,18 @@ Claims, i.e. what breaks if a case is deleted:
       emitted {"weighting": "query"} with no mean there -- truthy, so a
       reader indexing `mean` would have raised (Codex's follow-up review).
 
-Needs CUDA and an installed comfy_kitchen whose `sol_attn` takes `blk_cnt`;
-exits 2 SKIP without either rather than passing on a weaker path.
+The cases marked (CPU) run anywhere the node imports, and so do
+`armed_with_old_wheel_fails_at_patch_time` and
+`query_and_pair_weighting_differ_on_nonuniform_forced`. The rest need CUDA and
+an installed comfy_kitchen whose `sol_attn` takes `blk_cnt`. Exit 0 all
+passed, 1 a case failed, 2 the kernel cases were not graded (no CUDA, or no
+`blk_cnt`) even when the CPU cases passed, rather than passing on a weaker
+path.
+
+The block index and segment bounds come from core
+(`transformer_options["block_index"]` and `["minimax_h3_layout"]`, read
+through `h3_layout`); the fixtures here stand in for both with a layout stub
+whose `seq_len` is the call's length.
 
     <comfy-venv-python> bench/check_sol_observe.py
 """
@@ -123,12 +151,10 @@ def check(name, fn):
         print(f"  ERROR {name}: {type(exc).__name__}: {exc}")
 
 
-# A PackedLayout stand-in so `install_h3_morton` can patch this module's class
-# (it patches `sys.modules[type(model).__module__].PackedLayout`).
-class PackedLayout:
-    def __init__(self, *_args, **_kwargs):
-        self.segments = []
-        self.position_ids = None
+def layout(seq_len, segments):
+    """Core's `minimax_h3_layout` as far as this pack reads it: `seq_len` and
+    `segments` [(start, stop, kind)] in core's kinds."""
+    return types.SimpleNamespace(seq_len=int(seq_len), segments=list(segments))
 
 
 def main() -> int:
@@ -136,17 +162,21 @@ def main() -> int:
         import numpy as np
         import torch
         import comfy_kitchen as ck
+        import _live_sol
         from _live_sol import live_sol, sol_observe
     except Exception as exc:                          # noqa: BLE001
         print(f"SKIP: needs torch, comfy_kitchen and the pack ({exc})")
         return 2
-    if not torch.cuda.is_available():
-        print("SKIP: needs CUDA; the kernel is the subject")
-        return 2
-    if "blk_cnt" not in inspect.signature(ck.sol_attn).parameters:
-        print("SKIP: the installed comfy_kitchen.sol_attn has no blk_cnt; "
-              "rebuild from the sol-blk-cnt branch (vendor/rebuild_kernel.sh)")
-        return 2
+    cuda = torch.cuda.is_available()
+    if not cuda:
+        # ComfyUI's model management insists on a device at import unless told
+        # to run on the CPU; the CPU cases need no device.
+        if str(_live_sol.COMFY) not in sys.path:
+            sys.path.append(str(_live_sol.COMFY))
+        import comfy.cli_args
+        comfy.cli_args.args.cpu = True
+    blk_cnt = "blk_cnt" in inspect.signature(ck.sol_attn).parameters
+    device = "cuda" if cuda else "cpu"
 
     node = live_sol()
     obs = sol_observe()
@@ -155,7 +185,7 @@ def main() -> int:
     torch.manual_seed(0)
     b, h, t, d = 1, 2, 1024 + 40, 128                # 17 key blocks, ragged tail
     n = (t + 63) // 64
-    q, k, v = (torch.randn(b, h, t, d, device="cuda", dtype=torch.bfloat16)
+    q, k, v = (torch.randn(b, h, t, d, device=device, dtype=torch.bfloat16)
                for _ in range(3))
     k[:, :, :64] += 2.0 * q[:, :, :64]               # something for the router to find
     tmp = Path(tempfile.mkdtemp(prefix="sol_observe_"))
@@ -182,9 +212,19 @@ def main() -> int:
                         h, mask=mask, skip_reshape=True, skip_output_reshape=True,
                         transformer_options=opts)
 
-    def opts(**extra):
+    # The target video spans the whole call, so there are no conditioning rows
+    # and no sink pair: what every case gets unless it passes `segments`.
+    VIDEO_ONLY = [(0, t, "video")]
+    # [text][audio][video]: exact_kv_and_rows gives sink blocks [0, 4) and
+    # dense query blocks [2, 4).
+    T2V_SEGS = [(0, 128, "text"), (128, 256, "audio"), (256, t, "video")]
+
+    def opts(segments=None, **extra):
+        """transformer_options as core fills them for a DiT block call:
+        `block_index` 5 and a layout as long as the call."""
         o = {"sigmas": torch.tensor([1.0]), "sample_sigmas": torch.tensor([2.0, 1.0, 0.5, 0.0]),
-             "sol_block": 5}
+             "block_index": 5,
+             "minimax_h3_layout": layout(t, VIDEO_ONLY if segments is None else segments)}
         o.update(extra)
         return o
 
@@ -255,22 +295,25 @@ def main() -> int:
         calls["dense"] = 0
         ov = make()
         call(ov, opts(), mask=torch.ones(1, 1, t, t, device="cuda"))          # masked
-        call(ov, opts(sol_block=3))                                          # dense_block
+        call(ov, opts(block_index=3))                                        # dense_block
         call(ov, opts(sigmas=torch.tensor([20.0])))                          # outside_range
         short = tuple(x[:, :, :32].contiguous() for x in (q, k, v))
         call(ov, opts(), qq=short[0], kk=short[1], vv=short[2])              # ineligible
         got = call(ov, opts())                                               # sol
-        spy = Spy(raise_exc=RuntimeError("synthetic kernel failure"))
-        use(spy)
-        import logging
-        logging.disable(logging.ERROR)      # the node logs the traceback; it is the fixture, not a failure
+        assert calls["dense"] == 4, f"dense fallback called {calls['dense']} times, want 4"
+        synthetic = RuntimeError("synthetic kernel failure")
+        use(Spy(raise_exc=synthetic))
+        raised = None
         try:
             call(ov, opts())                                                 # kernel_error
+        except RuntimeError as exc:
+            raised = exc
         finally:
-            logging.disable(logging.NOTSET)
             restore()
+        assert raised is not None, "a kernel failure did not raise out of the override"
+        assert raised.__cause__ is synthetic, f"the raise does not carry the kernel's error: {raised!r}"
+        assert calls["dense"] == 4, "the kernel failure reached the dense fallback"
         assert torch.equal(got, kernel(tau=1.0, tail=True)), "armed output differs from the kernel's bytes"
-        assert calls["dense"] == 5, f"dense fallback called {calls['dense']} times, want 5"
         path, rows = rows_in(d)
         kinds = [r["kind"] for r in rows]
         assert kinds[0] == "header" and kinds[1] == "config", kinds[:2]
@@ -300,8 +343,10 @@ def main() -> int:
         # no sink: the named decomposition must say so, not report the edge diagonal as a sink
         assert (sol["forced"]["sink"], sol["forced"]["diag_min"], sol["forced"]["diag_max"]) == (0, 2, 3), sol["forced"]
         assert rows[0]["denominators"]["kernel_density"].startswith("cnt / NTB")
-        # the dense_block row names the block; the ineligible row still has one
-        assert callrows[1]["reason"] == "block 3 in dense_blocks"
+        # the dense_block row names the block; the short ineligible call is
+        # shorter than the layout, so core's index is not trusted for it
+        assert callrows[1]["reason"] == "block 3 in dense_blocks" and callrows[1]["block"] == 3
+        assert callrows[3]["block"] is None, callrows[3]["block"]
         obs.arm(None)
 
     def identity_does_not_mix_prompts():
@@ -328,8 +373,7 @@ def main() -> int:
         d = newdir("wrong")
         obs.arm(f"dir={d}")
         ov = make(sink_conditioning="exact_kv_and_rows")
-        # a layout: video from row 256 -> sink blocks [0, 4); audio rows [128, 256) -> sink_q [2, 4)
-        layout = dict(sol_h3_video_span=(256, t), sol_h3_audio_span=(128, 256))
+        # video from row 256 -> sink blocks [0, 4); audio rows [128, 256) -> sink_q [2, 4)
         # Each mutation trips its own clause: the floor case lowers a NON-sink_q
         # row (block 10 has floor sink 4 + diagonal 3), the sink_q case lowers a
         # sink_q row only.
@@ -344,7 +388,7 @@ def main() -> int:
             try:
                 raised = None
                 try:
-                    call(ov, opts(**layout))
+                    call(ov, opts(segments=T2V_SEGS))
                 except obs.SolObserveError as exc:
                     raised = exc
             finally:
@@ -366,8 +410,8 @@ def main() -> int:
         d = newdir("summaries")
         obs.arm(f"dir={d}")
         ov = make(sink_conditioning="exact_kv_and_rows")
-        segs = [(0, 128, "text"), (128, 256, "audio"), (256, t, "video")]
-        call(ov, opts(sol_h3_video_span=(256, t), sol_h3_audio_span=(128, 256), h3_segments=segs))
+        segs = T2V_SEGS
+        call(ov, opts(segments=segs))
         path, rows = rows_in(d)
         sol = [r for r in rows if r["kind"] == "call"][0]
         assert sol["route"] == "sol" and sol["sink_blocks"] == [0, 4] and sol["sink_q"] == [2, 4]
@@ -449,65 +493,41 @@ def main() -> int:
         finally:
             restore()
 
-    def stale_block_label_is_cleared():
+    def stale_block_index_is_not_trusted():
         d = newdir("stale")
         obs.arm(f"dir={d}")
-
-        class Blk(torch.nn.Module):
-            def forward(self, x, transformer_options=None):
-                self.seen = (transformer_options or {}).get("sol_block")
-                return x + 1
-
-        model = types.SimpleNamespace(blocks=torch.nn.ModuleList([Blk() for _ in range(50)]))
-        assert node._install_block_index(model)
-        o = opts()
-        del o["sol_block"]
-        x = torch.arange(4.0)
-        out = model.blocks[49](x, transformer_options=o)
-        assert model.blocks[49].seen == 49, model.blocks[49].seen
-        assert "sol_block" not in o, "sol_block survived the block's forward"
-        assert torch.equal(out, x + 1), "the post-hook changed the block output"
-        # a refiner-shaped call next: no block, unknown scope
-        call(make(), o)
+        ov = make(sink_conditioning="exact_kv_and_rows", dense_blocks=frozenset())
+        # Core left the last block's index behind; the next step's refiner call
+        # runs on the text span alone, so it is shorter than the layout.
+        o = opts(segments=T2V_SEGS, block_index=49)
+        short = tuple(x[:, :, :128].contiguous() for x in (q, k, v))
+        call(ov, o, qq=short[0], kk=short[1], vv=short[2])
+        # red control: the same options on a full-length call do carry the block
+        call(ov, o)
         _, rows = rows_in(d)
-        r = [r for r in rows if r["kind"] == "call"][0]
-        assert r["block"] is None and r["scope"] == "unknown", (r["block"], r["scope"])
-
-        # the outer forward drops the segment table with the two spans
-        class Stub(torch.nn.Module):
-            def __init__(self):
-                super().__init__()
-                self.blocks = torch.nn.ModuleList([Blk()])
-                # `install_h3_morton` hooks both since 0.123.0 (a1bd97f1); the
-                # case never runs them, so identities stand in.
-                self.video_patch_proj = torch.nn.Identity()
-                self.final_layer = torch.nn.Identity()
-
-            def rope_freqs(self, position_ids, device):
-                return None
-
-            def _forward(self, x, timestep, context, transformer_options={}, **kw):
-                return x
-
-        stub = Stub()
-        node.install_h3_morton(stub)
-        o2 = {"h3_segments": [(0, 8, "text")], "sol_h3_video_span": (8, 16),
-              "sol_h3_audio_span": (4, 8)}
-        stub._forward(x, None, None, transformer_options=o2)
-        assert not any(k in o2 for k in ("h3_segments", "sol_h3_video_span", "sol_h3_audio_span")), o2
+        refiner, full = [r for r in rows if r["kind"] == "call"]
+        assert refiner["T"] == 128 and full["T"] == t, (refiner["T"], full["T"])
+        assert refiner["block"] is None and refiner["scope"] == "unknown", \
+            (refiner["block"], refiner["scope"])
+        assert refiner["sink_blocks"] == [0, 0] and refiner["sink_q"] == [0, 0], \
+            "a call shorter than the layout was given the layout's sink pair"
+        assert full["block"] == 49 and full["scope"] == "dit", (full["block"], full["scope"])
+        assert full["sink_blocks"] == [0, 4] and full["sink_q"] == [2, 4], \
+            (full["sink_blocks"], full["sink_q"])
         obs.arm(None)
 
-    def observer_only_block_indexing():
-        d = newdir("indexing")
+    def apply_sol_records_core_block_and_fallback():
+        d = newdir("apply")
         obs.arm(f"dir={d}")
         import comfy.model_patcher
+        import comfy.patcher_extension
 
         holder = {}
 
         class Blk(torch.nn.Module):
             def forward(self, x, transformer_options=None):
-                # the block's attention call, through the installed override
-                ov = holder["override"]
+                # the block's attention call, through whatever override is on the hook
+                ov = transformer_options["optimized_attention_override"]
                 ov(dense_func, q, k, v, h, skip_reshape=True, skip_output_reshape=True,
                    transformer_options=transformer_options)
                 return x
@@ -528,24 +548,58 @@ def main() -> int:
                 self.model_sampling = Sampling()
 
         mp = comfy.model_patcher.ModelPatcher(Model(), torch.device("cpu"), torch.device("cpu"))
-        result = node._apply_patch(mp, tau=1.0, start_percent=0.0, end_percent=1.0,
-                                   min_tokens=64, sink_conditioning="off", morton=False,
-                                   morton_curve="3d", dense_blocks="", verbose=False,
-                                   tau_profile=None)
+        result = node._apply_sol(mp, tau=1.0, quantizer="plain", dense_blocks="",
+                                 sink_conditioning="off", token_routing=node.SOL_ROUTING_OFF,
+                                 routing_blocks="", start_percent=0.0, end_percent=1.0,
+                                 min_tokens=64, verbose=False)
         patched = result.args[0] if hasattr(result, "args") else result[0]
         dit = patched.get_model_object("diffusion_model")
-        # A marker on the model since 2026-09-17, not its id() in a module set.
-        assert getattr(dit, "_sol_h3_block_index_hooked", False), "armed patch did not install the block hooks"
-        holder["override"] = patched.model_options["transformer_options"]["optimized_attention_override"]
-        o = {"sigmas": torch.tensor([0.5]), "sample_sigmas": torch.tensor([1.0, 0.5, 0.0])}
+        topts = patched.model_options["transformer_options"]
+        sol = topts["optimized_attention_override"]
+        o = dict(opts(block_index=7), optimized_attention_override=sol)
         dit.blocks[7](torch.zeros(1), transformer_options=o)
         _, rows = rows_in(d)
-        cfg = [r for r in rows if r["kind"] == "config"][0]
-        assert cfg["settings"]["dense_blocks"] == [] and cfg["settings"]["tau_profile"] == {}
-        assert cfg["settings"]["n_blocks"] == 50
+        cfg = [r for r in rows if r["kind"] == "config"]
+        assert len(cfg) == 1, [r["kind"] for r in rows]
+        s = cfg[0]["settings"]
+        assert s["node"] == "MiniMaxH3Sol" and s["dense_blocks"] == [] and s["n_blocks"] == 50, s
+        assert s["quantizer"] == "plain" and s["tail"] is True and s["topk_ratio"] == 0.0, s
+        assert s["dense_fallback"].startswith("stock attention"), s["dense_fallback"]
         r = [r for r in rows if r["kind"] == "call"][0]
-        assert r["block"] == 7 and r["scope"] == "dit" and r["route"] == "sol", (r["block"], r["route"])
-        assert "sol_block" not in o
+        want_route = "sol" if cuda else "ineligible"          # CPU tensors are ineligible
+        assert r["block"] == 7 and r["scope"] == "dit" and r["route"] == want_route, \
+            (r["block"], r["scope"], r["route"])
+
+        # An attention node placed after Sol puts its override on top.
+        seen = {"foreign": 0}
+
+        def foreign_override(func, qq, kk, vv, heads, **kw):
+            seen["foreign"] += 1
+            return func(qq, kk, vv, heads, **kw)
+
+        topts["optimized_attention_override"] = foreign_override
+        assert topts["optimized_attention_override"] is foreign_override   # red control
+        callbacks = patched.get_all_callbacks(comfy.patcher_extension.CallbacksMP.ON_PREPARE_STATE)
+        assert callbacks, "_apply_sol registered no ON_PREPARE_STATE callback"
+        for cb in callbacks:
+            cb(patched, None, patched.model_options)
+        top = topts["optimized_attention_override"]
+        assert top is not foreign_override and top is not sol, \
+            "the step callback did not put a fresh Sol override on top"
+        for cb in callbacks:
+            cb(patched, None, patched.model_options)
+        assert topts["optimized_attention_override"] is top, "a second step re-wrapped Sol on top of itself"
+        # a call Sol declines (shorter than min_tokens) now reaches the foreign override
+        short = tuple(x[:, :, :32].contiguous() for x in (q, k, v))
+        dense_before = calls["dense"]
+        top(dense_func, *short, h, skip_reshape=True, skip_output_reshape=True,
+            transformer_options=opts(block_index=7))
+        assert seen["foreign"] == 1 and calls["dense"] == dense_before + 1, (seen, calls)
+        _, rows = rows_in(d)
+        cfg = [r for r in rows if r["kind"] == "config"]
+        assert len(cfg) == 2, [r["kind"] for r in rows]
+        assert "foreign_override" in cfg[1]["settings"]["dense_fallback"], cfg[1]["settings"]["dense_fallback"]
+        assert topts["sol_compose"]["settings"]["dense_fallback"] == cfg[1]["settings"]["dense_fallback"]
         obs.arm(None)
 
     def composed_patch_calls_are_recorded():
@@ -568,7 +622,8 @@ def main() -> int:
         wrapped = node._compose_module_patch(attn, patched)
         gate = {"sigma_start": 10.0, "sigma_end": 0.1, "min_tokens": 64, "settings": settings()}
         x = torch.zeros(t, 256, device="cuda", dtype=torch.bfloat16)
-        base = {"sol_compose": gate, "sample_sigmas": torch.tensor([2.0, 1.0, 0.5, 0.0]), "sol_block": 12}
+        base = {"sol_compose": gate, "sample_sigmas": torch.tensor([2.0, 1.0, 0.5, 0.0]),
+                "block_index": 12, "minimax_h3_layout": layout(t, VIDEO_ONLY)}
         wrapped(x, transformer_options={**base, "sigmas": torch.tensor([20.0])})   # outside the window
         wrapped(x[:32], transformer_options={**base, "sigmas": torch.tensor([1.0])})  # below min_tokens
         assert seen == {"stock": 0, "patched": 2}, seen
@@ -577,8 +632,12 @@ def main() -> int:
         assert len(callrows) == 2, [r["route"] for r in callrows]
         for r in callrows:
             assert r["route"] == "composed_patch" and r["path"] == "composed_patch", (r["route"], r["path"])
-            assert r["block"] == 12 and r["scope"] == "dit" and r["H"] == 2 and r["B"] == 1
+            assert r["H"] == 2 and r["B"] == 1
             assert r.get("raw") is None and "kernel_density" not in r
+        # the full-length call carries core's index; the short one is shorter
+        # than the layout, so core's (stale) index is not trusted for it
+        assert (callrows[0]["block"], callrows[0]["scope"]) == (12, "dit"), callrows[0]["block"]
+        assert (callrows[1]["block"], callrows[1]["scope"]) == (None, "unknown"), callrows[1]["block"]
         assert callrows[0]["reason"].startswith("outside_range: sigma 20"), callrows[0]["reason"]
         assert callrows[0]["T"] == t and callrows[0]["schedule"]["state"] == "no_match"
         assert callrows[1]["reason"] == "ineligible: seq 32 < 64", callrows[1]["reason"]
@@ -608,7 +667,7 @@ def main() -> int:
         obs.arm(f"dir={d}")
         call(make(), opts())
         call(make(sink_conditioning="exact_kv_and_rows"),
-             opts(sol_h3_video_span=(256, t), sol_h3_audio_span=(128, 256)))
+             opts(segments=T2V_SEGS))
         _, rows = rows_in(d)
         a, bb = [r["forced"] for r in rows if r["kind"] == "call"]
         assert (a["sink"], a["diag_min"], a["diag_max"], a["rows_outside_sink_q"]) == (0, 2, 3, n), a
@@ -633,7 +692,7 @@ def main() -> int:
         # a layout whose video starts at the last row: every block is sink and every
         # query block is sink_q, so NTB - forced is zero on every row
         call(make(sink_conditioning="exact_kv_and_rows"),
-             opts(sol_h3_video_span=(t, t), sol_h3_audio_span=(0, t), h3_segments=[(0, t, "audio")]))
+             opts(segments=[(0, t, "audio"), (t, t, "video")]))
         _, rows = rows_in(d)
         r = [r for r in rows if r["kind"] == "call"][0]
         assert r["route"] == "sol" and r["sink_blocks"] == [0, n] and r["sink_q"] == [0, n], r["sink_q"]
@@ -663,7 +722,7 @@ def main() -> int:
         try:
             with CurrentNodeContext("prompt-W", "10", None):
                 call(make(), opts())
-                call(make(), opts(sol_block=6))          # second call: no second render row
+                call(make(), opts(block_index=6))        # second call: no second render row
             with CurrentNodeContext("prompt-X", "10", None):
                 call(make(), opts())
         finally:
@@ -728,18 +787,23 @@ def main() -> int:
         assert rows[0]["raw_sidecar"] is False
         obs.arm(None)
 
-    print("Sol route observer, against the installed kernel:")
-    print(f"  B={b} H={h} T={t} ({n} blocks), dir {tmp}\n")
+    # Graded anywhere the node imports: no kernel call decides them.
+    cpu_cases = (armed_with_old_wheel_fails_at_patch_time,
+                 query_and_pair_weighting_differ_on_nonuniform_forced,
+                 stale_block_index_is_not_trusted,
+                 apply_sol_records_core_block_and_fallback)
+    kernel_cases = (inert_without_the_env_var, every_route_is_recorded,
+                    identity_does_not_mix_prompts, wrong_slice_is_red_and_escapes_the_fallback,
+                    summaries_agree_with_an_independent_reduction,
+                    composed_patch_calls_are_recorded, forced_metadata_is_computed_not_inferred,
+                    undefined_adaptive_figures_are_null, render_row_names_the_workflow,
+                    raw_off_writes_no_sidecar)
+    graded = cuda and blk_cnt
+    print("Sol route observer" + (", against the installed kernel:" if graded else
+                                  ", CPU cases only:"))
+    print(f"  B={b} H={h} T={t} ({n} blocks) on {device}, dir {tmp}\n")
     try:
-        for fn in (inert_without_the_env_var, every_route_is_recorded,
-                   identity_does_not_mix_prompts, wrong_slice_is_red_and_escapes_the_fallback,
-                   summaries_agree_with_an_independent_reduction,
-                   armed_with_old_wheel_fails_at_patch_time, stale_block_label_is_cleared,
-                   observer_only_block_indexing, composed_patch_calls_are_recorded,
-                   forced_metadata_is_computed_not_inferred,
-                   query_and_pair_weighting_differ_on_nonuniform_forced,
-                   undefined_adaptive_figures_are_null, render_row_names_the_workflow,
-                   raw_off_writes_no_sidecar):
+        for fn in cpu_cases + (kernel_cases if graded else ()):
             check(fn.__name__, fn)
     finally:
         obs.arm(None)
@@ -750,6 +814,13 @@ def main() -> int:
     if FAILED:
         print(f"FAILED: {', '.join(FAILED)}")
         return 1
+    if not graded:
+        why = ("no CUDA" if not cuda else
+               "the installed comfy_kitchen.sol_attn has no blk_cnt; rebuild with "
+               "vendor/rebuild_kernel.sh")
+        print(f"SKIP: {len(kernel_cases)} kernel case(s) not graded ({why}); "
+              f"the {len(cpu_cases)} CPU case(s) passed")
+        return 2
     print("all cases passed")
     return 0
 

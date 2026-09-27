@@ -85,8 +85,8 @@ def _parse_block_profile(spec, count, name, cast, example):
 
     `cast` both converts and validates, so a value the kernel would refuse is
     refused HERE. That placement is the whole point: every caller of this runs
-    at patch time, and a raise from inside the override is swallowed by
-    `make_override` and becomes a silent full-dense render.
+    at patch time, where a refusal fails the node before sampling rather than
+    stopping a render part-way.
     """
     profile = {}
     for entry in re.split(r"[;\n]", str(spec)):
@@ -224,10 +224,8 @@ _REQUIRED_KERNEL_KWARGS = ("tau", "scale", "sink_blocks", "sink_q",
 def _require_kernel():
     """Raise unless `comfy_kitchen.sol_attn` accepts everything we pass.
 
-    Called from `_apply_patch`, which propagates out of `execute` and fails the
-    node before sampling. Never call it from the dispatch path: an exception
-    raised there is swallowed by `override` and becomes the silent dense
-    render this exists to prevent.
+    Called from `_apply_sol`, which propagates out of `execute` and fails the
+    node before sampling rather than part-way through a render.
     """
     if _ck is None:
         raise RuntimeError(f"comfy_kitchen is not importable: {_CK_IMPORT_ERROR}")
@@ -298,9 +296,8 @@ def _run(q, k, v, heads, skip_reshape, skip_output_reshape, scale,
         return None
 
     # One call, no signature adaptation. `_require_kernel` has already
-    # asserted at patch time that this build takes every one of these, which
-    # is the only place such a check can be made: raised from here it would be
-    # caught by `override` and turned into a silent dense render.
+    # asserted at patch time that this build takes every one of these, so a
+    # build that does not fails the node before sampling rather than here.
     #
     # `key_bias`, `block_len` and `coarse_gate` are left at their defaults --
     # None, None and None. The module docstring says why each is unreachable
@@ -525,10 +522,8 @@ def make_override(tau=1.0, min_tokens=12288,
             # **Loud, and not gated on `verbose`.** Declining here is a real
             # change to what the model computes -- the call runs on the
             # fallback backend instead of Sol -- and a completed render cannot
-            # be told apart from one where Sol ran. That is the same silent
-            # dense-fallback shape as an API mismatch swallowed by the
-            # `except Exception` below, differing only in that this branch is
-            # deliberate, which a reader looking at the output cannot see.
+            # be told apart from one where Sol ran. Deliberate, which a reader
+            # looking at the output cannot see; hence the warning.
             #
             # Once per process, at WARNING, because it is unreachable on every
             # shipped graph today (no node here writes `noise_mask` and no
@@ -544,7 +539,7 @@ def make_override(tau=1.0, min_tokens=12288,
                       level=logging.WARNING)
             return dense()
 
-        # Depth gates: a block can be kept dense outright or given its own tau.
+        # Depth gate: a block in dense_blocks runs on the fallback.
         if block in dense_blocks:
             _stats["dense_block"] += 1
             route("dense_block", f"block {block} in dense_blocks")
@@ -583,6 +578,12 @@ def make_override(tau=1.0, min_tokens=12288,
                            kwargs.get("scale", None), block_tau, min_tokens, verbose,
                            sink, sink_q, topk_ratio, tail, blk_cnt=counts,
                            token_aug=block_aug, qk_balance=qk_balance, rotate=rotate, dtypes=dtypes)
+        except torch.OutOfMemoryError:
+            # Unwrapped, so core's OOM handling (`execution.py`'s is_oom and
+            # its hint) still recognises it.
+            _stats["errors"] += 1
+            route("kernel_error", "OutOfMemoryError")
+            raise
         except Exception as exc:
             _stats["errors"] += 1
             route("kernel_error", f"{type(exc).__name__}: {exc}"[:200])
@@ -667,7 +668,7 @@ def _compose_module_patch(module, patched_forward):
         declined = None                      # the gate's verdict, once it says no
         take = gate is not None
         if take and not (torch.is_tensor(tensor) and tensor.device.type == "cuda"
-                         and tensor.dtype == torch.bfloat16 and tensor.ndim in (2, 3)):
+                         and tensor.dtype in _SOL_ACCEPTED_DTYPES and tensor.ndim in (2, 3)):
             take = False
             declined = "ineligible: input is not a cuda bf16 2D/3D tensor"
         if take:
@@ -845,6 +846,24 @@ def _describe_override(override):
     return f"{getattr(override, '__module__', '?')}.{getattr(override, '__qualname__', repr(override))}"
 
 
+def _chain_contains(override, ours, depth=16):
+    """Whether one of `ours` sits anywhere under `override`, following the
+    `previous` each override closes over (ours, core's sparse node and core's
+    set_model_optimized_attention all name it that or hold none)."""
+    for _ in range(depth):
+        if override is None:
+            return False
+        if override in ours:
+            return True
+        cells = dict(zip(getattr(getattr(override, "__code__", None), "co_freevars", ()) or (),
+                         getattr(override, "__closure__", None) or ()))
+        try:
+            override = cells["previous"].cell_contents
+        except (KeyError, ValueError):
+            override = getattr(override, "h3_previous", None)
+    return False
+
+
 def _apply_sol(model, *, tau, quantizer, dense_blocks, sink_conditioning,
                token_routing, routing_blocks, start_percent, end_percent,
                min_tokens, verbose):
@@ -853,9 +872,12 @@ def _apply_sol(model, *, tau, quantizer, dense_blocks, sink_conditioning,
     qk_balance, rotate = SOL_QUANTIZERS[quantizer]
     _require_kernel()
     import inspect
-    params = inspect.signature(_ck.sol_attn).parameters
+    try:
+        params = inspect.signature(_ck.sol_attn).parameters
+    except (TypeError, ValueError):     # not introspectable: the call decides, as in _require_kernel
+        params = None
     for flag, name in ((qk_balance, "qk_balance"), (rotate, "rotate")):
-        if flag and name not in params:
+        if flag and params is not None and name not in params:
             raise RuntimeError(
                 f"quantizer {quantizer!r} needs {name}, and the installed comfy_kitchen.sol_attn "
                 f"has no {name} argument. It is carried on the owner's fork (h3-frontier); "
@@ -873,7 +895,7 @@ def _apply_sol(model, *, tau, quantizer, dense_blocks, sink_conditioning,
     count = len(blocks) if blocks is not None else 0
     dense = parse_blocks(dense_blocks, count)
     aug = sol_routing_blocks(token_routing, routing_blocks, count, qk_balance=qk_balance)
-    if aug and "token_aug" not in params:
+    if aug and params is not None and "token_aug" not in params:
         raise RuntimeError("token routing is on, and the installed comfy_kitchen.sol_attn has no "
                            "token_aug argument (Comfy-Org/comfy-kitchen #156, 0.2.33).")
 
@@ -900,7 +922,10 @@ def _apply_sol(model, *, tau, quantizer, dense_blocks, sink_conditioning,
         what it falls back to. Idempotent once it is on top; run at patch time
         and again each step (ON_PREPARE_STATE)."""
         current = transformer_options.get("optimized_attention_override")
-        if current in installed:
+        if current in installed or _chain_contains(current, installed):
+            # On top, or already under another override that re-installs
+            # itself each step (core's sparse node does): wrapping it again
+            # would grow the chain by two every step.
             return
         fallback = _describe_override(current)
         override = make_override(
