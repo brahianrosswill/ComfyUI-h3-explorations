@@ -4,6 +4,32 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.159.0
+
+### Added
+
+- `bench/measure_encoder_quant_dit.py`: does the DiT's prediction move when
+  the encoder is `int8_convrot` instead of the bf16 pruned file? `capture`
+  drives a running server through the shipped graphs, cut at
+  `MiniMaxH3Preflight`, and saves the conditioning and latent a sampler would
+  receive; only `encoder_name` changes between arms. `forward` runs the
+  scene's base DiT at fixed noise, latent and sigma, with a null, the
+  treatment, an image-tokens-only attribution arm, a control matched to
+  int8's per-token error norms, and a one-edit scale row. The DiT forward,
+  sigma shift and delta are imported from `measure_marker_epsilon.py`.
+- `bench/comfy_capture_nodes/h3_bench_capture`: the bench-only save node
+  `capture` needs. The pack never imports it; a server sees it only through
+  the `--extra-model-paths-config` that `capture` writes.
+- `prompt_bank/i2va_look_anchor.txt` and `prompt_bank/ref2va_look_anchor.txt`:
+  `t2va_look_anchor` carried to first-frame and reference generation, paired
+  with frames of its own PDD8 render. Both grade clean.
+
+### Changed
+
+- `docs/prompt_bank.md` regenerated. It was already stale against the graphs
+  0.157.0 added (`t2va_covered_market` and `i2va_lighthouse_keyframe` ship in
+  more graphs than it said), besides listing the two new entries.
+
 ## 0.158.0
 
 ### Changed

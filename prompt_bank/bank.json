@@ -1127,6 +1127,22 @@
       "donor": "h3_probe_refview2_dancer_api",
       "brief": "The studio dancer close carried from one picture; no vocal sound, two shots cut on the beat.",
       "tests": "reference-view ablation scene (bench/refview2_arms.json): identity carry per copy of the still, blind over seeds"
+    },
+    {
+      "id": "i2va_look_anchor",
+      "mode": "i2va",
+      "frames": 345,
+      "donor": null,
+      "brief": "t2va_look_anchor carried to first-frame continuation: <Picture 1> is frame 0 of a PDD8 render of the anchor (the empty workshop), held exactly at 0 s; the violin maker enters through the doorway and the anchor's action, line, camera, soundscape and score follow. Set details are rewritten to match that frame (the lamp hangs upper right, a second dim lamp, a faint window glow).",
+      "tests": "the look anchor's scene under i2va, paired with its own render's frame: whether the continuation holds the frame's light and blacks, and a matched scene for comparing encoders or distills across t2va, i2va and ref2va."
+    },
+    {
+      "id": "ref2va_look_anchor",
+      "mode": "ref2va",
+      "frames": 345,
+      "donor": "h3_image_ref_plus_text_to_video_pdd_api",
+      "brief": "t2va_look_anchor carried to reference generation: <Picture 1> defines the violin maker (frame 120 of a PDD8 render of the anchor), <Picture 2> the workshop (frame 0). Wardrobe follows Picture 1 (pale collared shirt, cuffs at the wrist); set details follow Picture 2. The anchor's action, line, camera, soundscape and score are kept; detailed_description sits inside ref 5.2's 350-500 word budget.",
+      "tests": "the look anchor's scene under ref2va with a character and an environment reference cut from its own render: likeness and set fidelity against a scene whose t2va and i2va forms exist, and a matched scene for comparing encoders or distills across modes."
     }
   ]
 }
