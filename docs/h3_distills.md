@@ -2,6 +2,20 @@
 
 last updated: 2026-09-26 (written from one seed, two scenes, unblinded)
 
+> **Seed-matched clips are different scenes.** The same seed through each
+> distill gives a different scene: different camera angle and framing,
+> different subjects, a different palette and mood. Each distill maps noise to
+> video its own way, through its training data and objective. Nothing in its
+> training keeps the teacher's seed-to-scene mapping, and the distribution-
+> matching distills (FlashGen, FastH3) settle on their own likeliest scenes. So
+> a seed-matched clip from two distills is two samples, not a controlled pair
+> (`eval_comparison.md`, step 1). A claim that distill A beats distill B holds
+> only when it is judged on something independent of content, across many
+> scenes, and blind: artifacts, clones, identity across cuts, following the
+> shot plan, the grade against the base. The owner, 2026-09-26: "seed-matched
+> clips are different scenes for each lora distill adapter due to training
+> data and all sorts of other things."
+
 What each few-step distill of H3 is good and bad at, and why, as far as the
 records show. **This rests on one seed and two scenes (diner, subway), judged
 unblinded by the owner, plus measurements of those clips.** It is a working
