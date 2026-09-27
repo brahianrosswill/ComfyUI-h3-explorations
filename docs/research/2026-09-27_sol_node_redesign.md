@@ -295,7 +295,7 @@ Every entry is from the audit. The workflow census is the one in audit §1:
 
 | # | Issue | Reach in shipped workflows | Status |
 |---|---|---|---|
-| 1 | **Kernel:** `qk_balance` + `token_aug` score in different spaces (the token stage's centroid is unbalanced, the keys are balanced) | None today: token routing is off in all 131. Live for the "all blocks" preset, custom routing under the shipped `qk_balance=True`, and every balanced token arm in `2026-09-15_sol_token_aug_x_options_b49_s15.json`. | open, fix planned |
+| 1 | **Kernel:** `qk_balance` + `token_aug` score in different spaces (the token stage's centroid is unbalanced, the keys are balanced) | None today: token routing is off in all 131. Live for the "all blocks" preset, custom routing under the shipped `qk_balance=True`, and every balanced token arm in `2026-09-15_sol_token_aug_x_options_b49_s15.json`. | **fixed** in kitchen fc32da2, installed as `0.2.35+sol.fc32da2.up.c8c7825` (CHANGELOG 0.159.2). The test fails on the old build and passes on the new one |
 | 2 | **Kernel:** `sol_attn_chunked` with `rotate` and `topk_ratio` gets a threshold mixing two spaces | None: core never passes `rotate`, and ours never uses the chunked entry | open, fix with #1 |
 | 3 | **Kernel (possible):** on the chunked entry, exact K is centred on the last step's mean and the tail on this call's | Core's H3 path only, and the VSA probe graphs that run core's node | unmeasured |
 | 4 | **Node:** installs its override once, so an attention node placed after it silently takes over | None: every shipped graph puts Sol last. Any hand-built graph can break it. | fix in the redesign |
@@ -305,6 +305,7 @@ Every entry is from the audit. The workflow census is the one in audit §1:
 | 8 | **Node:** default `qk_balance=False` against True shipped | 129 graphs deviate from the node default | test 1 decides |
 | 9 | **Core:** `block_index` is never cleared, so refiner calls see a stale index | Output-neutral while `min_tokens` exceeds the refiner length | recorded, not ours to fix |
 | 11 | **Node:** our sink patches `PackedLayout.__init__` process-wide, and so does the LongMedia pack (`coderef/ComfyUI-MiniMax-H3-LongMedia/motion_context_layout_patch.py`, which only knows how to defer to KJNodes' `._morton_h3` patch) | Any install with both packs: two process-global patches stacked on one constructor | fix in the redesign (the sink reads core's layout) |
+| 13 | **Upstream kitchen tests:** 12 binding-validation tests expect errors no binding raises (at v0.2.35 and at upstream main). Their short-buffer cases then run the kernel into an illegal memory access that poisons the process. `test_topk_ties_over_select` also fails. | None in the pipelines: tests only. A kitchen test run must exclude or isolate them | recorded (CHANGELOG 0.159.2); upstream's to fix |
 | 12 | **Provenance:** the stamp recorded every Sol setting as "not detected" from 2026-09-19 to 2026-09-27. It read one closure level, and the override has been a wrapper since the capture seam (b3a15bd1). | Every Sol render stamped in that window: output unaffected, the settings record empty | **fixed** on `main`, 0.159.1 (7fe005b9) |
 | 10 | **Prose** that lost to code (audit §5.4) | n/a | correct with the redesign |
 
