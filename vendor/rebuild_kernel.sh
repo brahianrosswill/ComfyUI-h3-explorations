@@ -86,9 +86,12 @@ ARCH="${1:-89}"
 # The owner's fork (the clone's `origin`) holds:
 #
 #   main            a mirror of upstream main; never built
-#   h3-frontier     upstream main plus our commits: what we build. It lives in
-#                   its own worktree beside the clone (the lookup below
-#                   follows the branch, not a path)
+#   h3-frontier     upstream main plus our commits: what we build and
+#                   install, checked out in the clone itself (the workspace
+#                   checkout coderef/comfy-kitchen links to), so the source
+#                   other sessions read is the
+#                   source that is installed (owner, 2026-09-27). The lookup
+#                   below follows the branch, not a path.
 #   h3-build        the tag-based line, v0.2.35 plus our commits at 8176242;
 #                   retired 2026-09-27, kept because every record before then
 #                   cites it
@@ -124,9 +127,9 @@ recipe() {
         return 0
     fi
     if [ -z "$(branch_worktree)" ]; then
-        echo "No worktree has $BRANCH checked out. Give it one beside the clone, leaving"
-        echo "the clone itself on whatever branch it is on:"
-        echo "  git -C $CLONE worktree add $(dirname "$CLONE")/comfy-kitchen-frontier $BRANCH"
+        echo "$CLONE is not on $BRANCH. Put it there (the clone is the install source,"
+        echo "and coderef/comfy-kitchen links to it):"
+        echo "  git -C $CLONE switch $BRANCH"
         return 0
     fi
     echo "To move $BRANCH onto the newest upstream main (a merge: nothing is rewritten):"
