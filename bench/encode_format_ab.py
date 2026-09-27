@@ -26,6 +26,13 @@ so no row carries a colour-conversion error the others do not.
 
     python bench/encode_format_ab.py LATENT.latent [...] [--latent-frames 22] [--json OUT]
 
+For the owner's eye (added 2026-09-27): `--latent-frames all` decodes the
+whole clip, and `--keep DIR` keeps each encode as
+`<latent stem>__<candidate>.<ext>`, so a pair can be watched side by side:
+
+    python bench/encode_format_ab.py LATENT.latent --latent-frames all \
+        --only h264_crf19_8bit h265_crf22_10bit --keep "$H3_COMFY_OUTPUT/Video/review_38"
+
 On the card: the VAE decode is the only GPU work, with no server running.
 """
 
@@ -34,6 +41,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -103,10 +111,17 @@ def score(ref_gray: np.ndarray, got_gray: np.ndarray) -> dict:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("latents", type=Path, nargs="+")
-    ap.add_argument("--latent-frames", type=int, default=22)
+    ap.add_argument("--latent-frames", default="22",
+                    help="how many latent frames to decode from the start, or `all`")
     ap.add_argument("--only", nargs="*", choices=sorted(CANDIDATES), help="a subset of the candidates")
     ap.add_argument("--json", type=Path)
+    ap.add_argument("--keep", type=Path, help="keep each encode here instead of discarding it")
     args = ap.parse_args()
+    if args.latent_frames != "all" and not args.latent_frames.isdigit():
+        ap.error("--latent-frames takes a count or `all`")
+    frames = None if args.latent_frames == "all" else int(args.latent_frames)
+    if args.keep:
+        args.keep.mkdir(parents=True, exist_ok=True)
 
     sys.path.insert(0, str(COMFY))
     sys.argv = [sys.argv[0]]
@@ -125,7 +140,7 @@ def main() -> int:
            "latent_frames": args.latent_frames, "device": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu",
            "candidates": {k: CANDIDATES[k][1] for k in names}, "clips": {}}
     for lat_path in args.latents:
-        lat = safetensors.torch.load_file(str(lat_path))["latent_tensor"][:, :, :args.latent_frames].float()
+        lat = safetensors.torch.load_file(str(lat_path))["latent_tensor"][:, :, :frames].float()
         with torch.no_grad():
             img = vae.decode(lat)
         rgb = (img.reshape(-1, *img.shape[-3:]).clamp(0, 1) * 255).round().to(torch.uint8).cpu().numpy()
@@ -141,6 +156,8 @@ def main() -> int:
                 row = score(ref, to_gray(read_back(out, n, h, w)))
                 row["kbps"] = out.stat().st_size * 8 / (n / FPS) / 1000
                 clip["candidates"][name] = row
+                if args.keep:
+                    shutil.copy2(out, args.keep / f"{lat_path.stem}__{name}.{ext}")
         rec["clips"][lat_path.name] = clip
         print(f"\n{lat_path.name}  ({n} frames)")
         lr = clip["lossless"]
