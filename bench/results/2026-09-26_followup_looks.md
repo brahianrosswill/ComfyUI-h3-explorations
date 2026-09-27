@@ -32,3 +32,37 @@ read apart from the anchor's.
   owner's read of FastH3's anchor, "super high detail like almost way too
   much causing it to look a bit ai generated in polish". Its texture boils
   slightly more than PDD8's (0.66 against 0.54 on the anchor).
+
+## The owner's follow-ups on weights (2026-09-26, late)
+
+- **Is FlashGen least because its weights move least?** Median relative
+  weight change from the base on the same 12 layers: FlashGen 0.044%, FastH3
+  0.177%, PDD8 0.534% (FlashGen and PDD from
+  `2026-09-26_int8_lora_requant.json`; FastH3 measured against the base int8
+  checkpoint in `2026-09-26_fasth3_lora_rank.json`). Against noir's colour
+  leak (FlashGen 0.063 < PDD8 0.102 < FastH3 0.224), the idea holds for
+  FlashGen but is not monotone: PDD moves three times FastH3's weights and
+  leaks half as much. FastH3 also differs in VSA's sparse attention, which a
+  weight delta cannot see, and in its DMD2 objective.
+- **Can a LoRA be extracted from FastH3?** Not from the int8 files. Rank 256
+  holds a median 12% of the delta's energy
+  (`2026-09-26_fasth3_lora_rank.json`, `bench/measure_checkpoint_lora_rank.py`),
+  but the delta is about a twentieth of an int8 step, so in int8 it is mostly
+  scattered one-step rounding flips, which are full-rank whatever the real
+  change is. A real extraction, or its rank, needs bf16 FastH3 and bf16 base
+  weights; neither is on disk. The AdaLN projection would be carried whole,
+  as the owner suggested, because its curve form cannot be compared
+  coefficient by coefficient.
+- **Is PDD too strong per module?** One outlier: `blocks.49.mlp.fc2` moves 4.4%
+  (0.86 of an int8 step), against 0.3 to 1.3% elsewhere (`blocks.49.mlp.fc1`
+  1.3%). Tonight's exact-branch arms apply it exactly for the first time; the
+  merged path applied it through heavy rounding noise. Size alone is not
+  proof of excess: PDD's head bank was distilled on the features these
+  weights produce.
+- **Match a factor of FastH3?** Not by magnitude. It does not transfer between
+  distillation methods: FlashGen reaches 4 steps with a twelfth of PDD's
+  change. The test for over-strength is a dose-response on the clone scene:
+  PDD at strength 0.7, 0.85 and 1.0, and the block-49 MLP alone at 0.5
+  through the branch's per-module controls. Over-strength shows as clones
+  fading while detail holds.
+
