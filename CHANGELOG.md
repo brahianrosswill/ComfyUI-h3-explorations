@@ -4,6 +4,35 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.155.0
+
+### Added
+
+- **The reverse step switch, PDD first and FlashGen finishing** (owner,
+  2026-09-26: fix PDD's weaknesses with the distills' complements, "my gut
+  says pdd"). There are two handoffs on PDD8's own knots, each with a
+  `_savelat` twin (`h3_config.STEP_SWITCH_REV`):
+  - `h3_probe_t2v_step_switch_pdd8_flashgen_h063`: PDD8's steps 1 to 7, down
+    to 0.631579, then FlashGen from 0.631579 to 0.
+  - `_h080`: PDD8's steps 1 to 6, down to 0.8, then FlashGen from 0.8 to
+    0.679245 to 0.
+
+  FlashGen's pass starts off its trained points in both, so they are
+  probes. Render them only on 0.154.8 or later, because two branch LoRAs in
+  one graph is the shape the stacking bug hit.
+
+### Changed
+
+- **`build_api`'s step switch takes a direction.** `step_switch_to` is
+  `pdd8` (route 3, as before) or `flashgen` (the reverse), and
+  `step_switch_sigmas` sets pass 2's sigmas.
+- **`h3_config` carries the new constants.** `PDD8_SIGMAS` is measured, and
+  `STEP_SWITCH_PAIRS` declares every step-switch graph's sigma pair.
+- **The checks cover both directions.**
+  - `check_distill_settings.py` accepts exactly the declared pairs.
+  - `check_distill_grid.py` requires the reverse arms' PDD pass to land on
+    PDD8's own knots.
+
 ## 0.154.8
 
 ### Fixed

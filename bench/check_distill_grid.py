@@ -626,7 +626,20 @@ def main() -> int:
             # An `nfe` override wins when set, because it makes the node
             # ignore the schedule and fuse uniform blocks at that count.
             nfe = found.pdd_nfe or found.steps
-            if path.stem.removesuffix("_api").removesuffix("_savelat") == "h3_probe_t2v_step_switch_flashgen_pdd8":
+            _ss = path.stem.removesuffix("_api").removesuffix("_savelat")
+            if _ss.startswith("h3_probe_t2v_step_switch_pdd8_flashgen_"):
+                # The reverse switch: PDD runs FIRST, on PDD8's own schedule cut
+                # at a knot (h3_config.STEP_SWITCH_REV). Every point it samples
+                # must be one of PDD8's knots, 0, 4, 8, ...
+                import pdd_math as _pm
+                h = _ss.rsplit("_", 1)[-1]
+                pts = [float(x) for x in h3_config.STEP_SWITCH_REV[h][0].split(",")]
+                knots = _pm.schedule_knots(pts, 12.0, 32)
+                if knots != list(range(0, 4 * len(knots), 4)):
+                    bad.append(f"{rel}: the reverse switch's PDD pass lands on {knots}, "
+                               "not PDD8's own knots")
+                continue
+            if _ss == "h3_probe_t2v_step_switch_flashgen_pdd8":
                 # Route 3's PDD pass is a tail, not a trajectory: it starts at
                 # FlashGen's own endpoint, 0.888889, off the grid by design so
                 # no noise mismatch is handed over, and its sigmas are asserted

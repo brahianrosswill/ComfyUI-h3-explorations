@@ -89,7 +89,8 @@ _OUR_NODES = {
 # 2026-09-03 (owner): one source of truth for prompt text.
 from prompts import text as _bank_prompt  # noqa: E402
 from h3_config import (  # noqa: E402
-    CORE_LOADED_ENCODERS, IMAGE_VAE, DRAFT_VAE, STEP_SWITCH_PASS1_SIGMAS, STEP_SWITCH_PASS2_SIGMAS, CANVAS, FPS, LENGTH, LONG_LENGTH, MODELS,
+    CORE_LOADED_ENCODERS, IMAGE_VAE, DRAFT_VAE, STEP_SWITCH_PASS1_SIGMAS, STEP_SWITCH_PASS2_SIGMAS,
+    STEP_SWITCH_REV, CANVAS, FPS, LENGTH, LONG_LENGTH, MODELS,
     SAMPLING, SAGE_NODE, DENSE_BACKEND_NODE, DENSE_CHAINS, DEFAULT_DENSE_CHAIN, SEED, SIGMA_SHIFT, SOL_CORE_NODE, SOL_CORE_DEFAULTS,
     VSA_KEEP_PERCENT, REF_VIDEO_LOADER,
     CACHE_NODE, CACHE_NODE_CLASS,
@@ -1526,6 +1527,11 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
               # (h3_config.STEP_SWITCH_*). Nodes 120-123 and the PDD chain at
               # +200. Pass 1 is this call's own graph; set its FlashGen knobs.
               step_switch: bool = False,
+              # What pass 2 is: "pdd8" (route 3, FlashGen then PDD8's finish
+              # at STEP_SWITCH_PASS2_SIGMAS) or "flashgen" (the reverse: this
+              # graph's own PDD chain, then FlashGen at step_switch_sigmas).
+              step_switch_to: str = "pdd8",
+              step_switch_sigmas: str | None = None,
               # Save every step's x0 prediction (MiniMaxH3StepX0Observer, node
               # 113) on the main pass's model, for finding the step where a
               # moving person first appears twice (docs/h3_distills.md). About
@@ -2369,20 +2375,37 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
         g["12"]["inputs"]["samples"] = ["87", 0]
 
     if step_switch:
-        if lora is None or pdd or audio_refine or split_at or freeze_audio or freeze_windows or single_frame:
-            raise SystemExit("step_switch is FlashGen pass 1 on this graph's own chain, then PDD; "
-                             "it needs a lora and composes with none of pdd, audio_refine, "
-                             "split_at, freeze_*, single_frame")
-        # Pass 2's model chain is the PDD8 graph's own, built by this function
-        # and copied in at +200, so it carries exactly what a shipped PDD graph
-        # carries (the PDD node, its shift, the dense backend, Sol at the PDD
-        # recipe). The UNET loader is shared, and asserted identical.
-        g2 = build_api(task, sage=sage, prompt=prompt, length=length, seed=seed,
-                       sol=(sol_for_graph(True, PDD_STEPS) if sol is not None else None),
-                       sol_impl=sol_impl, dense_backend=dense_backend,
-                       pdd=True, lora=(PDD_FL2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS,
-                       sampler_name="euler", manual_sigmas=STEP_SWITCH_PASS2_SIGMAS,
-                       unet=unet, clip=clip, **canvas)
+        if step_switch_to not in ("pdd8", "flashgen"):
+            raise SystemExit(f"step_switch_to must be pdd8 or flashgen, not {step_switch_to!r}")
+        if (lora is None or audio_refine or split_at or freeze_audio or freeze_windows or single_frame
+                or pdd != (step_switch_to == "flashgen")):
+            raise SystemExit("step_switch runs this graph's own chain as pass 1 (a non-PDD LoRA "
+                             "before pdd8, PDD before flashgen) and composes with none of "
+                             "audio_refine, split_at, freeze_*, single_frame")
+        # Pass 2's model chain is the other distill's own graph, built by this
+        # function and copied in at +200, so it carries exactly what that
+        # graph carries (the LoRA node, its shift, the dense backend, Sol at
+        # its recipe). The UNET loader is shared, and asserted identical.
+        # Only on 0.154.8 or later: two branch LoRAs in one graph is the
+        # shape the 2026-09-26 stacking bug hit (2faed1a8).
+        if step_switch_to == "pdd8":
+            pass2_sigmas = step_switch_sigmas or STEP_SWITCH_PASS2_SIGMAS
+            g2 = build_api(task, sage=sage, prompt=prompt, length=length, seed=seed,
+                           sol=(sol_for_graph(True, PDD_STEPS) if sol is not None else None),
+                           sol_impl=sol_impl, dense_backend=dense_backend,
+                           pdd=True, lora=(PDD_FL2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS,
+                           sampler_name="euler", manual_sigmas=pass2_sigmas,
+                           unet=unet, clip=clip, **canvas)
+        else:
+            if not step_switch_sigmas:
+                raise SystemExit("step_switch_to='flashgen' needs step_switch_sigmas (h3_config.STEP_SWITCH_REV)")
+            pass2_sigmas = step_switch_sigmas
+            g2 = build_api(task, sage=sage, prompt=prompt, length=length, seed=seed,
+                           sol=(sol_for_graph(False, FLASHGEN_STEPS) if sol is not None else None),
+                           sol_impl=sol_impl, dense_backend=dense_backend,
+                           lora=(FLASHGEN_R64_LORA, FLASHGEN_STRENGTH), lora_branch=True,
+                           steps=FLASHGEN_STEPS, sampler_name=FLASHGEN_SAMPLER,
+                           manual_sigmas=pass2_sigmas, unet=unet, clip=clip, **canvas)
         if g2["1"] != g["1"]:
             raise SystemExit("step_switch: pass 1 and pass 2 load different UNETs")
         chain, ref = {}, g2["9"]["inputs"]["model"]
@@ -2398,7 +2421,7 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
         for nid, node in chain.items():
             g[str(int(nid) + 200)] = {"class_type": node["class_type"],
                                       "inputs": {k: _moved(v) for k, v in node["inputs"].items()}}
-        g["120"] = {"class_type": "ManualSigmas", "inputs": {"sigmas": STEP_SWITCH_PASS2_SIGMAS}}
+        g["120"] = {"class_type": "ManualSigmas", "inputs": {"sigmas": pass2_sigmas}}
         g["121"] = {"class_type": "DisableNoise", "inputs": {}}
         g["122"] = {"class_type": "BasicGuider",
                     "inputs": {"model": _moved(g2["9"]["inputs"]["model"]), "conditioning": ["26", 0]}}
@@ -5650,7 +5673,23 @@ def main():
                        dict(extra, save_latents=True, probe_step_x0=True,
                             out_prefix=extra.get("out_prefix", f"Video/{stem}") + "_x0"),
                        f"{note}; saves every step's x0 and the final latent (one or two renders only)"))
-    GRAPHS = GRAPHS + (_step_switch,) + _pdd_tests + tuple(_twins)
+    # The reverse step switch, one per handoff (h3_config.STEP_SWITCH_REV),
+    # each with its savelat twin. PDD first, FlashGen finishing.
+    _reverse = tuple(
+        (f"h3_probe_t2v_step_switch_pdd8_flashgen_{h}.json", f"t2v-step-switch-pdd8-flashgen-{h}", "t2v",
+         LONG_T2V_PROMPT,
+         dict(pdd=True, sampler_name="euler", lora=(PDD_FL2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS,
+              manual_sigmas=STEP_SWITCH_REV[h][0], step_switch=True, step_switch_to="flashgen",
+              step_switch_sigmas=STEP_SWITCH_REV[h][1],
+              out_prefix=f"Video/h3_probe_t2v_step_switch_pdd8_flashgen_{h}"),
+         f"reverse step switch: PDD8 to {STEP_SWITCH_REV[h][1].split(',')[0]}, then FlashGen finishing")
+        for h in STEP_SWITCH_REV)
+    for fname, label, task, prompt, extra, note in _reverse:
+        stem = fname.removesuffix(".json")
+        _twins.append((f"{stem}_savelat.json", f"{label}-savelat", task, prompt,
+                       dict(extra, save_latents=True, out_prefix=extra["out_prefix"] + "_savelat"),
+                       f"{note}; saves its latents"))
+    GRAPHS = GRAPHS + (_step_switch,) + _pdd_tests + _reverse + tuple(_twins)
 
     if args.list_scenes:
         for name, text in T2V_SCENES.items():

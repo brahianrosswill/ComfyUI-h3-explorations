@@ -786,14 +786,14 @@ def main():
             if (set(found.loras) == {cfg.FLASHGEN_R64_LORA, cfg.PDD_FL2VA_LORA}
                     and any(isinstance(n, dict) and n.get("class_type") == "DisableNoise"
                             for n in doc.values())):
-                # Route 3's step switch (build_api(step_switch=True)) loads both on
-                # purpose, one per pass. Its settings are the two sigma lists in
-                # h3_config.STEP_SWITCH_*, asserted here exactly.
+                # A step switch (build_api(step_switch=True), either direction)
+                # loads both on purpose, one per pass. Its settings are one of the
+                # declared sigma pairs in h3_config.STEP_SWITCH_PAIRS, exactly.
                 manual = sorted(n["inputs"]["sigmas"] for n in doc.values()
                                 if isinstance(n, dict) and n.get("class_type") == "ManualSigmas")
-                assert manual == sorted([cfg.STEP_SWITCH_PASS1_SIGMAS, cfg.STEP_SWITCH_PASS2_SIGMAS]), (
-                    f"{path.name}: step switch must sample h3_config.STEP_SWITCH_PASS1/2_SIGMAS, "
-                    f"has {manual}")
+                assert manual in [sorted(p) for p in cfg.STEP_SWITCH_PAIRS], (
+                    f"{path.name}: a step switch must sample one of h3_config.STEP_SWITCH_PAIRS "
+                    f"(route 3 or a reverse handoff), has {manual}")
                 continue
             if flashgen:
                 nodes = [n for n in doc.values() if isinstance(n, dict)]

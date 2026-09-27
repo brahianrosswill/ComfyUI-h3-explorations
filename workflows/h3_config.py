@@ -1524,6 +1524,28 @@ FLASHGEN_MANUAL_SIGMAS = "1.0, 0.965517, 0.888889, 0.679245, 0.0"
 #: [19, 24, 28, 32]); the tracker may warn that the step sits off a boundary.
 STEP_SWITCH_PASS1_SIGMAS = ", ".join(FLASHGEN_MANUAL_SIGMAS.split(", ")[:3])
 STEP_SWITCH_PASS2_SIGMAS = ", ".join([FLASHGEN_MANUAL_SIGMAS.split(", ")[2], "0.8", "0.631579", "0.0"])
+
+#: PDD8's own schedule, **measured**: `comfy.samplers.calculate_sigmas(simple,
+#: 8)` at shift 12, which `bench/check_pdd_sigmas.py` proves bit-identical to
+#: what `MiniMaxH3PDDLoRA` emits at 8 steps (2026-09-26).
+PDD8_SIGMAS = "1.0, 0.988235, 0.972973, 0.952381, 0.923077, 0.878049, 0.8, 0.631579, 0.0"
+
+#: The reverse step switch (owner, 2026-09-26: fix PDD's weaknesses with the
+#: distills' complements, "my gut says pdd"): PDD8's own early steps, which
+#: follow the teacher's layout, then FlashGen finishing, so its committed final
+#: jump replaces PDD's hedging late block (docs/research/2026-09-26_distill_routing.md,
+#: `docs/h3_distills.md` P3). Two handoffs, both on PDD8 knots:
+#:   h063: PDD steps 1..7 to 0.631579 (knot 28), then FlashGen 0.631579 -> 0,
+#:         near FlashGen's trained last step 0.679245 -> 0;
+#:   h080: PDD steps 1..6 to 0.8 (knot 24), then FlashGen 0.8 -> 0.679245 -> 0.
+#: FlashGen's pass starts off its trained points in both (reasoned; a probe).
+_P8 = PDD8_SIGMAS.split(", ")
+STEP_SWITCH_REV = {
+    "h063": (", ".join(_P8[:8]), "0.631579, 0.0"),
+    "h080": (", ".join(_P8[:7]), ", ".join(["0.8", FLASHGEN_MANUAL_SIGMAS.split(", ")[3], "0.0"])),
+}
+#: Every step-switch graph's (pass 1, pass 2) sigma pair, for the checks.
+STEP_SWITCH_PAIRS = ((STEP_SWITCH_PASS1_SIGMAS, STEP_SWITCH_PASS2_SIGMAS),) + tuple(STEP_SWITCH_REV.values())
 #: **Reasoned:** the card names no sampler, and both its deployment targets
 #: (vllm-omni, MindIE-SD) step Euler deterministically.
 FLASHGEN_SAMPLER = "euler"
