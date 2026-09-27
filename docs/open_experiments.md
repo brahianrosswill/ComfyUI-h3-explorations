@@ -2378,7 +2378,19 @@ flags wrapper is warranted on this evidence. The first run of the tool left a
 guessed margin and ran out of memory, which is why the ballast is now sized
 from the measured peak.
 
-## 31. Draft decodes with taeh3: what they save, and whether a keep survives
+## 31. Draft decodes with taeh3: DECLINED 2026-09-26 by the owner
+
+**Declined the same day it was built.** The owner: "how much time does it
+save? i dont think its worth it no matter what. thats probably why its
+always used as a preview node only". The arithmetic backs that. The INT8
+VAE (0.151.0) brought the real decode down to about 17.6 s, so a draft saves
+about 15 s per discarded seed, and every kept seed pays the full decode
+anyway. The draft decoder also ghosts on motion. Observables 1 and 2 stand
+below as measured. The two blind sessions for observable 3 were built and
+are optional; the owner may score them for the record. The latent-saving
+and keeper-decode tools stay: the `_savelat` twins use the same mechanism.
+
+### What was proposed
 
 Added 2026-09-26 (owner: the VAE items not already on the list become
 experiments). The case for it moved with the sampler: on the 4-step

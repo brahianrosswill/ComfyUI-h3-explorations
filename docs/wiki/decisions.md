@@ -17,6 +17,11 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-26
 
+- **Draft decodes for scouting are declined** (owner: "i dont think its worth
+  it no matter what. thats probably why its always used as a preview node
+  only"). `docs/open_experiments.md` #31 is closed as declined. The draft
+  graph `h3_text_to_video_flashgen_draft` still ships, pending the owner's
+  call on retiring it. Latent saving and `bench/decode_draft_keepers.py` stay.
 - **Every flagged prompt fixed, the bench prompt included** (owner: "Yes fix
   all"). `t2va_frontier_standoff` is the bench and baseline prompt, so the
   dense baseline graph's text changed (0.151.2). A baseline render before
