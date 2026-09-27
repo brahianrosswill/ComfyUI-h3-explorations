@@ -13,15 +13,15 @@ pointer goes; this list is stale the moment the roadmap disagrees with it.
 Items from the `mrpink` helper lane first; `evalman`'s render lane appends its
 own below the rule.
 
-**Encoder int8 against bf16 at the DiT (owner, 2026-09-27):** running
-`bench/measure_encoder_quant_dit.py`; its record lands in `bench/results/`
-with the predictions filed before the first comparison. It decides whether the image-conditioned
-graphs (i2v, fl2va, ref2va) keep `ENCODER_INT8` or move to the bf16 pruned
-file (more RAM). If int8 reads well above the matched-noise control, it also
-decides whether to reopen the encoder lane narrowly: bf16 on the layers that
-produce the image tail, `../open_experiments.md` #23's decomposition first.
-A render comparison comes only after a default is in question
-(`../eval_comparison.md`).
+**Encoder int8 against bf16 at the DiT (owner, 2026-09-27): stopped with
+enough for the decision.** `../../bench/results/2026-09-27_encoder_quant_dit.json`
+(predictions filed before results inside it). On t2v and i2v, int8, a
+norm-matched random control and a one-token prompt edit move the base DiT's
+prediction by the same amount, so int8's encoder error costs no more than
+rewording the prompt, and `ENCODER_INT8` stays the shipped default. Open, if
+wanted: the tiny-noise floor arm (a few forwards), which says whether any
+DiT-level test can resolve encoder precision on an int8 DiT; only if it does
+are the distill variants (PDD6, FastH3) worth building into the harness.
 
 **The Sol node redesign (owner, 2026-09-27):** tests 0 to 3 of
 [`../research/2026-09-27_sol_node_redesign.md`](../research/2026-09-27_sol_node_redesign.md),

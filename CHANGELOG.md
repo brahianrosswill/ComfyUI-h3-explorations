@@ -4,6 +4,16 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.159.4
+
+### Added
+
+- `bench/results/2026-09-27_encoder_quant_dit.json`: the int8-against-bf16
+  encoder measurement at the DiT, t2v and i2v, stopped after five probes by
+  owner decision. int8, the norm-matched control and a one-token prompt edit
+  land together at every probe; the ref2va scenes and a floor arm were not
+  run. `docs/wiki/next_steps.md` carries the outcome in place of "running".
+
 ## 0.159.3
 
 ### Changed
