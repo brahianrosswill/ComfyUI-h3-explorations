@@ -335,7 +335,22 @@ length.
 
 ## Rules of thumb, provisional
 
-- **Close-ups, medium shots, little motion:** PDD8.
+- **Close-ups, medium shots, little motion:** PDD8, or **PDD6** where the shot
+  is a close-up with little to keep track of.
+  - PDD6 (`workflows/h3_text_to_video_pdd_manual_sigmas_api.json`) runs
+    `h3_config.PDD_MANUAL_EVALS` evaluations where PDD8 runs 8.
+  - The owner, 2026-09-27, after PDD6 lost all three motion scenes to PDD8:
+    "closeups like that are fine for pdd6 - low motion, not a ton of stuff to
+    keep track of" (ow-fd-11). It is not the default.
+- **PDD8 with signs or on-screen text (t2v):** finish with full FlashGen from
+  sigma 0.8 (`workflows/distill_experiments/h3_probe_t2v_step_switch_pdd8_flashgen_h080_api.json`).
+  - It fixed sign text PDD8 alone garbled, and the owner could not otherwise
+    tell it from PDD8 (ow-fd-08, `../bench/results/2026-09-27_finisher_grid.md`).
+  - Warm, it costs no sampling time: its evaluations replace PDD8's own.
+    Loading the FlashGen LoRA is a one-off per server.
+  - Not on i2v, where its brightening against the first frame "looked off"
+    (ow-fd-09).
+  - Whether it becomes the t2v default is the owner's call.
 - **Fast motion or a moving camera:**
   - FlashGen, if the action is simple enough that roles cannot swap;
   - FastH3, if the colour grade is acceptable or will be corrected.
