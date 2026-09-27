@@ -2537,6 +2537,14 @@ Full FlashGen as the finisher may be adding its haze back.
   rev_h080, full FlashGen stays as the finisher.
 - **Blocker:** the owner's go (card time: about 5 min per render at 345
   frames).
+- **Closed 2026-09-27, no change: haze matches, so full FlashGen stays as
+  the finisher.** `../bench/results/2026-09-27_late_switch.md`, fastdude.
+  - The run: seven renders on the four scenes, each at its written length,
+    with `rev_h080` added where it was missing.
+  - Late-only and full finishers are within 0.002 on haze on every scene.
+    The full finish from 0.8 adds no haze over PDD8 in the first place.
+  - Both finishers lift highlights and detail alike.
+  - One seed, measured, not yet judged by eye.
 
 ## 35. FastH3: gates or backbone drift
 
