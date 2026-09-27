@@ -298,7 +298,9 @@ DECLARED: dict[tuple[str, str], tuple] = {
     ("MiniMaxH3LoRABranch", "blocks"):
         ("ARM", "'34-49' on h3_text_to_video_flashgen_late_blocks (2026-09-27): "
                 "FlashGen on its late blocks alone keeps the 4-step finish with "
-                "about half the haze (fastdude's FT1). 'all', the node default, "
+                "about half the haze (fastdude's FT1). Also on the FlashGen pass "
+                "of h3_probe_t2v_step_switch_pdd8_flashgen_late_h080 and its "
+                "_savelat twin (open_experiments #34). 'all', the node default, "
                 "everywhere else."),
     ("MiniMaxH3PDDLoRA", "backbone_apply"):
         ("ARM", "'merge' on h3_probe_t2v_pdd8_merge alone, the control for the "

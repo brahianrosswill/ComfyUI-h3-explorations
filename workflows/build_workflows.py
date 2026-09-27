@@ -5475,6 +5475,19 @@ def main():
               out_prefix=f"Video/h3_probe_t2v_step_switch_pdd8_flashgen_{h}"),
          f"reverse step switch: PDD8 to {STEP_SWITCH_REV[h][1].split(',')[0]}, then FlashGen finishing")
         for h in STEP_SWITCH_REV)
+    # The same switch with FlashGen on its late blocks only (open_experiments
+    # #34, 2026-09-27): FT1 found blocks 34-49 carry the 4-step finish and the
+    # early blocks the haze, so this finisher should lift PDD8's highlights
+    # without adding haze. h080 only; its full-FlashGen twin is the control.
+    _reverse = _reverse + tuple(
+        (f"h3_probe_t2v_step_switch_pdd8_flashgen_late_{h}.json", f"t2v-step-switch-pdd8-flashgen-late-{h}", "t2v",
+         LONG_T2V_PROMPT,
+         dict(pdd=True, sampler_name="euler", lora=(PDD_FL2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS,
+              manual_sigmas=STEP_SWITCH_REV[h][0], step_switch=True, step_switch_to="flashgen",
+              step_switch_sigmas=STEP_SWITCH_REV[h][1], step_switch_blocks="34-49",
+              out_prefix=f"Video/h3_probe_t2v_step_switch_pdd8_flashgen_late_{h}"),
+         f"reverse step switch: PDD8 to {STEP_SWITCH_REV[h][1].split(',')[0]}, then FlashGen on blocks 34-49 finishing")
+        for h in ("h080",))
     for fname, label, task, prompt, extra, note in _reverse:
         stem = fname.removesuffix(".json")
         _twins.append((f"{stem}_savelat.json", f"{label}-savelat", task, prompt,
