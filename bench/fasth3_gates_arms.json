@@ -1,0 +1,47 @@
+{
+ "what": "open_experiments #35: FastH3 V2's 50 VSA gates against its backbone drift, as a 2x2 under FastH3's contract harness (10/3, its rungs through ManualSigmas, euler, core BlockSparseAttention VSA keep 20%). Two cells are new checkpoints from bench/build_gate_transplant.py @ 17b9c8df; the other two are the swap batch's rows: <scene>__fl2va_contract (bench/fasth3_swap_arms.json) and the followup batch's <scene>__fasth3. The graph is unchanged since d45e6789. look_anchor__fasth3_rerun re-renders the released FastH3 today, to catch drift from today's core, kitchen or pack changes before the new cells are read against yesterday's rows.",
+ "why": "The swap (bench/results/2026-09-27_fasth3_swap.md) put FastH3's look with its weights and gates, not its conditioning, and cannot say which. Core's dense forward never reads the gates; VSA uses them for the gated coarse branch, and without them core runs the fine stage alone (it warns). The answer decides whether a lighter FastH3 (gates on the base, or a dial on either part) is possible.",
+ "checkpoints": {
+  "fl2va_gates": "fl2va's weights and conditioning, plus FastH3's 150 gate tensors byte for byte",
+  "fasth3_nogates": "FastH3 V2 as released minus its 150 gate tensors (core warns and runs VSA's fine stage alone)",
+  "fasth3_rerun": "FastH3 V2 as released, today"
+ },
+ "predictions": {
+  "written": "2026-09-27, before any render, by the VAE session",
+  "G1": "fl2va_gates stays near the floor (fl2va_contract): still under-converged at 8 steps on every scene. Gates cannot supply few-step ability, which a data-free DMD fine-tune puts in the weights. It may gain some detail over fl2va_contract.",
+  "G2": "fasth3_nogates keeps FastH3's convergence and composition on every scene but loses detail, landing between FastH3 and fastdude's VSA-off arm on hf (the coarse branch was trained jointly with the backbone).",
+  "G3": "fasth3_rerun reproduces yesterday's look_anchor__fasth3 final latent exactly, or within the run-to-run floor if today's changes touched this path.",
+  "falsifier": "forward item 5.1's rule: if fl2va_gates reaches FastH3's hf within 10% on all three scenes, the gates carry the look; if fasth3_nogates keeps FastH3's hf within 10% on all three, the backbone drift does."
+ },
+ "arms": {
+  "look_anchor__fl2va_gates": "workflows/distill_experiments/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
+  "look_anchor__fasth3_nogates": "workflows/distill_experiments/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
+  "slapstick_moving_piano__fl2va_gates": "workflows/distill_experiments/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
+  "slapstick_moving_piano__fasth3_nogates": "workflows/distill_experiments/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
+  "radio_drama__fl2va_gates": "workflows/distill_experiments/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
+  "radio_drama__fasth3_nogates": "workflows/distill_experiments/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
+  "look_anchor__fasth3_rerun": "workflows/distill_experiments/h3_probe_t2v_fasth3_8step_contract_savelat_api.json"
+ },
+ "patches": [
+  "look_anchor__fl2va_gates:MiniMaxH3Conditioning.prompt=@bank:t2va_look_anchor",
+  "look_anchor__fl2va_gates:MiniMaxH3Resolution.length=345",
+  "look_anchor__fl2va_gates:UNETLoader.unet_name=h3_research/hybrid__fl2va-weights__plus-fasth3v2-gates__int8.safetensors",
+  "look_anchor__fasth3_nogates:MiniMaxH3Conditioning.prompt=@bank:t2va_look_anchor",
+  "look_anchor__fasth3_nogates:MiniMaxH3Resolution.length=345",
+  "look_anchor__fasth3_nogates:UNETLoader.unet_name=h3_research/hybrid__fasth3v2-weights__no-gates__int8.safetensors",
+  "slapstick_moving_piano__fl2va_gates:MiniMaxH3Conditioning.prompt=@bank:t2va_slapstick_moving_piano",
+  "slapstick_moving_piano__fl2va_gates:MiniMaxH3Resolution.length=345",
+  "slapstick_moving_piano__fl2va_gates:UNETLoader.unet_name=h3_research/hybrid__fl2va-weights__plus-fasth3v2-gates__int8.safetensors",
+  "slapstick_moving_piano__fasth3_nogates:MiniMaxH3Conditioning.prompt=@bank:t2va_slapstick_moving_piano",
+  "slapstick_moving_piano__fasth3_nogates:MiniMaxH3Resolution.length=345",
+  "slapstick_moving_piano__fasth3_nogates:UNETLoader.unet_name=h3_research/hybrid__fasth3v2-weights__no-gates__int8.safetensors",
+  "radio_drama__fl2va_gates:MiniMaxH3Conditioning.prompt=@bank:t2va_radio_drama",
+  "radio_drama__fl2va_gates:MiniMaxH3Resolution.length=243",
+  "radio_drama__fl2va_gates:UNETLoader.unet_name=h3_research/hybrid__fl2va-weights__plus-fasth3v2-gates__int8.safetensors",
+  "radio_drama__fasth3_nogates:MiniMaxH3Conditioning.prompt=@bank:t2va_radio_drama",
+  "radio_drama__fasth3_nogates:MiniMaxH3Resolution.length=243",
+  "radio_drama__fasth3_nogates:UNETLoader.unet_name=h3_research/hybrid__fasth3v2-weights__no-gates__int8.safetensors",
+  "look_anchor__fasth3_rerun:MiniMaxH3Conditioning.prompt=@bank:t2va_look_anchor",
+  "look_anchor__fasth3_rerun:MiniMaxH3Resolution.length=345"
+ ]
+}
