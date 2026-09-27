@@ -194,6 +194,10 @@ SOL_EXEMPT_STEMS = {
        for stem in ("h3_probe_t2v_fasth3_8step_contract",
                     "h3_probe_t2v_fasth3_8step_contract_attn",
                     "h3_probe_t2v_fasth3_8step_contract_sampling")},
+    "h3_probe_t2v_fasth3_8step_contract_capture":
+        "FastH3 V2 on its contract, core's BlockSparseAttention as on "
+        "h3_probe_t2v_fasth3_8step_contract, with MiniMaxH3CoreSparseCapture "
+        "after it (open_experiments #45); the capture node changes no output",
     "h3_probe_t2v_fasth3_8step_contract_novsa":
         "FastH3 V2 with VSA off on the kitchen backend, a texture probe for "
         "docs/h3_distills.md; Sol is off because the arm is FastH3 dense, the "
