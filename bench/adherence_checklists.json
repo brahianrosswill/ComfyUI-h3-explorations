@@ -943,6 +943,230 @@
      "beat": "Only one voice speaks, the agent's; the suspect makes no vocal sound"
     }
    ]
+  },
+  "t2va_spec_typical": {
+   "frames": 124,
+   "shots": 1,
+   "beats": [
+    {
+     "shot": 0,
+     "kind": "style",
+     "beat": "Live-action photographic look, not animated"
+    },
+    {
+     "shot": 1,
+     "kind": "setting",
+     "beat": "A beach at sunset, the sun low"
+    },
+    {
+     "shot": 0,
+     "kind": "cast",
+     "beat": "Exactly one person, a woman, in the whole clip"
+    },
+    {
+     "shot": 1,
+     "kind": "action",
+     "beat": "She walks along the beach"
+    },
+    {
+     "shot": 1,
+     "kind": "camera",
+     "beat": "The camera trucks left slowly and keeps her in frame"
+    },
+    {
+     "shot": 1,
+     "kind": "audio",
+     "beat": "No voice; waves, breeze and distant gulls"
+    }
+   ]
+  },
+  "t2va_spec_specific": {
+   "frames": 124,
+   "shots": 1,
+   "beats": [
+    {
+     "shot": 0,
+     "kind": "style",
+     "beat": "Live-action photographic look, not animated"
+    },
+    {
+     "shot": 1,
+     "kind": "setting",
+     "beat": "A beach at sunset, the sun low"
+    },
+    {
+     "shot": 0,
+     "kind": "cast",
+     "beat": "Exactly one person, a woman in her thirties, in the whole clip"
+    },
+    {
+     "shot": 1,
+     "kind": "wardrobe",
+     "beat": "Loose white linen shirt and rolled khaki trousers, barefoot"
+    },
+    {
+     "shot": 1,
+     "kind": "geography",
+     "beat": "She walks along the wet sand at the waterline from the right of frame toward the left"
+    },
+    {
+     "shot": 1,
+     "kind": "light",
+     "beat": "The low orange sun is behind her at the upper right, with long shadows across the sand"
+    },
+    {
+     "shot": 1,
+     "kind": "prop",
+     "beat": "She carries her sandals in her left hand"
+    },
+    {
+     "shot": 1,
+     "kind": "count",
+     "beat": "Exactly three seagulls stand at the water's edge ahead of her"
+    },
+    {
+     "shot": 1,
+     "kind": "action",
+     "beat": "She stops once, looks out to sea, and walks on"
+    },
+    {
+     "shot": 1,
+     "kind": "camera",
+     "beat": "The camera trucks left slowly and keeps her in frame"
+    },
+    {
+     "shot": 1,
+     "kind": "audio",
+     "beat": "No voice; waves, breeze and distant gulls"
+    }
+   ]
+  },
+  "t2va_spec_unusual": {
+   "frames": 124,
+   "shots": 1,
+   "beats": [
+    {
+     "shot": 0,
+     "kind": "style",
+     "beat": "Live-action photographic look, not animated"
+    },
+    {
+     "shot": 1,
+     "kind": "setting",
+     "beat": "A beach at sunset, the sun low"
+    },
+    {
+     "shot": 0,
+     "kind": "cast",
+     "beat": "Exactly one person, a woman in her thirties, in the whole clip"
+    },
+    {
+     "shot": 1,
+     "kind": "wardrobe",
+     "beat": "Loose white linen shirt and rolled khaki trousers, barefoot"
+    },
+    {
+     "shot": 1,
+     "kind": "prop",
+     "beat": "She carries a brass birdcage with a small green parrot inside in her left hand"
+    },
+    {
+     "shot": 1,
+     "kind": "action",
+     "beat": "She walks BACKWARDS, facing the camera, from the right of frame toward the left along the waterline"
+    },
+    {
+     "shot": 1,
+     "kind": "light",
+     "beat": "The low orange sun is behind her at the upper right, with long shadows across the sand"
+    },
+    {
+     "shot": 1,
+     "kind": "text",
+     "beat": "A wooden signpost at the left of frame reads \"NO SWIMMING AFTER DARK\" in black stencil letters"
+    },
+    {
+     "shot": 1,
+     "kind": "count",
+     "beat": "Exactly three seagulls stand at the water's edge"
+    },
+    {
+     "shot": 1,
+     "kind": "action",
+     "beat": "The gulls lift off together as she passes them"
+    },
+    {
+     "shot": 1,
+     "kind": "camera",
+     "beat": "The camera trucks left slowly and keeps her in frame"
+    },
+    {
+     "shot": 1,
+     "kind": "audio",
+     "beat": "No voice; waves, breeze and distant gulls"
+    }
+   ]
+  },
+  "t2va_offpath_tortoise": {
+   "frames": 124,
+   "shots": 1,
+   "beats": [
+    {
+     "shot": 0,
+     "kind": "style",
+     "beat": "Live-action photographic look, not animated"
+    },
+    {
+     "shot": 0,
+     "kind": "cast",
+     "beat": "On the crossing, only the elderly man and the tortoise; one bus driver visible behind the windscreen; no other pedestrians"
+    },
+    {
+     "shot": 1,
+     "kind": "setting",
+     "beat": "A zebra crossing on a quiet city street, overcast morning"
+    },
+    {
+     "shot": 1,
+     "kind": "wardrobe",
+     "beat": "The man, in his seventies, wears a green knitted cardigan and a brown flat cap"
+    },
+    {
+     "shot": 1,
+     "kind": "prop",
+     "beat": "He holds a red leather leash in his RIGHT hand, clipped to a harness on a large grey tortoise"
+    },
+    {
+     "shot": 1,
+     "kind": "prop",
+     "beat": "One lit white birthday candle stands upright on top of the tortoise's shell, its flame flickering"
+    },
+    {
+     "shot": 1,
+     "kind": "geography",
+     "beat": "Man and tortoise cross from the left of frame toward the right, the tortoise beside his feet"
+    },
+    {
+     "shot": 1,
+     "kind": "prop",
+     "beat": "A red double-decker bus waits at the stop line on the right of frame, its driver watching"
+    },
+    {
+     "shot": 1,
+     "kind": "action",
+     "beat": "Halfway across, the man lifts his cap to the driver with his LEFT hand and puts it back on"
+    },
+    {
+     "shot": 1,
+     "kind": "camera",
+     "beat": "The camera trucks right slowly, keeping man and tortoise in frame"
+    },
+    {
+     "shot": 1,
+     "kind": "audio",
+     "beat": "No voice; idling diesel, crossing beeps, claws on asphalt, distant traffic"
+    }
+   ]
   }
  }
 }

@@ -154,6 +154,14 @@
       "tests": "Whether leaving the typical path at equal specificity costs quality or adherence (the owner: 'going outside that path and weird shit happens'), against rung 2."
     },
     {
+      "id": "t2va_offpath_tortoise",
+      "mode": "t2va",
+      "frames": 124,
+      "donor": null,
+      "brief": "A second off-path scene at FlashGen's trained length, unrelated to the specificity ladder's beach: an elderly man walks a tortoise on a red leash across a zebra crossing, a lit candle on its shell, a red bus waiting, and he lifts his cap to the driver halfway across. Single shot, no dialogue, every action with an agent.",
+      "tests": "open_experiments #46 (the owner's O2): whether FlashGen on its late blocks alone follows an unusual prompt better than full FlashGen, on a second unusual text so the answer does not rest on the ladder's one."
+    },
+    {
       "id": "t2va_frontier_standoff",
       "mode": "t2va",
       "frames": 345,
