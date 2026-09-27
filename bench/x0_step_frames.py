@@ -70,12 +70,13 @@ def main() -> int:
     ranges = frame_ranges(T)
     fps = h3_config.FPS
 
-    print(f"{T} latent frames, {len(steps)} steps; last-step change by latent frame (top 8):")
-    last = change[-1]
-    for k in np.argsort(last)[::-1][:8]:
-        a, b = ranges[k]
-        print(f"  latent {k:3d}  video {a}-{b}  t={a / fps:.2f}s  change {last[k]:.4f}  "
-              f"median over frames {np.median(last):.4f}")
+    if change:
+        print(f"{T} latent frames, {len(steps)} steps; last-step change by latent frame (top 8):")
+        last = change[-1]
+        for k in np.argsort(last)[::-1][:8]:
+            a, b = ranges[k]
+            print(f"  latent {k:3d}  video {a}-{b}  t={a / fps:.2f}s  change {last[k]:.4f}  "
+                  f"median over frames {np.median(last):.4f}")
     rec = {"measured_by": "bench/x0_step_frames.py", "final": args.final.name,
            "steps": [p.name for p in sorted(args.steps)], "fps": fps,
            "latent_frames": [{"k": k, "video_frames": list(ranges[k]),
