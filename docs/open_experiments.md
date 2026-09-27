@@ -2983,6 +2983,19 @@ render carries attention FastH3 never trained with, which could add detail.
 - **Blocker:** the capture hook. After that, one FastH3 render with
   `H3_CAPTURE` set (disk for three blocks at two steps). It is sequenced
   after the Sol redesign's own capture session.
+- **Graded 2026-09-27** (`../bench/results/2026-09-27_vsa_selection_grade.md`, fastdude;
+  capture by lookingdude). Answered for selection.
+  - At blocks 0 and 24 the kitchen matches the FastVideo-exact reference to
+    within about 1%. Both sit 9-11% from exact, which is FastH3's trained
+    sparsity.
+  - At block 49 the kitchen is 4-5% from the reference. The gap is int8 on
+    the text and audio rows (text 29-34% against 4%), not selection. On video
+    rows the two agree to within 1%.
+  - The selection deviations do not explain the over-polish.
+  - Whether block 49's text-row error is visible needs a bf16 VSA render of
+    that block, which the reference node would give. That is the owner's
+    call.
+
 
 ## 46. Late-only FlashGen on the adherence scenes, then as its own file
 

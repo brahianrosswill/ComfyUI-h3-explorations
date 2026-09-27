@@ -90,17 +90,20 @@ def ref_vsa(qt, kt, vt, gate_t, vbs, n_prefix, sparsity, batch_tiles=1, only_til
     want = None if only_tiles is None else set(int(x) for x in only_tiles)
     hidx = torch.arange(H, device=qt.device)[:, None, None]
 
-    # prefix query tiles are dense: every valid key row
-    kflat = kh.reshape(H, T * TILE, D).float()
-    vflat = vh.reshape(H, T * TILE, D).float()
+    # prefix query tiles are dense: every valid key row. One head at a time:
+    # all heads' keys in fp32 at once is 6 GB at 104k rows and ran out of
+    # memory on the first real cell.
     vmask = valid.reshape(-1)
-    for t0 in range(0, n_prefix):
-        if want is not None and t0 not in want:
-            continue
-        s = (qh[:, t0].float() @ kflat.transpose(1, 2)) * scale                      # [H, 64, n]
-        s = s.masked_fill(~vmask[None, None, :], float("-inf"))
-        fine[:, t0] = (torch.softmax(s, -1) @ vflat).to(torch.bfloat16)
-    del kflat, vflat
+    pre_tiles = [t0 for t0 in range(n_prefix) if want is None or t0 in want]
+    if pre_tiles:
+        for h in range(H):
+            kk = kh[h].reshape(T * TILE, D).float()
+            vv = vh[h].reshape(T * TILE, D).float()
+            for t0 in pre_tiles:
+                s = (qh[h, t0].float() @ kk.T) * scale                               # [64, n]
+                s = s.masked_fill(~vmask[None, :], float("-inf"))
+                fine[h, t0] = (torch.softmax(s, -1) @ vv).to(torch.bfloat16)
+            del kk, vv
 
     video_tiles = list(range(n_prefix, T)) if want is None else sorted(x for x in want if x >= n_prefix)
     for i0 in range(0, len(video_tiles), batch_tiles):
@@ -242,6 +245,7 @@ def main() -> int:
             if gate is not None:
                 gt = torch.zeros(n, H, D, dtype=torch.bfloat16, device=dev)
                 gt[live] = gate.view(S, H, D)[src[live]]
+            gate = None
 
             if args.control and ci == 0:
                 # Every tile kept, on a sample of query tiles (one prefix, several
