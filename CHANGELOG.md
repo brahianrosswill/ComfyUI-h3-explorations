@@ -4,6 +4,27 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.167.0
+
+### Added
+
+- **`workflows/h3_text_to_video_pdd8_flashgen_finish_api.json`**, the
+  owner's t2v pick on 2026-09-27: PDD8 to sigma 0.8, then the full FlashGen
+  finish. It is promoted from
+  `distill_experiments/h3_probe_t2v_step_switch_pdd8_flashgen_h080`, which
+  stays there for the bench manifests. It adds no sampling time over PDD8 on
+  fresh runs. `h3_text_to_video_pdd` stays the default t2v graph.
+
+### Changed
+
+- `bench/check_distill_grid.py` recognises a reverse step switch by its
+  structure (a `DisableNoise` second pass and a declared pass-1 schedule),
+  not by its filename prefix, which missed the promoted graph under its
+  user-facing name. It is the name-keyed failure the 2026-09-26
+  postmortem's item 4.2 named.
+- `workflows/distill_experiments/README.md`'s "Try these first" table carries
+  the owner's 2026-09-27 verdicts.
+
 ## 0.166.0
 
 ### Changed

@@ -4950,6 +4950,20 @@ def main():
               manual_sigmas=FLASHGEN_MANUAL_SIGMAS,
               out_prefix="Video/text_to_video_flashgen"),
          "text -> video + audio at 4 steps via FlashGen at full rank, applied at the call, kitchen dense + Sol"),
+        # PDD8 finished by FlashGen from sigma 0.8, promoted from
+        # distill_experiments/ (owner, 2026-09-27: "then yeah switch it"). The
+        # owner's review of the finisher grid: better than PDD8 alone on three
+        # t2v scenes (sign text, noodle_bar), never worse; full and late-only
+        # FlashGen finishes indistinguishable, so the full one, as trained. Same
+        # wall time as PDD8 (7 PDD8 + 2 FlashGen evaluations; measured in the
+        # render dataset, 2026-09-27). t2v only: on i2v the finish brightens
+        # the frame at once and the owner kept PDD8.
+        ("h3_text_to_video_pdd8_flashgen_finish.json", "texttovideopdd8flashgenfinish", "t2v", LONG_T2V_PROMPT,
+         dict(pdd=True, sampler_name="euler", lora=(PDD_FL2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS,
+              manual_sigmas=STEP_SWITCH_REV["h080"][0], step_switch=True, step_switch_to="flashgen",
+              step_switch_sigmas=STEP_SWITCH_REV["h080"][1],
+              out_prefix="Video/text_to_video_pdd8_flashgen_finish"),
+         "text -> video + audio: PDD8 to sigma 0.8, then FlashGen finishing (the owner's t2v pick), kitchen dense + Sol"),
         # FlashGen on its late blocks only (owner, 2026-09-27: make the "try
         # these" graphs). fastdude's FT1: blocks 34-49 alone keep the 4-step
         # finish with about half the haze; 0-33 alone is broken.

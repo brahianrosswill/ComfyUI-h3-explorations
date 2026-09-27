@@ -10,18 +10,24 @@ rule is `build_workflows._is_distill_experiment`:
 - the entries marked `distill_experiment=True`.
 
 The everyday distill graphs stay at `workflows/`: `h3_text_to_video_pdd`,
-`h3_text_to_video_flashgen`, `h3_text_to_video_pdd_manual_sigmas` (PDD6),
-and the PDD ref and first/last-frame graphs.
+`h3_text_to_video_pdd8_flashgen_finish` (PDD8 then a FlashGen finish, the
+owner's t2v pick on 2026-09-27), `h3_text_to_video_flashgen`,
+`h3_text_to_video_pdd_manual_sigmas` (PDD6), and the PDD ref and
+first/last-frame graphs.
 
 ## Try these first (2026-09-27, one seed; `bench/results/2026-09-27_evening_takeaways.md`)
 
+The owner judged these on 2026-09-27 (the board's "For your eye" review; the
+verdicts are in the render dataset's findings). The last column says what
+held.
+
 | graph | what | why |
 |---|---|---|
-| `h3_probe_t2v_step_switch_pdd8_flashgen_h080_api.json` | t2v: PDD8 to sigma 0.8, then FlashGen finishing | PDD8's take with its dim highlights lifted (one scene) |
-| `h3_text_to_video_flashgen_late_blocks_api.json` | t2v: FlashGen on blocks 34-49 only | 4-step speed with about half the haze (fastdude's FT1; not yet judged by the owner) |
+| `h3_probe_t2v_step_switch_pdd8_flashgen_h080_api.json` | t2v: PDD8 to sigma 0.8, then FlashGen finishing | **Promoted** to `workflows/h3_text_to_video_pdd8_flashgen_finish_api.json`: better than PDD8 alone on three scenes, never worse, same wall time. This probe stays for the bench manifests |
+| `h3_text_to_video_flashgen_late_blocks_api.json` | t2v: FlashGen on blocks 34-49 only | Scene-dependent: more natural motion on four of seven scenes, but it added a person on subway_chase_short and lost the piano on slapstick |
 | `h3_probe_t2v_fasth3_8step_contract_api.json` | t2v: FastH3 V2 on FastVideo's own settings | the most detail of any distill; it over-polishes |
-| `h3_first_frame_to_video_pdd_api.json` | i2v: PDD8 from a first frame | new 2026-09-27; not yet rendered |
-| `h3_probe_i2v_step_switch_pdd8_flashgen_h080_api.json` | i2v: PDD8 then a FlashGen finish from 0.8 | new 2026-09-27; not yet rendered |
+| `h3_first_frame_to_video_pdd_api.json` | i2v: PDD8 from a first frame | The owner's i2v pick over the FlashGen finish |
+| `h3_probe_i2v_step_switch_pdd8_flashgen_h080_api.json` | i2v: PDD8 then a FlashGen finish from 0.8 | Not for i2v: the finish brightens the whole frame at once, away from the input image |
 | `h3_probe_i2v_flashgen_4step_api.json` / `h3_probe_r2v_flashgen_4step_api.json` | FlashGen on i2v / ref2va | held up by eye in one render each; untrained tasks |
 
 `h3_decode_saved_latent_api.json` decodes any `_savelat` twin's latents

@@ -354,18 +354,23 @@ def main() -> int:
             # ignore the schedule and fuse uniform blocks at that count.
             nfe = found.pdd_nfe or found.steps
             _ss = path.stem.removesuffix("_api").removesuffix("_savelat")
-            if _ss.startswith(("h3_probe_t2v_step_switch_pdd8_flashgen_",
-                               "h3_probe_i2v_step_switch_pdd8_flashgen_",
-                               "h3_probe_t2v_step_switch_pdd8_base_")):
+            _manual = [n["inputs"]["sigmas"] for n in doc.values()
+                       if isinstance(n, dict) and n.get("class_type") == "ManualSigmas"]
+            _pass1 = {p1 for p1, _ in (*h3_config.STEP_SWITCH_REV.values(),
+                                       *h3_config.STEP_SWITCH_BASE.values())}
+            if (any(isinstance(n, dict) and n.get("class_type") == "DisableNoise" for n in doc.values())
+                    and any(m in _pass1 for m in _manual)):
                 # The reverse switch: PDD runs FIRST, on PDD8's own schedule cut
                 # at a knot (h3_config.STEP_SWITCH_REV, or STEP_SWITCH_BASE when
                 # the base finishes). Every point it samples must be one of
-                # PDD8's knots, 0, 4, 8, ...
+                # PDD8's knots, 0, 4, 8, ... Recognised by its structure (a
+                # DisableNoise second pass and a declared pass-1 schedule) since
+                # 2026-09-27, when the t2v switch shipped under a user-facing
+                # name; the filename prefix this keyed on missed it, the
+                # name-keyed failure the 2026-09-26 postmortem's item 4.2 names.
+                # The exact pair is graded by check_distill_settings.py.
                 import pdd_math as _pm
-                h = _ss.rsplit("_", 1)[-1]
-                table = (h3_config.STEP_SWITCH_BASE if "_pdd8_base_" in _ss
-                         else h3_config.STEP_SWITCH_REV)
-                pts = [float(x) for x in table[h][0].split(",")]
+                pts = [float(x) for x in next(m for m in _manual if m in _pass1).split(",")]
                 knots = _pm.schedule_knots(pts, 12.0, 32)
                 if knots != list(range(0, 4 * len(knots), 4)):
                     bad.append(f"{rel}: the reverse switch's PDD pass lands on {knots}, "
