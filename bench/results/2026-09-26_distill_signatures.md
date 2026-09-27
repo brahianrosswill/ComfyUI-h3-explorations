@@ -22,7 +22,16 @@ swaps the other two. PDD8's low contrast and dim highlights may read as
 washed out by eye. **Owner, 2026-09-27, asked whether PDD8 reads less
 colourful or flatter and dimmer: "The latter usually - but usually naturally
 so."** So the by-eye "pdd least" was the grade's contrast and level, not its
-colour, and the owner does not read that grade as a defect. Corrected 2026-09-27: this table first said FlashGen was
+colour. The owner, same day: "its a defect in contexts... it depends on the
+scene". Per scene, PDD8's `rms_contrast` over the mean of FlashGen's and
+FastH3's (from `2026-09-26_distill_sig_tone.json`):
+- largest gap, 0.82-0.84: noodle_bar, courtroom_verdict,
+  slapstick_moving_piano, radio_drama (interior, practically lit);
+- smallest, 0.93-0.95: samurai_bamboo_duel, look_noir, look_anchor,
+  box_office, kpop_dance_studio.
+The look scenes differ in kind: contrast is close, but PDD8's midtones sit at
+0.66 of the others', so they read darker. Which contexts are the defect is
+the owner's call; the table only says where the gap is largest. Corrected 2026-09-27: this table first said FlashGen was
 "least saturated and warmest", which read as a contradiction; it is the least
 warm.
 
