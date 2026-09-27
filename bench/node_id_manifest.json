@@ -443,6 +443,24 @@
       "Output"
     ]
   },
+  "MiniMaxH3Sol": {
+    "inputs": [
+      "model",
+      "tau",
+      "quantizer",
+      "dense_blocks",
+      "sink_conditioning",
+      "token_routing",
+      "start_percent",
+      "end_percent",
+      "min_tokens",
+      "verbose"
+    ],
+    "node_id": "MiniMaxH3Sol",
+    "outputs": [
+      "Output"
+    ]
+  },
   "MiniMaxH3SolAttn": {
     "inputs": [
       "model",

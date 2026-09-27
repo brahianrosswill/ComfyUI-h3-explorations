@@ -159,7 +159,7 @@ for node in graph.values():
     # Ours is `MiniMaxH3SolAttn`, which does NOT start with "SolAttn" --
     # so this matched nothing on every current graph and reported the
     # graph as wiring None rather than naming a mismatch.
-    if str(node.get("class_type", "")) in ("MiniMaxH3SolAttn",
+    if str(node.get("class_type", "")) in ("MiniMaxH3Sol", "MiniMaxH3SolAttn",
                                            "SolAttnMiniMax", "SolAttnPatch"):
         want_cls = node["class_type"]
         break

@@ -104,7 +104,7 @@ WORKFLOWS = _REPO / "workflows"
 # because this check grades what the SHIPPED graphs carry and the generator
 # emits exactly one node id -- a graph on the old id is a stale regeneration,
 # which is a finding for this check rather than a second case to accept.
-SOL = "MiniMaxH3SolAttn"
+SOL = "MiniMaxH3Sol"
 SAGE = "MiniMaxH3SageAttention"
 # ComfyUI core's node, the dense kernel under Sol since 2026-09-15; graded
 # against h3_config.DENSE_BACKEND_NODE.
@@ -143,25 +143,26 @@ DEVIATIONS = {
                             "Tier 0/1), kept on the sage chain while its pair is scored: "
                             "sage in 'fp8++ balanced' plus the balance node and exact "
                             "tail blocks; the mode IS the arm"),
-    "h3_probe_t2v_ck": (("qk_balance", "dense_blocks"),
+    "h3_probe_t2v_ck": (("quantizer", "dense_blocks"),
                         "community-chain control (2026-09-15): kitchen int8 dense + Sol "
-                        "with qk_balance OFF and no dense tail, the chain as most people "
+                        "with the plain quantizer (no qk_balance) and no dense tail, the chain as most people "
                         "run it; the switch and the empty list ARE the arm"),
-    "h3_probe_t2v_rotate": (("rotate",),
+    "h3_probe_t2v_rotate": (("quantizer",),
                             "Tier 2 witness (2026-09-15): the default chain with Sol's "
-                            "Hadamard rotation on; the switch IS the arm"),
+                            "Hadamard rotation on (quantizer balanced+rotated); the "
+                            "quantizer IS the arm"),
     "h3_probe_t2v_no_dense_tail": (("dense_blocks",),
                                    "the control for the 2026-09-25 dense-tail default: blocks "
                                    "45/48/49 back on Sol, as every graph ran before; the empty "
                                    "list IS the arm"),
-    "h3_probe_t2v_exact_tail": (("qk_balance", "dense_blocks"),
+    "h3_probe_t2v_exact_tail": (("quantizer", "dense_blocks"),
                                 "the scored ceiling arm of the sage chain (2026-09-15, "
                                 "bench/results/2026-09-15_block49_*): kept as it rendered, "
-                                "so Sol's qk_balance stays off; the switch predates the "
-                                "recipe's"),
-    "h3_probe_t2v_sage_rotate": (("mode", "rotate"),
+                                "so Sol's quantizer stays plain (no qk_balance); the "
+                                "switch predates the recipe's"),
+    "h3_probe_t2v_sage_rotate": (("mode", "quantizer"),
                                  "the sage chain with every lever plus Sol rotate (2026-09-15 "
-                                 "night); the mode and the switch ARE the arm"),
+                                 "night); the mode and the quantizer ARE the arm"),
     "h3_probe_t2v_levers": (("mode",),
                             "block-49 Tier 1 witness (2026-09-15, docs/h3_quant_policy.md), "
                             "kept on the sage chain while its pair is scored: every free "
@@ -338,15 +339,6 @@ def attn_nodes(g, want):
             continue
         vals = {k: v for k, v in (n.get("inputs") or {}).items()
                 if not isinstance(v, list)}
-        if want == SOL:
-            # The API form keys the selected option's inputs under the combo
-            # (`selection.tau`). Strip the prefix so the values are graded in
-            # h3_config's vocabulary -- left dotted, `tau` is simply absent
-            # from `vals`, every `if k in vals` comparison below skips it, and
-            # the check goes green having graded nothing about the knob it
-            # exists for.
-            vals = {k.split(".", 1)[1] if k.startswith("selection.") else k: v
-                    for k, v in vals.items()}
         out.append((i, vals, "live" if i in live else "orphaned"))
     return out
 

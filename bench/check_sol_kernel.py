@@ -246,7 +246,8 @@ def declared_inputs(path):
 # kernel. Listing both is not belt-and-braces: shipped graphs move to the new
 # id in one regeneration, and a graph that did NOT move is exactly the state
 # where a silent dense fallback would go unnoticed.
-CUDA_SOL_NODE = "MiniMaxH3SolAttn"
+# `MiniMaxH3Sol` since the redesign (2026-09-27); `MiniMaxH3SolAttn` before it.
+CUDA_SOL_NODE = "MiniMaxH3Sol"
 VENDORED_SOL_NODE = "SolAttnMiniMax"
 
 # The Triton node. Shipped graphs migrated off it on 2026-08-14 (`8a12646`)

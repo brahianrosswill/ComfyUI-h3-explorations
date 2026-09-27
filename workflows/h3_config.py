@@ -567,12 +567,13 @@ SOL_CORE_DEFAULTS = {
 SOL_DENSE_TAIL = "45,48,49"
 
 SOL_RECOMMENDED_CUDA = dict(
-    # "adaptive tau" since the v3 node (2026-08-22). It is the threshold
-    # selection every Sol number here was measured under, so it is the
-    # continuity choice, not a preference between the two: the node's other
-    # option, "top-k (SLA)", is a different selection rule and no arm here has
-    # been rendered under it.
-    selection="adaptive tau",
+    # Keyed to `MiniMaxH3Sol`'s inputs since the redesign (2026-09-27,
+    # `docs/research/2026-09-27_sol_node_redesign.md`). Retired with the old
+    # node: `selection` (the SLA lane closed, so tau is the only selection),
+    # `pooled_tail` (always on; it is the method), `morton` and
+    # `morton_curve` (Morton closed), `token_aug_blocks` (now inside the
+    # `token_routing` combo), and the `qk_balance`/`rotate` booleans (one
+    # `quantizer` choice). Their history is in git before that date.
     # 1.0 since 2026-08-20, owner decision; see the tau note above for the
     # reversal condition. 1.3 was the value every Sol number before that date
     # was measured at.
@@ -644,63 +645,8 @@ SOL_RECOMMENDED_CUDA = dict(
     # overturns it: measuring the actual Sol-against-sage crossover here. That
     # measurement would beat both values, including this one.
     min_tokens=12288,
-    sink_conditioning="exact_kv_and_rows", morton=False,
-    # `3d`, not `2d_frame`, since 2026-08-16. This changes NOTHING today
-    # because morton is off; it changes which curve you get if you turn it on.
-    # On captured activations `3d` beats `2d_frame` on per-block centroid
-    # fidelity at every depth sampled (0.7915/0.9434 against 0.7665/0.8804 at
-    # blocks 24/49), and all three curves measured speed-identical, so the
-    # switch was wired to the weakest of them for no reason. `2d_frame` was
-    # chosen on the FRAME_PER_TOKEN argument -- (1,4,4,4,4) means a 3D curve
-    # groups temporally distant tokens -- which is mechanically correct and
-    # which the measurement does not refute; it just does not win. See
-    # docs/morton.md.
-    #
-    # **OPEN, raised 2026-08-16: this pin was selected at `3d`'s best canvas.**
-    # Every number above is 1344x768, where `3d` is 97.9% connected. Swept over
-    # all 48 legal canvases at the SHIPPED length it is the MOST
-    # canvas-variable of the four orderings -- floor 51.5%, well below plain
-    # `hilbert`'s 77.1%, worse than plain `hilbert` on 14 of the 48, and its
-    # four worst are all in the shipped set (1952x544, 1888x544, 1568x672,
-    # 1440x736). Length matters here and only for this curve: `3d` mixes
-    # frames, so its floor is 67.2% at 124 frames and 51.5% at 362.
-    # So the default was chosen where this curve looks
-    # best and would be deployed across a set where it is the least
-    # predictable. That is geometry; whether the ACTIVATION advantage is
-    # canvas-contingent too is unmeasured, and the two possibilities point
-    # opposite ways. Do not read this as "the pin is wrong" -- read it as a
-    # pin resting on one canvas. `docs/morton.md` has both readings and names
-    # the experiment that separates them. Nothing is at risk while
-    # `morton=False`; the exposure is the next person who turns it on.
-    morton_curve="3d",
-    # **`pooled_tail` since 2026-08-30, replacing `centroid_tail` and
-    # `reuse_qkv_memory`, which are gone from the node rather than renamed.**
-    # Do not read this as the same knob under a new name -- it is not.
-    #
-    #   centroid_tail      asked WHERE the pooled term is evaluated, per row or
-    #                      once per query block at its centroid.
-    #                      Comfy-Org/comfy-kitchen#117 made the centroid form
-    #                      unconditional, so the question no longer exists.
-    #   reuse_qkv_memory   asked whether the output went into the fused qkv
-    #                      buffer. Gone from every entry in the same merge.
-    #   pooled_tail        asks WHETHER there is a pooled term at all. True is
-    #                      Sol-Attn; False drops it and leaves a softmax over
-    #                      the routed blocks only, which is what SLA and VSA's
-    #                      fine stage are.
-    #
-    # True here is not a default inherited from anywhere. The pooled correction
-    # is the published method's stated contribution -- the paper's ablation has
-    # its advantage WIDENING as sparsity rises -- and every Sol number this repo
-    # has ever measured was taken with it on. Turning it off on a model that
-    # was not distilled against that routing removes the correction and keeps
-    # the sparsity.
-    #
-    # **Unmeasured here at False, and deliberately so.** The arm that would
-    # justify False was a Turbo-SLA LoRA arm, where the model HAS been distilled
-    # against exactly that routing (retired unrendered 2026-09-26); on the base
-    # model it is a strictly worse approximation with no compensating training.
-    # See docs/SOLATTN.md.
-    pooled_tail=True, verbose=True,
+    sink_conditioning="exact_kv_and_rows",
+    verbose=True,
     # Empty again by owner decision on 2026-09-02. `0-2,32` shipped from
     # 2026-08-29 until this correction, but it came from an EXPERIMENT rather
     # than a production-default result: `2026-08-29_block_propagation.json`
@@ -725,7 +671,30 @@ SOL_RECOMMENDED_CUDA = dict(
     # at a small cost measured once (`bench/results/2026-09-15_block49_community_chain.md`).
     # The kitchen-chain render of it is unscored. `docs/wiki/decisions.md`.
     dense_blocks=SOL_DENSE_TAIL,
-    # **Token routing OFF everywhere, and empty is how the node spells that.**
+    # `quantizer` "balanced" = qk_balance on, rotate off, the shipped state.
+    # qk_balance: on since 2026-09-15, owner decision; off from its introduction that
+    # morning. The kernel's own per-head q/k channel rebalancing inside its
+    # INT8 quantizers, carried on the owner's kitchen fork (h3-frontier) and
+    # graded on captures by bench/grade_channel_balance.py; exact for every
+    # attention score, so what it changes is the INT8 error on the blocks
+    # whose K-norm is lopsided (docs/h3_block49_quant_error.md). Measured on
+    # captures, not judged blind: it lowers Sol's quantization error on block
+    # 49 and is neutral on blocks 0 and 32, where its per-head gate stays shut
+    # (bench/results/2026-09-15_channel_balance_kernel_b{49,0,32}_s15.json),
+    # at no measurable wall time (bench/results/2026-09-15_block49_diner_batch.md).
+    # Adopted with the kitchen dense floor (DENSE_BACKEND_NODE below): with
+    # sage out of the default chain, Sol's routed steps are the only unrotated
+    # INT8 left on those blocks. h3_probe_t2v_ck and h3_probe_t2v_exact_tail
+    # carry False as declared deviations (bench/check_attention_defaults.py).
+    # rotate: off (2026-09-15, night). Sol's Hadamard rotation of q/k before INT8 (kitchen
+    # fork branch h3-sol-rotate): graded on captures at about half of Sol's
+    # block-49 quantization term (bench/results/2026-09-15_sol_rotate_*.json);
+    # an experiment until a witness render says otherwise.
+    # Test 1 of the redesign (balance on against off, latents compared)
+    # decides whether "balanced" earns its place behind the dense tail.
+    quantizer="balanced",
+    # **Token routing OFF everywhere.** One DynamicCombo since the redesign
+    # (`sol_attn_h3.py::SOL_ROUTING_CHOICES`); `custom` carries its own list.
     # Comfy-Org/comfy-kitchen #156, released in 0.2.33, kept the same tree as
     # the head this repo graded, so the 2026-09-04 grade transferred without
     # being redone (`bench/results/2026-09-08_kitchen_0233_blk_cnt_rebase.json`).
@@ -747,33 +716,8 @@ SOL_RECOMMENDED_CUDA = dict(
     # indistinguishable in accuracy AND in isolated kernel time
     # (`bench/results/2026-09-04_sol_exact_random_1128df6_token_aug_timing.json`),
     # so the wider budgets buy nothing while switching it on at all costs.
-    token_aug_blocks="",
-    # On since 2026-09-15, owner decision; off from its introduction that
-    # morning. The kernel's own per-head q/k channel rebalancing inside its
-    # INT8 quantizers, carried on the owner's kitchen fork (h3-frontier) and
-    # graded on captures by bench/grade_channel_balance.py; exact for every
-    # attention score, so what it changes is the INT8 error on the blocks
-    # whose K-norm is lopsided (docs/h3_block49_quant_error.md). Measured on
-    # captures, not judged blind: it lowers Sol's quantization error on block
-    # 49 and is neutral on blocks 0 and 32, where its per-head gate stays shut
-    # (bench/results/2026-09-15_channel_balance_kernel_b{49,0,32}_s15.json),
-    # at no measurable wall time (bench/results/2026-09-15_block49_diner_batch.md).
-    # Adopted with the kitchen dense floor (DENSE_BACKEND_NODE below): with
-    # sage out of the default chain, Sol's routed steps are the only unrotated
-    # INT8 left on those blocks. h3_probe_t2v_ck and h3_probe_t2v_exact_tail
-    # carry False as declared deviations (bench/check_attention_defaults.py).
-    qk_balance=True,
-    # Off (2026-09-15, night). Sol's Hadamard rotation of q/k before INT8 (kitchen
-    # fork branch h3-sol-rotate): graded on captures at about half of Sol's
-    # block-49 quantization term (bench/results/2026-09-15_sol_rotate_*.json);
-    # an experiment until a witness render says otherwise.
-    rotate=False,
-    # One dropdown since 2026-09-25 (`sol_attn_h3.py::TOKEN_ROUTING_MODES`):
-    # "off" is the node default and the recipe's. The list above is read only
-    # under "custom".
     token_routing="off",
 )
-
 
 # The Sol config for a PDD arm. **Since 2026-09-11 it is the base recipe
 # unchanged**: its one override, the narrower `end_percent` described below,
@@ -849,46 +793,17 @@ def sol_for_graph(pdd, steps):
         sol["end_percent"] = end
     return sol
 
-# **What `MiniMaxH3SolAttn` gives you untouched, for the arm that wants the
-# node's own answer rather than ours, except `qk_balance`.** The node declares
-# `qk_balance` False; this dict pins it True to follow SOL_RECOMMENDED_CUDA (the
-# comment on the key says why). Every other value matched the node's
-# `define_schema` default when read on 2026-09-27; nothing asserts the values.
-# Retargeted 2026-08-30 from the vendored upstream node to our fork;
-# `bench/check_sol_kernel.py`'s schema case grades every key name here against
-# what the node file declares, so a knob that goes away fails rather than
-# silently stops reaching anything.
-#
-# Three of these differ from what this dict held while it described the
-# vendored node, and all three are the fork's own defaults rather than
-# re-tunings: `tau` 1.0 (was 1.3), `morton_curve` "3d" (was "2d_frame"), and
-# `pooled_tail` in place of `centroid_tail` + `reuse_qkv_memory`. The first two
-# now agree with SOL_RECOMMENDED_CUDA, which they did not before -- the node
-# default and the shipped value had drifted apart with nothing asserting either.
-#
-# `selection` is a DynamicCombo: it picks HOW exact key blocks are
-# chosen, and the chosen option brings its own input. "adaptive tau" carries
-# `tau` and is what every graph here ships; "top-k (SLA)" carries
-# `keep_percent` and is the selection the lightx2v SLA LoRAs were distilled
-# against. `SOL_SELECTION_INPUTS` in build_workflows.py owns which key belongs
-# to which option, because the API form keys each under the combo's id.
-#
-# `routed_cap_percent` went with the v2 node on 2026-08-22; the v3 node does
-# not declare it, and `bench/check_sol_kernel.py`'s schema case fails on a
-# pinned knob the node has never heard of.
+# **What `MiniMaxH3Sol` gives you untouched**: its `define_schema` defaults,
+# for an arm that wants the node's own answer rather than the recipe's. Since
+# the redesign (2026-09-27) the node's defaults ARE the recipe
+# (SOL_RECOMMENDED_CUDA): `quantizer` defaults to "balanced" in the node, so
+# the two no longer disagree on the balance the way `MiniMaxH3SolAttn`'s
+# `qk_balance` default did. `bench/check_sol_kernel.py`'s schema case grades
+# every key here against what the node declares.
 SOL_CUDA_DEFAULTS = dict(
-    selection="adaptive tau", tau=1.0,
-    start_percent=0.2, end_percent=1.0, min_tokens=12288,
-    sink_conditioning="exact_kv_and_rows", morton=False,
-    morton_curve="3d", pooled_tail=True,
-    verbose=True, dense_blocks=SOL_DENSE_TAIL,
-    # Token routing off everywhere. `SOL_RECOMMENDED_CUDA` above owns why.
-    token_aug_blocks="",
-    # Pinned so an ad-hoc bench spec can flip them (`shipped[qk_balance=0]`);
-    # the values follow SOL_RECOMMENDED_CUDA.
-    qk_balance=True,
-    rotate=False,
-    token_routing="off",
+    tau=1.0, quantizer="balanced", dense_blocks=SOL_DENSE_TAIL,
+    sink_conditioning="exact_kv_and_rows", token_routing="off",
+    start_percent=0.2, end_percent=1.0, min_tokens=12288, verbose=True,
 )
 
 # Our own node. `auto`, which resolves to fp8_cuda++ on sm89.

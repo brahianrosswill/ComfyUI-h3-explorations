@@ -207,7 +207,8 @@ def sol_node():
         # a node ComfyUI does not load (its pack is renamed `.disabled`),
         # so every cuda-backend arm this built named a class the server
         # would reject. check_bench_matches_shipped.py was already red.
-        "cuda": ("MiniMaxH3SolAttn", SOL_CUDA_DEFAULTS),
+        # `MiniMaxH3Sol` since the redesign (2026-09-27).
+        "cuda": ("MiniMaxH3Sol", SOL_CUDA_DEFAULTS),
     }[SOL_BACKEND]
 
 
@@ -399,11 +400,9 @@ def build_prompt(cfg, *, sage, seed, sol=None, head_chunks=1, ffn_chunks=1):
         # comparable across a --sol-backend switch.
         class_type, defaults = sol_node()
         merged = {**defaults, **sol}
-        if class_type == "MiniMaxH3SolAttn":
-            # The CUDA node's `selection` is a DynamicCombo, so the option's
-            # own inputs are keyed under it with a dot in the API form. Routed
-            # through the generator's translator rather than spelled again
-            # here: a second implementation is how the bench arm and the
+        if class_type == "MiniMaxH3Sol":
+            # Routed through the generator's translator rather than spelled
+            # again here: a second implementation is how the bench arm and the
             # shipped graph come to disagree, which is the whole subject of
             # `bench/check_bench_matches_shipped.py`.
             from build_workflows import sol_api_inputs
@@ -497,7 +496,7 @@ ARMS = {
     # is still reachable as `shipped_triton`, which needs --sol-backend triton
     # and exists to reproduce a pre-migration number rather than to be run.
     "shipped":   ("ck", dict(SOL_RECOMMENDED_CUDA)),
-    "shipped_sage": (True, dict(SOL_RECOMMENDED_CUDA, qk_balance=False)),
+    "shipped_sage": (True, dict(SOL_RECOMMENDED_CUDA, quantizer="plain")),
     "shipped_triton": (True, dict(SOL_RECOMMENDED)),
     # The kitchen dense kernel alone, and under Sol at the node's knob defaults.
     "ck":        ("ck", None),
@@ -548,28 +547,9 @@ ARMS = {
     "sage+sol+morton+audio": (True, {"morton": True,
                                      "sink_conditioning": "exact_kv_and_rows"}),
 
-    # --- token ordering, added 2026-08-15 -----------------------------------
-    #
-    # Measured on captured activations before any of these were rendered
-    # (bench/analyze_capture.py, docs/morton.md): against the shipped
-    # 2d_frame, `3d` leads on per-block centroid fidelity and `hilbert` leads
-    # on mass concentration, at both blocks sampled. The two metrics disagree
-    # about which is better, which is why both are arms rather than a new
-    # default.
-    "shipped+morton2d": (True, dict(SOL_RECOMMENDED_CUDA, morton=True)),
-    "shipped+morton3d": (True, dict(SOL_RECOMMENDED_CUDA, morton=True,
-                                    morton_curve="3d")),
-    # `hilbert` was reached through a second node until 2026-08-31, because
-    # the vendored node's combo could not express it. `MiniMaxH3SolAttn` owns
-    # the Morton code and offers it directly, so this is one node fewer.
-    "shipped+hilbert": (True, dict(SOL_RECOMMENDED_CUDA, morton=True,
-                                   morton_curve="hilbert")),
-    # Sol-Engine's own control, copied from config/wan21_t2v_14b/reorder_only.toml:
-    # reordering on, every layer forced dense. The permutation is output-neutral
-    # under dense attention, so this arm isolates what reordering COSTS from
-    # what it buys, and doubles as a check that it really is neutral.
-    "shipped+reorder_only": (True, dict(SOL_RECOMMENDED_CUDA, morton=True,
-                                        dense_blocks="0-49")),
+    # The CUDA token-ordering arms (shipped+morton2d/3d, shipped+hilbert,
+    # shipped+reorder_only) went with Morton on 2026-09-27
+    # (docs/research/2026-09-27_sol_node_redesign.md); git has them.
 
     # --- start_percent sweep, added 2026-08-14 ------------------------------
     #

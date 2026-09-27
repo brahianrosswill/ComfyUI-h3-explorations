@@ -171,73 +171,23 @@ def _retimed_from_bank(prompt_id: str, alignment, length: int) -> str:
     return alignment(duration_of(snap_length(length))) + sep + rest
 
 
-# The Sol-Attn node every graph wires. Third node in this slot: kijai's Triton
-# pack (`SolAttnPatch`) until 2026-08-14, then the vendored upstream CUDA node
-# (`SolAttnMiniMax`), then ours (`MiniMaxH3SolAttn`) from 2026-08-30.
-#
-# **The last move is a fork, not an upgrade, and it changes the graph.** The
-# vendored node kept `centroid_tail` and `reuse_qkv_memory` as inert widgets
-# after comfy-kitchen#117 removed them from the kernel, because dropping a
-# widget re-points every later value in every saved graph carrying that node
-# id. A new node id pays no such debt, so ours drops them and adds
-# `pooled_tail`. Every graph is regenerated; a graph carrying the old node
-# still loads and still runs, on the vendored file, which is why that file is
-# kept as a read-only reference rather than deleted.
-#
-# The migration is output-neutral at the shipped settings and that is
-# measured, not argued: `bench/check_sol_node_equivalence.py` asserts the two
-# dispatches produce the SAME BYTES at both selections.
-#
-# It is a node id in saved graphs, so it obeys the one rule in CLAUDE.md (the
-# owner's editor-saved graphs match `widgets_values` positionally). The order
-# below is the node's declared input order, widgets only (`model` is a socket);
-# verified against a live /object_info.
-SOL_NODE = "MiniMaxH3SolAttn"
+# The Sol-Attn node every graph wires. Fourth node in this slot: kijai's Triton
+# pack (`SolAttnPatch`) until 2026-08-14, the vendored upstream CUDA node
+# (`SolAttnMiniMax`), ours (`MiniMaxH3SolAttn`) from 2026-08-30, and
+# `MiniMaxH3Sol` from the redesign (2026-09-27,
+# `docs/research/2026-09-27_sol_node_redesign.md`). A new node id rather than
+# an edit, because editor-saved graphs match `widgets_values` by position;
+# `MiniMaxH3SolAttn` is deleted once every graph here is regenerated.
+SOL_NODE = "MiniMaxH3Sol"
 
-# `selection` is a DynamicCombo: choosing an option adds
-# that option's own inputs to the node, which is the whole reason this lives
-# in one place.
-#
-#   API form  the option's inputs are keyed under the combo's id with a dot,
-#             `selection.tau`, and ComfyUI regroups them into the dict the
-#             node receives (`comfy_api/latest/_io.py::build_nested_inputs`).
-#             Confirmed against ComfyUI's own validator, which rejects a bare
-#             `tau` with "Required input is missing / tau".
-#
-# **That validator is not a gate.** A graph carrying NO `selection` at all
-# validates clean and then dies at execute on `selection["selection"]`, so a
-# stale Sol node reaches the queue before anything complains. Regenerate;
-# do not hand-edit.
-SOL_SELECTION_INPUTS = {
-    "adaptive tau": ("tau",),
-    "top-k (SLA)": ("keep_percent",),
-}
-# Widgets after the selection group, in the node's declared input order
-# (`model` is a socket, not a widget).
-# `token_aug_blocks` is LAST, and that position is derived rather than chosen:
-# it is declared `optional=True`, and ComfyUI lays optional inputs out after
-# every required one whatever order the schema declares them in. Read it back
-# from /object_info if this ever looks wrong -- a widget list that disagrees
-# with the frontend's order silently assigns values to the wrong knobs, which
-# no API-graph validator can see because API graphs carry no widget list.
-SOL_TAIL_WIDGETS = ("start_percent", "end_percent", "min_tokens",
-                    "sink_conditioning", "pooled_tail", "morton",
-                    "morton_curve", "verbose", "dense_blocks",
-                    "token_aug_blocks", "qk_balance", "rotate",
-                    "token_routing")
-
-
-def sol_widget_order(sol):
-    """Widget ids in the order the frontend lays them out, for this selection.
-
-    Not a constant, because the middle of the list depends on `selection`.
-    """
-    try:
-        nested = SOL_SELECTION_INPUTS[sol["selection"]]
-    except KeyError:
-        raise KeyError(f"Sol config selection {sol.get('selection')!r} is not "
-                       f"one of {sorted(SOL_SELECTION_INPUTS)}") from None
-    return ("selection",) + nested + SOL_TAIL_WIDGETS
+# `token_routing` is a DynamicCombo: its `custom` option brings a `blocks`
+# input, which the API form keys under the combo's id with a dot,
+# `token_routing.blocks`, and ComfyUI regroups into the dict the node receives
+# (`comfy_api/latest/_io.py::build_nested_inputs`).
+SOL_ROUTING_NESTED = {"custom": ("blocks",)}
+# The node's widgets in declared order (`model` is a socket).
+SOL_WIDGETS = ("tau", "quantizer", "dense_blocks", "sink_conditioning", "token_routing",
+               "start_percent", "end_percent", "min_tokens", "verbose")
 
 
 def _distill(lora, pdd, key):
@@ -259,19 +209,17 @@ def _distill(lora, pdd, key):
 
 
 def sol_api_inputs(sol):
-    """API-form inputs: the selected option's inputs are dotted under it.
-
-    Also refuses a config carrying an input that belongs to the OTHER option.
-    Such a key would be emitted as an undotted top-level input, which the node
-    does not declare and which ComfyUI would reject only at queue time.
-    """
-    nested = set(sol_widget_order(sol)[1:len(SOL_SELECTION_INPUTS[sol["selection"]]) + 1])
-    foreign = {k for opt, keys in SOL_SELECTION_INPUTS.items()
-               for k in keys if k in sol} - nested
-    if foreign:
-        raise KeyError(f"Sol config selects {sol['selection']!r} but also carries "
-                       f"{sorted(foreign)}, which belongs to another selection")
-    return {(f"selection.{k}" if k in nested else k): v for k, v in sol.items()}
+    """API-form inputs for the Sol node from a recipe dict (SOL_RECOMMENDED_CUDA
+    and its overrides). A custom token-routing list travels as
+    `token_routing.blocks`; a key the node does not declare is refused here
+    rather than at queue time."""
+    nested = SOL_ROUTING_NESTED.get(sol.get("token_routing"), ())
+    known = set(SOL_WIDGETS) | {f"token_routing.{k}" for k in nested}
+    unknown = sorted(set(sol) - known)
+    if unknown:
+        raise KeyError(f"Sol config carries {unknown}, which {SOL_NODE} does not declare "
+                       f"(token_routing {sol.get('token_routing')!r})")
+    return dict(sol)
 
 
 # Prompts for the long presets (362 frames, 15.083s). A 15s request needs a
@@ -5238,7 +5186,7 @@ def main():
         # rendered. `balanced` (the balance node plus sage's qk_balance) stood
         # here until the flip: scored, and superseded by `levers`.
         ("h3_probe_t2v_exact_tail.json", "t2v-exact-tail", "t2v", LONG_T2V_PROMPT,
-         dict(dense_attn="sage_sol", sol_overrides={"qk_balance": False, "dense_blocks": ""},
+         dict(dense_attn="sage_sol", sol_overrides={"quantizer": "plain", "dense_blocks": ""},
               exact_blocks="45,48,49", out_prefix="Video/h3_probe_t2v_exact_tail"),
          "text -> video + audio, the sage chain with blocks 45/48/49 on exact bf16 attention"),
         # docs/h3_quant_policy.md. `levers` is Tier 1's witness: every free
@@ -5257,7 +5205,7 @@ def main():
         # recipe's `dense_blocks`; its pair survives inverted as
         # `h3_probe_t2v_no_dense_tail`, the default with the tail back on Sol.
         ("h3_probe_t2v_ck.json", "t2v-ck", "t2v", LONG_T2V_PROMPT,
-         dict(dense_attn="ck", sol_overrides={"qk_balance": False, "dense_blocks": ""},
+         dict(dense_attn="ck", sol_overrides={"quantizer": "plain", "dense_blocks": ""},
               out_prefix="Video/h3_probe_t2v_ck"),
          "text -> video + audio, community chain as most run it: kitchen int8 attention dense + Sol, qk_balance off, no dense tail"),
         ("h3_probe_t2v_no_dense_tail.json", "t2v-no-dense-tail", "t2v", LONG_T2V_PROMPT,
@@ -5277,7 +5225,7 @@ def main():
          dict(dense_attn=True, out_prefix="Video/h3_probe_t2v_dense"),
          "text -> video + audio, fully dense: no sage, no Sol, no INT8 anywhere"),
         ("h3_probe_t2v_rotate.json", "t2v-rotate", "t2v", LONG_T2V_PROMPT,
-         dict(dense_attn="ck", sol_overrides={"rotate": True}, out_prefix="Video/h3_probe_t2v_rotate"),
+         dict(dense_attn="ck", sol_overrides={"quantizer": "balanced+rotated"}, out_prefix="Video/h3_probe_t2v_rotate"),
          "text -> video + audio, the default chain with Sol rotate on"),
         # RECORDS, not recommendations (2026-09-18). The three graphs below
         # stack MiniMaxH3ChannelBalance under sage's own `fp8++ balanced`.
@@ -5300,7 +5248,7 @@ def main():
         # chain, same seed as every other market arm.
         ("h3_probe_t2v_sage_rotate.json", "t2v-sage-rotate", "t2v", LONG_T2V_PROMPT,
          dict(dense_attn="sage_sol", channel_balance="loud blocks (from weights)",
-              sage_mode="fp8++ balanced", sol_overrides={"rotate": True},
+              sage_mode="fp8++ balanced", sol_overrides={"quantizer": "balanced+rotated"},
               out_prefix="Video/h3_probe_t2v_sage_rotate"),
          "text -> video + audio, the sage chain with every free lever plus Sol rotate, no exact blocks"),
         ("h3_probe_t2v_policy.json", "t2v-policy", "t2v", LONG_T2V_PROMPT,

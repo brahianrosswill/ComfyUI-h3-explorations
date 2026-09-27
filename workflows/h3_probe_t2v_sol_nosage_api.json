@@ -183,26 +183,20 @@
     }
   },
   "21": {
-    "class_type": "MiniMaxH3SolAttn",
+    "class_type": "MiniMaxH3Sol",
     "inputs": {
       "model": [
         "19",
         0
       ],
-      "selection": "adaptive tau",
-      "selection.tau": 1.0,
+      "tau": 1.0,
       "start_percent": 0.2,
       "end_percent": 1.0,
       "min_tokens": 12288,
       "sink_conditioning": "exact_kv_and_rows",
-      "morton": false,
-      "morton_curve": "3d",
-      "pooled_tail": true,
       "verbose": true,
       "dense_blocks": "45,48,49",
-      "token_aug_blocks": "",
-      "qk_balance": true,
-      "rotate": false,
+      "quantizer": "balanced",
       "token_routing": "off"
     }
   },
