@@ -355,13 +355,17 @@ def main() -> int:
             nfe = found.pdd_nfe or found.steps
             _ss = path.stem.removesuffix("_api").removesuffix("_savelat")
             if _ss.startswith(("h3_probe_t2v_step_switch_pdd8_flashgen_",
-                               "h3_probe_i2v_step_switch_pdd8_flashgen_")):
+                               "h3_probe_i2v_step_switch_pdd8_flashgen_",
+                               "h3_probe_t2v_step_switch_pdd8_base_")):
                 # The reverse switch: PDD runs FIRST, on PDD8's own schedule cut
-                # at a knot (h3_config.STEP_SWITCH_REV). Every point it samples
-                # must be one of PDD8's knots, 0, 4, 8, ...
+                # at a knot (h3_config.STEP_SWITCH_REV, or STEP_SWITCH_BASE when
+                # the base finishes). Every point it samples must be one of
+                # PDD8's knots, 0, 4, 8, ...
                 import pdd_math as _pm
                 h = _ss.rsplit("_", 1)[-1]
-                pts = [float(x) for x in h3_config.STEP_SWITCH_REV[h][0].split(",")]
+                table = (h3_config.STEP_SWITCH_BASE if "_pdd8_base_" in _ss
+                         else h3_config.STEP_SWITCH_REV)
+                pts = [float(x) for x in table[h][0].split(",")]
                 knots = _pm.schedule_knots(pts, 12.0, 32)
                 if knots != list(range(0, 4 * len(knots), 4)):
                     bad.append(f"{rel}: the reverse switch's PDD pass lands on {knots}, "

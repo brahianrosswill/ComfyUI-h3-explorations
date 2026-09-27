@@ -1271,8 +1271,27 @@ STEP_SWITCH_REV = {
     "h063": (", ".join(_P8[:8]), "0.631579, 0.0"),
     "h080": (", ".join(_P8[:7]), ", ".join(["0.8", FLASHGEN_MANUAL_SIGMAS.split(", ")[3], "0.0"])),
 }
+#: PDD8 cut at a handoff, then the undistilled base finishes on Euler
+#: (`docs/open_experiments.md` #37). **Reasoned:** pass 2 walks the 32-point
+#: grid at shift 12, `12t / (1 + 11t)`, from the handoff down: h063 is t = 4/32
+#: (PDD8's last block boundary, 4 base evaluations over the tail PDD8 takes in
+#: one) and h080 is t = 8/32, exactly 0.8 (8 evaluations; the handoff of
+#: `STEP_SWITCH_REV["h080"]`, so it sits beside the FlashGen finish).
+def _base_tail(pass1, k):
+    pts = [f"{12 * (i / 32) / (1 + 11 * (i / 32)):.6f}" for i in range(k - 1, 0, -1)]
+    return ", ".join([pass1.split(", ")[-1], *pts, "0.0"])
+
+
+STEP_SWITCH_BASE = {
+    "h063": (", ".join(_P8[:8]), _base_tail(", ".join(_P8[:8]), 4)),
+    "h080": (", ".join(_P8[:7]), _base_tail(", ".join(_P8[:7]), 8)),
+}
+# Each handoff is the grid point its tail starts from.
+assert all(abs(float(p1.split(", ")[-1]) - 12 * t / (1 + 11 * t)) < 5e-7
+           for (p1, _), t in zip(STEP_SWITCH_BASE.values(), (4 / 32, 8 / 32)))
 #: Every step-switch graph's (pass 1, pass 2) sigma pair, for the checks.
-STEP_SWITCH_PAIRS = ((STEP_SWITCH_PASS1_SIGMAS, STEP_SWITCH_PASS2_SIGMAS),) + tuple(STEP_SWITCH_REV.values())
+STEP_SWITCH_PAIRS = (((STEP_SWITCH_PASS1_SIGMAS, STEP_SWITCH_PASS2_SIGMAS),) + tuple(STEP_SWITCH_REV.values())
+                     + tuple(STEP_SWITCH_BASE.values()))
 #: **Reasoned:** the card names no sampler, and both its deployment targets
 #: (vllm-omni, MindIE-SD) step Euler deterministically.
 FLASHGEN_SAMPLER = "euler"

@@ -90,7 +90,7 @@ _OUR_NODES = {
 from prompts import text as _bank_prompt  # noqa: E402
 from h3_config import (  # noqa: E402
     CORE_LOADED_ENCODERS, IMAGE_VAE, DRAFT_VAE, STEP_SWITCH_PASS1_SIGMAS, STEP_SWITCH_PASS2_SIGMAS,
-    STEP_SWITCH_REV, CANVAS, FPS, LENGTH, LONG_LENGTH, MODELS,
+    STEP_SWITCH_REV, STEP_SWITCH_BASE, CANVAS, FPS, LENGTH, LONG_LENGTH, MODELS,
     SAMPLING, SAGE_NODE, DENSE_BACKEND_NODE, DENSE_CHAINS, DEFAULT_DENSE_CHAIN, SEED, SIGMA_SHIFT, SOL_CORE_NODE, SOL_CORE_DEFAULTS,
     VSA_KEEP_PERCENT, REF_VIDEO_LOADER,
     CACHE_NODE, CACHE_NODE_CLASS,
@@ -1498,7 +1498,9 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
               step_switch: bool = False,
               # What pass 2 is: "pdd8" (route 3, FlashGen then PDD8's finish
               # at STEP_SWITCH_PASS2_SIGMAS) or "flashgen" (the reverse: this
-              # graph's own PDD chain, then FlashGen at step_switch_sigmas).
+              # graph's own PDD chain, then FlashGen at step_switch_sigmas), or
+              # "base" (this graph's PDD chain, then the undistilled base on
+              # Euler at step_switch_sigmas; open_experiments #37).
               step_switch_to: str = "pdd8",
               step_switch_sigmas: str | None = None,
               # The FlashGen pass's `blocks` in a PDD-first switch.
@@ -2346,12 +2348,12 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
         g["12"]["inputs"]["samples"] = ["87", 0]
 
     if step_switch:
-        if step_switch_to not in ("pdd8", "flashgen"):
-            raise SystemExit(f"step_switch_to must be pdd8 or flashgen, not {step_switch_to!r}")
+        if step_switch_to not in ("pdd8", "flashgen", "base"):
+            raise SystemExit(f"step_switch_to must be pdd8, flashgen or base, not {step_switch_to!r}")
         if (lora is None or audio_refine or split_at or freeze_audio or freeze_windows or single_frame
-                or pdd != (step_switch_to == "flashgen")):
+                or pdd != (step_switch_to in ("flashgen", "base"))):
             raise SystemExit("step_switch runs this graph's own chain as pass 1 (a non-PDD LoRA "
-                             "before pdd8, PDD before flashgen) and composes with none of "
+                             "before pdd8, PDD before flashgen or base) and composes with none of "
                              "audio_refine, split_at, freeze_*, single_frame")
         # Pass 2's model chain is the other distill's own graph, built by this
         # function and copied in at +200, so it carries exactly what that
@@ -2367,6 +2369,16 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
                            pdd=True, lora=(PDD_FL2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS,
                            sampler_name="euler", manual_sigmas=pass2_sigmas,
                            unet=unet, clip=clip, **canvas)
+        elif step_switch_to == "base":
+            if not step_switch_sigmas:
+                raise SystemExit("step_switch_to='base' needs step_switch_sigmas (h3_config.STEP_SWITCH_BASE)")
+            pass2_sigmas = step_switch_sigmas
+            base_evals = len(pass2_sigmas.split(",")) - 1
+            g2 = build_api(task, sage=sage, prompt=prompt, length=length, seed=seed,
+                           sol=(sol_for_graph(False, base_evals) if sol is not None else None),
+                           sol_impl=sol_impl, dense_backend=dense_backend,
+                           steps=base_evals, sampler_name="euler",
+                           manual_sigmas=pass2_sigmas, unet=unet, clip=clip, **canvas)
         else:
             if not step_switch_sigmas:
                 raise SystemExit("step_switch_to='flashgen' needs step_switch_sigmas (h3_config.STEP_SWITCH_REV)")
@@ -5465,6 +5477,18 @@ def main():
               out_prefix=f"Video/h3_probe_t2v_step_switch_pdd8_flashgen_late_{h}"),
          f"reverse step switch: PDD8 to {STEP_SWITCH_REV[h][1].split(',')[0]}, then FlashGen on blocks 34-49 finishing")
         for h in ("h080",))
+    # PDD8 finished by the undistilled base (open_experiments #37, 2026-09-27):
+    # whether PDD8's dim highlights are its coarse tail's, with no second
+    # distill in the finish. Same handoff as rev_h063.
+    _reverse = _reverse + tuple(
+        (f"h3_probe_t2v_step_switch_pdd8_base_{h}.json", f"t2v-step-switch-pdd8-base-{h}", "t2v",
+         LONG_T2V_PROMPT,
+         dict(pdd=True, sampler_name="euler", lora=(PDD_FL2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS,
+              manual_sigmas=STEP_SWITCH_BASE[h][0], step_switch=True, step_switch_to="base",
+              step_switch_sigmas=STEP_SWITCH_BASE[h][1],
+              out_prefix=f"Video/h3_probe_t2v_step_switch_pdd8_base_{h}"),
+         f"step switch: PDD8 to {STEP_SWITCH_BASE[h][1].split(',')[0]}, then the base on Euler finishing")
+        for h in STEP_SWITCH_BASE)
     for fname, label, task, prompt, extra, note in _reverse:
         stem = fname.removesuffix(".json")
         _twins.append((f"{stem}_savelat.json", f"{label}-savelat", task, prompt,

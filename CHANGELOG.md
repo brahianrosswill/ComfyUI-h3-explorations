@@ -4,6 +4,32 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.163.0
+
+### Added
+
+- **PDD8 finished by the undistilled base** (`docs/open_experiments.md`
+  #37, now part of the PDD8 finisher grid). `build_api` takes
+  `step_switch_to="base"`: this graph's PDD8 chain cut at a handoff, then
+  fl2va with no LoRA on Euler over `h3_config.STEP_SWITCH_BASE`'s tail, which
+  walks the 32-point grid at shift 12 from the handoff down. There are two
+  handoffs:
+  - `h063`: PDD8's last block boundary, with 4 base evaluations;
+  - `h080`: the FlashGen finish's handoff, with 8 base evaluations.
+
+  The new graphs are `h3_probe_t2v_step_switch_pdd8_base_{h063,h080}`, each
+  with a `_savelat` twin, in `workflows/distill_experiments/`.
+  `check_distill_settings.py` grades a PDD-only switch against those pairs
+  exactly, where before it failed it as a truncated trajectory. It was shown
+  red on a planted pair. `check_distill_grid.py` grades the PDD pass on
+  PDD8's knots.
+- `bench/build_gate_transplant.py` and `bench/fasth3_gates_arms.json` (#35):
+  - FastH3's 150 VSA gate tensors, byte-copied onto fl2va or dropped from
+    FastH3;
+  - the seven-arm manifest, with predictions written before rendering.
+
+  Rendering waits on the queue.
+
 ## 0.162.0
 
 ### Changed (breaking for editor-saved graphs)

@@ -370,9 +370,20 @@ def main():
                     f"core's VSA node; graph has {vsa}")
                 continue
             flashgen = [l for l in found.loras if classify_flashgen(l)]
-            if (set(found.loras) == {cfg.FLASHGEN_R64_LORA, cfg.PDD_FL2VA_LORA}
-                    and any(isinstance(n, dict) and n.get("class_type") == "DisableNoise"
-                            for n in doc.values())):
+            switched = any(isinstance(n, dict) and n.get("class_type") == "DisableNoise"
+                           for n in doc.values())
+            if switched and set(found.loras) == {cfg.PDD_FL2VA_LORA}:
+                # PDD8 then the undistilled base (step_switch_to="base",
+                # open_experiments #37): one LoRA, on pass 1 only. Without this
+                # it fell to the PDD rule below and failed as a truncated
+                # trajectory. Its pair must be one STEP_SWITCH_BASE declares.
+                manual = sorted(n["inputs"]["sigmas"] for n in doc.values()
+                                if isinstance(n, dict) and n.get("class_type") == "ManualSigmas")
+                assert manual in [sorted(p) for p in cfg.STEP_SWITCH_BASE.values()], (
+                    f"{path.name}: a PDD8-then-base switch must sample one of "
+                    f"h3_config.STEP_SWITCH_BASE, has {manual}")
+                continue
+            if (set(found.loras) == {cfg.FLASHGEN_R64_LORA, cfg.PDD_FL2VA_LORA} and switched):
                 # A step switch (build_api(step_switch=True), either direction)
                 # loads both on purpose, one per pass. Its settings are one of the
                 # declared sigma pairs in h3_config.STEP_SWITCH_PAIRS, exactly.
