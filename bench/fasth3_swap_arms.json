@@ -1,0 +1,62 @@
+{
+ "what": "The owner's #3 on FastH3 V2: the conditioning set (adaln_t_table + every adaln_proj.linear) swapped between fl2va and FastH3, and the plain base, all on FastH3's contract harness (10/3, its rungs through ManualSigmas, euler, core VSA keep 20% from the first step). The FastH3 endpoint is the followup batch's <scene>__fasth3 row: same graph, prompt, length and seed.",
+ "why": "FastH3 barely moves the backbone linears and moves every block's modulation about 5% (bench/results/2026-09-26_fasth3_weights.md). Which half carries the few-step ability and the owner's 'too much detail' polish?",
+ "checkpoints": {
+  "swap_fasth3adaln": "fl2va backbone, FastH3 conditioning, no VSA gates (core's VSA runs the fine stage only and warns)",
+  "swap_baseadaln": "FastH3 backbone with its gates, fl2va conditioning",
+  "fl2va_contract": "the plain base on the same harness, no gates"
+ },
+ "predictions": {
+  "written": "2026-09-26, before any render",
+  "S1": "fl2va_contract is the floor: under-converged at 8 steps, soft and noisy, visibly worse than FastH3 on every scene.",
+  "S2": "swap_fasth3adaln lands closer to FastH3 than to the floor on sharpness and convergence, because the conditioning is where FastH3 moved; it falls short of FastH3 where the missing gates and the small backbone change matter, most on the fast-motion scene.",
+  "S3": "swap_baseadaln degrades toward the floor: softer, less converged than FastH3.",
+  "S4": "the owner's over-polish on look_anchor travels with the conditioning: present in swap_fasth3adaln, absent from swap_baseadaln.",
+  "falsifier": "if swap_baseadaln looks like FastH3 and swap_fasth3adaln like the floor, FastH3's few-step ability lives in the backbone and gates despite their small norm, and the weight-space map misleads about function."
+ },
+ "arms": {
+  "look_anchor__swap_fasth3adaln": "workflows/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
+  "look_anchor__swap_baseadaln": "workflows/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
+  "look_anchor__fl2va_contract": "workflows/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
+  "slapstick_moving_piano__swap_fasth3adaln": "workflows/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
+  "slapstick_moving_piano__swap_baseadaln": "workflows/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
+  "slapstick_moving_piano__fl2va_contract": "workflows/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
+  "radio_drama__swap_fasth3adaln": "workflows/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
+  "radio_drama__swap_baseadaln": "workflows/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
+  "radio_drama__fl2va_contract": "workflows/h3_probe_t2v_fasth3_8step_contract_savelat_api.json"
+ },
+ "patches": [
+  "look_anchor__swap_fasth3adaln:MiniMaxH3Conditioning.prompt=@bank:t2va_look_anchor",
+  "look_anchor__swap_fasth3adaln:MiniMaxH3Resolution.length=345",
+  "look_anchor__swap_fasth3adaln:UNETLoader.unet_name=minimax_h3_fl2va_pruned_int8_convrot_fasth3adaln.safetensors",
+  "look_anchor__swap_baseadaln:MiniMaxH3Conditioning.prompt=@bank:t2va_look_anchor",
+  "look_anchor__swap_baseadaln:MiniMaxH3Resolution.length=345",
+  "look_anchor__swap_baseadaln:UNETLoader.unet_name=fastvideo_fasth3_8step_v2_pruned_int8_convrot_baseadaln.safetensors",
+  "look_anchor__fl2va_contract:MiniMaxH3Conditioning.prompt=@bank:t2va_look_anchor",
+  "look_anchor__fl2va_contract:MiniMaxH3Resolution.length=345",
+  "look_anchor__fl2va_contract:UNETLoader.unet_name=minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+  "slapstick_moving_piano__swap_fasth3adaln:MiniMaxH3Conditioning.prompt=@bank:t2va_slapstick_moving_piano",
+  "slapstick_moving_piano__swap_fasth3adaln:MiniMaxH3Resolution.length=345",
+  "slapstick_moving_piano__swap_fasth3adaln:UNETLoader.unet_name=minimax_h3_fl2va_pruned_int8_convrot_fasth3adaln.safetensors",
+  "slapstick_moving_piano__swap_baseadaln:MiniMaxH3Conditioning.prompt=@bank:t2va_slapstick_moving_piano",
+  "slapstick_moving_piano__swap_baseadaln:MiniMaxH3Resolution.length=345",
+  "slapstick_moving_piano__swap_baseadaln:UNETLoader.unet_name=fastvideo_fasth3_8step_v2_pruned_int8_convrot_baseadaln.safetensors",
+  "slapstick_moving_piano__fl2va_contract:MiniMaxH3Conditioning.prompt=@bank:t2va_slapstick_moving_piano",
+  "slapstick_moving_piano__fl2va_contract:MiniMaxH3Resolution.length=345",
+  "slapstick_moving_piano__fl2va_contract:UNETLoader.unet_name=minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+  "radio_drama__swap_fasth3adaln:MiniMaxH3Conditioning.prompt=@bank:t2va_radio_drama",
+  "radio_drama__swap_fasth3adaln:MiniMaxH3Resolution.length=243",
+  "radio_drama__swap_fasth3adaln:UNETLoader.unet_name=minimax_h3_fl2va_pruned_int8_convrot_fasth3adaln.safetensors",
+  "radio_drama__swap_baseadaln:MiniMaxH3Conditioning.prompt=@bank:t2va_radio_drama",
+  "radio_drama__swap_baseadaln:MiniMaxH3Resolution.length=243",
+  "radio_drama__swap_baseadaln:UNETLoader.unet_name=fastvideo_fasth3_8step_v2_pruned_int8_convrot_baseadaln.safetensors",
+  "radio_drama__fl2va_contract:MiniMaxH3Conditioning.prompt=@bank:t2va_radio_drama",
+  "radio_drama__fl2va_contract:MiniMaxH3Resolution.length=243",
+  "radio_drama__fl2va_contract:UNETLoader.unet_name=minimax_h3_fl2va_pruned_int8_convrot.safetensors"
+ ],
+ "seeds": {
+  "first": 730451892,
+  "note": "held, the followup batch's seed"
+ },
+ "run": "run_graph_arms.py --manifest bench/fasth3_swap_arms.json --runs 1 --seed 730451892 --hold-seed --no-alternate --out bench/results/2026-09-26_fasth3_swap.jsonl"
+}
