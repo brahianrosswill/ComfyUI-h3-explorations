@@ -1,0 +1,14 @@
+{
+  "what": "Sol redesign test 2, the capture session (docs/research/2026-09-27_sol_node_redesign.md): the shipped PDD8 t2v and ref2va graphs on current code, captured at the Sol blocks the balance gate opens on and at the dense tail, at two steps inside Sol's sigma window.",
+  "why": "Test 1's quantizer grade ran on 2026-09-19 captures, which are base-model sage-chain activations on older code; rotated won every cell there. The shipped graphs are PDD8, whose LoRA moves q/k. The default moves only on a grade of what ships (bench/grade_sol_quantizer_on_capture.py over these cells). Blocks 45, 48 and 49 also answer kitchen int8 against sage rotated on matched cells (audit section 9b).",
+  "arms": {
+    "t2v_slapstick_capture": "workflows/distill_experiments/h3_text_to_video_pdd_savelat_api.json",
+    "ref2va_capture": "workflows/h3_image_ref_plus_text_to_video_pdd_api.json"
+  },
+  "patches": [
+    "t2v_slapstick_capture:MiniMaxH3Conditioning.prompt=@bank:t2va_slapstick_moving_piano",
+    "t2v_slapstick_capture:MiniMaxH3Resolution.length=345"
+  ],
+  "server_env": "H3_CAPTURE=dir=$H3_CAPTURE_ROOT/2026-09-27_sol_test2_pdd8,blocks=0:8:40:44:45:46:47:48:49,steps=2:6,cycle=8 (reasoned: PDD8 is 8 steps; Sol's start_percent 0.2 leaves steps 0-1 before its window, so 2 and 6 are an early and a late Sol step)",
+  "run": "run_graph_arms.py --manifest bench/sol_redesign_test2_capture_arms.json --runs 1 --seed 730451892 --hold-seed --no-alternate --out bench/results/2026-09-27_sol_redesign_test2_capture.jsonl"
+}
