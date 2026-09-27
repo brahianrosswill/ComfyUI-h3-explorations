@@ -2846,6 +2846,14 @@ that premise.
     cuts must be prompted.
 - **Blocker:** none for the pilot (CPU, existing latents). The scene renders
   need the owner's go, and base Euler 32 is the long one (see #42).
+- **Pilot run 2026-09-27** (`../bench/results/2026-09-27_settle_pilot.md`).
+  - On subway, the base on Euler 32 settles its high-change frames later at
+    every threshold: rank correlation +0.50 to +0.60, and +0.38 on the
+    threshold-free measure.
+  - PDD8 shows no consistent relation after the loosest threshold.
+  - So the late refinement of moving frames is the teacher's, and PDD8 lacks
+    it. That is the reverse of the pattern this entry's rule expected.
+  - The scene pass decides whether it holds; the record says what follows.
 
 ## 44. Timestamps inside a shot
 
