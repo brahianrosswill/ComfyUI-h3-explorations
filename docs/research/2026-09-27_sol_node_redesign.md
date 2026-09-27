@@ -114,6 +114,42 @@ that. Once the generated graphs are rebuilt on the new node,
 for qk_balance with token_aug. Merge, rebuild, and record the new build
 (`vendor/rebuild_kernel.sh`).
 
+## Implementation stages
+
+The work happens on branch `sol-redesign`, in a worktree outside
+`custom_nodes/`, so no ComfyUI server loads half-done code. It merges into
+`main` after tests 0 to 3, which run on the unchanged node. Each stage is one
+commit on the branch.
+
+1. **Segment bounds from core** (done: `h3_layout.py`). The sink,
+   `h3_capture` and `sol_observe` read core's `minimax_h3_layout`, trusted
+   only when the call is as long as the layout.
+2. **The new node, `MiniMaxH3Sol`**, beside the old one in `sol_attn_h3.py`:
+   - inputs as tabled above;
+   - block index from `h3_layout.block_index`;
+   - re-installs itself on top every step (ON_PREPARE_STATE);
+   - raises on a kernel error;
+   - takes bf16 and fp16;
+   - names its dense fallback in the log, the settings record and
+     provenance;
+   - `provenance.SOL_CLOSURE_KEYS` matches its closure.
+3. **The generator moves to the new node:** `h3_config` (its knob set
+   renamed to the new inputs), `build_workflows.py`, and every check that
+   reads the Sol widgets. Then rebuild all graphs and run the full check
+   sweep.
+4. **Delete the old node** and all code only it reaches:
+   - Morton: `install_h3_morton`, the curves, `sol_curves.py`,
+     `_patch_packed_layout`, `_SPANS`, `bench/check_sol_reorder_equivalence.py`;
+   - `tau_profile`, top-k, `pooled_tail`;
+   - `_install_block_index`, together with `sol_block` in its consumers.
+
+   The analysis scripts that only reproduce closed-lane records are
+   reviewed one by one, and deleted ones are cited by commit.
+5. **Prose:** `docs/SOLATTN.md`, `docs/morton.md`, the module docstrings,
+   `CHANGELOG.md`, and `docs/wiki/decisions.md`.
+6. **Merge to `main`, rebuild, restart ComfyUI, and smoke-render** one graph
+   per mode.
+
 ## Retiring code (owner, 2026-09-27)
 
 > "if you retire any parts of the node, be sure to do the same to the
