@@ -33,6 +33,16 @@ the other way around but my gut says pdd".
   - Built only on 0.154.8 or later: two branch models in one graph.
 - **PDD video, FastH3 audio.** Re-render the audio on FastH3 with the video
   frozen (the audio-refine pass). The owner rates FastH3's audio highest.
+- **Update, the same night: the subway clone is born early.** The x0 capture
+  shows two figures already at PDD8's step 1 of 8
+  (`../../bench/results/2026-09-26_x0_steps_subway_pdd8.json`).
+  - A late handoff (PDD first, FlashGen finishing) should not remove it.
+  - Route 3 (FlashGen first, PDD finishing) or a different first block
+    might.
+  - The base's early x0 at this seed is the control: does the base make the
+    same choice?
+  - The PDD-first graph is still the right shape if other failures turn out
+    to be late.
 - **Not weight blending.** On 2026-09-26 the stacking bug ran FlashGen with
   PDD's backbone half and no PDD heads, and the owner saw it as "blocky as
   hell" (`../../bench/results/2026-09-26_followup_contamination.md`).
