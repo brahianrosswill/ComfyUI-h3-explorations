@@ -96,6 +96,18 @@ the unusual one, more than PDD8's or FastH3's does.*
   - At 1.2: more contrast and saturation, possibly artifacts.
   - Beats followed stay about the same across the three.
   - Fails if removing adaln leaves the grade unchanged.
+
+  *Verdict, 2026-09-27: failed on adaln, half held on strength.* Tone from
+  `2026-09-27_flashgen_variants_tone.json`, on courtroom and kpop.
+  - **Adaln (failed):** without adaln the grade matches full FlashGen within
+    noise (contrast, haze, saturation, detail). FlashGen's adaln change is
+    about 0.1% of modulation.
+  - **Strength (half held):** on courtroom 1.2 raises contrast (0.280
+    against 0.258) and saturation and lowers haze, and 0.8 goes the other
+    way. Kpop barely moves.
+  - The haze does not grow with strength: more FlashGen means less haze.
+  - Dense attention matches Sol on tone (kpop, samurai). Adherence (P2) is
+    for the owner's checklist read.
 - **P4. PDD8 clones or doubles people on the motion scenes, not on the still
   ones.**
   - Motion scenes: slapstick, kpop, samurai, rooftop_pov.

@@ -162,3 +162,9 @@ valid.
 - **Next test, the owner's call:** late-only FlashGen on the adherence
   scenes, by the owner's eye. Is it a less hazy FlashGen that also follows
   prompts better? It needs only `blocks="34-49"`.
+
+*FP4 verdict, 2026-09-27: cannot be read against the base* (no base arm
+tonight), and the direction is the reverse of what "toward the base" was
+taken to mean. From `2026-09-27_flashgen_variants_tone.json`: strength 0.8
+adds haze and lowers contrast and saturation on courtroom, and 1.2 does the
+opposite. FlashGen's haze does not come from over-applying the LoRA.

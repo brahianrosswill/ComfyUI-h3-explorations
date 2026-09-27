@@ -8,8 +8,11 @@ only. The mp4 encoder issue is set aside, as the owner asked.
 **Resolve a row's configuration by its `graph_sha256`, never by today's
 graph file.** Several graphs have changed or been deleted since they
 rendered:
-- the INT8 video VAE became the default at 0.151.0, 16:29, so
-  `distill_compare_s1` decoded through fp16;
+- the INT8 video VAE became the default at 0.151.0, 16:29. So
+  `distill_compare_s1` is mixed: its PDD8, FlashGen and FastH3 rows (16:00 to
+  16:12) decoded through fp16, and its two base rows (16:48 and 16:57, a
+  later invocation) through INT8. The VAE session's `render_inventory.py`
+  resolves this by hash;
 - `h3_probe_t2v_flashgen_r64_4step_branch` was removed in 0.147.1;
 - the Turbo graphs were removed in 0.156.0.
 
@@ -24,7 +27,7 @@ rendered:
 | `h3/minimax_h3_flashgen_4step_v1.0_768p_fl2va_pruned_rank64_comfy` | Beidouqixing's FlashGen v1.0, at its full rank 64: qkv rows permuted to ComfyUI's bands, adaln re-expressed on fl2va's curve basis | `bench/convert_flashgen_lora.py` at `c7ad7f06` (0.142.1); record `2026-09-25_flashgen_lora_conversion.json`; exact on every non-adaln module (`2026-09-26_flashgen_weights.json`) |
 | `h3/minimax_h3_flashgen_4step_v1.0_768p_ref2va_pruned_rank64_comfy` | the same LoRA converted for the Ref2VA basis | the same script, `--partition Ref2VA`, at `e7d08d19` (0.147.0); record `2026-09-26_flashgen_lora_conversion_ref2va.json` |
 | `h3/minimax_h3_4step_lora_flashgen_v1.0_768p_fl2va_pruned_avg_rank_13_bf16` | kijai's lossy resize of FlashGen (sv_fro 0.95, average rank 13) | HF `Kijai/MiniMax-H3-experimental`, not ours |
-| `h3/lightx2v_Minimax-h3-Turbo/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16` | LightX2V Turbo 8-step, used once as a smoke test | LightX2V's release. The lane was retired 2026-09-27 |
+| `h3/lightx2v_Minimax-h3-Turbo/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16` | LightX2V Turbo 8-step, used once as a smoke test | LightX2V's release. The lane was retired 2026-09-26 (0.156.0) |
 | `minimax_h3_video_vae_fp16`, `_int8_convrot`, `minimax_h3_audio_vae_fp32` | the decoders | the INT8 switch is the VAE session's (0.151.0, `aadfb77a`) |
 
 ## The records, and what each render is
@@ -47,8 +50,8 @@ carries `__s<seed>`.
   against FastVideo's own contract, and each half of it. The contract ships
   as the FastH3 probe.
 - **`distill_compare_s1`** (16:00-16:57): the base, PDD8, FlashGen and FastH3
-  on diner and the old subway prompt. fp16 VAE, and PDD merged: pre-0.154.0,
-  when that was the only path.
+  on diner and the old subway prompt. PDD was merged, pre-0.154.0, when that
+  was the only path. The VAE is mixed (above).
 - **`subway_v2_s1`** (17:18-17:29): the same four on the rewritten subway
   prompt. The owner's reads are in the record.
 - **`distill_run`** (20:08-20:50, stopped): the frozen-row probe and nine
