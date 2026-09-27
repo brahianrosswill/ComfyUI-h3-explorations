@@ -275,6 +275,11 @@ def forward(args) -> int:
                 return isinstance(y, dict) and x.keys() == y.keys() and all(eq(x[k], y[k]) for k in x)
             if isinstance(x, (list, tuple)):
                 return len(x) == len(y) and all(eq(u, v) for u, v in zip(x, y))
+            # comfy.nested_tensor.NestedTensor (the AV latent) and similar
+            # holders are not torch.Tensor and have no value equality: `==`
+            # would compare identity and fail two identical captures.
+            if hasattr(x, "__dict__") and not isinstance(x, type):
+                return type(x) is type(y) and eq(vars(x), vars(y))
             return x == y
         return eq(a, b)
 
