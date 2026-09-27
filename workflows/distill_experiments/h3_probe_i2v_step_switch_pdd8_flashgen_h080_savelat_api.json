@@ -192,7 +192,7 @@
       "sink_conditioning": "exact_kv_and_rows",
       "verbose": true,
       "dense_blocks": "45,48,49",
-      "quantizer": "balanced",
+      "quantizer": "rotated",
       "token_routing": "off"
     }
   },
@@ -229,7 +229,7 @@
       "sink_conditioning": "exact_kv_and_rows",
       "verbose": true,
       "dense_blocks": "45,48,49",
-      "quantizer": "balanced",
+      "quantizer": "rotated",
       "token_routing": "off"
     }
   },

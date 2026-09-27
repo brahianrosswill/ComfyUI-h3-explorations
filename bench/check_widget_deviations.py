@@ -323,7 +323,7 @@ DECLARED: dict[tuple[str, str], tuple] = {
                 "h3_probe_t2v_rotate (the Tier 2 witness) and "
                 "h3_probe_t2v_sage_rotate (the sage chain with every lever), Sol's "
                 "Hadamard rotation of q/k before INT8 (2026-09-15, "
-                "docs/h3_quant_policy.md). The node default 'balanced' "
+                "docs/h3_quant_policy.md). The node default 'rotated' "
                 "(sol_attn_h3.SOL_QUANTIZER_DEFAULT) everywhere else. Replaced the "
                 "qk_balance and rotate rows with the 2026-09-27 node redesign; "
                 "the per-graph value is graded by "

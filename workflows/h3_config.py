@@ -681,7 +681,8 @@ SOL_RECOMMENDED_CUDA = dict(
     # at a small cost measured once (`bench/results/2026-09-15_block49_community_chain.md`).
     # The kitchen-chain render of it is unscored. `docs/wiki/decisions.md`.
     dense_blocks=SOL_DENSE_TAIL,
-    # `quantizer` "balanced" = qk_balance on, rotate off, the shipped state.
+    # `quantizer` "balanced" = qk_balance on, rotate off, the shipped state
+    # until 2026-09-27; "rotated" since (below).
     # qk_balance: on since 2026-09-15, owner decision; off from its introduction that
     # morning. The kernel's own per-head q/k channel rebalancing inside its
     # INT8 quantizers, carried on the owner's kitchen fork (h3-frontier) and
@@ -700,9 +701,13 @@ SOL_RECOMMENDED_CUDA = dict(
     # fork branch h3-sol-rotate): graded on captures at about half of Sol's
     # block-49 quantization term (bench/results/2026-09-15_sol_rotate_*.json);
     # an experiment until a witness render says otherwise.
-    # Test 1 of the redesign (balance on against off, latents compared)
-    # decides whether "balanced" earns its place behind the dense tail.
-    quantizer="balanced",
+    # **"rotated" since 2026-09-27** (owner decision, measured): on captures of
+    # the shipped PDD8 t2v and ref2va graphs it has the lowest Sol quantization
+    # error on all 28 Sol-block cells and costs less than "balanced"; the total
+    # error moves little because sparsity dominates
+    # (bench/results/2026-09-27_sol_redesign_test2.md). "balanced" before, the
+    # history above. Changes every Sol render's output from that date.
+    quantizer="rotated",
     # **Token routing OFF everywhere.** One DynamicCombo since the redesign
     # (`sol_attn_h3.py::SOL_ROUTING_CHOICES`); `custom` carries its own list.
     # Comfy-Org/comfy-kitchen #156, released in 0.2.33, kept the same tree as
@@ -806,12 +811,12 @@ def sol_for_graph(pdd, steps):
 # **What `MiniMaxH3Sol` gives you untouched**: its `define_schema` defaults,
 # for an arm that wants the node's own answer rather than the recipe's. Since
 # the redesign (2026-09-27) the node's defaults ARE the recipe
-# (SOL_RECOMMENDED_CUDA): `quantizer` defaults to "balanced" in the node, so
+# (SOL_RECOMMENDED_CUDA): `quantizer` defaults to "rotated" in the node, so
 # the two no longer disagree on the balance the way `MiniMaxH3SolAttn`'s
 # `qk_balance` default did. `bench/check_sol_kernel.py`'s schema case grades
 # every key here against what the node declares.
 SOL_CUDA_DEFAULTS = dict(
-    tau=1.0, quantizer="balanced", dense_blocks=SOL_DENSE_TAIL,
+    tau=1.0, quantizer="rotated", dense_blocks=SOL_DENSE_TAIL,
     sink_conditioning="exact_kv_and_rows", token_routing="off",
     start_percent=0.2, end_percent=1.0, min_tokens=12288, verbose=True,
 )

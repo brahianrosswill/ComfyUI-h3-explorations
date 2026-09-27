@@ -4,6 +4,31 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.166.0
+
+### Changed
+
+- **Sol's default quantizer is `rotated`, replacing `balanced`** (owner,
+  2026-09-27). The value changed in `sol_attn_h3.py::SOL_QUANTIZER_DEFAULT`,
+  `h3_config.SOL_RECOMMENDED_CUDA` and `SOL_CUDA_DEFAULTS`. Every graph is
+  rebuilt: 141 `MiniMaxH3Sol` nodes change from `balanced` to `rotated`, and
+  nothing else in any graph moves.
+  - **Why:** on captures of the shipped PDD8 t2v and ref2va graphs, `rotated`
+    has the lowest Sol quantization error on all 28 Sol-block cells, and it
+    costs less kernel time than `balanced`. Its effect on Sol's total error
+    is small (`bench/results/2026-09-27_sol_redesign_test2.md`).
+  - **What stops matching:** every render through `MiniMaxH3Sol` changes
+    output from this version on. That covers PDD8 and FlashGen graphs,
+    including the 2026-09-27 finisher-grid, late-switch and #34 rows. A
+    comparison against an earlier render pins `quantizer=balanced` or runs
+    from an earlier commit.
+  - **What still matches:** FastH3's contract graphs run core's
+    `BlockSparseAttention`, not `MiniMaxH3Sol`, so they keep bit-identity
+    across this change.
+  - **Unchanged:** the arms that declare another quantizer, and the
+    "all blocks" token-routing preset. That preset still needs `balanced` or
+    `balanced+rotated`; test 3 re-derives the rule.
+
 ## 0.165.1
 
 ### Added

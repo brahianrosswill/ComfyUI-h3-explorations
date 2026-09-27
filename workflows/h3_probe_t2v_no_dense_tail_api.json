@@ -206,7 +206,7 @@
       "sink_conditioning": "exact_kv_and_rows",
       "verbose": true,
       "dense_blocks": "",
-      "quantizer": "balanced",
+      "quantizer": "rotated",
       "token_routing": "off"
     }
   },

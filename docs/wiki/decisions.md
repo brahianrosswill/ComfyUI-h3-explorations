@@ -17,6 +17,13 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-27
 
+- **Sol's default quantizer is `rotated`** (owner, 0.166.0). It was
+  `balanced`, inherited from `qk_balance=True` (2026-09-15). The owner chose
+  it from test 2's grade on the shipped PDD8 graphs: lowest quantization
+  error on every Sol-block cell, cheaper than `balanced`, small effect on
+  total error. The owner said to switch at the next ComfyUI restart, with the
+  reviews done. `bench/results/2026-09-27_sol_redesign_test2.md`.
+
 - **Our conditioning nodes strip the prompt at both ends** (owner: "strip
   leading and trailing whitespace in our conditioning nodes and \n at the end
   (not in the middle - \n has value in the middle)"; "make sure no prompts in

@@ -763,20 +763,21 @@ def _install_compose_hooks(model, attn_attr):
 #     record, so a render says which kernel ran its dense calls.
 
 #: quantizer choice -> (qk_balance, rotate). Both are fork options of the
-#: kitchen kernel; `docs/research/2026-09-27_sol_node_redesign.md` test 2
-#: grades the four. On MiniMax H3 the balance gate is recorded as opening on
-#: blocks 45, 48 and 49 only (docs/h3_block49_quant_error.md), which the
-#: default dense_blocks sends off Sol.
+#: kitchen kernel, graded against each other on the shipped PDD8 graphs'
+#: captures (`bench/results/2026-09-27_sol_redesign_test2.md`). The balance
+#: gate opens on some heads of every block
+#: (`bench/results/2026-09-27_qk_balance_gate_on_capture.json`).
 SOL_QUANTIZERS = {
     "plain": (False, False),
     "balanced": (True, False),
     "rotated": (False, True),
     "balanced+rotated": (True, True),
 }
-#: Inherited from the shipped state (SOL_RECOMMENDED_CUDA carried
-#: qk_balance=True, rotate=False since 2026-09-15). Test 1 of the redesign
-#: (balance on against off, latents compared) decides whether it stays.
-SOL_QUANTIZER_DEFAULT = "balanced"
+#: Measured (owner decision, 2026-09-27): "rotated" has the lowest Sol
+#: quantization error of the four on all 28 PDD8 Sol-block cells and costs
+#: less than "balanced" (`bench/results/2026-09-27_sol_redesign_test2.md`).
+#: "balanced" was the default before, inherited from qk_balance=True.
+SOL_QUANTIZER_DEFAULT = "rotated"
 
 SOL_ROUTING_OFF = "off"
 SOL_ROUTING_MEASURED = "measured blocks (0, 24, 32, 40)"
