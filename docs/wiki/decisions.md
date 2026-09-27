@@ -17,6 +17,10 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-27
 
+- **The Sol redesign ships as `MiniMaxH3Sol`, and `MiniMaxH3SolAttn` is
+  deleted once the generated graphs move** (owner: "1 delete", "3 your pick on
+  name"). The kitchen build branch `h3-frontier` is pushed to the owner's
+  GitHub fork and `nas`, never to Comfy-Org ("Never upstream to comfy").
 - **Closed: the SLA lane and Morton** (owner: "SLA is closed unless you see
   some reason not to"; "Morton seems dead too unless you see remnants of it").
   Checked first:
