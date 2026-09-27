@@ -59,6 +59,12 @@ is `2026-09-27_render_dataset/`.
 2. **FlashGen on its late blocks only** (`MiniMaxH3LoRABranch.blocks="34-49"`).
    - A less hazy FlashGen with deeper blacks and full motion detail (FT1).
    - Open: whether it also follows prompts better.
+
+   *Annotation 2026-09-27, later: the haze claim does not generalise.* In the
+   finisher grid's #46 arms at 124 frames, late-only had less haze on three
+   scenes and more on two, and less contrast on four
+   (`2026-09-27_finisher_grid.md`, Part B). As a finisher after PDD8 it
+   matches full FlashGen (#34).
 3. **Untested, and the most promising next render: PDD first, finished by
    late-only FlashGen.** If the late blocks carry the finish and the early
    blocks carry the haze, this should lift PDD's highlights without adding

@@ -2674,6 +2674,14 @@ the clean test of whether the tail is PDD's problem.
     choice.
   - If it looks like PDD8, the dim highlights are not the tail's.
 - **Blocker:** the owner's go; a small generator change.
+- **Run 2026-09-27 in the finisher grid** (`../bench/results/2026-09-27_finisher_grid.md`,
+  fastdude): the base finish from 0.8 on six t2v scenes.
+  - It leaves PDD8's highlights, contrast, haze and detail about where they
+    were, and on noodle_bar the highlights drop.
+  - Motion detail rises on four of six scenes, less than under the FlashGen
+    finish.
+  - On measures it does not repair PDD8's dim highlights; the FlashGen finish
+    does. The owner's eye is pending.
 
 ## 38. The save format, measured
 
@@ -2734,6 +2742,15 @@ among PDD, FlashGen and FastH3 all night with it off.
   numbers.
 - **Blocker:** none beyond a batch to ride on. It costs almost nothing
   (`../bench/results/2026-09-26_telemetry_first_records.md` has the overhead).
+- **Run 2026-09-27 on the finisher grid** (`../bench/results/2026-09-27_finisher_grid.md`,
+  "Telemetry"; per-render summary `../bench/results/2026-09-27_finisher_grid_telemetry.json`).
+  - The card peaks at 24.3-24.5 GB on every render.
+  - The DiT is about 90% resident, and the rest streams every forward.
+  - The text encoder loads and evicts per new prompt: 8.5-10 s and 22-31 GiB
+    of PCIe.
+  - About 19.5 GB of disk reads on most renders that encode a new prompt
+    point at page-cache eviction. A CPU sweep ran alongside, so a quiet
+    batch should confirm it.
 
 ## 40. A second seed on the recipes we would ship
 
@@ -2997,6 +3014,16 @@ eye.
   - If not, FT1 stays a tone result and O2 is a property of the whole
     adapter.
 - **Blocker:** the owner's go (4 renders); then the owner's scoring.
+- **Run 2026-09-27 in the finisher grid** (`../bench/results/2026-09-27_finisher_grid.md`,
+  Part B): FlashGen alone, full against blocks 34-49, on the specificity
+  ladder, subway_chase_short and `t2va_offpath_tortoise`.
+  - A control re-render reproduced the existing full-FlashGen row bit for
+    bit.
+  - On measures, late-only has less haze on three scenes and more on two,
+    and less contrast on four. FT1's "half the haze" does not generalise at
+    124 frames.
+  - Adherence, the question, awaits the owner's eye. The pairs are on the
+    board's review tab.
 
 ## 47. Does the int8 encoder's conditioning error reach the distills' output
 
