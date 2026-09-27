@@ -15,6 +15,15 @@ Older history lives elsewhere and is not copied here:
   decisions" and forward-plan sections.
 - `bench/results/`: the verdict records, each with its conditions.
 
+## 2026-09-27
+
+- **Corrected: `vsa_attention.py` "cannot run", its defect "unreachable".**
+  Stock core has built `to_gate_compress` since e308cc73 (#16072), so the old
+  refusal passes and the `_publish_layout` leak is reachable. The node is
+  parked by an explicit refusal (0.157.1). The remaining stale prose (the
+  module docstring, `docs/research/vsa/vsa_node.md`, and
+  `check_vsa_core_patch.py`'s "applied from the draft PR" message) is listed
+  for correction.
 ## 2026-09-26
 
 - **Distill research graphs moved to `workflows/distill_experiments/`**

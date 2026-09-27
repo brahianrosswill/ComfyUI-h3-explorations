@@ -468,6 +468,13 @@ def _make_block(block, gate, topk_ratio, tail, index):
     return replacement
 
 
+#: Set True only after `_publish_layout` goes through the ModelPatcher (or is
+#: deleted in favour of core's own `minimax_h3_layout`): the node refuses at
+#: execute while this is False. **Reasoned**, 2026-09-27: core's gates made the
+#: old refusal unreachable, and the wrappers leak across renders.
+PARK_OVERRIDE = False
+
+
 class MiniMaxH3VSAAttention(io.ComfyNode):
     @classmethod
     def define_schema(cls):
@@ -524,6 +531,21 @@ class MiniMaxH3VSAAttention(io.ComfyNode):
 
     @classmethod
     def execute(cls, model, keep_percent, pooled_tail) -> io.NodeOutput:
+        # Parked by an explicit refusal, 2026-09-27. The refusal this node used
+        # to rely on (`_gate_modules`, when core had no `to_gate_compress`) no
+        # longer fires: stock core builds the gates since e308cc73 ("Add Sparse
+        # Attention node", #16072). Past it, `_publish_layout` mutates the
+        # SHARED model outside ModelPatcher and patches `PackedLayout.__init__`
+        # process-wide, so one execution would leak into every later render on
+        # the server (see this module's docstring). Use core's
+        # BlockSparseAttention (selection "vsa") for FastH3; remove this guard
+        # only together with that fix.
+        if not PARK_OVERRIDE:
+            raise RuntimeError(
+                "MiniMaxH3VSAAttention is parked: its layout wrappers would "
+                "leak into every later render on this server. Use core's "
+                "BlockSparseAttention with selection 'vsa' (keep 20 from step 0 "
+                "for FastH3 V2; h3_config.FASTH3_CONTRACT_VSA).")
         import comfy_kitchen
         for name in ("sol_attn",):
             if not hasattr(comfy_kitchen, name):

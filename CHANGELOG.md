@@ -4,6 +4,21 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.157.1
+
+### Fixed
+
+- **`MiniMaxH3VSAAttention` is parked by an explicit refusal** (`PARK_OVERRIDE`).
+  - The refusal it relied on no longer fires. Stock core builds the gates
+    since e308cc73 ("Add Sparse Attention node", #16072), so `_gate_modules`
+    passes.
+  - Past that point, `_publish_layout` mutates the shared model outside
+    ModelPatcher and patches `PackedLayout.__init__` process-wide. One
+    execution would leak into every later render on the server.
+  - Found by a read-only comparison with core's VSA mode and FastVideo's
+    reference.
+  - Use core's `BlockSparseAttention` (selection "vsa") for FastH3.
+
 ## 0.157.0
 
 ### Added
