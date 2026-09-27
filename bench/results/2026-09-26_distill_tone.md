@@ -38,6 +38,40 @@ washed out / contrasty than flashgen was, even".
 - **Template and contract FastH3 measure alike** (rms 0.211 on both). The
   contract's changes did not move the tone.
 
+## Saturation over every clip we have (added later the same day)
+
+The owner: "fasth3 has been more saturated and fastgen slightly less but still
+a bit. Pdd the least... I bet you can even measure it from your side with
+code."
+
+**Clips:** 34, spanning every PDD8, FlashGen, FastH3 and base render of diner
+and subway, on the old and rewritten prompts. FlashGen includes the r13, r64,
+merged, branch and dense variants, and FastH3 the template, contract and
+half-arms. Some arms repeat a render bit for bit, so the counts over-weight
+those.
+
+**Numbers:** `measure_clip_tone.py` with its `sat` and `chroma` columns. Per
+clip in `2026-09-26_distill_saturation_all_clips.json`.
+
+| mean | base | PDD8 | FlashGen | FastH3 |
+|---|---|---|---|---|
+| diner sat | 0.472 | 0.427 | 0.434 | 0.477 |
+| diner chroma | 0.137 | 0.145 | 0.151 | 0.187 |
+| subway (old) sat | 0.244 | 0.276 | 0.222 | 0.255 |
+| subway (old) chroma | 0.052 | 0.096 | 0.068 | 0.093 |
+| subway (new) sat | 0.247 | 0.259 | 0.229 | 0.287 |
+| subway (new) chroma | 0.055 | 0.093 | 0.059 | 0.103 |
+
+- **FastH3 most saturated:** measured on diner and the new subway, and level
+  with PDD8 on the old subway.
+- **All three distills carry more chroma than the base.**
+- **"PDD the least" is not what the pixels say.** FlashGen is the least
+  saturated distill on both subway prompts, and PDD8 and FlashGen are level on
+  diner.
+- **Inference, untested:** the owner's reading may fold in contrast. FlashGen's
+  RMS contrast is above PDD8's (the tables above), and more contrast reads as
+  more colour.
+
 ## Caveats
 
 - The base clips decode through the INT8 video VAE, shipped by 0.151.0 before
