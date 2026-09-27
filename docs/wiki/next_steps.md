@@ -13,6 +13,16 @@ pointer goes; this list is stale the moment the roadmap disagrees with it.
 Items from the `mrpink` helper lane first; `evalman`'s render lane appends its
 own below the rule.
 
+**Encoder int8 against bf16 at the DiT (owner, 2026-09-27):** running
+`bench/measure_encoder_quant_dit.py`; its record lands in `bench/results/`
+with the predictions filed before the first comparison. It decides whether the image-conditioned
+graphs (i2v, fl2va, ref2va) keep `ENCODER_INT8` or move to the bf16 pruned
+file (more RAM). If int8 reads well above the matched-noise control, it also
+decides whether to reopen the encoder lane narrowly: bf16 on the layers that
+produce the image tail, `../open_experiments.md` #23's decomposition first.
+A render comparison comes only after a default is in question
+(`../eval_comparison.md`).
+
 **The Sol node redesign (owner, 2026-09-27):** tests 0 to 3 of
 [`../research/2026-09-27_sol_node_redesign.md`](../research/2026-09-27_sol_node_redesign.md),
 then the new node. They start when fastdude frees the card.
@@ -926,7 +936,20 @@ length every arm above rendered on this card without it.
   on blocks 34-49), are in
   `../../bench/results/2026-09-27_evening_takeaways.md`.
   What stays open:
-  - **FastH3: gates or backbone drift?** The conditioning swap is near-inert
+  - **The VAE session's held-back list, 2026-09-27: `../open_experiments.md`
+    #34 to #42.** Each entry has its models, workflows, bench code (existing
+    or to build), measures and the decision it changes. In the VAE session's
+    order of value:
+    - #34 PDD8 finished by late-block FlashGen;
+    - #38 the save format measured (no render);
+    - #36 a strength dial on FastH3's gates;
+    - #35 gates against backbone;
+    - #37 PDD8 finished by the base;
+    - #39 telemetry on a mixed batch;
+    - #40 a second seed;
+    - #41 blind pairs;
+    - #42 PDD fusion cost.
+  - **FastH3: gates or backbone drift?** (#35) The conditioning swap is near-inert
     (`../../bench/results/2026-09-27_fasth3_swap.md`). The next split is fl2va
     plus FastH3's 50 gates, against FastH3 without them. Both are CPU builds;
     rendering them is the owner's go.

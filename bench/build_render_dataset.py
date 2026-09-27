@@ -236,14 +236,22 @@ def models(rows: list[dict]) -> list[dict]:
     for k in built:
         used.setdefault(k, 0)
     info = json.loads((HERE / "render_dataset_models.json").read_text())
+    # Files the run rows do not name (the text encoders: no row records one)
+    # are listed from their description when it carries a `kind`.
+    for base, meta in info.items():
+        if isinstance(meta, dict) and meta.get("kind"):
+            used.setdefault((meta["kind"], base + ".safetensors"), 0)
     out = []
     for (kind, name), n in sorted(used.items(), key=lambda x: (x[0][0], str(x[0][1]))):
-        sub = {"diffusion_model": "diffusion_models", "lora": "loras", "vae": "vae"}[kind]
+        sub = {"diffusion_model": "diffusion_models", "lora": "loras", "vae": "vae",
+               "text_encoder": "text_encoders"}[kind]
         meta = info.get(Path(name).name.removesuffix(".safetensors"), {})
         # A file moved since it rendered (2026-09-27, research files into
         # h3_research/ and loras/h3/research/) is found at its new name.
         p = mdir / sub / meta.get("renamed_to", name)
-        out.append({"file": name, "kind": kind, "renders": n,
+        meta = {k: v for k, v in meta.items() if k != "kind"}
+        # No run row records its encoder, so a text encoder has no count.
+        out.append({"file": name, "kind": kind, "renders": None if kind == "text_encoder" else n,
                     "size_bytes": p.stat().st_size if p.exists() else None, **meta})
     return out
 

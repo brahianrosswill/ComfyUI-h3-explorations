@@ -20,11 +20,20 @@ from dataclasses import dataclass as _dataclass
 from pathlib import Path
 
 
-#: The ComfyUI-native INT8 ConvRot encoder, shipped on every graph since
-#: 2026-08-27 (late) by owner decision. On the 13-row holdout it sits about
-#: fifteen times closer to the BF16 release at layer 50 than either W4A16
-#: AWQ artifact it replaced
+#: The ComfyUI-native INT8 ConvRot encoder (Comfy-Org's file), shipped on every
+#: graph since 2026-08-27 (late) by owner decision. On the 13-row holdout it
+#: sits an order of magnitude closer to the BF16 release at layer 50 than
+#: either W4A16 AWQ artifact it replaced
 #: (`bench/results/2026-08-25_four_encoders_holdout_layer50.json`).
+#:
+#: **Against the bf16 pruned file on shipped graphs** (the release truncated
+#: to the 50 layers H3 reads by `bench/convert_h3_bf16_encoder.py`): text
+#: tokens stay close, while image tokens carry a heavy tail that the int8
+#: DECODER adds -- the vision tower and embedding table are bf16 in both
+#: files -- for seconds of encode time per prompt
+#: (`bench/results/2026-09-27_encoder_int8_vs_bf16_conditioning.json`).
+#: Whether the DiT responds to that tail is
+#: `bench/measure_encoder_quant_dit.py`'s question.
 #:
 #: **That comparison is about two badly executed artifacts, not about the
 #: method** (owner, 2026-09-20): we controlled the calibration, the group size
@@ -32,11 +41,12 @@ from pathlib import Path
 #: evidence that quantising our own encoder is unpromising, and nothing in
 #: `bench/results/` establishes that. All four holdout arms also hold the
 #: vision tower at BF16, so the record is silent on tower precision. The owner
-#: primarily runs the BF16 encoder, so this default is not their working
-#: configuration. `docs/wiki/decisions.md`, 2026-09-20.
+#: primarily runs the bf16 pruned encoder, so this default is not their
+#: working configuration. `docs/wiki/decisions.md`, 2026-09-20 and 2026-09-27.
 #:
 #: It loads through `MiniMaxH3EncoderLoader`, which is core's own `CLIPLoader`
-#: plus two guards (`h3_encoder_loader.py`). Preprocessing is core's: the
+#: plus checks and a stamped preprocessing contract (`h3_encoder_loader.py`'s
+#: docstring lists them). Preprocessing is core's: the
 #: still-image bounds are `process_qwen2vl_images`' own defaults, read out of
 #: core by `h3_encoder_loader.native_encoder_contract`, never typed here.
 #:

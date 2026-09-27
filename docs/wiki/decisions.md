@@ -17,6 +17,36 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-27
 
+- **The owner's working encoder is the bf16 pruned file; a better int8 of our
+  own is not worth building** (owner: "since the encoder runs once, I agree -
+  it may not be worth the effort. Especially if we can run a pruned bf16. I
+  care mostly about its vision encoder not losing precision"). Both encoder
+  files had been deleted by accident. The int8 file was restored from the
+  owner's Comfy-Org download, whose sha256 matches the one the Hub recorded.
+  The bf16 pruned file was rebuilt from the release by
+  `bench/convert_h3_bf16_encoder.py`, which reads the sharded `text_encoder/`
+  directly since `c743d100`. The weight-side headroom record already put the
+  shipped int8 at its format's floor
+  (`bench/results/2026-08-29_int8_convrot_headroom.json`), so the encoder
+  quantisation lane stays closed.
+- **Corrected: what the 2026-09-20 entry below says `ENCODER_INT8` was
+  measured against.** It was only ever graded against the two W4A16
+  artifacts. It has now been measured against the bf16 pruned file on
+  shipped graphs and on the violin-maker scene in three modes
+  (`bench/results/2026-09-27_encoder_int8_vs_bf16_conditioning.json`).
+  - The vision tower and embedding table are bf16 in both files and add no
+    error.
+  - Text tokens stay close.
+  - Image tokens carry a heavy tail that the int8 decoder adds, and one
+    violin ref2va patch is inflated well past its bf16 norm.
+  - bf16 costs seconds per encode.
+- **Running: does the DiT respond to that tail** (owner: "The experiment
+  would be good"). `bench/measure_encoder_quant_dit.py` (`3acade9e`) runs
+  the base DiT at fixed noise, latent and sigma with a null, the treatment,
+  an image-tokens-only arm, a norm-matched random control and a one-edit
+  scale row. Predictions were filed before any comparison printed. The
+  decision it gates is in [`next_steps.md`](next_steps.md).
+
 - **The Sol redesign ships as `MiniMaxH3Sol`, and `MiniMaxH3SolAttn` is
   deleted once the generated graphs move** (owner: "1 delete", "3 your pick on
   name"). The kitchen build branch `h3-frontier` is pushed to the owner's

@@ -1,6 +1,6 @@
 # The wiki: where to start, and who owns each answer
 
-last updated: 2026-09-25 (the pdd_implementations row routes the new PDD comparison and the continuation note)
+last updated: 2026-09-27 (the two encoder tool rows: the bf16 pruned rebuild and the int8-vs-bf16 DiT measurement)
 
 Written by hand, and the only copy of these routes: `CLAUDE.md` points here
 instead of carrying them. This is a router, not an authority. It states no
@@ -102,4 +102,6 @@ under `docs/` that no link from `CLAUDE.md` or this wiki reaches.
 | [`bench/map_attention_mass_on_capture.py`](../../bench/map_attention_mass_on_capture.py) | where exact attention mass goes on a capture, per head: by segment, by latent frame, and the heaviest keys |
 | [`bench/depth_profile_tables.py`](../../bench/depth_profile_tables.py) | the depth profile's tables (raster order). The token-ordering comparison went with Morton on 2026-09-27 |
 | [`bench/probe_encoder_rope_kitchen.py`](../../bench/probe_encoder_rope_kitchen.py) | whether core's move of the text encoder's RoPE onto comfy-kitchen changed its numbers; the CUDA run is the one that counts |
+| [`bench/convert_h3_bf16_encoder.py`](../../bench/convert_h3_bf16_encoder.py) | builds the bf16 pruned encoder from the release's sharded `text_encoder/`: the 50 layers H3 reads, renamed to ComfyUI's keys, bytes copied verbatim. Rebuild it from here if the file is lost |
+| [`bench/measure_encoder_quant_dit.py`](../../bench/measure_encoder_quant_dit.py) | whether the DiT's prediction moves when the encoder is int8 instead of bf16, against a norm-matched random control. Captures through a running server with a bench-only node, then forwards without one |
 | `internal/` | gitignored: prompt research, session logs, postmortems (start with the newest). Not shipped |
