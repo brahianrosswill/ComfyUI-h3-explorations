@@ -4,6 +4,22 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.164.3
+
+### Fixed
+
+- **The #45 gate records could not pass the capture manifest.** `gate_*.pt`
+  carried no server stamp or prompt id, so `generate_capture_manifest.py`
+  refused the first #45 capture as mixed processes (found by lookingdude).
+  - `core_sparse_capture.py` now writes the qkvpre record's stamp, prompt id,
+    sigma and branch fields into each gate record.
+  - The generator lets a stampless gate record inherit the stamp of its
+    tensor twin (same render, block and step), so the six files already on
+    disk are covered, and refuses a gate with no twin.
+  - `check_capture_manifest_controls.py` gains four gate cases: stamped,
+    inheriting, orphan (refused) and another process's stamp (refused).
+    `check_core_sparse_capture.py` asserts the stamp.
+
 ## 0.164.2
 
 ### Changed

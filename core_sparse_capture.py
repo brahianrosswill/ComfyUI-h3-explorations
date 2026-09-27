@@ -76,14 +76,18 @@ def _host_projection(attn, h):
     return _host_chunks(attn.qkv_proj, h)
 
 
-def _write_gate(attn, h):
+def _write_gate(attn, h, transformer_options=None):
     """Save the VSA coarse-branch gate's output for this call, beside its qkvpre file.
 
     VSA's attention output is fine + coarse * gate(x) (core's producer, from
     `attn.to_gate_compress`, no activation). The qkvpre file rebuilds q, k and
     v but not the gate, whose weights are int8 in the checkpoint. The model's
     own gate, applied to this call's input, is what core used. Same (block,
-    step, render) indices as the qkvpre file, read without advancing."""
+    step, render) indices as the qkvpre file, read without advancing. It
+    carries the same server stamp, prompt id and branch fields as the qkvpre
+    record, so a capture manifest sees one process (lookingdude, 2026-09-27:
+    without them the manifest tool refused the first #45 capture as mixed
+    stamps)."""
     gate = getattr(attn, "to_gate_compress", None)
     if gate is None:
         return
@@ -94,8 +98,17 @@ def _write_gate(attn, h):
     g = _host_chunks(gate, h)
     suffix = f"_r{render}" if render else ""
     name = f"gate_L{int(h.shape[0])}_S{int(h.shape[0])}_b{block}_s{step}{suffix}.pt"
+    to = transformer_options if isinstance(transformer_options, dict) else {}
+    sigmas = to.get("sigmas")
+    try:
+        sigma = float(sigmas[0]) if sigmas is not None else None
+    except (TypeError, IndexError, ValueError):
+        sigma = None
     torch.save({"kind": "coarse_gate", "gate": g, "block": int(block), "step": int(step),
-                "render": int(render), "seq_len": int(h.shape[0]),
+                "render": int(render), "seq_len": int(h.shape[0]), "sigma": sigma,
+                "uuids": [str(u) for u in (to.get("uuids") or [])] or None,
+                "cond_or_uncond": [int(c) for c in (to.get("cond_or_uncond") or [])] or None,
+                "prompt_id": _capture._prompt_id(), "server": _capture._server_stamp(),
                 "source": "the model's to_gate_compress on this call's attention input, core's chunk size"},
                os.path.join(_capture._config["dir"], name))
     print(f"[h3_capture] wrote {name}  gate{tuple(g.shape)} {g.dtype}", flush=True)
@@ -105,7 +118,7 @@ def _capturing(attn, inner):
     def attention(h, rope_freqs=None, transformer_options={}):
         # Both calls re-read H3_CAPTURE and return at once when it is unset.
         if _capture.wants_pre(attn):
-            _write_gate(attn, h)
+            _write_gate(attn, h, transformer_options)
             qkv = _host_projection(attn, h)
             _capture.maybe_capture_pre(attn, qkv, h, rope_freqs, transformer_options,
                                        length_hint=int(h.shape[0]))

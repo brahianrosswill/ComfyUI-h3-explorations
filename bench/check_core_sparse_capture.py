@@ -17,7 +17,8 @@ CPU only, no server; stand-in blocks on the real `h3_capture` and core's real
   counts_once        each call advances its block's step by one: the file is
                      the SECOND call of block 1, not the first
   gate_file          on a model with VSA gates, one gate file for the same
-                     block and step, equal to the chunked gate of that input
+                     block and step, equal to the chunked gate of that input,
+                     carrying the server stamp and prompt id a manifest needs
   default_attention  with no core patch on a block, the block's own attention
                      runs
   control            planted: counting twice per call puts block 1 at step 2 by
@@ -144,7 +145,8 @@ def main() -> int:
         grec = torch.load(gfiles[0], weights_only=True) if gfiles else {}
         gwant = csc._host_chunks(blocks[1].attn.to_gate_compress, want)
         case("gate_file", len(gfiles) == 1 and "_b1_s1" in gfiles[0].name and bool(grec)
-             and torch.equal(grec["gate"], gwant), ", ".join(f.name for f in gfiles))
+             and torch.equal(grec["gate"], gwant) and "server" in grec and "prompt_id" in grec,
+             ", ".join(f.name for f in gfiles) + " (stamped)")
 
         # default_attention: no core patch on the block
         os.environ.pop("H3_CAPTURE", None)

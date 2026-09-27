@@ -64,6 +64,17 @@ def _record(path: Path, block: int, step: int, server):
                 "server": server}, path)
 
 
+def _gate(path: Path, block: int, step: int, server) -> None:
+    """A `coarse_gate` record (1.8.0), stamped or not."""
+    import torch
+    g = torch.Generator().manual_seed(block * 100 + step + 7)
+    rec = {"kind": "coarse_gate", "gate": (torch.randn(SEQ, 256, generator=g) * 0.5).bfloat16(),
+           "block": block, "step": step, "render": 0, "seq_len": SEQ}
+    if server is not None:
+        rec["server"] = server
+    torch.save(rec, path)
+
+
 def _capture(root: Path, name: str, stamps) -> Path:
     d = root / name
     d.mkdir(parents=True)
@@ -115,6 +126,21 @@ def main() -> int:
         case("gen_all_null", True, gen_case([None, None]))
         case("gen_mixed_stamp", False, gen_case([stamp_a, stamp_b]))
         case("gen_null_and_stamp", False, gen_case([stamp_a, None]))
+
+        # -- generator: coarse-gate stamps (1.8.0) ----------------------------
+        def gate_case(twin: bool, gate_stamp):
+            def run():
+                d = _capture(root, f"gate_{len(results)}", [stamp_a] if twin else [])
+                if not twin:   # a stamped tensor record elsewhere, so the capture is otherwise valid
+                    _record(d / f"qkv_L{SEQ}_S{SEQ}_b1_s4.pt", 1, 4, stamp_a)
+                _gate(d / f"gate_L{SEQ}_S{SEQ}_b0_s4.pt", 0, 4, gate_stamp)
+                r = _gen(d, wf)
+                return (d / "manifest.json").is_file(), (r.stderr.strip().splitlines() or [""])[-1] if r.returncode else ""
+            return run
+        case("gen_gate_stamped", True, gate_case(True, stamp_a))
+        case("gen_gate_inherits", True, gate_case(True, None))
+        case("gen_gate_orphan", False, gate_case(False, None))
+        case("gen_gate_other_proc", False, gate_case(True, stamp_b))
 
         # -- checker: a valid manifest, then one violation each ------------------
         good = _capture(root, "chk_good", [stamp_a, stamp_a])

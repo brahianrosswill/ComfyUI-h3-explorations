@@ -766,6 +766,15 @@ def main():
     # Scan captured tensors
     captured_tensors = []
     stamps = []
+    # 1.8.0: a `coarse_gate` record written before 2026-09-27 (the first #45
+    # capture) carries no server stamp. It inherits the stamp of its twin, the
+    # tensor record of the same (render, block, step), which one call of one
+    # process wrote beside it. A gate with no twin is refused, not guessed.
+    twin_stamp = {}
+    for pt in pt_files:
+        m = _record_meta(Path(pt))
+        if m.get("kind") != "coarse_gate":
+            twin_stamp[(m.get("render"), m.get("block"), m.get("step"))] = m.get("server")
     for pt in pt_files:
         pt_path = Path(pt)
         size_bytes = pt_path.stat().st_size
@@ -780,6 +789,15 @@ def main():
                 step_val = int(p[1:])
 
         meta = _record_meta(pt_path)
+        inherited = False
+        if meta.get("kind") == "coarse_gate" and meta.get("server") is None:
+            tkey = (meta.get("render"), meta.get("block"), meta.get("step"))
+            if tkey not in twin_stamp:
+                sys.exit(f"refusing to write a manifest: {pt_path.name} carries no server stamp "
+                         f"and no tensor record of render {tkey[0]}, block {tkey[1]}, step {tkey[2]} "
+                         f"is beside it to inherit one from")
+            meta["server"] = twin_stamp[tkey]
+            inherited = True
         shape = meta.get("shape") or [1, 56, total_sequence_length, 128]
         dtype_str = meta.get("dtype") or "torch.bfloat16"
 
@@ -797,6 +815,8 @@ def main():
             "render": meta.get("render"),
             "segments": meta.get("segments"),
             "server_pid": (meta.get("server") or {}).get("pid"),
+            # 1.8.0: true when a stampless coarse_gate record took its twin's stamp
+            **({"stamp_inherited": True} if inherited else {}),
             "shape": shape,
             "dtype": dtype_str,
             "size_bytes": size_bytes,
