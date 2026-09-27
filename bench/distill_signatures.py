@@ -35,6 +35,8 @@ def clip_rows(path: Path, arms: set, scenes: list) -> dict:
     out = {}
     rows = json.loads(path.read_text())
     rows = rows.get("rows") or rows.get("clips") or rows
+    if isinstance(rows, dict):                      # measure_clip_temporal: {clip: {"median": {...}}}
+        rows = [{"clip": c, **v.get("median", {})} for c, v in rows.items()]
     for r in rows:
         m = LABEL.search(r.get("clip", ""))
         if not m or m.group(2) not in arms or r.get("part", "all") != "all":
@@ -78,33 +80,36 @@ def main() -> int:
                 data[key].update({prefix + k: v for k, v in m.items()})
 
     scenes = sorted({s for s, _ in data if all((s, a) in data for a in args.arm)})
-    metrics = sorted(set.intersection(*[set(data[(s, a)]) for s in scenes for a in args.arm])) if scenes else []
+    metrics = sorted(set().union(*[set(data[(s, a)]) for s in scenes for a in args.arm])) if scenes else []
     report = {}
     flagged = []
     for met in metrics:
         hi = defaultdict(int)
         lo = defaultdict(int)
-        for s in scenes:
+        have = [s for s in scenes if all(met in data[(s, a)] for a in args.arm)]
+        if not have:
+            continue
+        for s in have:
             vals = {a: data[(s, a)][met] for a in args.arm}
             if len(set(vals.values())) == 1:
                 continue
             hi[max(vals, key=lambda a: vals[a])] += 1
             lo[min(vals, key=lambda a: vals[a])] += 1
-        med = {a: statistics.median(data[(s, a)][met] for s in scenes) for a in args.arm}
-        report[met] = {"median": med, "highest": dict(hi), "lowest": dict(lo)}
+        med = {a: statistics.median(data[(s, a)][met] for s in have) for a in args.arm}
+        report[met] = {"median": med, "highest": dict(hi), "lowest": dict(lo), "scenes": len(have)}
         for a in args.arm:
             for side, cnt in (("highest", hi[a]), ("lowest", lo[a])):
-                if cnt >= args.flag * len(scenes):
-                    flagged.append((met, a, side, cnt))
+                if cnt >= args.flag * len(have):
+                    flagged.append((met, a, side, cnt, len(have)))
     print(f"{len(scenes)} scenes with every arm; {len(metrics)} metrics")
-    for met, a, side, cnt in flagged:
+    for met, a, side, cnt, n in flagged:
         m = report[met]["median"]
-        print(f"  {met:<28} {a:<9} {side:<8} on {cnt}/{len(scenes)}   medians " +
+        print(f"  {met:<28} {a:<9} {side:<8} on {cnt}/{n}   medians " +
               "  ".join(f"{k} {v:.4g}" for k, v in m.items()))
     if args.json:
         args.json.write_text(json.dumps({"measured_by": "bench/distill_signatures.py", "arms": args.arm,
                                          "scenes": scenes, "flag_share": args.flag,
-                                         "flagged": [dict(zip(("metric", "arm", "side", "scenes"), f)) for f in flagged],
+                                         "flagged": [dict(zip(("metric", "arm", "side", "count", "of"), f)) for f in flagged],
                                          "metrics": report}, indent=1) + "\n")
     return 0
 

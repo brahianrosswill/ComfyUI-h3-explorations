@@ -1,0 +1,27 @@
+# What separates PDD8, FlashGen and FastH3 (2026-09-26)
+
+`bench/distill_signatures.py` over the followup batch's matched clips: same
+prompt, length and seed per scene, PDD8 and FlashGen from the post-0.154.8
+rerun, FastH3 on its contract graph. 13 scenes; temporal on 11, because
+`kpop_dance_studio` and `silent_film` ask for brightness change. One clip per
+arm per scene, so "on n of 13" counts shared signs, not an effect size.
+Medians and counts are in `2026-09-26_distill_signatures.json`; the per-clip
+records are `2026-09-26_distill_sig_{tone,resolution,temporal,audio}.json`.
+Base is absent: its clips predate the 0.154.6 bank prompts.
+
+| arm | consistent signature (share of scenes) |
+|---|---|
+| FastH3 | most fine detail (`hf`, `loss2`, `loss4`, `detail`: 13/13); most chroma (13/13); most saturated and warmest; least haze (11-12/13) |
+| PDD8 | lowest contrast (12/13); dimmest highlights and narrowest range (11/13); least motion (`moved_share` 11/13, `motion_detail` 7/11); least fine detail (11/13); quietest by median LUFS, loudest on 1/13 |
+| FlashGen | most haze, lifted blacks (11/13); coolest and bluest, least saturated and warmest (11/13); brightest audio, spectral centroid highest on 11/13; highest `block16` (12/13, a latent-grid statistic that does not track the owner's eye) |
+
+Leads, each with the test that would settle it:
+- **FastH3's detail sits in its time embedder, or not.** The swap arms'
+  prediction S4 (`bench/fasth3_swap_arms.json`); if it does, the dial files
+  `fastvideo_fasth3_8step_v2_pruned_int8_convrot_temb_a{05,075}` are a
+  detail control.
+- **PDD8 moves half as much.** This backs routing PDD to still shots. The
+  strength arms (`bench/pdd_strength_arms.json`) show whether turning its
+  delta down restores motion.
+- **FlashGen's haze and cool grade** belong to its late blocks, or not:
+  fastdude's block transplant (`bench/flashgen_transplant_arms.json`).

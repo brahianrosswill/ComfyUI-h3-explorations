@@ -163,3 +163,13 @@ pruned checkpoint the sidecar pairs with.
 The arm this makes: fl2va backbone, FastH3's time embedder, and PDD's
 backbone, adaln and heads at strength 1, on PDD8's schedule. Rendered only
 after the swap arms show what FastH3's time embedder does alone.
+
+## The #2 dial files (built 2026-09-27, not rendered)
+
+`bench/build_adaln_blend.py` (135b449e), on FastH3's backbone and gates, with
+the conditioning blended between fl2va (α = 0) and FastH3 (α = 1):
+`fastvideo_fasth3_8step_v2_pruned_int8_convrot_temb_a05` and `_a075`. Each
+is a 16-column table, and each is verified against the blend of the sources'
+modulation at all 1025 rows (worst 1.9e-4 and 2.4e-4). Motivated by FastH3
+carrying the most fine detail of the distills on 13 of 13 scenes
+(`2026-09-26_distill_signatures.md`).

@@ -23,145 +23,325 @@
  "flag_share": 0.8,
  "flagged": [
   {
+   "metric": "audio_centroid_hz",
+   "arm": "flashgen",
+   "side": "highest",
+   "count": 11,
+   "of": 13
+  },
+  {
    "metric": "resolution_block16",
    "arm": "flashgen",
    "side": "highest",
-   "scenes": 12
+   "count": 12,
+   "of": 13
   },
   {
    "metric": "resolution_flat",
    "arm": "fasth3",
    "side": "lowest",
-   "scenes": 11
+   "count": 11,
+   "of": 13
   },
   {
    "metric": "resolution_hf",
    "arm": "fasth3",
    "side": "highest",
-   "scenes": 13
+   "count": 13,
+   "of": 13
   },
   {
    "metric": "resolution_loss2",
    "arm": "pdd8",
    "side": "lowest",
-   "scenes": 11
+   "count": 11,
+   "of": 13
   },
   {
    "metric": "resolution_loss2",
    "arm": "fasth3",
    "side": "highest",
-   "scenes": 13
+   "count": 13,
+   "of": 13
   },
   {
    "metric": "resolution_loss4",
    "arm": "pdd8",
    "side": "lowest",
-   "scenes": 11
+   "count": 11,
+   "of": 13
   },
   {
    "metric": "resolution_loss4",
    "arm": "fasth3",
    "side": "highest",
-   "scenes": 13
+   "count": 13,
+   "of": 13
   },
   {
    "metric": "resolution_moved_share",
    "arm": "pdd8",
    "side": "lowest",
-   "scenes": 11
+   "count": 11,
+   "of": 13
+  },
+  {
+   "metric": "temporal_bright_block16",
+   "arm": "flashgen",
+   "side": "highest",
+   "count": 9,
+   "of": 11
   },
   {
    "metric": "tone_b",
    "arm": "flashgen",
    "side": "highest",
-   "scenes": 11
+   "count": 11,
+   "of": 13
   },
   {
    "metric": "tone_blue",
    "arm": "flashgen",
    "side": "highest",
-   "scenes": 11
+   "count": 11,
+   "of": 13
   },
   {
    "metric": "tone_chroma",
    "arm": "fasth3",
    "side": "highest",
-   "scenes": 13
+   "count": 13,
+   "of": 13
   },
   {
    "metric": "tone_chroma_p95",
    "arm": "fasth3",
    "side": "highest",
-   "scenes": 11
+   "count": 11,
+   "of": 13
   },
   {
    "metric": "tone_detail",
    "arm": "fasth3",
    "side": "highest",
-   "scenes": 13
+   "count": 13,
+   "of": 13
   },
   {
    "metric": "tone_g",
    "arm": "pdd8",
    "side": "lowest",
-   "scenes": 11
+   "count": 11,
+   "of": 13
   },
   {
    "metric": "tone_haze",
    "arm": "flashgen",
    "side": "highest",
-   "scenes": 11
+   "count": 11,
+   "of": 13
   },
   {
    "metric": "tone_haze",
    "arm": "fasth3",
    "side": "lowest",
-   "scenes": 12
+   "count": 12,
+   "of": 13
   },
   {
    "metric": "tone_range",
    "arm": "pdd8",
    "side": "lowest",
-   "scenes": 11
+   "count": 11,
+   "of": 13
   },
   {
    "metric": "tone_rms_contrast",
    "arm": "pdd8",
    "side": "lowest",
-   "scenes": 12
+   "count": 12,
+   "of": 13
   },
   {
    "metric": "tone_sat",
    "arm": "flashgen",
    "side": "lowest",
-   "scenes": 11
+   "count": 11,
+   "of": 13
   },
   {
    "metric": "tone_sat",
    "arm": "fasth3",
    "side": "highest",
-   "scenes": 11
+   "count": 11,
+   "of": 13
   },
   {
    "metric": "tone_warmth",
    "arm": "flashgen",
    "side": "lowest",
-   "scenes": 11
+   "count": 11,
+   "of": 13
   },
   {
    "metric": "tone_warmth",
    "arm": "fasth3",
    "side": "highest",
-   "scenes": 11
+   "count": 11,
+   "of": 13
   },
   {
    "metric": "tone_white",
    "arm": "pdd8",
    "side": "lowest",
-   "scenes": 11
+   "count": 11,
+   "of": 13
   }
  ],
  "metrics": {
+  "audio_band_2000_8000_db": {
+   "median": {
+    "pdd8": -14.82400041573985,
+    "flashgen": -11.845121771925308,
+    "fasth3": -13.889760037777876
+   },
+   "highest": {
+    "flashgen": 8,
+    "pdd8": 3,
+    "fasth3": 2
+   },
+   "lowest": {
+    "pdd8": 7,
+    "fasth3": 5,
+    "flashgen": 1
+   },
+   "scenes": 13
+  },
+  "audio_band_200_2000_db": {
+   "median": {
+    "pdd8": -1.6002448297642822,
+    "flashgen": -1.976602619158082,
+    "fasth3": -2.2799494871752897
+   },
+   "highest": {
+    "flashgen": 7,
+    "pdd8": 4,
+    "fasth3": 2
+   },
+   "lowest": {
+    "fasth3": 7,
+    "pdd8": 3,
+    "flashgen": 3
+   },
+   "scenes": 13
+  },
+  "audio_band_20_200_db": {
+   "median": {
+    "pdd8": -5.620304389009979,
+    "flashgen": -7.813892590686828,
+    "fasth3": -4.432017441983137
+   },
+   "highest": {
+    "fasth3": 6,
+    "pdd8": 6,
+    "flashgen": 1
+   },
+   "lowest": {
+    "flashgen": 7,
+    "pdd8": 4,
+    "fasth3": 2
+   },
+   "scenes": 13
+  },
+  "audio_band_8000_20000_db": {
+   "median": {
+    "pdd8": -28.719688761291486,
+    "flashgen": -26.2663186335785,
+    "fasth3": -25.207223935240716
+   },
+   "highest": {
+    "fasth3": 6,
+    "flashgen": 3,
+    "pdd8": 4
+   },
+   "lowest": {
+    "pdd8": 8,
+    "flashgen": 4,
+    "fasth3": 1
+   },
+   "scenes": 13
+  },
+  "audio_centroid_hz": {
+   "median": {
+    "pdd8": 582.8449843891485,
+    "flashgen": 892.0374900707084,
+    "fasth3": 649.9244038574686
+   },
+   "highest": {
+    "flashgen": 11,
+    "pdd8": 2
+   },
+   "lowest": {
+    "pdd8": 7,
+    "fasth3": 5,
+    "flashgen": 1
+   },
+   "scenes": 13
+  },
+  "audio_lra": {
+   "median": {
+    "pdd8": 5.6,
+    "flashgen": 5.9,
+    "fasth3": 4.5
+   },
+   "highest": {
+    "pdd8": 6,
+    "flashgen": 4,
+    "fasth3": 3
+   },
+   "lowest": {
+    "flashgen": 2,
+    "fasth3": 8,
+    "pdd8": 3
+   },
+   "scenes": 13
+  },
+  "audio_lufs": {
+   "median": {
+    "pdd8": -24.5,
+    "flashgen": -22.4,
+    "fasth3": -22.2
+   },
+   "highest": {
+    "flashgen": 5,
+    "fasth3": 7,
+    "pdd8": 1
+   },
+   "lowest": {
+    "fasth3": 3,
+    "flashgen": 5,
+    "pdd8": 5
+   },
+   "scenes": 13
+  },
+  "audio_true_peak": {
+   "median": {
+    "pdd8": -8.3,
+    "flashgen": -8.8,
+    "fasth3": -7.6
+   },
+   "highest": {
+    "flashgen": 6,
+    "fasth3": 6,
+    "pdd8": 1
+   },
+   "lowest": {
+    "fasth3": 5,
+    "flashgen": 4,
+    "pdd8": 4
+   },
+   "scenes": 13
+  },
   "resolution_block128": {
    "median": {
     "pdd8": 1.026,
@@ -177,7 +357,8 @@
     "pdd8": 5,
     "flashgen": 2,
     "fasth3": 6
-   }
+   },
+   "scenes": 13
   },
   "resolution_block16": {
    "median": {
@@ -192,7 +373,8 @@
    "lowest": {
     "fasth3": 10,
     "pdd8": 3
-   }
+   },
+   "scenes": 13
   },
   "resolution_block32": {
    "median": {
@@ -208,7 +390,8 @@
    "lowest": {
     "fasth3": 9,
     "pdd8": 4
-   }
+   },
+   "scenes": 13
   },
   "resolution_eff_res": {
    "median": {
@@ -217,7 +400,8 @@
     "fasth3": 1.0
    },
    "highest": {},
-   "lowest": {}
+   "lowest": {},
+   "scenes": 13
   },
   "resolution_eff_res_share_ge4": {
    "median": {
@@ -232,7 +416,8 @@
    "lowest": {
     "flashgen": 4,
     "fasth3": 5
-   }
+   },
+   "scenes": 13
   },
   "resolution_flat": {
    "median": {
@@ -247,7 +432,8 @@
    "lowest": {
     "fasth3": 11,
     "flashgen": 2
-   }
+   },
+   "scenes": 13
   },
   "resolution_frames_sampled": {
    "median": {
@@ -256,7 +442,8 @@
     "fasth3": 15
    },
    "highest": {},
-   "lowest": {}
+   "lowest": {},
+   "scenes": 13
   },
   "resolution_hf": {
    "median": {
@@ -270,7 +457,8 @@
    "lowest": {
     "pdd8": 7,
     "flashgen": 6
-   }
+   },
+   "scenes": 13
   },
   "resolution_loss2": {
    "median": {
@@ -284,7 +472,8 @@
    "lowest": {
     "pdd8": 11,
     "flashgen": 2
-   }
+   },
+   "scenes": 13
   },
   "resolution_loss4": {
    "median": {
@@ -298,7 +487,8 @@
    "lowest": {
     "pdd8": 11,
     "flashgen": 2
-   }
+   },
+   "scenes": 13
   },
   "resolution_motion_sharp": {
    "median": {
@@ -315,7 +505,8 @@
     "flashgen": 6,
     "pdd8": 5,
     "fasth3": 2
-   }
+   },
+   "scenes": 13
   },
   "resolution_moved_share": {
    "median": {
@@ -331,7 +522,8 @@
    "lowest": {
     "pdd8": 11,
     "flashgen": 2
-   }
+   },
+   "scenes": 13
   },
   "resolution_poster": {
    "median": {
@@ -346,7 +538,132 @@
    "lowest": {
     "pdd8": 4,
     "fasth3": 9
-   }
+   },
+   "scenes": 13
+  },
+  "temporal_band": {
+   "median": {
+    "pdd8": 0.9090909090909091,
+    "flashgen": 0.9230769230769231,
+    "fasth3": 0.9258241758241759
+   },
+   "highest": {
+    "flashgen": 4,
+    "fasth3": 5,
+    "pdd8": 2
+   },
+   "lowest": {
+    "fasth3": 2,
+    "pdd8": 8,
+    "flashgen": 1
+   },
+   "scenes": 11
+  },
+  "temporal_boil": {
+   "median": {
+    "pdd8": 0.4783076196908951,
+    "flashgen": 0.8100647628307343,
+    "fasth3": 0.5408107042312622
+   },
+   "highest": {
+    "flashgen": 6,
+    "fasth3": 3,
+    "pdd8": 2
+   },
+   "lowest": {
+    "fasth3": 2,
+    "pdd8": 6,
+    "flashgen": 3
+   },
+   "scenes": 11
+  },
+  "temporal_bright_block16": {
+   "median": {
+    "pdd8": 0.9847701489925385,
+    "flashgen": 1.015008270740509,
+    "fasth3": 0.9866219460964203
+   },
+   "highest": {
+    "flashgen": 9,
+    "fasth3": 2
+   },
+   "lowest": {
+    "fasth3": 7,
+    "pdd8": 4
+   },
+   "scenes": 11
+  },
+  "temporal_bright_block8": {
+   "median": {
+    "pdd8": 1.0086143612861633,
+    "flashgen": 1.0236679911613464,
+    "fasth3": 1.0002654492855072
+   },
+   "highest": {
+    "pdd8": 3,
+    "flashgen": 6,
+    "fasth3": 2
+   },
+   "lowest": {
+    "fasth3": 7,
+    "pdd8": 3,
+    "flashgen": 1
+   },
+   "scenes": 11
+  },
+  "temporal_dark_block16": {
+   "median": {
+    "pdd8": 1.0150737762451172,
+    "flashgen": 1.0429250597953796,
+    "fasth3": 1.0296974778175354
+   },
+   "highest": {
+    "fasth3": 4,
+    "flashgen": 6,
+    "pdd8": 1
+   },
+   "lowest": {
+    "pdd8": 4,
+    "fasth3": 5,
+    "flashgen": 2
+   },
+   "scenes": 11
+  },
+  "temporal_dark_block8": {
+   "median": {
+    "pdd8": 1.0313319563865662,
+    "flashgen": 1.0404700636863708,
+    "fasth3": 1.0290395617485046
+   },
+   "highest": {
+    "fasth3": 4,
+    "flashgen": 4,
+    "pdd8": 3
+   },
+   "lowest": {
+    "flashgen": 4,
+    "fasth3": 5,
+    "pdd8": 2
+   },
+   "scenes": 11
+  },
+  "temporal_motion_detail": {
+   "median": {
+    "pdd8": 2.061272144317627,
+    "flashgen": 3.7117968797683716,
+    "fasth3": 4.076109051704407
+   },
+   "highest": {
+    "flashgen": 7,
+    "fasth3": 3,
+    "pdd8": 1
+   },
+   "lowest": {
+    "fasth3": 3,
+    "pdd8": 7,
+    "flashgen": 1
+   },
+   "scenes": 11
   },
   "tone_b": {
    "median": {
@@ -362,7 +679,8 @@
    "lowest": {
     "pdd8": 7,
     "fasth3": 6
-   }
+   },
+   "scenes": 13
   },
   "tone_black": {
    "median": {
@@ -378,7 +696,8 @@
     "flashgen": 1,
     "fasth3": 4,
     "pdd8": 1
-   }
+   },
+   "scenes": 13
   },
   "tone_blue": {
    "median": {
@@ -394,7 +713,8 @@
     "fasth3": 8,
     "flashgen": 1,
     "pdd8": 4
-   }
+   },
+   "scenes": 13
   },
   "tone_chroma": {
    "median": {
@@ -408,7 +728,8 @@
    "lowest": {
     "flashgen": 10,
     "pdd8": 3
-   }
+   },
+   "scenes": 13
   },
   "tone_chroma_p95": {
    "median": {
@@ -424,7 +745,8 @@
    "lowest": {
     "pdd8": 4,
     "flashgen": 9
-   }
+   },
+   "scenes": 13
   },
   "tone_clipped": {
    "median": {
@@ -441,7 +763,8 @@
     "pdd8": 10,
     "flashgen": 1,
     "fasth3": 1
-   }
+   },
+   "scenes": 13
   },
   "tone_crushed": {
    "median": {
@@ -458,7 +781,8 @@
     "flashgen": 6,
     "pdd8": 6,
     "fasth3": 1
-   }
+   },
+   "scenes": 13
   },
   "tone_cuts": {
    "median": {
@@ -471,7 +795,8 @@
    },
    "lowest": {
     "flashgen": 4
-   }
+   },
+   "scenes": 13
   },
   "tone_detail": {
    "median": {
@@ -485,7 +810,8 @@
    "lowest": {
     "pdd8": 10,
     "flashgen": 3
-   }
+   },
+   "scenes": 13
   },
   "tone_flicker": {
    "median": {
@@ -502,7 +828,8 @@
     "pdd8": 3,
     "flashgen": 7,
     "fasth3": 3
-   }
+   },
+   "scenes": 13
   },
   "tone_g": {
    "median": {
@@ -518,7 +845,8 @@
    "lowest": {
     "pdd8": 11,
     "fasth3": 2
-   }
+   },
+   "scenes": 13
   },
   "tone_haze": {
    "median": {
@@ -533,7 +861,25 @@
    "lowest": {
     "fasth3": 12,
     "pdd8": 1
-   }
+   },
+   "scenes": 13
+  },
+  "tone_hue_spread": {
+   "median": {
+    "pdd8": 31.6,
+    "flashgen": 51.1,
+    "fasth3": 33.1
+   },
+   "highest": {
+    "flashgen": 9,
+    "fasth3": 2,
+    "pdd8": 1
+   },
+   "lowest": {
+    "fasth3": 8,
+    "pdd8": 4
+   },
+   "scenes": 12
   },
   "tone_mid": {
    "median": {
@@ -550,7 +896,8 @@
     "flashgen": 1,
     "pdd8": 9,
     "fasth3": 3
-   }
+   },
+   "scenes": 13
   },
   "tone_orange": {
    "median": {
@@ -566,7 +913,8 @@
     "flashgen": 9,
     "fasth3": 1,
     "pdd8": 3
-   }
+   },
+   "scenes": 13
   },
   "tone_r": {
    "median": {
@@ -582,7 +930,8 @@
    "lowest": {
     "pdd8": 10,
     "fasth3": 3
-   }
+   },
+   "scenes": 13
   },
   "tone_range": {
    "median": {
@@ -599,7 +948,8 @@
     "pdd8": 11,
     "flashgen": 1,
     "fasth3": 1
-   }
+   },
+   "scenes": 13
   },
   "tone_rms_contrast": {
    "median": {
@@ -614,7 +964,8 @@
    "lowest": {
     "flashgen": 1,
     "pdd8": 12
-   }
+   },
+   "scenes": 13
   },
   "tone_sat": {
    "median": {
@@ -629,7 +980,8 @@
    "lowest": {
     "flashgen": 11,
     "pdd8": 2
-   }
+   },
+   "scenes": 13
   },
   "tone_shadow": {
    "median": {
@@ -645,7 +997,8 @@
     "flashgen": 9,
     "fasth3": 2,
     "pdd8": 2
-   }
+   },
+   "scenes": 13
   },
   "tone_warmth": {
    "median": {
@@ -661,7 +1014,8 @@
     "flashgen": 11,
     "fasth3": 1,
     "pdd8": 1
-   }
+   },
+   "scenes": 13
   },
   "tone_white": {
    "median": {
@@ -678,7 +1032,8 @@
     "pdd8": 11,
     "flashgen": 1,
     "fasth3": 1
-   }
+   },
+   "scenes": 13
   }
  }
 }
