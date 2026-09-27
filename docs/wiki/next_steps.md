@@ -76,6 +76,8 @@ none tried:
      out. Arm `H3_TELEMETRY` for the first render: it records per-node model
      residency and the load and staging lines.
 
+**Routes 1 and 2 in depth, and three routes of H3's own** (by noise level per row, by stream, by component), ranked cheapest evidence first: [`../research/2026-09-26_distill_routing.md`](../research/2026-09-26_distill_routing.md). Route 2 has a constraint worse than the attention leak: every row shares one sigma schedule, so a masked-in distill always runs off its own.
+
 The owner's other half is written: `../h3_distills.md` (2026-09-26, one seed; revised when the second seed lands).
 
 **2026-09-26 (the prompt bank fix, 0.151.1 and 0.151.2).** Every flagged prompt is
