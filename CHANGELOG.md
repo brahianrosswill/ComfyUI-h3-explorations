@@ -6,6 +6,22 @@ artifact.
 
 ## 0.153.2
 
+### Added
+
+- **`MiniMaxH3StepX0Observer`** (`step_x0_observer.py`, appended to the node
+  list). It saves each sampling step's x0 prediction as a `SaveLatent`-format
+  file, with the step's sigma in the metadata, and returns it unchanged. It
+  installs through the patcher's own `sampler_post_cfg_function`, which runs
+  under `BasicGuider`. It serves the PDD schedule tests in `docs/h3_distills.md`:
+  finding the step, and so the fused block, where a moving person first
+  appears twice. A step is about 40 MB at 1344x768 x 345.
+  `bench/check_step_x0_observer.py` covers it (5 of 5).
+  `bench/node_id_manifest.json` is written after the PDD exact-branch commit
+  that is in flight, so the write does not capture that commit's uncommitted
+  inputs.
+
+## 0.153.2
+
 ### Docs
 
 - **`docs/h3_distills.md` gains "Why they differ: a working model"**, a set of

@@ -46,6 +46,7 @@ from .audio_refine import MiniMaxH3AudioRefineMask
 from .frozen_video_cache import MiniMaxH3FrozenVideoCache
 from .lora_branch import MiniMaxH3LoRABranch
 from .denoise_mask_probe import MiniMaxH3DenoiseMaskProbe
+from .step_x0_observer import MiniMaxH3StepX0Observer
 from .preflight import MiniMaxH3Preflight
 from .provenance import MiniMaxH3ProvenanceStamp
 from .quant_observe import MiniMaxH3QuantObserve
@@ -328,7 +329,9 @@ class H3ExplorationsExtension(ComfyExtension):
                 # appended 2026-09-26, a LoRA applied at the call (lora_branch.py)
                 MiniMaxH3LoRABranch,
                 # appended 2026-09-26, the denoise-mask observer (denoise_mask_probe.py)
-                MiniMaxH3DenoiseMaskProbe]
+                MiniMaxH3DenoiseMaskProbe,
+                # appended 2026-09-26, each step's x0 saved (step_x0_observer.py)
+                MiniMaxH3StepX0Observer]
 
 
 async def comfy_entrypoint() -> H3ExplorationsExtension:
