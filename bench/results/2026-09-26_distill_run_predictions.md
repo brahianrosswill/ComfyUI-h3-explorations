@@ -114,6 +114,11 @@ the unusual one, more than PDD8's or FastH3's does.*
   - PDD8 has the lowest contrast (12/13) and the dimmest highlights (11/13),
     which may be what reads as "least saturated" by eye. That is a question
     for the owner, not a finding.
+  - *The owner's answer, 2026-09-27, relayed by the VAE session:* asked
+    whether PDD8 reads less colourful, or flatter and dimmer, the owner said
+    "The latter usually - but usually naturally so". So the owner's "pdd
+    least" was contrast and level, not colour, and the owner does not read
+    that grade as a defect.
 - **P6. FastH3 shows more temporal texture instability than FlashGen on the
   same scene.** This is the owner's "low bitrate streaming video". It is
   graded once the motion-compensated measure exists. The per-frame
