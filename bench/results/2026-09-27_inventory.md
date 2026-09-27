@@ -82,17 +82,17 @@ lane is retired (0.156.0).
 | **PDD8, then FlashGen finishing** (reverse switch) | `subway_chase__rev_h080`, `__rev_h063` | Keeps PDD8's take and lifts its dim highlights to the others' level. The best fix for PDD8's look so far, on one scene (`2026-09-27_reverse_switch.md`). |
 
 ### FlashGen (fl2va + the rank-64 LoRA through the exact branch)
-Per fastdude, pending their review:
+From fastdude's reads and measures, reviewed by fastdude:
 
 | arm | label suffix | read |
 |---|---|---|
-| FlashGen, full | `__flashgen`, `r64_branch`, `ship`, `scout` | Fast (4 steps). Hazy, lifted blacks, coolest colour, brightest audio. Follows role and direction beats less well than the base. |
+| FlashGen, full | `__flashgen`, `r64_branch`, `ship`, `scout` | Fast (4 steps). Hazy, lifted blacks, coolest colour, brightest audio. Followed role and direction beats less well than the base on the subway, by the owner's eye at one seed (the checklists are unscored). |
 | **FlashGen, blocks 34-49 only** | `__flashgen_blk34_49` | A finished 4-step render with deeper blacks and about half the haze. **The candidate best FlashGen setting**, pending the owner's eye (fastdude's FT1). |
 | FlashGen, blocks 0-33 only | `__flashgen_blk0_33` | Broken: near-black. |
 | FlashGen, blocks 0-49 | `__flashgen_blk0_49` | The same as full; the refiner and final layer do not matter. |
-| FlashGen at 0.8 / 1.2 | `__flashgen_s08`, `__flashgen_s12` | Different takes. Latent spread rises with strength, which fits the haze scaling with it. |
-| FlashGen without adaln | `__flashgen_noadaln` | About the same as full: FlashGen barely touches the timestep conditioning. |
-| FlashGen, dense attention | `__flashgen_dense` | fastdude's read. |
+| FlashGen at 0.8 / 1.2 | `__flashgen_s08`, `__flashgen_s12` | More FlashGen means *less* haze: on courtroom, 1.2 gives more contrast (.280 against .258), more saturation and less haze (.098 against .116) than full, and 0.8 goes the other way; kpop barely moves (`2026-09-27_flashgen_variants_tone.json`). |
+| FlashGen without adaln | `__flashgen_noadaln` | Matches full on tone within noise on both scenes (`2026-09-27_flashgen_variants_tone.json`): FlashGen barely touches the timestep conditioning. |
+| FlashGen, dense attention | `__flashgen_dense` | Matches the Sol arm on tone (haze, contrast, saturation, detail) on kpop and samurai (`2026-09-27_flashgen_variants_tone.json`). Its effect on adherence is unscored, for the owner's checklist read. |
 | FlashGen merged into int8 (the old path) | `r64`, `subway_r64`, `fast_r64` | Loses most of FlashGen's delta, which is why the exact branch became the default. |
 | kijai's rank-13 resize | `r13` | Lossy by construction. The rank-64 conversion is exact. |
 | FlashGen on i2v / on ref2va | `i2v_flashgen`, `r2v_flashgen`, `*_fp16`, `*_int8` | It holds up by eye off T2VA (`2026-09-26_flashgen_tasks_s1.md`). Ref2va is an untested transfer. |
