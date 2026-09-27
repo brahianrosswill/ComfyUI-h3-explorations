@@ -91,6 +91,13 @@ people's records are cited, not restated.
   - The change is concentrated in the early blocks.
   - It barely touches timestep conditioning, where FastH3 retrains its time
     embedder (`2026-09-26_fasth3_weights.md`, the VAE session).
+- **The blocky, splotchy darks are our save setting, not the distill** (O1
+  and F8, `2026-09-27_o1_lossless.md`, the VAE session).
+  - Decoded losslessly from PDD8's anchor latent, the darks show no blocking.
+  - The mp4 adds it, in the darks only. Every graph saves 8-bit 4:2:0 h264 at
+    CRF 19 through `VHS_VideoCombine`.
+  - One clip. A FlashGen look would confirm it.
+  - A lower CRF or a 10-bit format is the owner's call.
 - **Method:** final-latent distance at one seed measures divergence, not
   effect size. A 0.1% modulation change still lands 0.57 away. Verdicts on
   magnitude use tone, temporal and the owner's eye.

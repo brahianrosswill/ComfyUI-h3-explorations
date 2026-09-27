@@ -44,6 +44,11 @@ variants. By the owner's reading, FastH3 is worst, and parts of PDD show it.
 Fails if the base's shadows are as blocky as the distills' on the same look
 variants.
 
+*Verdict, 2026-09-27: not supported on the one clip tested* (see F8). PDD8's
+own decoded darks are not blocky. The blocking the owner describes appears
+when the save node encodes to 8-bit h264. The owner's side note, "i dont
+think its the video this was just an example", is contradicted on this clip.
+
 **O2, the owner, 2026-09-26:** "its probably way overfit on too little data.
 thats why prompt adherence sucks and going OOD is easy". FlashGen's card says it
 was trained data-free (VSD against the teacher's own samples) at 1344x768 and
@@ -248,6 +253,13 @@ the unusual one, more than PDD8's or FastH3's does.*
     largest on grainy output (FastH3), where grain takes the bits.
   - Fails if the lossless decode is as blocky in the shadows as the mp4:
     then the blocking is the model's.
+
+  *Verdict, 2026-09-27: held on one clip.* The VAE session's
+  `2026-09-27_o1_lossless.md`, on look_anchor PDD8, 22 frames.
+  - Decoded losslessly from the latent, the dark regions show no blocking
+    excess (at or below the bright regions at 8 and 16 px).
+  - The mp4 of the same frames adds blocking in the darks only.
+  - A FlashGen look clip, the one that lifts blacks, would confirm it.
 
 ## vaedude
 
