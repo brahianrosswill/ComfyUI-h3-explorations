@@ -1,8 +1,8 @@
 {
-  "schema_version": "1.7.0",
-  "timestamp": "2026-09-27T21:54:08.418178+00:00",
+  "schema_version": "1.8.0",
+  "timestamp": "2026-09-27T22:15:59.052079+00:00",
   "provenance": {
-    "git_commit": "35d3f44138ad6d2f5ac135a2150bbf3df7108b9d",
+    "git_commit": "022ed40a6043aeba722dd1a55ce7a108b834714d",
     "gpu_device": "NVIDIA GeForce RTX 4090",
     "gpu_power_limit_watts": 450.0,
     "driver_version": "615.71.09",
@@ -161,7 +161,7 @@
         "h3_probe_t2v_fasth3_8step_contract_capture_slapstick_moving_piano__fasth3_capture_00001-audio.mp4",
         "h3_probe_t2v_fasth3_8step_contract_capture_video_slapstick_moving_piano__fasth3_capture_00001_.latent"
       ],
-      "source": "server /history"
+      "source": "operator"
     },
     "workflow_sha256": "055eeb0a82f64499138c850ec511959356171058a24ffc4d0f95239e484e7799",
     "graph_sha256": "5c579479bfb1ebecedf90e6d42494c5617aef97b5aa4f9e3fc7318d1c385d28c",
@@ -445,6 +445,120 @@
       "dtype": "torch.bfloat16",
       "size_bytes": 4537291601,
       "sha256": "9e44fa1ccf9841737d0e9b0f2882684ad85746e903e0bdc054caeef0631c2471"
+    },
+    {
+      "filename": "gate_L104565_S104565_b0_s2.pt",
+      "kind": "coarse_gate",
+      "block": 0,
+      "step": 2,
+      "sigma": null,
+      "kernel": null,
+      "render": 0,
+      "segments": null,
+      "server_pid": 2427396,
+      "stamp_inherited": true,
+      "shape": [
+        104565,
+        7168
+      ],
+      "dtype": "torch.bfloat16",
+      "size_bytes": 1499045870,
+      "sha256": "c81cde08c9f61eb7fc5fa13a119bf7ad3f427e8a46cb6cd89e28df45a65fc002"
+    },
+    {
+      "filename": "gate_L104565_S104565_b0_s6.pt",
+      "kind": "coarse_gate",
+      "block": 0,
+      "step": 6,
+      "sigma": null,
+      "kernel": null,
+      "render": 0,
+      "segments": null,
+      "server_pid": 2427396,
+      "stamp_inherited": true,
+      "shape": [
+        104565,
+        7168
+      ],
+      "dtype": "torch.bfloat16",
+      "size_bytes": 1499045870,
+      "sha256": "c2a1ed4bbed487a5dc8f07edfdb2eea6bc75d3637fc3e93f988088df685262be"
+    },
+    {
+      "filename": "gate_L104565_S104565_b24_s2.pt",
+      "kind": "coarse_gate",
+      "block": 24,
+      "step": 2,
+      "sigma": null,
+      "kernel": null,
+      "render": 0,
+      "segments": null,
+      "server_pid": 2427396,
+      "stamp_inherited": true,
+      "shape": [
+        104565,
+        7168
+      ],
+      "dtype": "torch.bfloat16",
+      "size_bytes": 1499045877,
+      "sha256": "058ffa91be2a8650874b4f21ecaf612273a75c27cdb34728bcd2ba42290723ad"
+    },
+    {
+      "filename": "gate_L104565_S104565_b24_s6.pt",
+      "kind": "coarse_gate",
+      "block": 24,
+      "step": 6,
+      "sigma": null,
+      "kernel": null,
+      "render": 0,
+      "segments": null,
+      "server_pid": 2427396,
+      "stamp_inherited": true,
+      "shape": [
+        104565,
+        7168
+      ],
+      "dtype": "torch.bfloat16",
+      "size_bytes": 1499045877,
+      "sha256": "3ae5d4606aedc4fdad67aec7a8676073d1129ba9ddf04a0b587a246030c156c8"
+    },
+    {
+      "filename": "gate_L104565_S104565_b49_s2.pt",
+      "kind": "coarse_gate",
+      "block": 49,
+      "step": 2,
+      "sigma": null,
+      "kernel": null,
+      "render": 0,
+      "segments": null,
+      "server_pid": 2427396,
+      "stamp_inherited": true,
+      "shape": [
+        104565,
+        7168
+      ],
+      "dtype": "torch.bfloat16",
+      "size_bytes": 1499045877,
+      "sha256": "d863ba8161c8b2b9c24e1dc593b13c57d7a2429a849733d4a046d54e95a9d354"
+    },
+    {
+      "filename": "gate_L104565_S104565_b49_s6.pt",
+      "kind": "coarse_gate",
+      "block": 49,
+      "step": 6,
+      "sigma": null,
+      "kernel": null,
+      "render": 0,
+      "segments": null,
+      "server_pid": 2427396,
+      "stamp_inherited": true,
+      "shape": [
+        104565,
+        7168
+      ],
+      "dtype": "torch.bfloat16",
+      "size_bytes": 1499045877,
+      "sha256": "37884fa173832038ef056a7ed594f20183e243fcf3445bc520ed500028a32fa0"
     }
   ]
 }

@@ -41,7 +41,10 @@ from pathlib import Path
 #: `_k<route>` since 2026-09-18: a capture taken through the Sol delegate path
 #: tags each file with the route the call took (`h3_capture.maybe_capture`,
 #: `ktag`), and a whole capture of such files was recorded as holding nothing.
-NAME = re.compile(r"qkv(pre)?_L(\d+)_S(\d+)_b(\d+)_s(\d+)(?:_k[a-z0-9_]+)?(?:_r(\d+))?\.pt$")
+#: `gate_` since 2026-09-27: the VSA coarse-gate records `core_sparse_capture.py`
+#: writes beside each qkvpre file (open_experiments #45).
+NAME = re.compile(r"(qkvpre|qkv|gate)_L(\d+)_S(\d+)_b(\d+)_s(\d+)(?:_k[a-z0-9_]+)?(?:_r(\d+))?\.pt$")
+KIND_OF = {"qkvpre": "qkv_pre", "qkv": "qkv", "gate": "coarse_gate"}
 
 
 def scrub_paths(node):
@@ -77,7 +80,7 @@ def inventory(root: Path) -> dict:
                              "bytes": p.stat().st_size})
             continue
         rows.append({"file": str(p.relative_to(root)),
-                     "kind": "qkv_pre" if m.group(1) else "qkv",
+                     "kind": KIND_OF[m.group(1)],
                      "length": int(m.group(2)),
                      "sequence": int(m.group(3)), "block": int(m.group(4)),
                      "step": int(m.group(5)),
