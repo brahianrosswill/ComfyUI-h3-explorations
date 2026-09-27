@@ -224,8 +224,10 @@ def models(rows: list[dict]) -> list[dict]:
     out = []
     for (kind, name), n in sorted(used.items(), key=lambda x: (x[0][0], str(x[0][1]))):
         sub = {"diffusion_model": "diffusion_models", "lora": "loras", "vae": "vae"}[kind]
-        p = mdir / sub / name
         meta = info.get(Path(name).name.removesuffix(".safetensors"), {})
+        # A file moved since it rendered (2026-09-27, research files into
+        # h3_research/ and loras/h3/research/) is found at its new name.
+        p = mdir / sub / meta.get("renamed_to", name)
         out.append({"file": name, "kind": kind, "renders": n,
                     "size_bytes": p.stat().st_size if p.exists() else None, **meta})
     return out

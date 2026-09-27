@@ -179,6 +179,26 @@ use. About 84 GB together (`du -h` on 2026-09-27).
 - `internal/pdd_shims/` is local and gitignored.
 Each can be rebuilt from its script and commit.
 
+## Renamed on disk, 2026-09-27 (the owner asked for clearer names)
+
+The five research files built last night moved into research subfolders,
+each with a README. Run records, manifests and each file's own metadata keep
+the old names; this table maps them. Nothing shipped referenced any of them.
+
+| old name | now |
+|---|---|
+| `diffusion_models/minimax_h3_fl2va_pruned_int8_convrot_fasth3adaln` | `diffusion_models/h3_research/hybrid__fl2va-weights__fasth3-timecond__int8` |
+| `diffusion_models/fastvideo_fasth3_8step_v2_pruned_int8_convrot_baseadaln` | `diffusion_models/h3_research/hybrid__fasth3v2-weights-and-gates__fl2va-timecond__int8` |
+| `diffusion_models/fastvideo_fasth3_8step_v2_pruned_int8_convrot_temb_a05` | `diffusion_models/h3_research/hybrid__fasth3v2__timecond-blend-50pct-fasth3__int8` |
+| `diffusion_models/fastvideo_fasth3_8step_v2_pruned_int8_convrot_temb_a075` | `diffusion_models/h3_research/hybrid__fasth3v2__timecond-blend-75pct-fasth3__int8` |
+| `loras/h3/minimax_h3_fl2va_fasth3temb_pdd_8step_comfy` | `loras/h3/research/pdd8-sidecar__for-hybrid__fl2va-weights__fasth3-timecond` |
+
+Left in place:
+- **The FlashGen rank-64 LoRAs and FastH3 V2.** Shipped graphs and
+  `h3_config` reference them, and their names already say what they are.
+- **Not in the models folders, on purpose:** the bf16 FlashGen and FastH3
+  inputs and the unpruned V2 (the owner's download folder, outside ComfyUI), and the PDD shims (`internal/`).
+
 ## What's in `latents/`
 
 - **Final latents, video and audio**, one pair per `_savelat` render: every

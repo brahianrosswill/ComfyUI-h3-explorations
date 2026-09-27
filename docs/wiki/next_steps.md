@@ -934,10 +934,11 @@ length every arm above rendered on this card without it.
     (`../../bench/results/2026-09-27_o1_lossless.md`). A lower crf or a
     10-bit format is the owner's call.
   - **Deprioritised builds on disk, for the owner to keep or delete.** They
-    rest on the retracted time-embedder inference: the two dial checkpoints
-    `fastvideo_fasth3_8step_v2_pruned_int8_convrot_temb_a{05,075}`, the two
-    conditioning-swap checkpoints, and the PDD-on-FastH3-time-embedder
-    sidecar.
+    rest on the retracted time-embedder inference. They are now in
+    `models/diffusion_models/h3_research/` (the two dial checkpoints and
+    the two conditioning-swap checkpoints) and `models/loras/h3/research/`
+    (the PDD-on-FastH3-time-embedder sidecar), each folder with a README.
+    The rename map is in `../../bench/results/2026-09-27_inventory.md`.
 
 *2026-09-19, two corrections to the paragraph below.* (1) The "sage's audio more natural" lead is WITHDRAWN as a lead
 about chains: the pair the owner heard was sage against sage (the 2026-09-15 kitchen-scene "default" clip predates the chain
