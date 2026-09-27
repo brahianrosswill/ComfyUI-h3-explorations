@@ -23,11 +23,20 @@ Three facts, read from core, make routes 4 to 6 possible:
 
 1. **Per-row noise levels in one forward.** A denoise mask sets each row's
    timestep separately. A row is one 2x2 patch of one latent frame. Mask
-   value m puts the row at `m * sigma` of its stream, and a row at 0 is
-   pinned at the conditioning timestep and returned bit-identical by the
-   sampler's final blend (`comfy/ldm/minimax/model.py`, `_forward` and
-   `mask_row_values`; `comfy/model_base.py::MiniMaxH3.scale_latent_inpaint`).
-   The pack's audio-refine pass is built on it (`audio_refine.py`).
+   value m puts the row at `m * sigma` of its stream. A row at 0 is fed to
+   the model as `0.999 * clean + 0.001 * noise`, the conditioning timestep
+   (`comfy/model_base.py::MiniMaxH3.scale_latent_inpaint`), and each step's
+   prediction for it is replaced by the clean latent (`comfy/samplers.py`,
+   `KSamplerX0Inpaint`). By the code, a frozen row comes back clean up to
+   floating-point rounding. **The one measurement disagrees**: the audio
+   refine arm's video, frozen at mask 0, decoded about 46 dB from the base
+   arm's (`../../bench/results/2026-09-25_distill_audio_s1.md`, "Is the refine
+   arm's video the base arm's video?"). The VAE decode is not the cause: one
+   latent decoded in two separate runs was pixel-identical on 2026-09-26
+   (`../../bench/results/2026-09-26_draft_keeper_vs_ship_pixels.json`). So the
+   difference is in the latent, and nothing here explains it yet
+   (`comfy/ldm/minimax/model.py`, `_forward` and `mask_row_values`). The
+   pack's audio-refine pass is built on this (`audio_refine.py`).
 2. **Two streams with separate masks.** Video and audio are one packed
    sequence, but each takes its own denoise mask (`denoise_mask`,
    `audio_denoise_mask`), and audio runs on its own shift, derived from the
@@ -65,10 +74,11 @@ distill on its own trained schedule, and that is this route's advantage.
   a locked track.
 
 **Costs.** One render per window, with prefix frames re-attended in each
-window after the first. Attention grows with the square of the sequence, so
-two half-length windows can cost less than one full clip, before the
-overlap. Not priced here; `bench/preflight_graph.py` prices a graph
-statically.
+window after the first. Dense attention grows with the square of the
+sequence, but the shipped graphs run Sol's sparse attention and a feed-forward
+that grows linearly, so whether two windows cost less than one clip is not
+known. `bench/preflight_graph.py` prices a graph statically, and the
+telemetry prices a render.
 
 **Risk.** The seam where the cut is not a cut, and a prompt split that the
 model would have staged differently as one scene.
@@ -76,8 +86,10 @@ model would have staged differently as one scene.
 ## Route 2: mask an adapter to some rows, within one pass
 
 **Mechanism.** `lora_branch.py` adds `s * B(A x)` at the call for every row
-of the packed sequence. A per-row scale is one multiply: build it from each
-row's latent frame. Latent frames map to video frames in the VAE's
+of the packed sequence. A per-row scale is one multiply once the scale
+exists. But the branch is a module `forward(x)` and does not see the packed
+layout, so the row-to-frame map would have to be stashed per forward from
+the model's `transformer_options` (not built, not checked). Latent frames map to video frames in the VAE's
 `1, 4, 4, 4, 4` pattern per 17 frames (`FRAME_PER_TOKEN`), so a mask aligns
 to latent frames, not video frames. Video rows sit after text and references
 in the packed layout (`PackedLayout`), with one row per 2x2 patch.
@@ -108,8 +120,10 @@ without constraints 1 and 3.
 second pass on PDD that reopens only the rows that should be PDD's, at a
 partial sigma, with every other row frozen at mask 0. Each forward runs one
 adapter on one schedule. What differs between rows is their noise level,
-which H3 supports natively (fact 1 above). Frozen rows are exact conditioning
-and are returned bit-identical. This is the audio-refine pass with a
+which H3 supports natively (fact 1 above). Frozen rows are conditioning,
+returned clean by the code but not bit-identical in the one measurement (fact
+1), so the first render must compare a frozen region's latent against pass
+1's, not only its pixels. This is the audio-refine pass with a
 per-frame or per-region video mask in place of a per-stream constant.
 
 **What decides the mask, H3-specifically.** The owner's observation is that
@@ -156,11 +170,13 @@ own: its audio loses energy at coarse partitions
 FlashGen's included, and the inverse (keep a distill's audio, reopen the
 video) is the same node with the masks swapped.
 
-**What exists and what is owed.** The graphs exist. The owner listened only
-to cached against uncached refine
-(`../../bench/results/2026-09-25_frozen_cache_s1.md`). No owner verdict on
-refine against no refine was found in the records. That listen is the
-cheapest thing on this page.
+**What exists and what is owed.** The graphs exist, and the owner has
+listened. On 2026-09-25, unblinded at one seed, "refine seems best for both
+pdd and flashgen for audio" (`../../bench/results/2026-09-25_distill_audio_s1.md`,
+"The owner's first listen"). But the refined clips were a few dB louder, and
+the record flags that loudness alone can read as fidelity. What is owed is a
+blind, loudness-matched listen, which is still the cheapest thing on this
+page. *Corrected 2026-09-26: this said no such listen existed.*
 
 ## Route 6 (H3's own): route by component
 
@@ -170,23 +186,80 @@ expressible: FlashGen's backbone through `MiniMaxH3LoRABranch`, with PDD's
 heads selected by the schedule.
 
 **Why it is last.** The heads were distilled against PDD's own backbone
-features, so pairing them with another backbone is off-distribution. The
-repo's evidence on the head half so far concerns keeping it with PDD's own
-backbone ([`../wiki/next_steps.md`](../wiki/next_steps.md), "Does our PDD node
-keep its head half?"). Worth one probe only if routes 3 to 5 leave colour
-and detail unexplained.
+features, so pairing them with another backbone is off-distribution.
+Neither half is obviously the one that carries PDD's look: the fused head
+differs from the checkpoint's own by 0.005 early to 0.015 at the last step,
+the same order as the backbone's perturbation, 0.004 to 0.015
+([`../h3_pdd.md`](../h3_pdd.md), the magnitudes table). The "head half"
+question in [`../wiki/next_steps.md`](../wiki/next_steps.md) is about which
+code swaps the heads, ours or core's, not about what the heads contribute.
+
+**Evidence that exists and is unjudged.** PDD4 with its heads off
+(`patch_heads` off, the backbone alone) was rendered at three seeds on
+2026-08-27, against heads on, and confirmed to differ
+(`pdd/queued_arms.md`, `C_pdd4_headfree_*`; `pdd/2026-08-27_handoff.md`).
+No judgement of it was found. Judging those clips needs no card and says
+what the heads add, which is this route's premise.
 
 ## Order, cheapest evidence first
 
 | route | built? | first step | trained regime per forward |
 |---|---|---|---|
-| 5 stream | graphs exist | owner listen: refine against no refine | yes |
+| 5 stream | graphs exist | blind, loudness-matched listen: refine against no refine | yes |
 | 3 step | new arm | one render under `H3_TELEMETRY` | yes, apart from the handoff |
-| 4 noise per row | new mask node + arm | one render, a start at 0.632 then 0.8 | yes; frozen rows are exact |
+| 4 noise per row | new mask node + arm | first, save both arms' latents in the refine graph and compare the frozen rows; then one render at 0.632 and one at 0.8 | yes; frozen rows unverified at the output |
 | 1 per shot | new per-window chain | two windows at a hard cut | yes; the seam is the risk |
-| 6 component | new arm | one probe, only if 3 to 5 leave a gap | no |
+| 6 component | new arm | judge the existing heads-off clips first (no card) | no |
 | 2 masked adapter | new branch mask | not recommended | no |
 
 The shared prerequisite is the second seed of the distill comparison, which
 fastdude has queued. None of these routes is worth building until the
 pattern it serves holds on more than one seed.
+
+## Sanity check, claim by claim (2026-09-26)
+
+The owner asked for every claim to be checked, the negative ones included.
+Two claims were wrong in the first version (7fa4138a), and the fastdude
+session caught both against a record; they are corrected above. Status:
+**code** means read in the source today, **record** means a dated result
+says so, **reasoned** means neither, and **wrong** means corrected.
+
+| claim | status | where |
+|---|---|---|
+| A mask value m puts a video row at `m * sigma`, per 2x2 patch per latent frame | code | `comfy/ldm/minimax/model.py`, `_forward`, `mask_row_values` |
+| A mask-0 row is fed at `0.999 * clean + 0.001 * noise` | code | `comfy/model_base.py::MiniMaxH3.scale_latent_inpaint` |
+| Each step's prediction for a masked row is replaced by the clean latent | code | `comfy/samplers.py::KSamplerX0Inpaint` |
+| Frozen rows come back bit-identical at the output | **wrong** | about 46 dB at the decode, `2026-09-25_distill_audio_s1.md` |
+| That gap is not the VAE decode | record | one latent decoded twice was pixel-identical, `2026-09-26_draft_keeper_vs_ship_pixels.json` |
+| Audio's sigma follows video's through the same base time | code | `time_shift_sigma` in `_forward` |
+| PDD's final layer fuses the heads each step spans, for the whole call | code | `FinalLayer.forward`, `_pdd_head` |
+| A PDD pass starting at 0.8889 fuses heads 19 to 23 | code | `pdd_math.schedule_knots`, core's `round((1 - base_t) * n)` |
+| `freeze_windows` runs both windows on one model chain | code | `build_api`, the second guider takes node 9's model |
+| Our continuation prefix carries video only, audio locked | record, not re-read in code | `2026-09-25_continuation_guide_rows.md`, the designs table |
+| Two short windows cost less than one clip | **wrong as stated** | Sol is sparse and the feed-forward linear, so unknown; corrected in route 1 |
+| `lora_branch.py` adds the LoRA per row at the call | code | its docstring and `_linear_forward` |
+| A per-row branch scale is easy | **overstated** | the branch does not see the layout; corrected in route 2 |
+| Every row shares one sigma schedule in a pass | code | one `sample_sigmas` per sampler; per-row timesteps only through masks |
+| PDD's heads cannot differ per row | code | head selection is per call in `FinalLayer.forward` |
+| Latent frames map to video frames as 1, 4, 4, 4, 4 per 17 | code | `FRAME_PER_TOKEN` |
+| PDD's artifacts track inter-frame delta | record | `bench/measure_clip_delta.py` docstring (+0.676) |
+| Inter-frame delta spikes at cuts | reasoned | unmeasured; route 4's mask depends on it |
+| The owner has not compared refine against no refine | **wrong** | the owner's first listen, `2026-09-25_distill_audio_s1.md` |
+| The heads-off question in next_steps is about the heads' value | **wrong** | it is about which code swaps them; corrected in route 6 |
+| Heads-off PDD clips exist and are unjudged | record | `pdd/queued_arms.md`, `C_pdd4_headfree_*` |
+| Heads and backbone perturb by the same order | record | `../h3_pdd.md`, the magnitudes table |
+
+**Why the two bottom routes stay at the bottom, checked rather than
+assumed.**
+- **Route 2** fails on the shared schedule (code), which no masking fixes,
+  and on attention mixing (code: every row attends to every other). Its one
+  mechanism, the per-row branch scale, turned out harder than first written.
+- **Route 6** stands on the premise that the heads carry PDD's look. The
+  magnitudes do not favour either half, and the existing heads-off clips
+  can test the premise without the card. Its rank could move after that
+  judging, in either direction.
+
+**What the checks moved.** Route 5 stays first, but its step is now a blind,
+loudness-matched listen. Route 4 gains a step before it: compare frozen-row
+latents in the existing refine graph, because the one measurement says
+frozen rows do not come back exact, and route 4 rests on them.
