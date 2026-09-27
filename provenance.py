@@ -126,6 +126,9 @@ SOL_CLOSURE_KEYS = (
     # 2026-09-15: the knobs check_provenance_stamp found unrecorded once the
     # node grew them (qk_balance on in every default graph since 28d8ee5).
     "token_aug_profile", "qk_balance", "rotate",
+    # 2026-09-27: where MiniMaxH3Sol differs from MiniMaxH3SolAttn in the one
+    # override they share (docs/research/2026-09-27_sol_node_redesign.md).
+    "block_source", "on_kernel_error", "dtypes",
 )
 
 NOT_DETECTED = "not detected"

@@ -78,6 +78,7 @@ from comfy_api.latest import io
 
 from . import sol_observe
 from .sol_attn_h3 import _sink_blocks, _stats, BLOCK_SIZE
+from . import h3_layout as _h3layout
 
 try:
     from comfy_kitchen.backends import cuda as _ck_cuda
@@ -123,7 +124,10 @@ def make_chunked_forward(chunk_rows=4096, verbose=False):
             return fallback()
         gate = options.get("sol_compose") or {}
         settings = gate.get("settings") or {}
-        block = options.get("sol_block")
+        if settings.get("block_source") == "core":
+            block = _h3layout.block_index(options, int(x.shape[0]))
+        else:
+            block = options.get("sol_block")
         dense = set(settings.get("dense_blocks") or [])
         if block is not None and block in dense:
             return fallback()          # Sol's override routes it dense_block, as today

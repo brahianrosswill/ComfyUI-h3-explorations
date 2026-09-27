@@ -771,14 +771,18 @@ def install_h3_morton(model):
 
 
 
-def _ineligible(q, k, mask, dim_head, min_tokens):
-    """Why this call can't use Sol-Attn, or None if it can. q/k are BTHD."""
+def _ineligible(q, k, mask, dim_head, min_tokens, dtypes=(torch.bfloat16,)):
+    """Why this call can't use Sol-Attn, or None if it can. q/k are BTHD.
+
+    `dtypes`: what the caller accepts. The direct kernel entry takes bf16 and
+    fp16 (`comfy_kitchen.sol_attn`'s docstring); the old node offered bf16
+    only, and says so in its messages."""
     if _ck is None or not hasattr(_ck, "sol_attn"):
         return "comfy_kitchen sol_attn unavailable"
     if q.device.type != "cuda":
         return "not cuda"
-    if q.dtype != torch.bfloat16:
-        return f"dtype {q.dtype} (kernel is bf16-only)"
+    if q.dtype not in dtypes:
+        return f"dtype {q.dtype} (this node takes {', '.join(str(d) for d in dtypes)})"
     if dim_head != HEAD_DIM:
         return f"head_dim {dim_head} != 128"
     if mask is not None:
@@ -897,7 +901,8 @@ def _bthd(q, k, v, heads, skip_reshape):
 
 def _run(q, k, v, heads, skip_reshape, skip_output_reshape, scale,
          tau, min_tokens, verbose, sink_blocks=(0, 0), sink_q=(0, 0),
-         topk_ratio=0.0, tail=True, blk_cnt=None, token_aug=0, qk_balance=False, rotate=False):
+         topk_ratio=0.0, tail=True, blk_cnt=None, token_aug=0, qk_balance=False, rotate=False,
+         dtypes=(torch.bfloat16,)):
     """Returns the attention output, or None if this call should stay dense.
 
     `blk_cnt`, when given, is an int32 (B, H, ceil(T/64)) buffer the kernel
@@ -907,7 +912,7 @@ def _run(q, k, v, heads, skip_reshape, skip_output_reshape, scale,
     """
     qs, ks, vs, b, dim_head = _bthd(q, k, v, heads, skip_reshape)
 
-    reason = _ineligible(qs, ks, None, dim_head, min_tokens)
+    reason = _ineligible(qs, ks, None, dim_head, min_tokens, dtypes)
     if reason is not None:
         _stats["dense_fallback"] += 1
         if verbose:
@@ -1017,8 +1022,15 @@ def make_override(tau=1.0, min_tokens=4096,
                   sink_conditioning="exact_kv", dense_blocks=frozenset(),
                   tau_profile=None, token_aug_profile=None,
                   previous=None, topk_ratio=0.0, tail=True, qk_balance=False,
-                  rotate=False, settings=None):
+                  rotate=False, settings=None, block_source="sol_block",
+                  on_kernel_error="dense", dtypes=(torch.bfloat16,)):
     """Build an optimized_attention_override callable.
+
+    `block_source`, `on_kernel_error` and `dtypes` are where the two nodes
+    differ (`docs/research/2026-09-27_sol_node_redesign.md`):
+    `MiniMaxH3SolAttn` reads the block from its own `sol_block` hooks, runs a
+    failed kernel call dense and takes bf16; `MiniMaxH3Sol` reads core's
+    `block_index` through `h3_layout`, raises, and takes bf16 and fp16.
 
     ``previous`` chains any override already installed on the model: every path
     that declines hands off to it first, falling through to ``func`` only if
@@ -1029,6 +1041,15 @@ def make_override(tau=1.0, min_tokens=4096,
     call row. Unused unless the observer is armed.
     """
     settings = dict(settings or {})
+    if block_source not in ("sol_block", "core"):
+        raise ValueError(f"block_source {block_source!r}")
+    if on_kernel_error not in ("dense", "raise"):
+        raise ValueError(f"on_kernel_error {on_kernel_error!r}")
+
+    def block_of(options, tokens):
+        if block_source == "core":
+            return _h3layout.block_index(options, tokens)
+        return (options or {}).get("sol_block")
 
     def override(func, q, k, v, heads, mask=None, attn_precision=None,
                  skip_reshape=False, skip_output_reshape=False, **kwargs):
@@ -1042,8 +1063,8 @@ def make_override(tau=1.0, min_tokens=4096,
         if _capture.enabled:
             options = kwargs.get("transformer_options")
             ticket = _capture.seam_begin(
-                (options or {}).get("sol_block"), q, k, v, heads, skip_reshape,
-                transformer_options=options)
+                block_of(options, q.shape[2] if skip_reshape else q.shape[1]),
+                q, k, v, heads, skip_reshape, transformer_options=options)
         out = _decide_and_run(func, q, k, v, heads, mask=mask, attn_precision=attn_precision,
                               skip_reshape=skip_reshape,
                               skip_output_reshape=skip_output_reshape, **kwargs)
@@ -1067,7 +1088,7 @@ def make_override(tau=1.0, min_tokens=4096,
         # block identity at all.
         block = None
         if dense_blocks or tau_profile or token_aug_profile or observing or _timer.enabled():
-            block = (options or {}).get("sol_block")
+            block = block_of(options, tokens)
         block_tau = tau_profile.get(block, tau) if tau_profile else tau
         # Absent from the profile means zero, which is the kernel's default and
         # the shipped state: token routing is opt-in per block, never global.
@@ -1181,22 +1202,31 @@ def make_override(tau=1.0, min_tokens=4096,
                     out = _run(q, k, v, heads, skip_reshape, skip_output_reshape,
                                kwargs.get("scale", None), block_tau, min_tokens, verbose,
                                sink, sink_q, topk_ratio, tail, blk_cnt=counts,
-                               token_aug=block_aug, qk_balance=qk_balance, rotate=rotate)
+                               token_aug=block_aug, qk_balance=qk_balance, rotate=rotate, dtypes=dtypes)
             else:
                 out = _run(q, k, v, heads, skip_reshape, skip_output_reshape,
                            kwargs.get("scale", None), block_tau, min_tokens, verbose,
                            sink, sink_q, topk_ratio, tail, blk_cnt=counts,
-                           token_aug=block_aug, qk_balance=qk_balance, rotate=rotate)
+                           token_aug=block_aug, qk_balance=qk_balance, rotate=rotate, dtypes=dtypes)
         except Exception as exc:
             _stats["errors"] += 1
-            _log_kernel_failure(exc)
             route("kernel_error", f"{type(exc).__name__}: {exc}"[:200])
+            if on_kernel_error == "raise":
+                # A failed kernel call run dense is a render that succeeds and
+                # is not a Sol render; the new node refuses that, as this repo
+                # does everywhere else.
+                raise RuntimeError(
+                    f"[h3-sol] the Sol kernel failed on block {block} ({type(exc).__name__}: "
+                    f"{exc}). Not falling back to dense attention: the render would "
+                    f"succeed and not be a Sol render. Remove the node to render "
+                    f"without Sol.") from exc
+            _log_kernel_failure(exc)
             return dense()
         if out is None:
             reason = None
             if observing:
                 qs, ks, _vs, _b, dim_head = _bthd(q, k, v, heads, skip_reshape)
-                reason = _ineligible(qs, ks, None, dim_head, min_tokens)
+                reason = _ineligible(qs, ks, None, dim_head, min_tokens, dtypes)
             route("ineligible", reason)
             return dense()
         route("sol")
@@ -1231,7 +1261,10 @@ def _record_composed(module, gate, options, tensor, reason):
         batch = 1 if tensor.ndim == 2 else tensor.shape[0]
     else:
         tokens, batch = 0, 0
-    block = options.get("sol_block") if isinstance(options, dict) else None
+    if settings.get("block_source") == "core":
+        block = _h3layout.block_index(options, tokens)
+    else:
+        block = options.get("sol_block") if isinstance(options, dict) else None
     profile = settings.get("tau_profile") or {}
     tau = settings.get("tau", 0.0)
     block_tau = profile.get(str(block), tau) if block is not None else tau
@@ -1758,3 +1791,312 @@ class MiniMaxH3SolAttn(io.ComfyNode):
             topk_ratio=selection["keep_percent"] / 100.0 if topk else 0.0,
             tail=pooled_tail, qk_balance=bool(qk_balance), rotate=bool(rotate),
             token_routing=token_routing)
+
+
+# ---------------------------------------------------------------------------
+# MiniMaxH3Sol: the redesigned node (2026-09-27)
+# ---------------------------------------------------------------------------
+# docs/research/2026-09-27_sol_node_redesign.md is the plan and the reasons;
+# bench/results/2026-09-27_sol_node_compound_audit.md is the evidence. What
+# differs from MiniMaxH3SolAttn above, which is deleted once the generated
+# graphs move here:
+#
+#   - inputs: tau (the only selection left: the SLA lane closed), one
+#     `quantizer` combo in place of the qk_balance and rotate booleans, and
+#     token routing as a DynamicCombo whose `custom` option carries its list.
+#     No Morton, no tau_profile, no top-k, no pooled_tail (the tail is on).
+#   - block index and segment bounds from what core publishes (`h3_layout`);
+#     this node patches nothing in core and installs no hooks of its own
+#     (the composition hooks for an object-patched sage forward excepted).
+#   - it re-installs its override on top at every step, as core's sparse node
+#     does, so an attention node placed after it becomes its fallback rather
+#     than silently replacing it.
+#   - a kernel error raises instead of rendering dense.
+#   - bf16 and fp16 are taken; the direct kernel entry accepts both.
+#   - the dense fallback under it is named in the log and in the settings
+#     record, so a render says which kernel ran its dense calls.
+
+#: quantizer choice -> (qk_balance, rotate). Both are fork options of the
+#: kitchen kernel; `docs/research/2026-09-27_sol_node_redesign.md` test 2
+#: grades the four. On MiniMax H3 the balance gate is recorded as opening on
+#: blocks 45, 48 and 49 only (docs/h3_block49_quant_error.md), which the
+#: default dense_blocks sends off Sol.
+SOL_QUANTIZERS = {
+    "plain": (False, False),
+    "balanced": (True, False),
+    "rotated": (False, True),
+    "balanced+rotated": (True, True),
+}
+#: Inherited from the shipped state (SOL_RECOMMENDED_CUDA carried
+#: qk_balance=True, rotate=False since 2026-09-15). Test 1 of the redesign
+#: (balance on against off, latents compared) decides whether it stays.
+SOL_QUANTIZER_DEFAULT = "balanced"
+
+SOL_ROUTING_OFF = "off"
+SOL_ROUTING_MEASURED = "measured blocks (0, 24, 32, 40)"
+SOL_ROUTING_EARLY_MIDDLE = "early and middle (all but the last five)"
+SOL_ROUTING_ALL = "all blocks (needs a balanced quantizer)"
+SOL_ROUTING_CUSTOM = "custom"
+SOL_ROUTING_CHOICES = (SOL_ROUTING_OFF, SOL_ROUTING_MEASURED, SOL_ROUTING_EARLY_MIDDLE,
+                       SOL_ROUTING_ALL, SOL_ROUTING_CUSTOM)
+
+
+def sol_routing_blocks(choice, blocks_spec, count, *, qk_balance):
+    """{block: budget} for MiniMaxH3Sol's token-routing choice.
+
+    `all blocks` needs the balance factor on: on the block-49 capture token
+    routing raised the error plain and rotated, and lowered it only with the
+    balance on (`bench/results/2026-09-15_sol_token_aug_x_options_b49_s15.json`,
+    `fixed_wheel` rows). Those balanced rows were measured on a kernel whose
+    token stage scored an unbalanced centroid against balanced keys (fixed on
+    h3-frontier, 2026-09-27); the re-grade on the fixed kernel is test 3 of the
+    redesign and may move this rule."""
+    if choice not in SOL_ROUTING_CHOICES:
+        raise ValueError(f"token_routing {choice!r} is not one of {list(SOL_ROUTING_CHOICES)}")
+    if choice == SOL_ROUTING_OFF:
+        return {}
+    if choice == SOL_ROUTING_CUSTOM:
+        if not str(blocks_spec or "").strip():
+            raise ValueError("token_routing is 'custom' and its blocks list is empty. Type the "
+                             "blocks (e.g. '0,24,32,40=64'), or choose 'off'.")
+        return parse_token_aug_profile(blocks_spec, count)
+    if choice == SOL_ROUTING_MEASURED:
+        missing = [b for b in TOKEN_ROUTING_MEASURED_BLOCKS if b >= count]
+        if missing:
+            raise ValueError(f"token_routing {choice!r} names MiniMax H3 blocks; this model "
+                             f"has {count} and lacks {missing}")
+        blocks = TOKEN_ROUTING_MEASURED_BLOCKS
+    elif choice == SOL_ROUTING_EARLY_MIDDLE:
+        blocks = range(max(count - TOKEN_ROUTING_TAIL, 0))
+    else:
+        if not qk_balance:
+            raise ValueError(
+                f"token_routing {choice!r} needs a quantizer with the balance on "
+                f"('balanced' or 'balanced+rotated'): on the last block token routing "
+                f"lowered the error only with it. Or use {SOL_ROUTING_EARLY_MIDDLE!r}.")
+        blocks = range(count)
+    return {int(b): TOKEN_ROUTING_BUDGET for b in blocks}
+
+
+def _describe_override(override):
+    """A name for the attention override a Sol node falls back to."""
+    if override is None:
+        return "stock attention (no override below Sol)"
+    if getattr(override, "h3_kernel", None) == "sage":
+        cells = dict(zip(getattr(getattr(override, "__code__", None), "co_freevars", ()) or (),
+                         getattr(override, "__closure__", None) or ()))
+        try:
+            kwargs = cells["kernel_kwargs"].cell_contents
+        except (KeyError, ValueError):
+            kwargs = None
+        return f"sage, MiniMaxH3SageAttention ({kwargs})" if kwargs else "sage, MiniMaxH3SageAttention"
+    cells = dict(zip(getattr(getattr(override, "__code__", None), "co_freevars", ()) or (),
+                     getattr(override, "__closure__", None) or ()))
+    try:
+        fn = cells["optimized_attention"].cell_contents
+        return f"{getattr(fn, '__name__', fn)} (set_model_optimized_attention: core's ModelAttentionBackend)"
+    except (KeyError, ValueError):
+        pass
+    return f"{getattr(override, '__module__', '?')}.{getattr(override, '__qualname__', repr(override))}"
+
+
+_SOL_ACCEPTED_DTYPES = (torch.bfloat16, torch.float16)
+
+
+def _apply_sol(model, *, tau, quantizer, dense_blocks, sink_conditioning,
+               token_routing, routing_blocks, start_percent, end_percent,
+               min_tokens, verbose):
+    if quantizer not in SOL_QUANTIZERS:
+        raise ValueError(f"quantizer {quantizer!r} is not one of {list(SOL_QUANTIZERS)}")
+    qk_balance, rotate = SOL_QUANTIZERS[quantizer]
+    _require_kernel()
+    import inspect
+    params = inspect.signature(_ck.sol_attn).parameters
+    for flag, name in ((qk_balance, "qk_balance"), (rotate, "rotate")):
+        if flag and name not in params:
+            raise RuntimeError(
+                f"quantizer {quantizer!r} needs {name}, and the installed comfy_kitchen.sol_attn "
+                f"has no {name} argument. It is carried on the owner's fork (h3-frontier); "
+                f"rebuild with vendor/rebuild_kernel.sh, or choose 'plain'.")
+
+    diffusion_model = model.get_model_object("diffusion_model")
+    base = getattr(model, "model", None)
+    get_dtype = getattr(base, "get_dtype_inference", None)
+    if get_dtype is not None and get_dtype() not in _SOL_ACCEPTED_DTYPES:
+        raise RuntimeError(
+            f"the model computes in {get_dtype()}, and Sol's kernel takes bf16 or fp16, so "
+            f"every call would run dense. Load the DiT in bf16 or fp16, or remove this node.")
+
+    blocks = getattr(diffusion_model, "blocks", None)
+    count = len(blocks) if blocks is not None else 0
+    dense = parse_blocks(dense_blocks, count)
+    aug = sol_routing_blocks(token_routing, routing_blocks, count, qk_balance=qk_balance)
+    if aug and "token_aug" not in params:
+        raise RuntimeError("token routing is on, and the installed comfy_kitchen.sol_attn has no "
+                           "token_aug argument (Comfy-Org/comfy-kitchen #156, 0.2.33).")
+
+    model_sampling = model.get_model_object("model_sampling")
+    sigma_start = float(model_sampling.percent_to_sigma(start_percent))
+    sigma_end = float(model_sampling.percent_to_sigma(end_percent))
+
+    m = model.clone()
+    settings = {
+        "node": "MiniMaxH3Sol", "tau": float(tau), "quantizer": quantizer,
+        "qk_balance": bool(qk_balance), "rotate": bool(rotate), "tail": True, "topk_ratio": 0.0,
+        "min_tokens": int(min_tokens), "sink_conditioning": sink_conditioning,
+        "start_percent": float(start_percent), "end_percent": float(end_percent),
+        "sigma_start": sigma_start, "sigma_end": sigma_end,
+        "dense_blocks": sorted(int(b) for b in dense),
+        "token_routing": token_routing,
+        "token_aug_blocks": {str(k): int(v) for k, v in sorted(aug.items())},
+        "n_blocks": count, "block_source": "core",
+    }
+    installed = set()
+
+    def install(transformer_options):
+        """Put this node's override on top of whatever is on the hook, and name
+        what it falls back to. Idempotent once it is on top; run at patch time
+        and again each step (ON_PREPARE_STATE)."""
+        current = transformer_options.get("optimized_attention_override")
+        if current in installed:
+            return
+        fallback = _describe_override(current)
+        override = make_override(
+            tau=tau, min_tokens=min_tokens, sigma_start=sigma_start, sigma_end=sigma_end,
+            verbose=verbose, sink_conditioning=sink_conditioning, dense_blocks=dense,
+            tau_profile=None, token_aug_profile=aug, previous=current, topk_ratio=0.0,
+            tail=True, qk_balance=qk_balance, rotate=rotate,
+            settings=dict(settings, dense_fallback=fallback),
+            block_source="core", on_kernel_error="raise", dtypes=_SOL_ACCEPTED_DTYPES)
+        installed.add(override)
+        transformer_options["optimized_attention_override"] = override
+        transformer_options["sol_compose"] = {
+            "sigma_start": sigma_start, "sigma_end": sigma_end, "min_tokens": min_tokens,
+            "settings": dict(settings, dense_fallback=fallback)}
+        _log_once(("sol_fallback", fallback), f"MiniMaxH3Sol: dense calls run on {fallback}")
+
+    options = m.model_options["transformer_options"]
+    install(options)
+    import comfy.patcher_extension
+    m.add_callback_with_key(
+        comfy.patcher_extension.CallbacksMP.ON_PREPARE_STATE, "h3_sol",
+        lambda model_patcher, timestep, model_options: install(model_options["transformer_options"]))
+
+    # An object-patched attention forward (the sage node) bypasses
+    # optimized_attention; gate it so the calls Sol takes reach the override.
+    composed = []
+    for key, patched in list(m.object_patches.items()):
+        if not key.endswith(".forward"):
+            continue
+        owner = key.rsplit(".", 2)[-2].lower()
+        if "attn" not in owner or "cross" in owner or owner == "attn2":
+            continue
+        if getattr(patched, "_uses_optimized_attention", False):
+            continue
+        module = m.get_model_object(key[: -len(".forward")])
+        m.add_object_patch(key, _compose_module_patch(module, patched))
+        composed.append(key)
+    if hasattr(diffusion_model, "blocks"):
+        _install_compose_hooks(diffusion_model, "attn")
+
+    logging.info(
+        f"[h3-sol] MiniMaxH3Sol on: sigma window [{sigma_end:.4g}, {sigma_start:.4g}] "
+        f"(start_percent {start_percent}, end_percent {end_percent}), tau {tau}, "
+        f"quantizer {quantizer}, token routing on {len(aug)} block(s), "
+        f"dense blocks {sorted(dense)}, sink {sink_conditioning}"
+        + (f", composed with {len(composed)} patched forward(s)" if composed else ""))
+    if sol_observe.enabled():
+        logging.info(f"[h3-sol] route observation ARMED ({sol_observe.spec()['spec']}); "
+                     f"timings from this render are not quotable")
+    reset_sol_attn_stats()
+    return io.NodeOutput(m)
+
+
+class MiniMaxH3Sol(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="MiniMaxH3Sol",
+            display_name="MiniMax H3 Sol-Attn",
+            is_experimental=True,
+            category="model/attention/minimax",
+            description=(
+                "Training-free block-sparse attention (Sol-Attn, arXiv 2607.24027) "
+                "for MiniMax-H3, on comfy_kitchen's CUDA kernel. Put it after the "
+                "attention node whose kernel should run the dense calls (the "
+                "blocks in dense_blocks, the steps outside the start/end window, "
+                "short calls); it names that kernel in the log. It keeps itself on "
+                "top of the attention hook at every step, so a node placed after it "
+                "becomes its fallback rather than replacing it."),
+            inputs=[
+                io.Model.Input("model"),
+                io.Float.Input("tau", default=1.0, min=0.0, max=4.0, step=0.05,
+                               tooltip="How sparse. A key block is computed exactly when "
+                                       "its pooled score sits at least tau standard "
+                                       "deviations above the row mean; the rest become one "
+                                       "pooled term each. Higher is sparser and faster. "
+                                       "1.0 is what sglang and NVLabs' H3 profiles use."),
+                io.Combo.Input("quantizer", options=list(SOL_QUANTIZERS),
+                               default=SOL_QUANTIZER_DEFAULT,
+                               tooltip="How Sol's INT8 quantizers treat q and k. 'balanced' "
+                                       "rescales q up and k down per channel on heads whose "
+                                       "K energy sits in a few loud channels; 'rotated' "
+                                       "multiplies every row by a fixed Hadamard matrix (the "
+                                       "one kitchen's dense int8 attention uses). Both leave "
+                                       "every attention score unchanged in exact arithmetic; "
+                                       "they change INT8 rounding. Needs the owner's kitchen "
+                                       "build for anything but 'plain'."),
+                io.String.Input("dense_blocks", default=SOL_DENSE_TAIL,
+                                tooltip="Blocks kept off Sol, e.g. '0-2,32'; negative indices "
+                                        "count from the end. They run on the dense fallback. "
+                                        f"Default '{SOL_DENSE_TAIL}': the blocks whose K is "
+                                        "lopsided, where Sol's INT8 error is largest."),
+                io.Combo.Input("sink_conditioning", options=list(SINK_CONDITIONING_MODES),
+                               default="exact_kv_and_rows",
+                               tooltip="How the packed conditioning rows (text, references, "
+                                       "target audio) are protected. exact_kv: every query "
+                                       "attends them exactly. exact_kv_and_rows: also runs the "
+                                       "target-audio query rows dense. exact_kv_and_all_rows: "
+                                       "every conditioning query row dense, references "
+                                       "included. off: none."),
+                io.DynamicCombo.Input("token_routing", options=[
+                    io.DynamicCombo.Option(SOL_ROUTING_OFF, []),
+                    io.DynamicCombo.Option(SOL_ROUTING_MEASURED, []),
+                    io.DynamicCombo.Option(SOL_ROUTING_EARLY_MIDDLE, []),
+                    io.DynamicCombo.Option(SOL_ROUTING_ALL, []),
+                    io.DynamicCombo.Option(SOL_ROUTING_CUSTOM, [
+                        io.String.Input("blocks", default="0,24,32,40=64",
+                                        tooltip="'layers=budget', e.g. '0,24,32=64'. "
+                                                f"Budget one of {list(TOKEN_AUG_BUDGETS)}."),
+                    ]),
+                ], tooltip=f"Per query block, up to {TOKEN_ROUTING_BUDGET} of the best tokens "
+                           "outside the routed blocks are attended exactly, and the rest "
+                           "of those blocks is scored token by token instead of pooled. "
+                           "Costs time. On captures it lowered the error on four blocks and "
+                           "raised it on the last one unless the balance was on."),
+                io.Float.Input("start_percent", default=0.2, min=0.0, max=1.0, step=0.01,
+                               tooltip="Dense before this point of the schedule."),
+                io.Float.Input("end_percent", default=1.0, min=0.0, max=1.0, step=0.01,
+                               tooltip="Dense after this point. A sigma band, not a step "
+                                       "fraction."),
+                io.Int.Input("min_tokens", default=12288, min=0, max=1 << 20, step=512,
+                             advanced=True,
+                             tooltip="Shorter calls stay dense: on H3 that is the two "
+                                     "text-only token-refiner calls."),
+                io.Boolean.Input("verbose", default=True, advanced=True,
+                                 tooltip="Log once per call shape whether it ran on Sol or "
+                                         "dense, and why."),
+            ],
+            outputs=[io.Model.Output()],
+        )
+
+    @classmethod
+    def execute(cls, model, tau, quantizer, dense_blocks, sink_conditioning, token_routing,
+                start_percent, end_percent, min_tokens=12288, verbose=True) -> io.NodeOutput:
+        return _apply_sol(
+            model, tau=tau, quantizer=quantizer, dense_blocks=dense_blocks,
+            sink_conditioning=sink_conditioning,
+            token_routing=token_routing["token_routing"],
+            routing_blocks=token_routing.get("blocks", ""),
+            start_percent=start_percent, end_percent=end_percent,
+            min_tokens=min_tokens, verbose=verbose)

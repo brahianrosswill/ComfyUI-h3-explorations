@@ -52,7 +52,7 @@ from .provenance import MiniMaxH3ProvenanceStamp
 from .quant_observe import MiniMaxH3QuantObserve
 from .reference_fit import MiniMaxH3ReferenceFit
 from .resolution import MiniMaxH3Resolution
-from .sol_attn_h3 import MiniMaxH3SolAttn
+from .sol_attn_h3 import MiniMaxH3SolAttn, MiniMaxH3Sol
 from .sol_chunked_h3 import MiniMaxH3SolChunked
 from .vsa_attention import MiniMaxH3VSAAttention
 from .vae_precision import MiniMaxH3VAEPrecision
@@ -331,7 +331,10 @@ class H3ExplorationsExtension(ComfyExtension):
                 # appended 2026-09-26, the denoise-mask observer (denoise_mask_probe.py)
                 MiniMaxH3DenoiseMaskProbe,
                 # appended 2026-09-26, each step's x0 saved (step_x0_observer.py)
-                MiniMaxH3StepX0Observer]
+                MiniMaxH3StepX0Observer,
+                # appended 2026-09-27, the redesigned Sol node (sol_attn_h3.py;
+                # docs/research/2026-09-27_sol_node_redesign.md)
+                MiniMaxH3Sol]
 
 
 async def comfy_entrypoint() -> H3ExplorationsExtension:
