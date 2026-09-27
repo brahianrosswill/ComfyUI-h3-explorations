@@ -1,6 +1,6 @@
 # The sister checkouts: what each one is good for
 
-last updated: 2026-09-26 (section "A distill's reference is its trainer's contract" added; the FastH3 V2 note under 2026-09-19 extended); 2026-09-25 (section "What moved by 2026-09-25" added; the PDD line and the vllm-omni #7693 bullet corrected in place); 2026-09-19 (section "What moved by 2026-09-19" added); 2026-09-15 (section "The streaming references: TaoMate" added; "What moved by 2026-09-11" added and the two comfy-kitchen rows corrected 2026-09-11; "What moved by 2026-09-10" added 2026-09-10; the tables are otherwise the 2026-08-28 read)
+last updated: 2026-09-27 (the TaoMate section trimmed to the checkouts after the lane was removed); 2026-09-26 (section "A distill's reference is its trainer's contract" added; the FastH3 V2 note under 2026-09-19 extended); 2026-09-25 (section "What moved by 2026-09-25" added; the PDD line and the vllm-omni #7693 bullet corrected in place); 2026-09-19 (section "What moved by 2026-09-19" added); 2026-09-15 (section "The streaming references: TaoMate" added; "What moved by 2026-09-11" added and the two comfy-kitchen rows corrected 2026-09-11; "What moved by 2026-09-10" added 2026-09-10; the tables are otherwise the 2026-08-28 read)
 
 `coderef/` holds the reference implementations. `ls -l coderef/` is the list of
 what is currently on disk — some symlinks, some real clones — and this page is
@@ -532,18 +532,20 @@ decision; `sol_upstream.md` has it.
 
 ## The streaming references: TaoMate
 
-Read 2026-09-15, at the revisions named here.
+Read 2026-09-15, at the revisions named here. The lane that used them is
+deprecated, not pursued (2026-09-27); the checkouts stay as references.
 
 | checkout | revision read | what it is | reach for it when |
 |---|---|---|---|
-| `TaoMate-H3` | `ccc1a70` | TaoLiveAIGC's streaming runtime for H3. A 3-step LoRA on the FL2VA partition, run over each 5-second request in causal chunks: the chunk's video attends to the prompt, to a clean K/V cache and to itself, and a sigma-zero forward after each chunk commits its K/V. The cache keeps the first chunk's video as a sink and the two most recent chunks (`coderef/TaoMate-H3/src/taomate_h3/streaming/cache.py::CleanAVKVCache.retain_sink_and_recent_commits`). It accepts only 4 or 8 GPUs under TP2 with Ulysses and requires FlashAttention-3 (`coderef/TaoMate-H3/src/taomate_h3/config.py::DirectRunConfig`, `coderef/TaoMate-H3/src/taomate_h3/streaming/attention_hook.py`), so it does not run on this box. The adapter converts to a ComfyUI LoRA by rename: `bench/convert_taomate_lora.py`, record `bench/results/2026-09-15_taomate_lora_conversion.json` | you need the adapter's distilled sigma grid (`coderef/TaoMate-H3/src/taomate_h3/model/pipeline.py`, `DISTILLED_STATE_INDICES` at its two shifts), how a KV-cached causal H3 is wired, or an H3 team's own audio-freeze regime |
+| `TaoMate-H3` | `ccc1a70` | TaoLiveAIGC's streaming runtime for H3. A 3-step LoRA on the FL2VA partition, run over each 5-second request in causal chunks: the chunk's video attends to the prompt, to a clean K/V cache and to itself, and a sigma-zero forward after each chunk commits its K/V. The cache keeps the first chunk's video as a sink and the two most recent chunks (`coderef/TaoMate-H3/src/taomate_h3/streaming/cache.py::CleanAVKVCache.retain_sink_and_recent_commits`). It accepts only 4 or 8 GPUs under TP2 with Ulysses and requires FlashAttention-3 (`coderef/TaoMate-H3/src/taomate_h3/config.py::DirectRunConfig`, `coderef/TaoMate-H3/src/taomate_h3/streaming/attention_hook.py`), so it does not run on this box. This pack's port of it (a converted LoRA, probe graphs and a streaming sampler node) was deprecated by the owner on 2026-09-27 and removed ([`decisions.md`](decisions.md)); its records stay in `bench/results/` (`2026-09-15_taomate_*`) | you need the adapter's distilled sigma grid (`coderef/TaoMate-H3/src/taomate_h3/model/pipeline.py`, `DISTILLED_STATE_INDICES` at its two shifts), how a KV-cached causal H3 is wired, or an H3 team's own audio-freeze regime |
 | `TaoMate-LTX` | `136d890` | the same group's LTX 2.3 system and the code for their paper (arXiv 2607.24359): learned persistent memory, reference-aware FiLM, a pyramid K/V retention policy, stage-parallel inference | the paper's mechanisms. Not evidence about H3 |
 
 What the H3 checkout is not evidence of:
 
 - **The paper's memory.** The H3 adapter holds LoRA factors on the existing
-  attention and MLP linears and nothing else (the converter's
-  `adapter_inventory` refuses any other tensor). The H3 runtime's only
+  attention and MLP linears and nothing else (the removed converter refused
+  any other tensor; its record is
+  `bench/results/2026-09-15_taomate_lora_conversion.json`). The H3 runtime's only
   appearance mechanism is an untrained per-channel renormalisation of each
   chunk to the first chunk's statistics
   (`coderef/TaoMate-H3/src/taomate_h3/streaming/runtime.py::H3StreamingRuntime._renorm_clean_video_rows`).
@@ -554,19 +556,15 @@ What the H3 checkout is not evidence of:
   (`coderef/TaoMate-H3/src/taomate_h3/streaming/runtime.py::_base_audio_teacher_step_callback`
   and the guard after the phase loop). The README's speed table excludes that
   pass by its own note. What the adapter does to audio in a ComfyUI graph is
-  outside anything its authors run. This is the audio-freeze regime:
-  [`../h3_audio_freeze.md`](../h3_audio_freeze.md) section 5.
+  outside anything its authors run. This is the audio-freeze regime
+  ([`../h3_audio_freeze.md`](../h3_audio_freeze.md)).
 - **Anything about a single-card graph.** The README's timings are its own
   base runtime on its own node.
 
-The community ComfyUI copies: kijai's `minimax_h3_taomate_3step_lora_avg_rank_19_bf16`
+The community ComfyUI copy: kijai's `minimax_h3_taomate_3step_lora_avg_rank_19_bf16`
 is a per-module truncated SVD of this adapter, in the same qkv and SwiGLU
-layout. How much of each delta it keeps is in the record's `comparison`,
-measured against the full-rank conversion. How the two differ in use, and the
-plan for running the adapter in a graph, is
-[`../h3_taomate.md`](../h3_taomate.md). The distilled grid is copied into
-`workflows/h3_config.py`'s TaoMate block with this revision as its pointer, so
-nothing that converts or builds needs this checkout.
+layout. How much of each delta it keeps is in the conversion record's
+`comparison`, measured against the full-rank conversion.
 
 "ComfyUI does not support KV chunking", as reported on 2026-09-15, is right
 in substance: core's KV-cached causal sampler

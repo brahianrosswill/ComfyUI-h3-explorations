@@ -4,7 +4,7 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
-## 0.160.0
+## 0.162.0
 
 ### Changed (breaking for editor-saved graphs)
 
@@ -49,6 +49,57 @@ artifact.
     Swap in `MiniMax H3 Sol-Attn`. The widgets map as: `qk_balance` on is
     quantizer `balanced`, and with `rotate` also on it is
     `balanced+rotated`. Morton, `tau_profile` and top-k have no equivalent.
+## 0.161.0
+
+### Removed
+
+- **TaoMate-H3, deprecated by the owner** (2026-09-27: "taomate is
+  deprecated you can remove everything from it here. we're not gonna pursue
+  it anymore."). Gone:
+  - the `MiniMaxH3TaoMateStreamSampler` node and its runtime
+    (`taomate_stream_sampler.py`, `taomate_streaming.py`). A saved graph
+    that uses the node no longer loads;
+  - the probes `h3_probe_taomate_3step` and
+    `h3_probe_taomate_3step_audio_freeze`;
+  - `h3_config`'s `TAOMATE_*` constants;
+  - `bench/check_taomate_streaming.py`, and the TaoMate cases in
+    `check_distill_settings.py` and `check_distill_grid.py`;
+  - `bench/convert_taomate_lora.py`, `bench/verify_taomate_stream.py`, the
+    three TaoMate arm manifests, `measure_merge_noise.py`'s TaoMate pairs;
+  - `docs/h3_taomate.md`, and the prose that pointed at it.
+
+  `MiniMaxH3FrozenVideoCache` stays; the PDD8 and FlashGen audio-refine
+  graphs use it. The `2026-09-15_taomate_*` records stay in `bench/results/`,
+  and the lane is in `docs/roadmap.md` "Closed lanes" as deprecated, not
+  refuted (`docs/wiki/decisions.md`, 2026-09-27). The validated workflow
+  build no longer fails on the missing TaoMate LoRA files.
+
+## 0.160.0
+
+### Changed
+
+- **Our conditioning nodes strip the prompt at both ends** (owner,
+  2026-09-27: "strip leading and trailing whitespace in our conditioning nodes
+  and \n at the end (not in the middle - \n has value in the middle)").
+  `h3_rules.normalize_prompt` is the one rule; `MiniMaxH3Conditioning`,
+  `MiniMaxH3ReferenceConditioning` and `MiniMaxH3ReferenceReport`'s token
+  count all go through it. Core's tokenizer keeps edge whitespace, and a
+  trailing newline is one more token. The generator already strips bank
+  prompts, so shipped graphs tokenize exactly as before. A prompt pasted into
+  the UI with a trailing newline now tokenizes like the shipped graph, where
+  before it was a different sample at the same seed. Core's own H3 nodes
+  still do not strip.
+- **No bank prompt starts or ends with whitespace.** The 129 files that ended
+  in a newline are stripped, and `bench/build_prompt_bank.py --check` now
+  fails on edge whitespace (shown red on a planted newline first).
+
+### Added
+
+- `docs/open_experiments.md` #47: the int8 encoder question on PDD6 and
+  FastH3, with fastdude's list of what a per-step harness gets wrong on the
+  distills. It is gated on a floor arm first. It is also a direction on the
+  distill board.
+
 ## 0.159.4
 
 ### Added

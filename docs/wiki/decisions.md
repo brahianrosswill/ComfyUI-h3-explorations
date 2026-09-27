@@ -17,6 +17,21 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-27
 
+- **TaoMate-H3 is deprecated and removed** (owner: "taomate is deprecated
+  you can remove everything from it here. we're not gonna pursue it
+  anymore."; 0.161.0). Removed: the `MiniMaxH3TaoMateStreamSampler` node and its runtime
+  (`taomate_stream_sampler.py`, `taomate_streaming.py`), the two probe graphs
+  (`h3_probe_taomate_3step`, `h3_probe_taomate_3step_audio_freeze`), the
+  `TAOMATE_*` constants in `workflows/h3_config.py`, the check
+  `bench/check_taomate_streaming.py` and the TaoMate cases in
+  `check_distill_settings.py` and `check_distill_grid.py`, the converter
+  `bench/convert_taomate_lora.py`, the harness
+  `bench/verify_taomate_stream.py`, the three arm manifests, and
+  `docs/h3_taomate.md`. Deprecated by the owner, not pursued; not a verdict on
+  the method. The records stay in `bench/results/` (`2026-09-15_taomate_*`),
+  the code in git, and the lane is in `docs/roadmap.md` "Closed lanes". The
+  upstream checkouts stay as references (`references.md`, "The streaming
+  references: TaoMate").
 - **The owner's working encoder is the bf16 pruned file; a better int8 of our
   own is not worth building** (owner: "since the encoder runs once, I agree -
   it may not be worth the effort. Especially if we can run a pruned bf16. I

@@ -122,7 +122,7 @@
  "reading": [
   "the null is exactly 0.0 at every probe: the harness is deterministic",
   "treatment, control and scale land at the same size at every probe, on t2v and on i2v; the scale arm adds one or two tokens at the END of the prompt and leaves every earlier token's conditioning bit-identical, yet moves the prediction as much as int8's error spread over every token",
-  "so this instrument does not resolve int8's encoder error from any other small conditioning change: the DiT's response is set by the fact of a change, not its size, over this range. A plausible cause is the int8 DiT's own activation rounding, which any input change re-rolls; that cause is NOT tested here (the tiny-noise arm that would test it was not run)",
+  "so this instrument does not resolve int8's encoder error from any other SMALL conditioning change: at step 0, int8, the norm-matched control and the ' .' edit all sit in one narrow band. Over a larger range the same instrument does track size: bench/results/2026-08-27_marker_epsilon_control.json, same int8 fl2va DiT and probe steps, reads larger perturbations well above this band. So a floor plausibly sits near this band at step 0, with int8 at or under it; 'any change reads the same' holds only for changes this small. The floor's cause (the int8 DiT's own activation rounding) is NOT tested here; the tiny-noise arm that would test it was not run. Corrected 2026-09-27 after a read of the marker record, which had been overlooked.",
   "on i2v the image-tokens-only arm matches the treatment, so on that scene what int8 does to the DiT is its image-token error, and it reads no larger than random noise of the same size",
   "practical: int8's effect at the DiT is no larger than appending ' .' to the prompt"
  ],
@@ -333,5 +333,6 @@
    "video_rel_l2": 0.143186,
    "audio_rel_l2": 0.066212
   }
- ]
+ ],
+ "off_trajectory_caveat": "Only step 0 is on a real trajectory. At a later probe the harness hands the sampler the seeded noise and the empty latent with sigmas[k:k+2], so the DiT sees sigma_k * noise, not the real x_k a render reaches there; steps 8 and 15 therefore measure sensitivity on an input no real run produces, which may inflate them. The step-0 rows are the on-trajectory reading and agree with the rest: treatment at or below the control and below the scale row on both scenes. The real x_k can be rebuilt from a full run's per-step x0 (euler, no injected noise: x_{k+1} = x_k + (s_{k+1} - s_k)(x_k - x0_k)/s_k; build_api(probe_step_x0=True) makes the twin). Raised by fastdude, 2026-09-27; bench/measure_marker_epsilon.py's one_forward, which this imports, has the same property."
 }

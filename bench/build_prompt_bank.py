@@ -26,7 +26,9 @@ loose prompts. So this does three things, and `--check` fails on any of them:
    at its declared frame count and donor -- the SAME function the CLI runs, so
    the bank is graded by exactly what an author grades by;
 2. the manifest and the directory agree, every frame count is on the grid,
-   every ref2va entry names a donor, and every mode is present;
+   every ref2va entry names a donor, every mode is present, and no file
+   starts or ends with whitespace (an editor's end-of-file newline is one
+   more token wherever a prompt is pasted unstripped);
 3. `docs/prompt_bank.md` is current.
 
 The coverage tables in that file are DERIVED from the prompt text against the
@@ -169,6 +171,12 @@ def load() -> tuple[list[dict], list[str]]:
             problems.append(f"{e['id']}: a donor is required for ref2va and only for ref2va")
         if e["id"] not in files:
             problems.append(f"{e['id']}: prompt_bank/{e['id']}.txt does not exist")
+        else:
+            raw = (BANK / f"{e['id']}.txt").read_text(encoding="utf-8")
+            if raw != raw.strip():
+                problems.append(f"{e['id']}: prompt_bank/{e['id']}.txt starts or ends with "
+                                "whitespace (a trailing newline is one more token; "
+                                "h3_rules.normalize_prompt)")
     for stray in sorted(files - set(ids)):
         problems.append(f"prompt_bank/{stray}.txt is not in the manifest")
     return entries, problems

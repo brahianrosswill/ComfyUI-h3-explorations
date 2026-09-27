@@ -99,16 +99,6 @@ ARMS = {
         MODELS / "loras/h3/lightx2v_Minimax-h3-Turbo"
         / "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
         DIFF / "minimax_h3_fl2va_pruned_int8_convrot.safetensors"),
-    # TaoMate-H3 (docs/h3_taomate.md): two copies of ONE adapter on the base
-    # they load on, varying only rank. The question is whether requantisation
-    # noise on either exceeds the gap between them, which the conversion
-    # record's `comparison` holds per module. `--only taomate` runs these alone.
-    "taomate_rank128__pruned": (
-        LORA_DIR / "minimax_h3_taomate_3step_rank128_comfy_bf16.safetensors",
-        DIFF / "minimax_h3_fl2va_pruned_int8_convrot.safetensors"),
-    "taomate_kijai_rank19__pruned": (
-        LORA_DIR / "minimax_h3_taomate_3step_lora_avg_rank_19_bf16.safetensors",
-        DIFF / "minimax_h3_fl2va_pruned_int8_convrot.safetensors"),
 }
 KINDS = ("attn.qkv_proj", "attn.out_proj", "mlp.fc1", "mlp.fc2")
 BLOCKS = 50

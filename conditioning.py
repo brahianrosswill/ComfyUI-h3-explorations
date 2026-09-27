@@ -59,6 +59,7 @@ from comfy_api.latest import io
 import node_helpers
 from comfy_extras.nodes_minimax_h3 import _empty_av_latent
 
+from .h3_rules import normalize_prompt
 from .keyframe_canvas import resolve_keyframe_geometry
 logger = logging.getLogger(__name__)
 
@@ -152,7 +153,7 @@ class MiniMaxH3Conditioning(io.ComfyNode):
                 keyframes.append({"resolved_frame_index": frame_count - 1,
                                   "image": last_out})
 
-        tokens = clip.tokenize(prompt, images=images)
+        tokens = clip.tokenize(normalize_prompt(prompt), images=images)
         cond = clip.encode_from_tokens_scheduled(tokens)
 
         if keyframes:

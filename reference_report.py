@@ -50,6 +50,7 @@ from comfy_extras.nodes_minimax_h3 import (
     video_latent_t,
 )
 
+from .h3_rules import normalize_prompt
 from .reference_geometry import (
     IMAGE_POLICIES,
     fit_reference_image,
@@ -332,7 +333,7 @@ def price_references(records, width: int, height: int, length: int,
     prompt_tokens = None
     label_tokens = 0
     if clip is not None:
-        prompt_tokens = _count_text_tokens(clip, prompt) if prompt else 0
+        prompt_tokens = _count_text_tokens(clip, normalize_prompt(prompt)) if prompt else 0
         label_tokens = sum(_count_text_tokens(clip, t) for t in label_texts)
     # <|vision_start|> and <|vision_end|> around every vision block.
     vision_blocks = sum(1 for t in label_texts if t.startswith("<Picture")) + sum(

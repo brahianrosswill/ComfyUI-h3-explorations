@@ -1277,42 +1277,6 @@ STEP_SWITCH_PAIRS = ((STEP_SWITCH_PASS1_SIGMAS, STEP_SWITCH_PASS2_SIGMAS),) + tu
 #: (vllm-omni, MindIE-SD) step Euler deterministically.
 FLASHGEN_SAMPLER = "euler"
 
-# ---- TaoMate-H3 -------------------------------------------------------------
-#: TaoLiveAIGC's streaming adapter (step-3000 generator EMA, rank 128, alpha
-#: 128), trained on the FL2VA partition of `MiniMaxAI/MiniMax-H3` -- the
-#: directory its `--model-root` must contain. Converted at its own rank by
-#: `bench/convert_taomate_lora.py`; record
-#: `bench/results/2026-09-15_taomate_lora_conversion.json`. It loads on
-#: `MODELS["unet_fl2va"]`, the pruned int8 build of that same partition, and
-#: NOT on `MODELS["unet_fl2va_pdd8_baked"]`, whose backbone already carries
-#: PDD's delta. A plain weight LoRA; graphs apply it through
-#: `MiniMaxH3LoRABranch`, as every LoRA on int8 since 0.154.0.
-#: Its authors run it in causal chunks with a clean K/V cache; a ComfyUI graph
-#: runs it over the whole clip at once, which is outside what they run
-#: (`docs/h3_taomate.md`).
-TAOMATE_LORA = "h3/minimax_h3_taomate_3step_rank128_comfy_bf16.safetensors"
-#: kijai's community resize of the same adapter, a per-module truncated SVD
-#: (the record's `comparison`). A comparison arm, never a default.
-TAOMATE_KIJAI_LORA = "h3/minimax_h3_taomate_3step_lora_avg_rank_19_bf16.safetensors"
-#: The converter's `--swap-fc1-halves` output: every `mlp.fc1` `lora_B` with
-#: its gate and up halves exchanged. Written as a functional control for the
-#: SwiGLU mapping, and it does not work as one. Its render (2026-09-15, arm
-#: `diner_control` of `bench/taomate_probe_arms.json`) is a coherent clip, not
-#: a broken one. fc1's delta is small against the base weight
-#: (`bench/results/2026-09-15_merge_noise_taomate.json`), so on the wrong rows
-#: it perturbs a working model rather than breaking it. The mapping's evidence
-#: is on weights: `bench/convert_taomate_lora.py --release`. Kept so that render
-#: reproduces; not worth another slot.
-TAOMATE_SWAPPED_CONTROL_LORA = ("h3/minimax_h3_taomate_3step_rank128_comfy_bf16"
-                                "_CONTROL_fc1_swapped.safetensors")
-#: Everything else about TaoMate -- its strength, distilled grid, sampler,
-#: `ManualSigmas` string, chunk plan, cache policy and audio teacher states --
-#: lives in `taomate_streaming.py` at the repo root, with its upstream
-#: pointers. Not here, because the sampler node needs the same values and
-#: cannot import this file (the reason `h3_rules.py` gives), and this file
-#: imports nothing. The generator, the converter and the checks read that
-#: module directly.
-
 # `CHAIN` was here and is gone as of 2026-08-14. It listed the node order --
 # Load Diffusion Model, MiniMax H3 SageAttention, SolAttnMiniMax -- and nothing
 # imported it. Node order IS load-bearing (Sol composes with the attention

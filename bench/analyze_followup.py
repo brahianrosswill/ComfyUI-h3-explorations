@@ -31,6 +31,11 @@ runs the tool each prediction names
   fastdude's, its own rows file). Per scene, full FlashGen from the rerun and
   the 0-49, 0-33 and 34-49 arms: tone and temporal on the clips, and
   latent distance with full FlashGen as the reference.
+- `late_switch`: open_experiments #34 (`bench/followup_late_switch_arms.json`,
+  2026-09-27, its own rows file). Per scene, PDD8 from the rerun, the reverse
+  switch with full FlashGen (`rev_h080`) and with FlashGen on blocks 34-49
+  (`rev_late_h080`): tone, temporal and resolution on the clips, and latent
+  distance with PDD8 as the reference. Its files are dated 2026-09-27.
 
 **Latent distance is divergence, not effect size.** Any change to the model
 diverges the trajectory from step 0, so a final-latent distance says how far
@@ -104,9 +109,9 @@ def run(tool: str, args: list, json_out: Path):
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--group", action="append",
-                    choices=("looks", "ladder", "vsa", "spec", "reverse", "swap", "transplant"))
+                    choices=("looks", "ladder", "vsa", "spec", "reverse", "swap", "transplant", "late_switch"))
     args = ap.parse_args()
-    groups = args.group or ["looks", "ladder", "vsa", "spec", "reverse", "swap", "transplant"]
+    groups = args.group or ["looks", "ladder", "vsa", "spec", "reverse", "swap", "transplant", "late_switch"]
     out_root = comfy_output()
     if not ROWS.exists():
         print(f"no rows yet: {ROWS.relative_to(REPO)} does not exist")
@@ -179,11 +184,13 @@ def main() -> int:
         else:
             missing.append("reverse switch latents")
 
-    for group, rows_file, ref_arm, arms in (
+    for group, rows_file, ref_arm, arms, day in (
             ("swap", "2026-09-26_fasth3_swap.jsonl", "fasth3",
-             ("swap_fasth3adaln", "swap_baseadaln", "fl2va_contract")),
+             ("swap_fasth3adaln", "swap_baseadaln", "fl2va_contract"), "2026-09-26"),
             ("transplant", "2026-09-26_flashgen_transplant.jsonl", "flashgen",
-             ("flashgen_blk0_49", "flashgen_blk0_33", "flashgen_blk34_49"))):
+             ("flashgen_blk0_49", "flashgen_blk0_33", "flashgen_blk34_49"), "2026-09-26"),
+            ("late_switch", "2026-09-27_late_switch.jsonl", "pdd8",
+             ("rev_h080", "rev_late_h080"), "2026-09-27")):
         if group not in groups:
             continue
         landed = rows(OUT / rows_file)
@@ -197,15 +204,18 @@ def main() -> int:
             if len(got) < 2:
                 continue
             print(f"== {group}: {scene} tone")
-            run("measure_clip_tone.py", got, OUT / f"2026-09-26_{group}_{scene}_tone.json")
+            run("measure_clip_tone.py", got, OUT / f"{day}_{group}_{scene}_tone.json")
             if scene not in TEMPORAL_EXCLUDE:
                 print(f"== {group}: {scene} temporal")
                 run("measure_clip_temporal.py", [*got, "--stride", "4"],
-                    OUT / f"2026-09-26_{group}_{scene}_temporal.json")
+                    OUT / f"{day}_{group}_{scene}_temporal.json")
+            if group == "late_switch":
+                print(f"== {group}: {scene} resolution")
+                run("measure_clip_resolution.py", got, OUT / f"{day}_{group}_{scene}_resolution.json")
             if lats[0] and any(lats[1:]):
                 print(f"== {group}: {scene} divergence from {ref_arm} (not an effect size)")
                 run("latent_path_distance.py", [lats[0], *[x for x in lats[1:] if x]],
-                    OUT / f"2026-09-26_{group}_{scene}_divergence.json")
+                    OUT / f"{day}_{group}_{scene}_divergence.json")
 
     if missing:
         print("not landed or not found:", ", ".join(missing))

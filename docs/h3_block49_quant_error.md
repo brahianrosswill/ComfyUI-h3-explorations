@@ -94,8 +94,7 @@ steps only; our own chain, sage on the dense steps, carried it on both,
 which is a choice of ours and part of why our failures were as visible
 as they were. Every H3 checkpoint variant: the loud channels
 are identical across all fourteen full DiT files on this box, and the
-turbo/SLA/PDD LoRAs carry no norm weights, so they inherit it (the TaoMate
-LoRA too: 208 modules, qkv/out/fc1/fc2 only, read 2026-09-15). Untouched:
+turbo/SLA/PDD LoRAs carry no norm weights, so they inherit it. Untouched:
 anyone on full-precision attention (flash or SDPA in bf16), which has no
 scale to share. **That is ComfyUI's default** (read from
 `comfy/ldm/modules/attention.py`, 2026-09-15): a stock ComfyUI with the
@@ -124,8 +123,8 @@ told what to look for, on morphing objects and people, a doubled and
 misspelled sign, a chef appearing from nothing (section 6). Not blind,
 not a protocol; consistent in direction on every look.
 
-**An outside runtime treats the tail as sensitive too** (read 2026-09-15 by
-the TaoMate session, `coderef/TaoMate-H3`): TaoLiveAIGC's TaoMate-H3 runs
+**An outside runtime treats the tail as sensitive too** (read 2026-09-15 in
+`coderef/TaoMate-H3`): TaoLiveAIGC's TaoMate-H3 runs
 H3 with W8A8 on the linears but keeps the first two and last three blocks
 in bf16 -- `resolve_h3_cutlass_w8a8_policy` protects blocks 0, 1, 47, 48
 and 49, and quantizes only `qkv_proj` and `fc1` of the interior blocks. That

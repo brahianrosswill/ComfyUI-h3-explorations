@@ -2,9 +2,9 @@
 """Check every distill is loaded at the shift and step count it was trained at.
 
 A distill runs on its trainer's contract (`docs/wiki/references.md`): PDD and
-FlashGen at the base 12/3 on their own grids, FastH3 V2 at `FASTH3_SHIFT`,
-TaoMate at its adapter's. None of them carries its shift in the file, so a
-graph at the wrong one renders plausibly wrong and **nothing errors**.
+FlashGen at the base 12/3 on their own grids, FastH3 V2 at `FASTH3_SHIFT`.
+None of them carries its shift in the file, so a graph at the wrong one
+renders plausibly wrong and **nothing errors**.
 
 Claims, i.e. what breaks if a case is deleted:
   loaders complete      every node of ours with a `lora_name` input is in
@@ -222,13 +222,6 @@ def _flashgen_header_sigmas():
         return (f.metadata() or {}).get("manual_sigmas_shift12")
 
 
-def classify_taomate(lora_name):
-    """Any file carrying the TaoMate-H3 adapter: the full-rank conversion,
-    kijai's resize or the swapped control. One set of weights, so one sampling
-    contract, `taomate_streaming.py`."""
-    return "taomate" in lora_name.lower()
-
-
 # --------------------------------------------------------------------------
 # graph reader -- API form, the only form this file reads
 # --------------------------------------------------------------------------
@@ -324,8 +317,7 @@ def main():
     # ---- every shipped API graph -----------------------------------------
     def graphs_are_consistent():
         import h3_config as cfg
-        import taomate_streaming as tm
-        distilled_graphs, base_graphs, taomate_graphs = {}, {}, {}
+        distilled_graphs, base_graphs = {}, {}
         for path in graph_paths(WORKFLOWS, "*_api.json"):
             doc = json.loads(path.read_text(encoding="utf-8"))
             found = read_api(doc)
@@ -333,43 +325,6 @@ def main():
             assert not retired, (
                 f"{path.name}: loads {retired}. Turbo LoRAs are a closed lane "
                 f"(docs/roadmap.md, 'Closed lanes', 2026-09-26)")
-            # TaoMate before the base branch. Its shift IS the base 12/3, so
-            # without this a TaoMate graph passed as a base graph: graded on
-            # the one value it shares and on none of the ones it does not.
-            taomate = [l for l in found.loras if classify_taomate(l)]
-            if taomate:
-                taomate_graphs[path.name] = found
-                nodes = [n for n in doc.values() if isinstance(n, dict)]
-                assert len(found.loras) == 1, (
-                    f"{path.name}: TaoMate stacked with {found.loras}. It was "
-                    f"distilled on the bare FL2VA release.")
-                unets = {n["inputs"].get("unet_name") for n in nodes
-                         if n.get("class_type") == "UNETLoader"}
-                assert unets == {cfg.MODELS["unet_fl2va"]}, (
-                    f"{path.name}: TaoMate on {sorted(map(str, unets))}, not "
-                    f"MODELS['unet_fl2va']. The PDD bake's backbone already "
-                    f"carries another distill's delta.")
-                want_shift = (tm.SHIFT_VIDEO, tm.SHIFT_AUDIO)
-                # An absent shift node runs the checkpoint's own, as for PDD.
-                effective = BASE_SHIFT if found.shift is None else found.shift
-                assert effective == want_shift, (
-                    f"{path.name}: TaoMate wants shift {want_shift}, graph runs "
-                    f"{effective}")
-                assert (found.scheduler, found.steps) == ("manual", tm.STEPS), (
-                    f"{path.name}: TaoMate runs its distilled grid through "
-                    f"ManualSigmas at {tm.STEPS} evaluations; graph has "
-                    f"scheduler {found.scheduler!r}, steps {found.steps}. "
-                    f"`check_distill_grid.py` grades the vector itself.")
-                samplers = {n["inputs"].get("sampler_name") for n in nodes
-                            if n.get("class_type") == "KSamplerSelect"}
-                assert samplers == {tm.SAMPLER}, (
-                    f"{path.name}: TaoMate's step is {tm.SAMPLER}, graph "
-                    f"has {sorted(map(str, samplers))}")
-                got_strength = (found.strengths or {}).get(taomate[0])
-                assert got_strength == tm.STRENGTH, (
-                    f"{path.name}: TaoMate strength {got_strength}, the runtime "
-                    f"applies {tm.STRENGTH}")
-                continue
             nodes_all = [n for n in doc.values() if isinstance(n, dict)]
             unets_all = {n["inputs"].get("unet_name") for n in nodes_all
                          if n.get("class_type") == "UNETLoader"}
@@ -578,7 +533,6 @@ def main():
         # first on the loop above cannot reach here; that is fine, because it
         # names the graph instead.
         print(f"        ({len(distilled_graphs)} PDD, "
-              f"{len(taomate_graphs)} TaoMate, "
               f"{len(base_graphs)} base API graph(s) graded)")
         assert distilled_graphs, (
             "no shipped API graph loads a PDD LoRA; this check saw "
