@@ -4,6 +4,52 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.160.0
+
+### Changed (breaking for editor-saved graphs)
+
+- **The Sol node is redesigned: `MiniMaxH3Sol` replaces `MiniMaxH3SolAttn`,
+  which is deleted** (owner, 2026-09-27). The plan and its reasons are in
+  `docs/research/2026-09-27_sol_node_redesign.md`, the evidence in
+  `bench/results/2026-09-27_sol_node_compound_audit.md`, and the work was
+  done on branch `sol-redesign`, stages 1 to 5.
+  - **Inputs:** `tau`, `quantizer` (plain / balanced / rotated /
+    balanced+rotated, in place of the `qk_balance` and `rotate` booleans),
+    `dense_blocks`, `sink_conditioning`, `token_routing` (its `custom`
+    option carries the `blocks` list), `start_percent`, `end_percent`,
+    `min_tokens` and `verbose`.
+  - **Defaults:** they equal the shipped recipe, `quantizer` "balanced"
+    included.
+  - **Behaviour:**
+    - It reads the block index and segment bounds that core publishes
+      (`h3_layout.py`), and patches nothing in core.
+    - It re-installs itself on top at every step, as core's sparse node
+      does, and does not re-wrap when it is already in the chain.
+    - A kernel error raises, with out-of-memory passed through unwrapped.
+    - It takes bf16 and fp16.
+    - It names its dense fallback in the log and in the settings record.
+  - **Retired, with the code only they reached** (git has it):
+    - Morton: `install_h3_morton`, `sol_curves.py`, the `PackedLayout`
+      patch, the reorder check and the ordering analysis scripts. The last
+      commit with them is `e0b8cc55`.
+    - `tau_profile`.
+    - Top-k (SLA) selection and `keep_percent`.
+    - `pooled_tail`.
+    - The `sol_block` hooks.
+  - **Every generated graph** is rebuilt on the new node:
+    - The community-chain and exact-tail arms carry quantizer "plain".
+    - The rotate arms carry "balanced+rotated".
+  - **Checks follow the new node.** `check_widget_deviations` had quietly
+    gone vacuous (no graph wired the node it keyed on). It now grades every
+    Sol node, and exits 2 on a graph class the schema does not know.
+  - **Analysis scripts** that passed the retired span keys to `_sink_blocks`
+    now call `sink_ranges`. Without that they would have silently received
+    empty sinks.
+  - **An editor-saved graph that wires `MiniMaxH3SolAttn` no longer loads.**
+    Swap in `MiniMax H3 Sol-Attn`. The widgets map as: `qk_balance` on is
+    quantizer `balanced`, and with `rotate` also on it is
+    `balanced+rotated`. Morton, `tau_profile` and top-k have no equivalent.
+
 ## 0.159.2
 
 ### Changed
