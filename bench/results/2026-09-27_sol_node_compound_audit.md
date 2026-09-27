@@ -400,6 +400,75 @@ Three things in this table weigh on §6:
 
 ---
 
+## 9b. Under the sage chain instead of the kitchen chain
+
+The owner asked whether any of this changes when `MiniMaxH3SageAttention`
+("fp8++ rotated", the sage chain's mode) sits under Sol in place of core's
+kitchen backend. The alternate chain is built with
+`python workflows/build_workflows.py --chain sage`; the owner's position
+since 2026-09-17 is that neither chain has won (`h3_config.DENSE_CHAINS`).
+
+### How calls are routed
+
+The sage node patches every block's `attn.forward` and also registers an
+override. Sol wraps that forward in its compose gate
+(`sol_attn_h3.py:1241-1291`).
+
+- **The gate** checks `min_tokens` and the sigma window. It does **not**
+  check `dense_blocks`.
+- **Calls the gate takes** run the sage node's `sol_take_forward`: sage's
+  projection, rope and memory handling, then `optimized_attention`, then
+  Sol's override. That covers dense blocks inside the window.
+- **Calls the gate declines** (outside the window, short calls) run sage's
+  forward directly.
+- **Inside the override**, a dense block goes to `previous`, which here is
+  sage's override. So dense blocks also run on sage, reached through the
+  override path rather than sage's own forward.
+
+### What changes and what doesn't
+
+| Part | Change |
+|---|---|
+| Sol's own calls (47 blocks, steps inside the window) | **None.** Sol quantizes in its own kernel, so sage's mode never reaches it. Sol's `qk_balance` and `rotate` mean exactly what they did. Sage's rotation does not make Sol's `rotate` redundant. |
+| Dense calls (first 20% of steps, 45/48/49, refiner, masked) | They run on sage fp8++ rotated instead of kitchen `int8_attention`. Both rotate q and k with the same sign·H128 matrix. Sage takes V and PV in FP8 with fp32+fp16 accumulation and has `smooth_k` off. Kitchen takes V int8 per channel, accumulates PV in int32, and shifts K by an anchor key. |
+| `MiniMaxH3SolChunked` | It works only in this chain: it needs a foreign forward patch under Sol (`sol_chunked_h3.py:36-50`). The memory-saving chunked Sol entry is a sage-chain option. |
+| Node order | The sage node must sit before Sol. Placed after, its override lands on top and Sol loses the calls (§4.8). |
+
+### Which kernel is more accurate on the dense calls
+
+- **Against plain sage:** kitchen int8 had lower error than plain sage
+  fp8++ at every captured cell, steps 4 and 15. For example, block 49 at
+  step 4 was 0.0158 against 0.0430, with the bf16 floor at 0.0017
+  (`2026-09-15_dense_kernels_by_step.json`).
+- **Rotation's effect on sage:** rotation cut sage's block-49 error from
+  0.0549 to 0.0239 at step 15, and moved the other captured blocks by a few
+  percent (`2026-09-17_sage_qk_rotate_kernel.json`, `kernel qk_rotate`).
+- **Head to head:** I found **no record that grades sage rotated against
+  kitchen int8 on the same heads and cells**. The two records use different
+  head sets, so their numbers don't compare. Which kernel is more accurate
+  now is unmeasured.
+- **Renders:** on the market seed, all three kitchen-dense arms lost the
+  hand in the coin beat, and the sage and bf16 arms kept it
+  (`2026-09-15_block49_community_chain.md`). That was one seed, with the
+  mechanism unknown, and a second seed is owed.
+
+### What fp8++ rotated makes redundant
+
+- **Sage-side balance.** Under rotation the balance factor finds nothing to
+  do. The same record's `rotated+qk_balance` cells equal `rotated` on every
+  block but 49, and differ there in the sixth digit. So sage's "fp8++
+  balanced" mode and a `MiniMaxH3ChannelBalance` node on top of the rotated
+  chain are redundant. The chain spec already leaves both out
+  (`h3_config.py`, `DENSE_CHAINS` comment;
+  `2026-09-17_channel_balance_vs_sage_balanced_b49_s15.json`).
+- **Nothing on the Sol side.** Sol's `rotate` and `qk_balance` act inside
+  Sol's kernel, which sage never touches.
+- **Possibly the dense tail.** `dense_blocks` 45/48/49 was justified by
+  kitchen dense beating Sol's routed error on block 49. Whether sage rotated
+  also beats Sol there is not measured on matched cells. Until it is, the
+  dense tail's benefit under the sage chain is an assumption carried over
+  from the kitchen chain.
+
 ## 10. Not verified here
 
 - That `qk_balance`'s gate stays shut on blocks 1-44, 46 and 47 (§4.1).
