@@ -2700,6 +2700,12 @@ the owner as a choice with no measurement of either option.
   `crf`/`format`/`pix_fmt` in the generator and rebuild. Check the owner's
   players first for 10-bit.
 - **Blocker:** a few minutes of GPU for the decodes; no render.
+- **Ran 2026-09-27** (`../bench/results/2026-09-27_encode_format_ab.md`).
+  No candidate meets the 0.02 bar on the PDD8 clips. A lower crf in 8-bit
+  blocks more, not less. 10-bit cuts the excess, and H.265 10-bit at crf 22
+  does it at half the size with today's dark error. That switch is the
+  owner's call, gated on their players, one pair by eye, and the measure
+  tools reading 10-bit with accurate rounding.
 
 ## 39. Telemetry armed on a mixed-model batch
 
