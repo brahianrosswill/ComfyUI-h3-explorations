@@ -128,5 +128,25 @@ variants.
 
 ## vaedude
 
-To be added by that session, signed and dated, before it looks at any
-distill arm.
+Sent by that session on 2026-09-26, before it had viewed any of the run's
+clips, and placed here verbatim at its request.
+
+> P1. PDD clones come from prediction under uncertainty in coarse late blocks. So by latent L2 distance from base-Euler-32 at the same seed, per latent frame: pdd4 > pdd6 ≈ pdd8 > pdd16 > pdd32, and the distance concentrates in high-delta latent frames. pdd6 sits nearer pdd8 than midway to pdd4 (the tail matters, not the count). Visibly, clones get worse as the tail coarsens, and pdd32 has none on the same scene.
+>
+> P2. The fusion pair: PDD32 (width 1, no fusion) sits closer to base-Euler-32 than PDD8 does on every scene. The gap is largest on motion scenes and near zero on still close-ups.
+>
+> P3. The x0 capture shows the double image first in a late PDD8 block (step 6 or 7 of 8), not in the early layout blocks, and base-Euler-32's x0 at the same sigma shows one person.
+>
+> P4. The sampler confound: base on Euler (16) is more contrasty and saturated than base on er_sde at the same seed, so part of tonight's "distills are contrastier than base" is the base's SDE softening, not the distill. By measure_clip_tone, base-Euler lands between base-er_sde and the distills.
+>
+> P5. Merged against exact PDD8, at tonight's seeds: latent distance well above run-to-run noise on every scene (the merge noises the backbone delta, cos 0.39), and exact sits closer to base-Euler-32 than merged. By eye, a small difference, not a new scene.
+>
+> P6. FlashGen adherence: at 124 frames with the 5-second prompt, role-swaps are rarest. Dense attention and strength 0.8/1.2 don't fix role adherence; "no adaln" changes the grade more than adherence.
+>
+> P7. FastH3's "low bitrate" is temporal. With VSA on, high-frequency energy on static surfaces varies more frame to frame after flow warping ("boiling"), and moving regions lose more HF detail than the base's do. With VSA off, both move toward the base. Still no 128-px grid either way.
+>
+> P8. Timing, under telemetry: at equal step counts PDD merged costs more per step than PDD exact-branch under dynamic VRAM, because 308 merged patches are re-applied to every weight streamed back in each step. Low confidence: the branch pays two small matmuls per module plus an A/B copy per call.
+
+Note, 2026-09-26: tonight's PDD8 arms were stopped before rendering (the run
+halted after its base arms), so P5 is tested against merged PDD8 arms rendered
+in the follow-up batch at the same seeds.
