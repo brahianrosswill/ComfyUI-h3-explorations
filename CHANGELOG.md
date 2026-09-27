@@ -4,6 +4,24 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.159.3
+
+### Changed
+
+- The wiki and `h3_config.ENCODER_INT8`'s comment now cover the bf16 pruned
+  encoder and today's int8-against-bf16 record (`614c86fe`, whose title says
+  0.159.1: that number was already taken, and this is the entry for it).
+  - `decisions.md` has the owner's two encoder decisions and corrects what
+    `ENCODER_INT8` had been measured against (only the W4A16 artifacts).
+  - `next_steps.md` names the running DiT measurement and the default it
+    decides.
+  - `stages.md` and the `index.md` tool table point at
+    `convert_h3_bf16_encoder.py`, `measure_encoder_quant_dit.py` and the
+    record.
+- `ENCODER_INT8`'s comment drops "about fifteen times closer", which its own
+  record does not reproduce (it reads an order of magnitude). It also
+  describes the loader's additions as its docstring lists them.
+
 ## 0.159.2
 
 ### Changed
