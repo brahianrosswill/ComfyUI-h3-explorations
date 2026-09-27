@@ -4955,7 +4955,7 @@ def main():
         # owner's review of the finisher grid: better than PDD8 alone on three
         # t2v scenes (sign text, noodle_bar), never worse; full and late-only
         # FlashGen finishes indistinguishable, so the full one, as trained. Same
-        # wall time as PDD8 (7 PDD8 + 2 FlashGen evaluations; measured in the
+        # wall time as PDD8 (6 PDD8 + 2 FlashGen evaluations; measured in the
         # render dataset, 2026-09-27). t2v only: on i2v the finish brightens
         # the frame at once and the owner kept PDD8.
         ("h3_text_to_video_pdd8_flashgen_finish.json", "texttovideopdd8flashgenfinish", "t2v", LONG_T2V_PROMPT,

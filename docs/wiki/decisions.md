@@ -66,8 +66,8 @@ Older history lives elsewhere and is not copied here:
   `workflows/h3_text_to_video_pdd8_flashgen_finish_api.json`. The finisher
   grid review found it better than PDD8 alone on three t2v scenes and never
   worse. Full and late-only finishes were indistinguishable, so the full
-  one, as trained. Fresh runs sample in the same time as PDD8, since its 7
-  PDD8 plus 2 FlashGen evaluations replace PDD8's 8. It is an additional
+  one, as trained. Fresh runs sample in the same time as PDD8: its 6 PDD8
+  evaluations plus 2 FlashGen ones are 8, like PDD8's own. It is an additional
   graph: `h3_text_to_video_pdd` stays the default until the owner says
   otherwise. i2v stays PDD8 alone, because the finish brightens the frame at
   once.
