@@ -4,6 +4,21 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.154.7
+
+### Changed
+
+- **`t2va_radio_drama`: the listeners are silent, and it is now a deadpan
+  comedy** (the owner, 2026-09-26). In the first base render every actor's
+  lips moved at the start, because nothing said the three were silent during
+  the foley artist's walk. They now stand frozen with mouths closed until the
+  first line. The owner asked for overdramatic actors, "voices that are
+  hilarious and only possible to be seen as cringey but fantastic humor in
+  audio-only mediums", so the actors now overact while the foley artist stays
+  expressionless under a straight noir score. The caption marker under test
+  is unchanged. `bench/followup_radio_arms.json` renders the new text on the
+  three distills after the follow-up batch.
+
 ## 0.154.6
 
 ### Changed

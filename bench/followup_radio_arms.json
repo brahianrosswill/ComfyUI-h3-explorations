@@ -1,0 +1,22 @@
+{
+ "what": "t2va_radio_drama after its 2026-09-26 rewrite (silent listeners stated; deadpan comedy per the owner), on the three distills, run after bench/followup_arms.json, whose radio_drama arms carry the earlier text.",
+ "why": "The owner saw every actor's lips move at the start of the first base render, and asked for overdramatic comedy. The pair with the batch's earlier-text arms shows whether stating the silence stops the lips.",
+ "arms": {
+  "radio_drama_v2__pdd8": "workflows/h3_text_to_video_pdd_savelat_api.json",
+  "radio_drama_v2__flashgen": "workflows/h3_text_to_video_flashgen_savelat_api.json",
+  "radio_drama_v2__fasth3": "workflows/h3_probe_t2v_fasth3_8step_contract_savelat_api.json"
+ },
+ "patches": [
+  "radio_drama_v2__pdd8:MiniMaxH3Conditioning.prompt=@bank:t2va_radio_drama",
+  "radio_drama_v2__pdd8:MiniMaxH3Resolution.length=243",
+  "radio_drama_v2__flashgen:MiniMaxH3Conditioning.prompt=@bank:t2va_radio_drama",
+  "radio_drama_v2__flashgen:MiniMaxH3Resolution.length=243",
+  "radio_drama_v2__fasth3:MiniMaxH3Conditioning.prompt=@bank:t2va_radio_drama",
+  "radio_drama_v2__fasth3:MiniMaxH3Resolution.length=243"
+ ],
+ "seeds": {
+  "first": 730451892,
+  "note": "held"
+ },
+ "run": "run_graph_arms.py --manifest bench/followup_radio_arms.json --runs 1 --seed 730451892 --hold-seed --no-alternate --out bench/results/2026-09-26_followup.jsonl"
+}
