@@ -165,6 +165,14 @@ Not recommended:
 
 ## Safe to delete (the owner's call)
 
+**Deleted 2026-09-27** by the owner, after fastdude and the VAE session both
+cleared them: the five research files below, the unpruned V2, and
+`internal/pdd_shims/control_fl2va_pdd_8step_comfy`. Hashes and rebuild
+commands are in `2026-09-27_research_files_deleted.md` (9d222c19). **Kept**:
+`internal/pdd_shims/shim_fasth3_temb` and `shim_fl2va_temb`, and the bf16
+pruned FastH3 and fl2va until `docs/open_experiments.md` #35 lands; that
+record says why. The list below is as written before the deletion.
+
 Built on a reading the swap renders overturned, and not worth keeping for
 use. About 84 GB together (`du -h` on 2026-09-27).
 - `fastvideo_fasth3_8step_v2_pruned_int8_convrot_temb_a05` and `_a075`, 21 GB
@@ -180,6 +188,9 @@ use. About 84 GB together (`du -h` on 2026-09-27).
 Each can be rebuilt from its script and commit.
 
 ## Renamed on disk, 2026-09-27 (the owner asked for clearer names)
+
+*2026-09-27, later: the five files in the "now" column were deleted, and
+the two research folders with them ("Safe to delete" above).*
 
 The five research files built last night moved into research subfolders,
 each with a README. Run records, manifests and each file's own metadata keep

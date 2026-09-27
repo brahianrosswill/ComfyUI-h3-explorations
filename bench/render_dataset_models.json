@@ -39,10 +39,11 @@
   ],
   "made_by": "bench/build_adaln_swap.py",
   "commit": "91db4fc2",
-  "status": "research; swap rendered on 3 scenes: lands on the base, so the conditioning is near-inert (2026-09-27_fasth3_swap.md S2); deletable",
+  "status": "deleted 2026-09-27 (hashes and rebuild: 2026-09-27_research_files_deleted.md); swap rendered on 3 scenes: lands on the base, so the conditioning is near-inert (2026-09-27_fasth3_swap.md S2)",
   "renamed_to": "h3_research/hybrid__fl2va-weights__fasth3-timecond__int8.safetensors",
   "origin": "built here",
-  "added": "2026-09-26"
+  "added": "2026-09-26",
+  "size_bytes": 20970382032
  },
  "fastvideo_fasth3_8step_v2_pruned_int8_convrot_baseadaln": {
   "family": "hybrid",
@@ -53,10 +54,11 @@
   ],
   "made_by": "bench/build_adaln_swap.py",
   "commit": "91db4fc2",
-  "status": "research; swap rendered on 3 scenes: still FastH3, look and over-polish included, so they live in the weights and gates (2026-09-27_fasth3_swap.md S3, S4); deletable",
+  "status": "deleted 2026-09-27 (hashes and rebuild: 2026-09-27_research_files_deleted.md); swap rendered on 3 scenes: still FastH3, look and over-polish included, so they live in the weights and gates (2026-09-27_fasth3_swap.md S3, S4)",
   "renamed_to": "h3_research/hybrid__fasth3v2-weights-and-gates__fl2va-timecond__int8.safetensors",
   "origin": "built here",
-  "added": "2026-09-26"
+  "added": "2026-09-26",
+  "size_bytes": 22128381728
  },
  "fastvideo_fasth3_8step_v2_pruned_int8_convrot_temb_a05": {
   "family": "hybrid",
@@ -67,10 +69,11 @@
   ],
   "made_by": "bench/build_adaln_blend.py",
   "commit": "135b449e",
-  "status": "never rendered; deletable",
+  "status": "deleted 2026-09-27 (hashes and rebuild: 2026-09-27_research_files_deleted.md); never rendered",
   "renamed_to": "h3_research/hybrid__fasth3v2__timecond-blend-50pct-fasth3__int8.safetensors",
   "origin": "built here",
-  "added": "2026-09-27"
+  "added": "2026-09-27",
+  "size_bytes": 22206001096
  },
  "fastvideo_fasth3_8step_v2_pruned_int8_convrot_temb_a075": {
   "family": "hybrid",
@@ -81,10 +84,11 @@
   ],
   "made_by": "bench/build_adaln_blend.py",
   "commit": "135b449e",
-  "status": "never rendered; deletable",
+  "status": "deleted 2026-09-27 (hashes and rebuild: 2026-09-27_research_files_deleted.md); never rendered",
   "renamed_to": "h3_research/hybrid__fasth3v2__timecond-blend-75pct-fasth3__int8.safetensors",
   "origin": "built here",
-  "added": "2026-09-27"
+  "added": "2026-09-27",
+  "size_bytes": 22206001096
  },
  "minimax_h3_fl2va_pdd_8step_comfy": {
   "family": "pdd",
@@ -105,10 +109,11 @@
   ],
   "made_by": "bench/convert_pdd_lora.py via bench/build_pdd_base_shim.py",
   "commit": "cb21249c",
-  "status": "never rendered; deletable",
+  "status": "deleted 2026-09-27 (hashes and rebuild: 2026-09-27_research_files_deleted.md); never rendered",
   "renamed_to": "h3/research/pdd8-sidecar__for-hybrid__fl2va-weights__fasth3-timecond.safetensors",
   "origin": "built here",
-  "added": "2026-09-27"
+  "added": "2026-09-27",
+  "size_bytes": 1121976784
  },
  "minimax_h3_flashgen_4step_v1.0_768p_fl2va_pruned_rank64_comfy": {
   "family": "flashgen",
