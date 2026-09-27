@@ -16,6 +16,17 @@ Two facts constrain what the run can say:
   noise), so comparisons among them are the fairest this run offers. They
   still differ in weights, so each is its own scene.
 
+**Method note, 2026-09-27, before the verdicts are written.** Final-latent
+distance at one seed measures trajectory divergence, not effect size.
+FlashGen with no adaln, whose modulation change is about 0.1%
+(`2026-09-26_flashgen_weights.md`), lands 0.57-0.71 from full FlashGen, and
+dense attention 0.51 (`2026-09-26_followup.jsonl` latents).
+
+So a verdict that rests on a magnitude uses the tone, chroma and temporal
+measures and the owner's eye, not latent distance: that covers P3, F4,
+vaedude's P1 and P5, and FT1. An event survives the divergence and still
+reads from latents, for example the x0 two-figure read.
+
 ## The owner
 
 In the owner's words, 2026-09-26:
