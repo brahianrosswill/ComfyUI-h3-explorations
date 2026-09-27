@@ -101,6 +101,19 @@ the unusual one, more than PDD8's or FastH3's does.*
   scenes, FlashGen next, and PDD8 the least.**
   - Measured by `measure_clip_tone.py`.
   - Not claimed against the base (see above).
+
+  *Verdict, 2026-09-27: half held.* From the VAE session's
+  `2026-09-26_distill_signatures.md`, 13 matched scenes from the follow-up
+  rerun.
+  - **Held:** FastH3 is the most saturated (highest on 11/13; chroma highest
+    on 13/13) and the warmest (11/13).
+  - **Failed:** FlashGen, not PDD8, is the least saturated (lowest on 11/13)
+    and the least warm (11/13). The medians run FastH3 0.387 > PDD8 0.364 >
+    FlashGen 0.305 on saturation, and FastH3 0.102 > PDD8 0.092 > FlashGen
+    0.075 on warmth.
+  - PDD8 has the lowest contrast (12/13) and the dimmest highlights (11/13),
+    which may be what reads as "least saturated" by eye. That is a question
+    for the owner, not a finding.
 - **P6. FastH3 shows more temporal texture instability than FlashGen on the
   same scene.** This is the owner's "low bitrate streaming video". It is
   graded once the motion-compensated measure exists. The per-frame
