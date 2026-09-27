@@ -38,6 +38,16 @@ holds (no linearisation), with luma Y from BT.709 weights:
 - `orange` / `blue`: the share of reasonably saturated pixels (sat above 0.25)
   whose hue falls in 15-45 or 190-250 degrees. The owner's "orangeish" read as
   a hue, not only as warmth.
+- `shadow`: the fraction of pixels with Y below 0.10: how much of the frame
+  a low-key look keeps in shadow. For the look family (`t2va_look_*`, added
+  2026-09-26 with the next two).
+- `chroma_p95`: the 95th percentile of max(R,G,B) - min(R,G,B). On a
+  black-and-white variant it should sit near 0; colour leaking into a
+  monochrome request shows here before it moves the mean `chroma`.
+- `hue_spread`: the circular standard deviation, in degrees, of hue over
+  pixels with sat above 0.25 (blank when fewer than 1% of pixels qualify). A
+  one-colour palette (neon, teal-grey) keeps it low; a distill pulling a look
+  back toward a typical palette widens it.
 - `flicker`: the standard deviation, over the sampled frames, of each frame's
   mean luma, which is brightness pumping over time. Cuts inflate it, so read it
   beside `cuts`.
@@ -126,7 +136,24 @@ def stats(f: np.ndarray) -> dict:
         "orange": round(float(_hue_share(f, sat, 15, 45)), 4),
         "blue": round(float(_hue_share(f, sat, 190, 250)), 4),
         "flicker": round(float(y.reshape(len(y), -1).mean(axis=1).std()), 4),
+        "shadow": round(float((y < 0.10).mean()), 4),
+        "chroma_p95": round(float(np.percentile(chroma, 95)), 3),
+        "hue_spread": _hue_spread(f, sat),
     }
+
+
+def _hue_spread(f: np.ndarray, sat: np.ndarray):
+    """Circular standard deviation of hue, degrees, over pixels with sat above 0.25."""
+    r, g, b = f[..., 0], f[..., 1], f[..., 2]
+    mx, mn = f.max(axis=-1), f.min(axis=-1)
+    d = np.maximum(mx - mn, 1e-6)
+    h = np.where(mx == r, ((g - b) / d) % 6, np.where(mx == g, (b - r) / d + 2, (r - g) / d + 4)) * 60.0
+    sel = sat > 0.25
+    if sel.mean() < 0.01:
+        return ""
+    rad = np.deg2rad(h[sel])
+    R = np.hypot(np.cos(rad).mean(), np.sin(rad).mean())
+    return round(float(np.rad2deg(np.sqrt(-2.0 * np.log(max(R, 1e-12))))), 1)
 
 
 def _hue_share(f: np.ndarray, sat: np.ndarray, lo: float, hi: float) -> float:
@@ -165,7 +192,7 @@ def main() -> int:
     args = ap.parse_args()
     keys = ["black", "white", "range", "mid", "rms_contrast", "crushed", "clipped",
             "chroma", "haze", "detail", "warmth", "sat", "r", "g", "b", "orange", "blue",
-            "flicker", "cuts"]
+            "flicker", "shadow", "chroma_p95", "hue_spread", "cuts"]
     rows = []
     print(f"{'clip':<58}" + "".join(f"{k:>13}" for k in keys))
     for clip in args.clips:

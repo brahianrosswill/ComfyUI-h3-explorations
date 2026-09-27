@@ -4,6 +4,31 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.154.4
+
+### Added
+
+- **Three analysis tools for the follow-up batch.** All are CPU-only and
+  report only.
+  - `bench/latent_path_distance.py` compares saved video latents against a
+    reference (usually the base on Euler at 32 steps). Per latent frame it
+    gives the relative L2 distance and cosine, plus each latent's own
+    frame-to-frame delta and the correlation between distance and the
+    reference's delta. It uses no decode.
+  - `bench/measure_clip_temporal.py` covers the temporal side of "low
+    bitrate", with Farneback flow on a half-resolution copy:
+    - `boil`: Laplacian instability on static pixels after warping;
+    - `motion_detail`: detail on moving pixels over static;
+    - `dark_block` and `bright_block` at 8 and 16 pixels, for the owner's O1;
+    - `band`: banding in smooth tiles.
+
+    A first look on the four subway clips, each a different draw, is
+    `bench/results/2026-09-26_temporal_subway_prelim.json`. It is
+    preliminary; the controlled read waits for the same-scene arms.
+  - `measure_clip_tone.py` gains three columns for the look family: `shadow`
+    (luma under 0.10), `chroma_p95` (colour leaking into a monochrome
+    request) and `hue_spread` (circular standard deviation of hue).
+
 ## 0.154.3
 
 ### Added
