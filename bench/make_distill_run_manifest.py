@@ -44,6 +44,9 @@ DEFAULT_GRAPHS = {
     "pdd8_refine": "workflows/h3_probe_t2v_pdd8_audio_refine_api.json",
     "flashgen_refine": "workflows/h3_probe_t2v_flashgen_4step_audio_refine_api.json",
     "route3": None,          # the VAE session's step-switch arm, once built
+    "flashgen_s08": "workflows/h3_text_to_video_flashgen_api.json",
+    "flashgen_s12": "workflows/h3_text_to_video_flashgen_api.json",
+    "flashgen_noadaln": "workflows/h3_text_to_video_flashgen_api.json",
 }
 #: Extras, each on a subset. **Reasoned**:
 #: - FlashGen dense on the motion scenes, where Sol's sparsity is most likely
@@ -57,6 +60,19 @@ EXTRAS = {
     "flashgen_refine": ["t2va_courtroom_verdict", "t2va_radio_drama"],
     "route3": ["t2va_slapstick_moving_piano", "t2va_kpop_dance_studio",
                "t2va_courtroom_verdict", "t2va_samurai_bamboo_duel"],
+    "flashgen_s08": ["t2va_courtroom_verdict", "t2va_kpop_dance_studio", "t2va_samurai_bamboo_duel"],
+    "flashgen_s12": ["t2va_courtroom_verdict", "t2va_kpop_dance_studio", "t2va_samurai_bamboo_duel"],
+    "flashgen_noadaln": ["t2va_courtroom_verdict", "t2va_kpop_dance_studio", "t2va_samurai_bamboo_duel"],
+}
+#: FlashGen variants through `MiniMaxH3LoRABranch`'s granular inputs (0.152.0):
+#: does its grade and adherence move with strength, and is the timestep
+#: modulation (adaln) what carries the grade? **Reasoned** choices: +-20%
+#: strength brackets the publisher's 1.0 without leaving the regime; "no adaln"
+#: isolates the one module kind that shapes the per-step dynamics.
+VARIANT_PATCHES = {
+    "flashgen_s08": ["MiniMaxH3LoRABranch.strength=0.8"],
+    "flashgen_s12": ["MiniMaxH3LoRABranch.strength=1.2"],
+    "flashgen_noadaln": ['MiniMaxH3LoRABranch.modules="no adaln"'],
 }
 SEED = 730451892
 
@@ -83,6 +99,8 @@ def main() -> int:
         arms[label] = graphs[role]
         patches.append(f"{label}:MiniMaxH3Conditioning.prompt=@bank:{scene}")
         patches.append(f"{label}:MiniMaxH3Resolution.length={frames[scene]}")
+        for extra_patch in VARIANT_PATCHES.get(role, []):
+            patches.append(f"{label}:{extra_patch}")
     for role in MODELS:
         for scene in SCENES:
             add(role, scene)
