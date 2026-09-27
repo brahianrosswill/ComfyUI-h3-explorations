@@ -120,7 +120,14 @@ the unusual one, more than PDD8's or FastH3's does.*
     least" was contrast and level, not colour, and the owner does not read
     that grade as a defect.
 - **P6. FastH3 shows more temporal texture instability than FlashGen on the
-  same scene.** This is the owner's "low bitrate streaming video". It is
+  same scene.**
+
+  *Verdict, 2026-09-27: not supported.* Boil on the four looks, FastH3
+  against FlashGen: anchor 0.656 against 0.666, noir 0.633 against 0.494,
+  neon 0.536 against 0.593, anime 0.467 against 0.476. That is mixed and
+  mostly level, and the VAE session's subway first look had FastH3 boiling
+  least. The owner's "low bitrate" read is not a temporal instability these
+  measures see. This is the owner's "low bitrate streaming video". It is
   graded once the motion-compensated measure exists. The per-frame
   resolution measures do not separate them.
 - **P7. Step-switch (FlashGen layout, then PDD detail) clones less than PDD8
@@ -179,6 +186,20 @@ the unusual one, more than PDD8's or FastH3's does.*
 
   *A texture or grade change in that arm cannot be charged to sparsity
   alone.*
+
+  *Verdict, 2026-09-27: half held, with the confound above.* From
+  `analyze_followup.py --group vsa`, on slapstick and samurai at 730451892.
+  - **Instability held on one scene:** boil fell from 0.60 to 0.43 on
+    slapstick and was flat on samurai (0.47 against 0.45).
+  - **"Same grade" failed:** samurai went much hazier with VSA off (haze
+    0.14 to 0.32), brighter in the midtones and less saturated. Slapstick
+    lost a little contrast and saturation.
+  - **Detail roughly halved with VSA off** (0.102 to 0.075 on slapstick,
+    0.099 to 0.049 on samurai), and so did slapstick's motion detail. So
+    FastH3's high fine detail, the owner's "over-polish", comes with its
+    trained attention path: sparsity plus the learned coarse branch, which
+    this arm cannot separate.
+  - No cube-period grid either way.
 - **F7. The look family (`t2va_look_*`).**
   - The base follows each requested look.
   - The distills do not shift tone by a constant offset. They pull the
