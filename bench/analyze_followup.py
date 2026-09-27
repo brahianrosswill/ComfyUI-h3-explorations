@@ -32,6 +32,13 @@ runs the tool each prediction names
   the 0-49, 0-33 and 34-49 arms: tone and temporal on the clips, and
   latent distance with full FlashGen as the reference.
 
+**Latent distance is divergence, not effect size.** Any change to the model
+diverges the trajectory from step 0, so a final-latent distance says how far
+two samples ended apart, not how large a change's effect is: FlashGen with its
+adaln removed (about 0.1% of the modulation) lands 0.57-0.71 from full
+FlashGen (fastdude, 2026-09-26). Read the tone and temporal columns for what
+an arm does; the distance files are named `_divergence` for this reason.
+
 Scenes whose prompts ask for frame-to-frame brightness change are left out of
 temporal reads, per the manifest's `analysis_notes`. An arm that has not
 landed yet is skipped and listed. Each group writes
@@ -196,9 +203,9 @@ def main() -> int:
                 run("measure_clip_temporal.py", [*got, "--stride", "4"],
                     OUT / f"2026-09-26_{group}_{scene}_temporal.json")
             if lats[0] and any(lats[1:]):
-                print(f"== {group}: {scene} latent distance from {ref_arm}")
+                print(f"== {group}: {scene} divergence from {ref_arm} (not an effect size)")
                 run("latent_path_distance.py", [lats[0], *[x for x in lats[1:] if x]],
-                    OUT / f"2026-09-26_{group}_{scene}_latent.json")
+                    OUT / f"2026-09-26_{group}_{scene}_divergence.json")
 
     if missing:
         print("not landed or not found:", ", ".join(missing))
