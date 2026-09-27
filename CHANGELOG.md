@@ -4,6 +4,16 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.156.1
+
+### Changed
+
+- `bench/convert_h3_bf16_encoder.py` takes the release's sharded
+  `text_encoder/` directory as `src`, not only a single merged file, so the
+  bf16 pruned encoder is built straight from the official weights with no
+  merge step. Tensors are still copied verbatim in source order (shard, then
+  offset), and a name that appears in two shards stops the run.
+
 ## 0.156.0
 
 ### Removed

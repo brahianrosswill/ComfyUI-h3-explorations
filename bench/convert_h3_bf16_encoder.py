@@ -98,34 +98,56 @@ def target_name(name: str) -> str:
     return name
 
 
-def plan(header: dict, depth: int) -> tuple[list[tuple[str, str, dict]], int, int]:
+def shards(src: Path) -> list[Path]:
+    """The safetensors files that make up `src`: one file, or a sharded HF dir.
+
+    The release ships `text_encoder/` as `model-000NN-of-000MM.safetensors`
+    shards; sorted names are shard order.
+    """
+    if src.is_dir():
+        found = sorted(src.glob("*.safetensors"))
+        if not found:
+            raise SystemExit(f"{src}: no .safetensors files")
+        return found
+    return [src]
+
+
+def plan(src: Path, depth: int) -> tuple[list[tuple[str, str, dict, Path, int]], int, int, int]:
     """Select and rename surviving tensors, preserving source byte order.
 
-    Source order is kept so the copy reads the input strictly forwards.
+    Source order (shard, then offset) is kept so the copy reads each input
+    strictly forwards.  Returns (kept, kept_bytes, dropped_bytes, total_tensors).
     """
-    kept, dropped_bytes = [], 0
-    for name, entry in header.items():
-        if name == "__metadata__":
-            continue
-        start, end = entry["data_offsets"]
-        if _drop_source_key(name, depth):
-            dropped_bytes += end - start
-            continue
-        kept.append((name, target_name(name), entry))
-    kept.sort(key=lambda item: item[2]["data_offsets"][0])
-    kept_bytes = sum(e["data_offsets"][1] - e["data_offsets"][0] for _, _, e in kept)
-    return kept, kept_bytes, dropped_bytes
+    kept, dropped_bytes, total = [], 0, 0
+    for path in shards(src):
+        header, data_start = read_header(path)
+        rows = []
+        for name, entry in header.items():
+            if name == "__metadata__":
+                continue
+            total += 1
+            start, end = entry["data_offsets"]
+            if _drop_source_key(name, depth):
+                dropped_bytes += end - start
+                continue
+            rows.append((name, target_name(name), entry, path, data_start))
+        rows.sort(key=lambda item: item[2]["data_offsets"][0])
+        kept.extend(rows)
+    names = [new for _, new, *_ in kept]
+    if len(names) != len(set(names)):
+        raise SystemExit("duplicate tensor names across shards")
+    kept_bytes = sum(e["data_offsets"][1] - e["data_offsets"][0] for _, _, e, *_ in kept)
+    return kept, kept_bytes, dropped_bytes, total
 
 
 def convert(src: Path, dst: Path, depth: int) -> dict:
-    header, data_start = read_header(src)
-    kept, kept_bytes, dropped_bytes = plan(header, depth)
+    kept, kept_bytes, dropped_bytes, _ = plan(src, depth)
     if not kept:
         raise ValueError(f"{src.name}: nothing survived the H3 selection")
 
     out_header: dict = {"__metadata__": METADATA}
     cursor = 0
-    for _, new_name, entry in kept:
+    for _, new_name, entry, _, _ in kept:
         length = entry["data_offsets"][1] - entry["data_offsets"][0]
         out_header[new_name] = {
             "dtype": entry["dtype"],
@@ -138,19 +160,25 @@ def convert(src: Path, dst: Path, depth: int) -> dict:
     blob += b" " * (-len(blob) % 8)  # data buffer stays 8-byte aligned
 
     tmp = dst.with_suffix(dst.suffix + ".partial")
-    with src.open("rb") as fin, tmp.open("wb") as fout:
-        fout.write(struct.pack("<Q", len(blob)))
-        fout.write(blob)
-        for _, _, entry in kept:
-            start, end = entry["data_offsets"]
-            fin.seek(data_start + start)
-            remaining = end - start
-            while remaining:
-                chunk = fin.read(min(_CHUNK, remaining))
-                if not chunk:
-                    raise EOFError("source ended inside a tensor; file is truncated")
-                fout.write(chunk)
-                remaining -= len(chunk)
+    handles: dict[Path, object] = {}
+    try:
+        with tmp.open("wb") as fout:
+            fout.write(struct.pack("<Q", len(blob)))
+            fout.write(blob)
+            for _, _, entry, path, data_start in kept:
+                fin = handles.get(path) or handles.setdefault(path, path.open("rb"))
+                start, end = entry["data_offsets"]
+                fin.seek(data_start + start)
+                remaining = end - start
+                while remaining:
+                    chunk = fin.read(min(_CHUNK, remaining))
+                    if not chunk:
+                        raise EOFError(f"{path.name} ended inside a tensor; file is truncated")
+                    fout.write(chunk)
+                    remaining -= len(chunk)
+    finally:
+        for fin in handles.values():
+            fin.close()
     tmp.replace(dst)
     return {"kept": len(kept), "kept_bytes": kept_bytes, "dropped_bytes": dropped_bytes}
 
@@ -199,7 +227,9 @@ def verify(dst: Path, control: Path | None) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("src", type=Path, help="full-depth HF-named bf16 safetensors")
+    ap.add_argument("src", type=Path,
+                    help="full-depth HF-named bf16 safetensors, or a sharded HF dir "
+                         "(the release's text_encoder/)")
     ap.add_argument("dst", type=Path, help="ComfyUI-named H3 encoder to write")
     ap.add_argument("--depth", type=int, default=H3_LAYERS,
                     help=f"decoder layers to keep (default {H3_LAYERS}, core's fixed count)")
@@ -208,15 +238,14 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true", help="report the plan, write nothing")
     args = ap.parse_args()
 
-    header, _ = read_header(args.src)
-    kept, kept_bytes, dropped_bytes = plan(header, args.depth)
+    kept, kept_bytes, dropped_bytes, n_source = plan(args.src, args.depth)
     total = kept_bytes + dropped_bytes
-    print(f"{args.src.name}")
-    print(f"  source  {total / 1e9:8.2f} GB  {len(header) - 1:5d} tensors")
+    print(f"{args.src.name}  ({len(shards(args.src))} file(s))")
+    print(f"  source  {total / 1e9:8.2f} GB  {n_source:5d} tensors")
     print(f"  keep    {kept_bytes / 1e9:8.2f} GB  {len(kept):5d} tensors")
     print(f"  drop    {dropped_bytes / 1e9:8.2f} GB  "
-          f"{len(header) - 1 - len(kept):5d} tensors  ({100 * dropped_bytes / total:.1f}%)")
-    renamed = sum(1 for old, new, _ in kept if old != new)
+          f"{n_source - len(kept):5d} tensors  ({100 * dropped_bytes / total:.1f}%)")
+    renamed = sum(1 for old, new, *_ in kept if old != new)
     print(f"  rename  {renamed:5d} tensors into ComfyUI H3 naming")
     if args.dry_run:
         print("  (dry run, nothing written)")
