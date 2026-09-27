@@ -1,0 +1,23 @@
+{
+ "what": "The base control for the owner's 1 s clone on subway_chase__pdd8: the base model on Euler over PDD's 32-point grid, the x0 observer on, same prompt, length and seed as the PDD8 x0 row in bench/results/2026-09-26_followup.jsonl. Euler shares the seeded start with the Euler distills, so both runs begin from the same noise.",
+ "why": "bench/x0_step_frames.py on the PDD8 capture (dea120a0): the second figure is already in step 1's x0 at latents 8-9 (about 1.1-1.4 s) and only sharpens after. Is that the seed and prompt's composition, or PDD8's first block?",
+ "predictions": {
+  "written": "2026-09-26, before rendering",
+  "B1": "the base also places two figures at latents 8-9 by its first few x0s (the prompt names two people, suspect and agent); what differs is identity: the base's two read as different people, PDD8's as one person twice",
+  "falsifier_a": "the base shows ONE figure through its early x0s: PDD8's first block created the second figure",
+  "falsifier_b": "the base shows two identical figures: the clone is the seed and prompt's, and PDD is not the cause",
+  "read": "python bench/x0_step_frames.py <final> <32 step latents> --preview 4:10, previews at the base steps matching PDD8's knots (every 4th: 0, 4, 8, ...)"
+ },
+ "arms": {
+  "subway_chase__base_euler32": "workflows/h3_probe_t2v_base_euler32_x0_api.json"
+ },
+ "patches": [
+  "subway_chase__base_euler32:MiniMaxH3Conditioning.prompt=@bank:t2va_subway_chase",
+  "subway_chase__base_euler32:MiniMaxH3Resolution.length=345"
+ ],
+ "seeds": {
+  "first": 730451892,
+  "note": "held, the followup batch's seed"
+ },
+ "run": "run_graph_arms.py --manifest bench/clone_base_x0_arms.json --runs 1 --seed 730451892 --hold-seed --no-alternate --out bench/results/2026-09-26_clone_base_x0.jsonl"
+}
