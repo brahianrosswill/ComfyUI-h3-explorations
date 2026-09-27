@@ -186,6 +186,16 @@ claim that a test refutes keeps its text and gains an annotation saying so.
 >   show structure on a 128-pixel period (a spectral peak, or stronger
 >   gradients on 128-pixel boundaries) that the base and FlashGen do not. The
 >   "ps2 polygons" would be that grid.
+>
+> vaedude, 2026-09-26, later: **No cube grid, on a first look.** On the
+> subway clips, edge strength on 128-pixel boundaries over the other 32-pixel
+> boundaries is 1.004 (x) and 1.047 (y) for FastH3, against 1.025 and 1.047 for
+> the base, 1.033 and 1.077 for FlashGen, and 0.980 and 1.030 for PDD8
+> (`../bench/results/2026-09-26_block_period_subway.json`,
+> `../bench/measure_block_period.py`). This was one scene, with each clip a
+> different draw. So the texture is not a visible grid; if VSA explains it,
+> the effect is flat, low-texture facets. That needs a texture-energy measure
+> on the distill run's same-scene arms.
 
 ### Tests that would move this section
 
