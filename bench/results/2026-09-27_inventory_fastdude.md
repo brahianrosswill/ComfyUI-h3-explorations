@@ -30,6 +30,15 @@ rendered:
 | `h3/lightx2v_Minimax-h3-Turbo/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16` | LightX2V Turbo 8-step, used once as a smoke test | LightX2V's release. The lane was retired 2026-09-26 (0.156.0) |
 | `minimax_h3_video_vae_fp16`, `_int8_convrot`, `minimax_h3_audio_vae_fp32` | the decoders | the INT8 switch is the VAE session's (0.151.0, `aadfb77a`) |
 
+*Deleted 2026-09-27 by the owner:*
+- the VAE session's five FastH3 conditioning research files, which none of
+  these records rendered except the swap;
+- the per-step x0 snapshots of the PDD strength runs on subway, both the
+  VAE session's and this session's after-run. Their final latents stay.
+
+Hashes, rebuild commands and what stayed are in
+`2026-09-27_research_files_deleted.md`.
+
 ## The records, and what each render is
 
 Clips are `Video/<graph stem>_<label>_00001-audio.mp4` and latents
@@ -63,6 +72,9 @@ carries `__s<seed>`.
     and `latents/_contaminated_2026-09-26/`.
     `2026-09-26_followup_contamination.md` lists them. Use the later row per
     label.
+    - *Deleted 2026-09-27 by the owner:* both `_contaminated_2026-09-26/`
+      folders. The contamination record keeps what each row was
+      (`2026-09-27_research_files_deleted.md`, last paragraph).
   - **The looks:** anchor, noir, neon and anime on PDD8, FlashGen and FastH3.
   - **Core:** 11 bank scenes on the three distills, plus FlashGen on
     `subway_chase_short`.

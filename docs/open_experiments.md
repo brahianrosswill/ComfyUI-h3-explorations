@@ -2571,6 +2571,38 @@ sparsity and gates at once. This splits the two.
     variant exists.
 - **Blocker:** the owner's go; two CPU builds (about 1 min each) and six
   renders.
+- **What follows, by outcome** (added 2026-09-27, the owner approved). Each
+  route puts a base-trained adapter (PDD, FlashGen), whose adaln is baked into
+  fl2va's curve basis, on FastH3's behaviour.
+  1. **If the gates carry it: (a) is the stacking platform.** fl2va plus
+     FastH3's gates is the exact backbone PDD and FlashGen were trained on, in
+     their own basis. Adapters load unchanged. The swap file with FastH3's
+     weights and fl2va's conditioning would also have worked, but it carries
+     the backbone drift the adapters never saw, so (a) supersedes it.
+  2. **Whatever the outcome: bake the adapter into FastH3's own basis.**
+     - This keeps FastH3 exactly as trained.
+     - `bench/build_pdd_base_shim.py` needs FastH3's time embedder, which is
+       kept in `../internal/pdd_shims/shim_fasth3_temb.safetensors`. The
+       unpruned V2 it came from is deleted.
+     - That shim's int8 probe came from the deleted swap file, so a bake for
+       FastH3 needs a new shim with FastH3's probe. The embedder tensors carry
+       over.
+     - Routes 1 and 2 should render alike if FastH3's conditioning is
+       near-inert (S2 in `../bench/results/2026-09-27_fasth3_swap.md`). That
+       is testable.
+  3. **If the backbone drift carries it: an α dial on the drift.**
+     - fl2va plus α times FastH3's backbone delta, with the gates kept.
+     - The two bf16 pruned files are kept for it (the owner's download
+       folder, until this entry lands).
+     - The existing rank record (`../bench/results/2026-09-26_fasth3_lora_rank.json`)
+       compares the two int8 files, whose rounding noise is on the order of
+       the drift (`edf70ef6`), so its low energy is most likely a noise
+       floor.
+     - `bench/measure_checkpoint_lora_rank.py` on the bf16 pair is what
+       measures the drift's true rank. It decides whether the dial can be a
+       LoRA or must be a merged checkpoint built from bf16.
+  The deleted research files, their hashes and rebuild commands are in
+  `../bench/results/2026-09-27_research_files_deleted.md`.
 
 ## 36. A strength dial on FastH3's gates
 
