@@ -95,3 +95,21 @@ the public checkout. So "trained through the shared forward" is inferred.
   (finding 5).
 - **Carrying the adaln across checkpoints** needs the modulation refitted into
   the target's basis, the way `bench/convert_pdd_lora.py` bakes PDD's adaln.
+
+## The #3 swap checkpoints (built 2026-09-26, not yet rendered)
+
+`bench/build_adaln_swap.py` (91db4fc2) moves the conditioning set
+(`adaln_t_table` and all 51 `adaln_proj.linear` weight and bias pairs, 103
+tensors) whole between the shipped int8 files, with nothing requantised.
+Each output was reopened and compared with its donor byte for byte (the
+103 tensors), and with its backbone on a spread of the rest. The output's
+`__metadata__` names the backbone, the donor and the commit.
+
+| file (`models/diffusion_models/`) | backbone | conditioning | asks |
+|---|---|---|---|
+| `minimax_h3_fl2va_pruned_int8_convrot_fasth3adaln` | fl2va | FastH3 | does FastH3's conditioning alone make the base sample in 8 steps? |
+| `fastvideo_fasth3_8step_v2_pruned_int8_convrot_baseadaln` | FastH3 (gates included) | fl2va | what is left of FastH3 without its conditioning? |
+
+Both would be rendered on FastH3's contract (10/3, the rungs, euler), with
+FastH3 and the base at 8 steps as the endpoints. Not queued: the follow-up
+batch is at the owner's cap.
