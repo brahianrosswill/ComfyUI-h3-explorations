@@ -2706,6 +2706,11 @@ the owner as a choice with no measurement of either option.
   does it at half the size with today's dark error. That switch is the
   owner's call, gated on their players, one pair by eye, and the measure
   tools reading 10-bit with accurate rounding.
+- **Closed 2026-09-27, no change.** The owner saw no difference in the pair.
+  The encodes differ by under a level in the darks, and a 4x crop shows no
+  visible blocking, so the save format stays. O1's splotchy blacks are not
+  the codec's 8 px blocking; that question is open again, on a clip where
+  the owner sees it.
 
 ## 39. Telemetry armed on a mixed-model batch
 

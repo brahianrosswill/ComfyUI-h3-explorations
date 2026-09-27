@@ -96,3 +96,28 @@ On the whole clip, H.265 10-bit removes nearly all the added dark blocking
 at the same dark error and 54% of the bitrate. Both encodes are silent
 copies in `Video/review_38/` on the output share, and are on the board's "For
 your eye" tab as `fmt38-look_noir_pdd8`.
+
+## The owner's read, and what it says about the measure (2026-09-27)
+
+The owner watched the pair: "Dont think I can see a difference. I wonder if
+its just because of the resolution limits?"
+
+It is not resolution. The two encodes, read back with accurate rounding,
+differ by 0.73 levels on average in the dark pixels (99th percentile 4.3),
+and 1.06 over the whole frame. The dark 192 px window where they differ
+most (frame 276) was saved enlarged 4x, once as-is and once with the shadows
+lifted, in `Video/review_38/zoom4x_*.png`. Even there the two are hard to tell
+apart: H.264 has slightly more fine speckle, and neither shows visible 8 px
+blocking.
+
+- **Calibration of O1's `dark_block8`:** an excess of about +0.05 over
+  lossless is below what the owner sees at normal viewing. It detects the
+  codec, but at this size the codec's contribution does not matter to the
+  eye.
+- **So the save format stays H.264 8-bit crf 19.** H.265 10-bit would halve
+  file sizes at equal quality, a convenience rather than a fix, and only
+  where the owner's players take HEVC.
+- **O1 is open again.** Whatever the owner saw as "blocky and splotchy"
+  blacks is not the codec's 8 px blocking. If a specific clip shows it, the
+  test is O1's own: decode that clip's latent losslessly and look at the
+  same frames enlarged.
