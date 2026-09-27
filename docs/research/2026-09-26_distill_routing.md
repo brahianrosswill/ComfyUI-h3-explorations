@@ -196,10 +196,14 @@ code swaps the heads, ours or core's, not about what the heads contribute.
 
 **Evidence that exists and is unjudged.** PDD4 with its heads off
 (`patch_heads` off, the backbone alone) was rendered at three seeds on
-2026-08-27, against heads on, and confirmed to differ
-(`pdd/queued_arms.md`, `C_pdd4_headfree_*`; `pdd/2026-08-27_handoff.md`).
-No judgement of it was found. Judging those clips needs no card and says
-what the heads add, which is this route's premise.
+2026-08-27 and confirmed to differ from heads on (`pdd/queued_arms.md`,
+`C_pdd4_headfree_*`; `pdd/2026-08-27_handoff.md`). Neither session found a
+judgement of it. On the output share only seed 730451893 has both the
+heads-off clip and its heads-on control (`Video/batch/`,
+`C_pdd4_headfree_s730451893_00001` against `B_upscale_s730451893_00001`), so
+it is one matched pair, from that day's chain (sage era, the old prompt),
+comparable only within that batch. Judging it needs no card, and says a
+little about what the heads add.
 
 ## Order, cheapest evidence first
 
@@ -207,7 +211,7 @@ what the heads add, which is this route's premise.
 |---|---|---|---|
 | 5 stream | graphs exist | blind, loudness-matched listen: refine against no refine | yes |
 | 3 step | new arm | one render under `H3_TELEMETRY` | yes, apart from the handoff |
-| 4 noise per row | new mask node + arm | first, save both arms' latents in the refine graph and compare the frozen rows; then one render at 0.632 and one at 0.8 | yes; frozen rows unverified at the output |
+| 4 noise per row | new mask node + arm | first, the frozen-row test below; then one render at 0.632 and one at 0.8 | yes; frozen rows unverified at the output |
 | 1 per shot | new per-window chain | two windows at a hard cut | yes; the seam is the risk |
 | 6 component | new arm | judge the existing heads-off clips first (no card) | no |
 | 2 masked adapter | new branch mask | not recommended | no |
@@ -246,7 +250,9 @@ says so, **reasoned** means neither, and **wrong** means corrected.
 | Inter-frame delta spikes at cuts | reasoned | unmeasured; route 4's mask depends on it |
 | The owner has not compared refine against no refine | **wrong** | the owner's first listen, `2026-09-25_distill_audio_s1.md` |
 | The heads-off question in next_steps is about the heads' value | **wrong** | it is about which code swaps them; corrected in route 6 |
-| Heads-off PDD clips exist and are unjudged | record | `pdd/queued_arms.md`, `C_pdd4_headfree_*` |
+| Heads-off PDD clips exist and are unjudged | record | `pdd/queued_arms.md`, `C_pdd4_headfree_*`; one matched pair on the share (seed 730451893) |
+| The refine arm's pass 1 was a cache hit on the base arm's | record, weak | inferred from a missing `per_node_s` entry; the frozen-row test removes the doubt |
+| The video latent-format round trip is the identity | code (fastdude) | `comfy/latent_formats.py`, `MiniMaxH3.process_latent_in/out` |
 | Heads and backbone perturb by the same order | record | `../h3_pdd.md`, the magnitudes table |
 
 **Why the two bottom routes stay at the bottom, checked rather than
@@ -258,6 +264,22 @@ assumed.**
   magnitudes do not favour either half, and the existing heads-off clips
   can test the premise without the card. Its rank could move after that
   judging, in either direction.
+
+**The frozen-row test, designed with the fastdude session.** One graph, one
+execution, so there is no cache ambiguity. The 2026-09-25 record inferred
+that the refine arm reused the base arm's pass 1 from the node cache, from a
+missing `per_node_s` entry, and if pass 1 actually re-ran, run-to-run
+nondeterminism alone could explain 46 dB.
+- Save node 10's output (pass 1) and node 87's output (the refine pass) in
+  the same prompt, and compare the video halves.
+- If they differ, also save node 87's `denoised_output`, to tell the
+  per-step replacement apart from the final step.
+- Check that the nested video mask reaches `KSamplerX0Inpaint` as exactly 0
+  after `prepare_mask` and the reshape.
+- Ruled out by reading: the latent-format round trip. `MiniMaxH3Video`'s
+  `scale_factor` is 1.0 and `MiniMaxH3.process_latent_in` and `_out` touch
+  only the audio slice (fastdude, from `comfy/latent_formats.py` and
+  `comfy/model_base.py`).
 
 **What the checks moved.** Route 5 stays first, but its step is now a blind,
 loudness-matched listen. Route 4 gains a step before it: compare frozen-row
