@@ -17,6 +17,22 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-27
 
+- **Our conditioning nodes strip the prompt at both ends** (owner: "strip
+  leading and trailing whitespace in our conditioning nodes and \n at the end
+  (not in the middle - \n has value in the middle)"; "make sure no prompts in
+  prompt_bank have the trailing \n"). `h3_rules.normalize_prompt`, in
+  `a5ab229f` (0.160.0). Core's tokenizer keeps edge whitespace, so a trailing
+  newline was one more token and a different sample at the same seed; the
+  generator already stripped bank prompts. The bank check now fails on edge
+  whitespace. Core's own H3 nodes still do not strip.
+- **Closed: the encoder precision study.** `ENCODER_INT8` stays the default.
+  At the int8 DiT, int8's effect sits under a floor that a dose-response
+  confirmed (`bench/results/2026-09-27_encoder_quant_floor.json`). Floor-free,
+  at the bf16 conditioning path, its image-token error is no worse than random
+  and its text-token error is somewhat worse
+  (`bench/results/2026-09-27_encoder_quant_refiner.json`).
+  `docs/open_experiments.md` #47 closes unbuilt.
+
 - **`qk_balance` is not inert behind the dense tail** (Sol redesign test 1,
   0.163.1). The audit (§4 item 1), the redesign doc, `docs/SOLATTN.md` and
   `docs/h3_block49_quant_error.md` had said or implied that the balance gate

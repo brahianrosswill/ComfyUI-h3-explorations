@@ -2995,6 +2995,8 @@ eye.
 
 ## 47. Does the int8 encoder's conditioning error reach the distills' output
 
+**Closed unbuilt, 2026-09-27: the floor arm confirmed the floor.** Noise far below int8's error moves the int8 DiT's prediction as much as int8 does (`../bench/results/2026-09-27_encoder_quant_floor.json`), so no per-step DiT test here can resolve encoder precision, and the distills share the int8 blocks. The conditioning path was measured floor-free instead (`../bench/results/2026-09-27_encoder_quant_refiner.json`). The plan below stands as the design if a bf16 DiT ever makes the question answerable.
+
 Added 2026-09-27 (encoderdude). On the base DiT at 16 steps, int8 moved the
 prediction no more than a norm-matched random perturbation or a one-token
 prompt edit (`../bench/results/2026-09-27_encoder_quant_dit.json`; only its

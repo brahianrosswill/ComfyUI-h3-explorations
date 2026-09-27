@@ -4,6 +4,26 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.163.2
+
+### Added
+
+- `bench/measure_encoder_quant_dit.py refiner` (`94db7ce4`) runs the captured
+  encoder arms through the DiT's bf16 `condition_proj` and token refiner on
+  CPU in fp32, with no int8 rounding. `forward` gains `--control-scales` (the
+  floor arm) and `--arms`; it checks the null once per scene and writes its
+  record after each scene.
+- `bench/results/2026-09-27_encoder_quant_refiner.json` and
+  `bench/results/2026-09-27_encoder_quant_floor.json`: the conditioning path
+  floor-free, and the dose-response that confirms the int8 DiT's floor.
+
+### Changed
+
+- The encoder study is closed: `docs/wiki/next_steps.md` and
+  `docs/wiki/decisions.md` carry the outcome, and `docs/open_experiments.md`
+  #47 closes unbuilt. `decisions.md` also logs the owner's prompt-stripping
+  decision from 0.160.0.
+
 ## 0.163.1
 
 ### Added

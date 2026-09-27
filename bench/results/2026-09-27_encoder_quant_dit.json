@@ -122,13 +122,12 @@
  "reading": [
   "the null is exactly 0.0 at every probe: the harness is deterministic",
   "treatment, control and scale land at the same size at every probe, on t2v and on i2v; the scale arm adds one or two tokens at the END of the prompt and leaves every earlier token's conditioning bit-identical, yet moves the prediction as much as int8's error spread over every token",
-  "so this instrument does not resolve int8's encoder error from any other SMALL conditioning change: at step 0, int8, the norm-matched control and the ' .' edit all sit in one narrow band. Over a larger range the same instrument does track size: bench/results/2026-08-27_marker_epsilon_control.json, same int8 fl2va DiT and probe steps, reads larger perturbations well above this band. So a floor plausibly sits near this band at step 0, with int8 at or under it; 'any change reads the same' holds only for changes this small. The floor's cause (the int8 DiT's own activation rounding) is NOT tested here; the tiny-noise arm that would test it was not run. Corrected 2026-09-27 after a read of the marker record, which had been overlooked.",
+  "so this instrument does not resolve int8's encoder error from any other SMALL conditioning change: at step 0, int8, the norm-matched control and the ' .' edit all sit in one narrow band. Over a larger range the same instrument does track size: bench/results/2026-08-27_marker_epsilon_control.json, same int8 fl2va DiT and probe steps, reads larger perturbations well above this band. So a floor plausibly sits near this band at step 0, with int8 at or under it; 'any change reads the same' holds only for changes this small. The floor itself was then confirmed by a dose-response (bench/results/2026-09-27_encoder_quant_floor.json); its cause, the int8 DiT's own activation rounding, is consistent with that record and not proven. Corrected 2026-09-27 after a read of the marker record, which had been overlooked.",
   "on i2v the image-tokens-only arm matches the treatment, so on that scene what int8 does to the DiT is its image-token error, and it reads no larger than random noise of the same size",
   "practical: int8's effect at the DiT is no larger than appending ' .' to the prompt"
  ],
  "not_measured": [
   "the ref2va scenes (violin_ref2va, ref2va_dialogue), which carry the heaviest conditioning tail; stopped by owner decision as not needed for the decision",
-  "a floor arm (noise far smaller than int8's error) that would confirm the floor",
   "any distilled graph (PDD, FlashGen, FastH3)",
   "visibility in a render"
  ],

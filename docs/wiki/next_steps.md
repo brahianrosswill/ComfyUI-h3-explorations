@@ -13,15 +13,19 @@ pointer goes; this list is stale the moment the roadmap disagrees with it.
 Items from the `mrpink` helper lane first; `evalman`'s render lane appends its
 own below the rule.
 
-**Encoder int8 against bf16 at the DiT (owner, 2026-09-27): stopped with
-enough for the decision.** `../../bench/results/2026-09-27_encoder_quant_dit.json`
-(predictions filed before results inside it). On t2v and i2v, int8, a
-norm-matched random control and a one-token prompt edit move the base DiT's
-prediction by the same amount, so int8's encoder error costs no more than
-rewording the prompt, and `ENCODER_INT8` stays the shipped default. Open, if
-wanted: the tiny-noise floor arm (a few forwards), which says whether any
-DiT-level test can resolve encoder precision on an int8 DiT; only if it does
-are the distill variants (PDD6, FastH3) worth building into the harness.
+**Encoder int8 against bf16 (owner, 2026-09-27): closed.** `ENCODER_INT8`
+stays the shipped default.
+- At the DiT, int8 moves the prediction no more than any small change, and a
+  dose-response confirms that is a floor of the int8 DiT itself: noise far
+  below int8's error reads the same
+  (`../../bench/results/2026-09-27_encoder_quant_dit.json`,
+  `../../bench/results/2026-09-27_encoder_quant_floor.json`).
+- Floor-free, at the DiT's bf16 conditioning path, int8's image-token error is
+  no worse than random and its text-token error is somewhat worse
+  (`../../bench/results/2026-09-27_encoder_quant_refiner.json`). A better int8
+  encoder would start on the text side.
+- The distill version (`../open_experiments.md` #47) closes unbuilt. Any
+  numerical A/B read at an int8 DiT's output needs a tiny-noise arm beside it.
 
 **The Sol node redesign (owner, 2026-09-27):** tests 0 to 3 of
 [`../research/2026-09-27_sol_node_redesign.md`](../research/2026-09-27_sol_node_redesign.md),
