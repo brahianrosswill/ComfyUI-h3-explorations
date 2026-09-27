@@ -2408,6 +2408,9 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
         g["106"] = {"class_type": "MiniMaxH3DenoiseMaskProbe",
                     "inputs": {"model": g["86"]["inputs"]["model"]}}
         g["86"]["inputs"]["model"] = ["106", 0]
+        # The scheduler reads the same model as the guider, which the refine
+        # validator requires; the probe only observes, so the sigmas are unchanged.
+        g["84"]["inputs"]["model"] = ["106", 0]
         _save_av(["10", 0], "_pass1", ("107", "108", "109"))
         _save_av(["87", 1], "_refine_denoised", ("110", "111", "112"))
     if step_switch and save_latents:

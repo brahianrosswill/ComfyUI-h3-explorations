@@ -307,7 +307,7 @@
     "class_type": "BasicScheduler",
     "inputs": {
       "model": [
-        "88",
+        "106",
         0
       ],
       "scheduler": "simple",
