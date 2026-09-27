@@ -1,12 +1,14 @@
 {
- "_comment": "Hand-kept descriptions of model files, keyed by basename without .safetensors, joined into models.jsonl by bench/build_render_dataset.py. Provenance per bench/results/2026-09-27_inventory.md and fastdude's half.",
+ "_comment": "Hand-kept descriptions of model files, keyed by basename without .safetensors, joined into models.jsonl by bench/build_render_dataset.py. Provenance per bench/results/2026-09-27_inventory.md and fastdude's half. origin: built here (a new file our script assembled from others), converted here (a release re-expressed for ComfyUI by our converter), or downloaded; added: the file's date on this box. Entries with a kind are listed even with no render.",
  "minimax_h3_fl2va_pruned_int8_convrot": {
   "family": "base",
   "what": "MiniMax H3 FL2VA DiT, pruned curve form, int8 convrot",
   "hybrid_of": null,
   "made_by": "Comfy-Org release",
   "commit": null,
-  "status": "shipped base"
+  "status": "shipped base",
+  "origin": "downloaded",
+  "added": "2026-08-04"
  },
  "minimax_h3_ref2va_pruned_int8_convrot": {
   "family": "base",
@@ -14,7 +16,9 @@
   "hybrid_of": null,
   "made_by": "Comfy-Org release",
   "commit": null,
-  "status": "shipped base"
+  "status": "shipped base",
+  "origin": "downloaded",
+  "added": "2026-08-04"
  },
  "fastvideo_fasth3_8step_v2_pruned_int8_convrot": {
   "family": "fasth3",
@@ -22,7 +26,9 @@
   "hybrid_of": null,
   "made_by": "FastVideo release (FastVideo-FastH3-Comfy)",
   "commit": null,
-  "status": "probe"
+  "status": "probe",
+  "origin": "downloaded",
+  "added": "2026-09-25"
  },
  "minimax_h3_fl2va_pruned_int8_convrot_fasth3adaln": {
   "family": "hybrid",
@@ -34,7 +40,9 @@
   "made_by": "bench/build_adaln_swap.py",
   "commit": "91db4fc2",
   "status": "research; question answered; deletable",
-  "renamed_to": "h3_research/hybrid__fl2va-weights__fasth3-timecond__int8.safetensors"
+  "renamed_to": "h3_research/hybrid__fl2va-weights__fasth3-timecond__int8.safetensors",
+  "origin": "built here",
+  "added": "2026-09-26"
  },
  "fastvideo_fasth3_8step_v2_pruned_int8_convrot_baseadaln": {
   "family": "hybrid",
@@ -46,7 +54,9 @@
   "made_by": "bench/build_adaln_swap.py",
   "commit": "91db4fc2",
   "status": "research; question answered; deletable",
-  "renamed_to": "h3_research/hybrid__fasth3v2-weights-and-gates__fl2va-timecond__int8.safetensors"
+  "renamed_to": "h3_research/hybrid__fasth3v2-weights-and-gates__fl2va-timecond__int8.safetensors",
+  "origin": "built here",
+  "added": "2026-09-26"
  },
  "fastvideo_fasth3_8step_v2_pruned_int8_convrot_temb_a05": {
   "family": "hybrid",
@@ -58,7 +68,9 @@
   "made_by": "bench/build_adaln_blend.py",
   "commit": "135b449e",
   "status": "never rendered; deletable",
-  "renamed_to": "h3_research/hybrid__fasth3v2__timecond-blend-50pct-fasth3__int8.safetensors"
+  "renamed_to": "h3_research/hybrid__fasth3v2__timecond-blend-50pct-fasth3__int8.safetensors",
+  "origin": "built here",
+  "added": "2026-09-27"
  },
  "fastvideo_fasth3_8step_v2_pruned_int8_convrot_temb_a075": {
   "family": "hybrid",
@@ -70,7 +82,9 @@
   "made_by": "bench/build_adaln_blend.py",
   "commit": "135b449e",
   "status": "never rendered; deletable",
-  "renamed_to": "h3_research/hybrid__fasth3v2__timecond-blend-75pct-fasth3__int8.safetensors"
+  "renamed_to": "h3_research/hybrid__fasth3v2__timecond-blend-75pct-fasth3__int8.safetensors",
+  "origin": "built here",
+  "added": "2026-09-27"
  },
  "minimax_h3_fl2va_pdd_8step_comfy": {
   "family": "pdd",
@@ -78,7 +92,9 @@
   "hybrid_of": null,
   "made_by": "bench/convert_pdd_lora.py (converter v3) from MiniMax-H3-FL2VA-Acc-8Step",
   "commit": "eb791f8",
-  "status": "shipped PDD sidecar"
+  "status": "shipped PDD sidecar",
+  "origin": "converted here",
+  "added": "2026-09-03"
  },
  "minimax_h3_fl2va_fasth3temb_pdd_8step_comfy": {
   "family": "pdd",
@@ -90,7 +106,9 @@
   "made_by": "bench/convert_pdd_lora.py via bench/build_pdd_base_shim.py",
   "commit": "cb21249c",
   "status": "never rendered; deletable",
-  "renamed_to": "h3/research/pdd8-sidecar__for-hybrid__fl2va-weights__fasth3-timecond.safetensors"
+  "renamed_to": "h3/research/pdd8-sidecar__for-hybrid__fl2va-weights__fasth3-timecond.safetensors",
+  "origin": "built here",
+  "added": "2026-09-27"
  },
  "minimax_h3_flashgen_4step_v1.0_768p_fl2va_pruned_rank64_comfy": {
   "family": "flashgen",
@@ -98,7 +116,9 @@
   "hybrid_of": null,
   "made_by": "bench/convert_flashgen_lora.py",
   "commit": "c7ad7f06",
-  "status": "shipped FlashGen"
+  "status": "shipped FlashGen",
+  "origin": "converted here",
+  "added": "2026-09-25"
  },
  "minimax_h3_flashgen_4step_v1.0_768p_ref2va_pruned_rank64_comfy": {
   "family": "flashgen",
@@ -106,7 +126,9 @@
   "hybrid_of": null,
   "made_by": "bench/convert_flashgen_lora.py --partition Ref2VA",
   "commit": "e7d08d19",
-  "status": "probe"
+  "status": "probe",
+  "origin": "converted here",
+  "added": "2026-09-26"
  },
  "minimax_h3_4step_lora_flashgen_v1.0_768p_fl2va_pruned_avg_rank_13_bf16": {
   "family": "flashgen",
@@ -114,7 +136,9 @@
   "hybrid_of": null,
   "made_by": "kijai (HF Kijai/MiniMax-H3-experimental)",
   "commit": null,
-  "status": "superseded by rank 64"
+  "status": "superseded by rank 64",
+  "origin": "downloaded",
+  "added": "2026-09-25"
  },
  "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16": {
   "family": "turbo",
@@ -122,7 +146,9 @@
   "hybrid_of": null,
   "made_by": "LightX2V release",
   "commit": null,
-  "status": "lane retired 2026-09-26 (0.156.0)"
+  "status": "lane retired 2026-09-26 (0.156.0)",
+  "origin": "downloaded",
+  "added": null
  },
  "minimax_h3_video_vae_int8_convrot": {
   "family": "vae",
@@ -130,7 +156,9 @@
   "hybrid_of": null,
   "made_by": "Comfy-Org release",
   "commit": null,
-  "status": "shipped default since 0.151.0"
+  "status": "shipped default since 0.151.0",
+  "origin": "downloaded",
+  "added": "2026-09-26"
  },
  "minimax_h3_video_vae_fp16": {
   "family": "vae",
@@ -138,7 +166,9 @@
   "hybrid_of": null,
   "made_by": "official release",
   "commit": null,
-  "status": "comparison"
+  "status": "comparison",
+  "origin": "downloaded",
+  "added": "2026-08-04"
  },
  "taeh3": {
   "family": "vae",
@@ -146,6 +176,30 @@
   "hybrid_of": null,
   "made_by": "madebyollin",
   "commit": null,
-  "status": "drafts declined by the owner"
+  "status": "drafts declined by the owner",
+  "origin": "downloaded",
+  "added": "2026-08-05"
+ },
+ "qwen3vl_32b_minimax_h3_int8_convrot": {
+  "kind": "text_encoder",
+  "family": "encoder",
+  "what": "Qwen3-VL-32B text encoder cut to the 50 layers ComfyUI instantiates, int8 convrot; the shipped encoder (h3_config.ENCODER_INT8)",
+  "hybrid_of": null,
+  "made_by": "Comfy-Org release",
+  "commit": null,
+  "status": "shipped encoder",
+  "origin": "downloaded",
+  "added": "2026-08-04"
+ },
+ "qwen3vl_32b_minimax_h3_bf16_pruned": {
+  "kind": "text_encoder",
+  "family": "encoder",
+  "what": "The same 50-layer subset in bf16, from the official release's 14-shard text_encoder/ (layers 50-63, lm_head and final norm dropped; keys renamed so core detects it). The int8-vs-bf16 comparison's other arm",
+  "hybrid_of": null,
+  "made_by": "bench/convert_h3_bf16_encoder.py",
+  "commit": "c743d100",
+  "status": "comparison (encoder session, 2026-09-27_encoder_int8_vs_bf16_conditioning.json)",
+  "origin": "converted here",
+  "added": "2026-09-27"
  }
 }

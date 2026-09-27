@@ -60,8 +60,12 @@ kept once. The metrics by tool:
 
 ### `models.jsonl`: one row per model file used or built
 
-`file`, `kind` (diffusion_model, lora, vae), `renders` (how many used it),
-`size_bytes`, `family`, `what`, `hybrid_of`, `made_by`, `commit`, `status`.
+`file`, `kind` (diffusion_model, lora, vae, text_encoder), `renders` (how
+many used it; null for text encoders, which no run row records), `size_bytes`,
+`family`, `what`, `hybrid_of`, `made_by`, `commit`, `status`, `origin` and
+`added`. `origin` is "built here" (a new file our script assembled from
+others), "converted here" (a release re-expressed for ComfyUI by our
+converter) or "downloaded"; `added` is the file's date on this box.
 Descriptions come from `bench/render_dataset_models.json`.
 
 ### `findings.jsonl`: one row per claim
