@@ -5436,7 +5436,12 @@ def main():
               manual_sigmas=FASTH3_CONTRACT_SIGMAS, shift=FASTH3_SHIFT,
               out_prefix="Video/h3_probe_t2v_fasth3_8step_contract_novsa"),
          "FastH3 V2 on its contract's sampling with VSA off (dense): the texture probe"),)
-    _savelat_more = ("h3_text_to_video_pdd_4step", "h3_text_to_video_pdd_manual_sigmas")
+    # The PDD8 finisher grid (2026-09-27, the owner's consolidation) renders on
+    # _savelat twins so any clip can be re-encoded for review without a render
+    # (#38: the 8-bit save adds dark blocking mainly to PDD8).
+    _savelat_more = ("h3_text_to_video_pdd_4step", "h3_text_to_video_pdd_manual_sigmas",
+                     "h3_text_to_video_flashgen_late_blocks", "h3_first_frame_to_video_pdd",
+                     "h3_probe_i2v_step_switch_pdd8_flashgen_h080")
     _twins = []
     for fname, label, task, prompt, extra, note in (
             [_by_name[f + ".json"] for f in _SAVELAT_OF + _savelat_more] + [_step_switch] + list(_pdd_tests)):
