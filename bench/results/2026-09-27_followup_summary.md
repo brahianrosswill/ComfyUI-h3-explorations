@@ -64,6 +64,16 @@ people's records are cited, not restated.
   - The measures do not show FlashGen degrading more on the unusual prompt.
     "Weird" is semantic, so this one is the owner's eye.
   - FastH3 varies most across the rungs, and PDD8 is the steadiest.
+- **FlashGen's late blocks alone make a finished, less hazy render** (FT1,
+  `2026-09-26_flashgen_weights_predictions.md`).
+  - `blocks="34-49"`: a developed 4-step clip with deeper blacks, half the
+    haze and full FlashGen's motion detail.
+  - `blocks="0-33"`: broken, dark and undeveloped.
+  - So the tiny late change does the 4-step work, and the early high-rank
+    change adds the hazy, lifted-black look.
+  - Worth the owner's eye: late-only FlashGen on the adherence scenes. If the
+    early blocks are where it is "overfit", late-only might follow prompts
+    better.
 - **FlashGen's weights** (`2026-09-26_flashgen_weights_predictions.md`,
   verdicts):
   - The effective rank is about 18 of 64.
@@ -78,7 +88,6 @@ people's records are cited, not restated.
 
 - The FastH3 conditioning swap, the base clone control and PDD strength: the
   VAE session's records.
-- The FlashGen block transplant (FT1): this session's read, added below.
 
 ## For the owner's eye
 
@@ -86,3 +95,5 @@ people's records are cited, not restated.
   until each actor speaks, and is it funny?
 - FlashGen's clean looks, to confirm the blockiness is gone.
 - The specificity ladder, typical against unusual, per distill.
+- FlashGen late-only against full, on look_anchor and slapstick
+  (`*_flashgen_blk34_49` against `*__flashgen`).
