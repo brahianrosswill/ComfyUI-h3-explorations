@@ -13,12 +13,12 @@ runs the tool each prediction names
   reference and PDD4, PDD6 and merged PDD8 against it (P1, P5).
 - `vsa`: `measure_clip_temporal.py`, `measure_block_period.py` and
   `measure_clip_tone.py` on FastH3 with VSA on and off (P7).
-- `collapse`: seed spread for the owner's O2 ("way overfit on too little
-  data"; `bench/followup_seed_collapse_arms.json`). Per model, the latent
-  distance between its renders of `subway_chase_short` at seeds 892, 893
-  and 894, with 892 as the reference. FlashGen's 892 is the rerun's
-  `subway_chase_short__flashgen`. Smaller distances than PDD8's would mean
-  FlashGen collapses across seeds.
+- `spec`: the specificity ladder for the owner's O2 (`t2va_spec_typical`,
+  `_specific`, `_unusual`; `bench/followup_*` from `a8432ca8`). Per rung and
+  model (FlashGen, PDD8, FastH3), `measure_clip_temporal.py`,
+  `measure_clip_resolution.py` and `measure_clip_tone.py`, so the owner's
+  read of quality per rung sits beside the numbers. The seed-collapse test it
+  replaced was cancelled unrendered (owner: seed is the wrong axis).
 - `reverse`: the reverse step switch on `subway_chase`
   (`bench/followup_reverse_switch_arms.json`). Both handoffs and FlashGen
   alone are read against PDD8 (exact) as the reference.
@@ -85,9 +85,9 @@ def run(tool: str, args: list, json_out: Path):
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--group", action="append", choices=("looks", "ladder", "vsa", "collapse", "reverse"))
+    ap.add_argument("--group", action="append", choices=("looks", "ladder", "vsa", "spec", "reverse"))
     args = ap.parse_args()
-    groups = args.group or ["looks", "ladder", "vsa", "collapse", "reverse"]
+    groups = args.group or ["looks", "ladder", "vsa", "spec", "reverse"]
     out_root = comfy_output()
     if not ROWS.exists():
         print(f"no rows yet: {ROWS.relative_to(REPO)} does not exist")
@@ -135,18 +135,19 @@ def main() -> int:
             print("== vsa: tone")
             run("measure_clip_tone.py", pairs, OUT / "2026-09-26_followup_vsa_tone.json")
 
-    if "collapse" in groups:
-        seeds = ("730451892", "730451893", "730451894")
-        for model in ("pdd8", "flashgen"):
-            labs = [f"subway_chase_short__{model}__s{s}" for s in seeds]
-            if model == "flashgen":
-                labs[0] = "subway_chase_short__flashgen"
-            lats = [latent(l, out_root) for l in labs]
-            if not all(lats):
-                missing.append(f"collapse {model}: " + ", ".join(l for l, x in zip(labs, lats) if not x))
-                continue
-            print(f"== collapse: {model}, seed 892 as the reference")
-            run("latent_path_distance.py", lats, OUT / f"2026-09-26_followup_collapse_{model}.json")
+    if "spec" in groups:
+        labs = [f"spec_{r}__{m}" for r in ("typical", "specific", "unusual")
+                for m in ("flashgen", "pdd8", "fasth3")]
+        clips = [clip(l, out_root) for l in labs]
+        missing += [l for l, c in zip(labs, clips) if not c]
+        clips = [c for c in clips if c]
+        if clips:
+            print("== spec: temporal")
+            run("measure_clip_temporal.py", [*clips, "--stride", "4"], OUT / "2026-09-26_followup_spec_temporal.json")
+            print("== spec: resolution")
+            run("measure_clip_resolution.py", clips, OUT / "2026-09-26_followup_spec_resolution.json")
+            print("== spec: tone")
+            run("measure_clip_tone.py", clips, OUT / "2026-09-26_followup_spec_tone.json")
 
     if "reverse" in groups:
         ref = latent("subway_chase__pdd8", out_root)
