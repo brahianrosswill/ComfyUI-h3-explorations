@@ -3050,6 +3050,14 @@ eye.
     124 frames.
   - Adherence, the question, awaits the owner's eye. The pairs are on the
     board's review tab.
+- **Closed 2026-09-27 by the owner's eye (ow-fd-10): no clear win, so the
+  stripped file is not built.**
+  - Late-only is more natural on the beach ladder, increasingly so on the
+    unusual rung.
+  - It loses coherence on subway_chase_short (a third person) and FT1's
+    slapstick (the piano).
+  - O2 stays open. `../bench/results/2026-09-27_finisher_grid.md`, "The
+    owner's review".
 
 ## 47. Does the int8 encoder's conditioning error reach the distills' output
 

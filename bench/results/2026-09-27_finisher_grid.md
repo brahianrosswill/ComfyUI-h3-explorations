@@ -140,3 +140,33 @@ Per render, from `2026-09-27_finisher_grid_telemetry.json`:
 - **Ordering:** renders that repeat the previous prompt skip the encoder and
   its PCIe cost. Batching arms by scene, as this manifest did, saves one
   encoder load per extra arm.
+
+## The owner's review, 2026-09-27
+
+From the board's "For your eye" tab. The owner's words are in findings
+ow-fd-08 to ow-fd-11 (`2026-09-27_render_dataset/findings_fastdude.jsonl`).
+
+- **t2v finishes (ow-fd-08).**
+  - The finishes are near indistinguishable by eye: "they all look 100% the
+    same", "cant tell the diff between any".
+  - On noodle_bar all three beat PDD8 alone.
+  - The difference that shows is text: signs are worst on PDD8 alone and
+    fixed by either FlashGen finish, with the base finish second worst on
+    spec_unusual.
+  - The base finish had "some face morphing" on courtroom.
+  - **Verdict: full FlashGen from 0.8 stays the finisher.** Late-only buys
+    nothing as a finisher. The base finish is not preferred.
+- **i2v (ow-fd-09): no finisher.** The FlashGen finish "brightens right away
+  ... looked off" against the first frame. PDD8 alone is preferred.
+- **#46, late-only FlashGen alone (ow-fd-10): mixed, with a pattern.**
+  - On the single-figure beach ladder, late-only looks more natural, and more
+    so as the prompt leaves the typical path. That is O2's predicted
+    direction.
+  - Where people and objects must hold, it loses coherence: a third person on
+    subway_chase_short, and an unrecognisable piano in FT1's slapstick.
+  - It does not follow prompts better across the board, so the stripped-file
+    step does not follow. O2 stays open.
+  - Inference, not measured: FlashGen's early blocks carry both its
+    slow-motion stiffness on unusual prompts and its object coherence.
+- **PDD6 (ow-fd-11): not the default.** PDD8 wins all three scenes on motion
+  artefacts. The owner: "closeups like that are fine for pdd6 - low motion".
