@@ -80,6 +80,9 @@ there is not read.)
   rises on four of the six scenes read, less than under the FlashGen finish.
   On this batch's measures it does not repair PDD8's dim highlights, which is
   what the reverse switch was for.
+  - By #37's own rule (the VAE session's reading), a base finish that looks
+    like PDD8 means PDD8's dim highlights are not its coarse tail's doing. The
+    lift from the reverse switch is FlashGen's own.
 - **Inference, not measured:** the #43 pilot found the teacher refines
   high-change frames late and PDD8 does not. A base finish from 0.8 gives back
   some motion detail, which fits, but not the highlight lift, which is

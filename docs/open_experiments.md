@@ -2682,6 +2682,9 @@ the clean test of whether the tail is PDD's problem.
     finish.
   - On measures it does not repair PDD8's dim highlights; the FlashGen finish
     does. The owner's eye is pending.
+  - By this entry's rule (the VAE session): a base finish that looks like
+    PDD8 means the dim highlights are not the tail's. The reverse switch's
+    lift is FlashGen's own.
 
 ## 38. The save format, measured
 
