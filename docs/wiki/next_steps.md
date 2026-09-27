@@ -894,6 +894,26 @@ length every arm above rendered on this card without it.
 
 ## Now
 
+- **Distill weights and routes, from the 2026-09-26 overnight batch.** The
+  summary is fastdude's `../../bench/results/2026-09-27_followup_summary.md`.
+  What stays open:
+  - **FastH3: gates or backbone drift?** The conditioning swap is near-inert
+    (`../../bench/results/2026-09-27_fasth3_swap.md`). The next split is fl2va
+    plus FastH3's 50 gates, against FastH3 without them. Both are CPU builds;
+    rendering them is the owner's go.
+  - **FlashGen on blocks 34-49** keeps the 4-step finish with half the haze
+    (fastdude's FT1). It is a shippable `blocks` setting, pending the owner's
+    eye.
+  - **The reverse switch as PDD8's highlight fix**
+    (`../../bench/results/2026-09-27_reverse_switch.md`). One scene so far;
+    the lamp-lit interiors where PDD8 is flattest are next.
+  - **PDD6 as the faster PDD** (`../../bench/results/2026-09-27_ladder.md`).
+  - **Deprioritised builds on disk, for the owner to keep or delete.** They
+    rest on the retracted time-embedder inference: the two dial checkpoints
+    `fastvideo_fasth3_8step_v2_pruned_int8_convrot_temb_a{05,075}`, the two
+    conditioning-swap checkpoints, and the PDD-on-FastH3-time-embedder
+    sidecar.
+
 *2026-09-19, two corrections to the paragraph below.* (1) The "sage's audio more natural" lead is WITHDRAWN as a lead
 about chains: the pair the owner heard was sage against sage (the 2026-09-15 kitchen-scene "default" clip predates the chain
 move and is sage `auto`); on the true chain pairs every measured audio difference is inside the floor
