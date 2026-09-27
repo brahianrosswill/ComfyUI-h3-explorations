@@ -23,7 +23,9 @@ Older history lives elsewhere and is not copied here:
   "not built by policy" (`vendor/rebuild_kernel.sh`, since 2026-09-11). That
   kept #207/#208 (kitchen int8 attention; #208 adds an Ada-only cached-Q path
   at head_dim 128 with no mask, which is how H3's dense backend calls it) and
-  #192's `fp16_conv3d` depth gate out for a release cycle. Now we build
+  #192's `fp16_conv3d` depth gate out for a release cycle (the gate turned
+  out not to reach the tiled H3 encode:
+  `bench/results/2026-09-27_vae_encoder_fp16acc.md`). Now we build
   `h3-frontier`, upstream main plus our Sol commits, moved forward by merge.
   The installed version names both halves (`+sol.<ours>.up.<base>`), and the
   build record lists the base, its distance past the pin and the carried

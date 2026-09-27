@@ -16,10 +16,14 @@ artifact.
   - What arrives from upstream: #207/#208, kitchen's dense int8 attention
     (#208 adds an Ada-only cached-Q path at head_dim 128 with no mask, which
     is how H3's dense backend calls it), and #192's `fp16_conv3d` depth gate
-    (8192 to 16384). Under `--fast fp16_accumulation` the depth gate moves the
-    H3 VAE encoder's 512-channel 3x3x3 convs to fp16 accumulation (open
-    experiment #33, unblocked). Also W6A8, flash head_dim 256, and the Ascend
-    and HIP work. None of it touches Sol, VSA or CUDA rope.
+    (8192 to 16384). The H3 encode does not change: core's H3 VAE tiles at
+    256 px, so its depth-13824 convs launch small, and #192's small-launch
+    rule keeps them on fp32 accumulation. The encode is identical before and
+    after (`bench/results/2026-09-27_vae_encoder_fp16acc.md`, which closes
+    open experiment #33). *Corrected the same day: this entry first said the
+    gate moves those convs to fp16 accumulation.* Also W6A8, flash head_dim
+    256, and the Ascend and HIP work. None of it touches Sol, VSA or CUDA
+    rope.
   - Rows before and after are different builds. Their `comfy_kitchen` field
     says which.
   - `vendor/rebuild_kernel.sh`: the gate no longer refuses untagged main. It
