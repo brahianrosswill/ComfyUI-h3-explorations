@@ -46,6 +46,7 @@ from comfy_api.latest import io
 import comfy.ops
 import comfy.utils
 import folder_paths
+from comfy.patcher_extension import WrappersMP
 
 log = logging.getLogger(__name__)
 
@@ -78,7 +79,8 @@ class _Branch:
     weights to find. The matrices live in host RAM and are copied per call.
     """
 
-    def __init__(self, a, b, scale, diff_b):
+    def __init__(self, a, b, scale, diff_b, gate=None):
+        self.gate = gate
         self.a = _host(a)
         self.b = _host(b * scale if (b is not None and scale != 1.0) else b)
         self.diff_b = _host(diff_b)
@@ -89,6 +91,8 @@ class _Branch:
 
     def add_into(self, x, out):
         """`out += branch(x)`, in place; `out` is the base forward's fresh output."""
+        if self.gate is not None and not self.gate.active:
+            return out
         flat_out = out.view(-1, out.shape[-1])
         if self.a is not None:
             flat_x = x.reshape(-1, x.shape[-1]).to(out.dtype)
@@ -164,6 +168,87 @@ def _mlp_forward(mlp, fc1_forward, fc2_branch):
     return forward
 
 
+#: `modules` choices: which LoRA modules the branch applies. **Reasoned** from
+#: how an H3 LoRA targets the model: attention is `attn.*`, the MLP is `mlp.*`,
+#: and the timestep modulation is `adaln_proj.linear` (every block and the
+#: final layer). The owner, 2026-09-26: vary "what's running for each adapter
+#: and what it runs or skips or whatever and when at granular levels".
+MODULE_CHOICES = {
+    "all": lambda p: True,
+    "no adaln": lambda p: "adaln_proj" not in p,
+    "adaln only": lambda p: "adaln_proj" in p,
+    "attention only": lambda p: ".attn." in p,
+    "mlp only": lambda p: ".mlp." in p,
+}
+
+
+def parse_blocks(spec: str) -> set[int] | None:
+    """`all`, or a list of DiT block indices and ranges like `0-24,40`. None means all.
+
+    A named block list keeps only those DiT blocks; the token refiner and the
+    final layer are applied only under `all`.
+    """
+    spec = str(spec).strip().lower()
+    if spec == "all":
+        return None
+    out = set()
+    for part in spec.replace(" ", "").split(","):
+        if not part:
+            continue
+        if "-" in part:
+            a, b = part.split("-", 1)
+            out.update(range(int(a), int(b) + 1))
+        else:
+            out.add(int(part))
+    if not out:
+        raise ValueError(f"blocks {spec!r} names no block; write 'all' for every module")
+    return out
+
+
+def select(branches, modules="all", blocks=None):
+    """The branches a `modules` choice and a block set keep."""
+    keep = MODULE_CHOICES[modules]
+    out = {}
+    for path, br in branches.items():
+        if not keep(path):
+            continue
+        if blocks is not None:
+            if not path.startswith("blocks."):
+                continue
+            if int(path.split(".")[1]) not in blocks:
+                continue
+        out[path] = br
+    return out
+
+
+class _Window:
+    """Whether the branches apply at the current step: a percent window over the
+    sampler's own schedule, the step's index over the schedule's length, as
+    Sol's `start_percent` / `end_percent` read. Updated by a model wrapper each
+    call from `transformer_options`."""
+
+    def __init__(self, start: float, end: float):
+        self.start, self.end = float(start), float(end)
+        self.active = True
+
+    def update(self, transformer_options):
+        sched = transformer_options.get("sample_sigmas")
+        cur = transformer_options.get("sigmas")
+        if sched is None or cur is None or len(sched) < 2:
+            self.active = True
+            return
+        i = int((sched - float(cur.flatten()[0])).abs().argmin())
+        frac = i / (len(sched) - 1)
+        self.active = self.start <= frac < self.end
+
+
+def _window_wrapper(window):
+    def wrapper(executor, x, timestep, context, transformer_options={}, **kwargs):
+        window.update(transformer_options)
+        return executor(x, timestep, context, transformer_options, **kwargs)
+    return wrapper
+
+
 def attach(model, branches):
     """Clone `model` with every branch installed as an object patch."""
     m = model.clone()
@@ -216,15 +301,45 @@ class MiniMaxH3LoRABranch(io.ComfyNode):
                 io.Combo.Input("lora_name", options=folder_paths.get_filename_list("loras")),
                 io.Float.Input("strength", default=1.0, min=-10.0, max=10.0, step=0.01,
                                tooltip="ComfyUI's LoRA strength: the delta is strength * alpha / rank * B A."),
+                io.Combo.Input("modules", options=list(MODULE_CHOICES), default="all", optional=True,
+                               tooltip="Which of the LoRA's modules apply: all, everything but the "
+                                       "timestep modulation (adaln), adaln alone, attention alone, or "
+                                       "the MLP alone."),
+                io.String.Input("blocks", default="all", optional=True,
+                                tooltip="'all', or DiT block indices and ranges such as '0-24,40'. A "
+                                        "list keeps only those blocks; the token refiner and the final "
+                                        "layer apply only under 'all'."),
+                io.Float.Input("start_percent", default=0.0, min=0.0, max=1.0, step=0.01,
+                               optional=True,
+                               tooltip="The branch applies from this fraction of the sampler's steps."),
+                io.Float.Input("end_percent", default=1.0, min=0.0, max=1.0, step=0.01,
+                               optional=True,
+                               tooltip="The branch applies until this fraction of the sampler's steps. "
+                                       "A few-step distill usually needs its LoRA on every step."),
             ],
             outputs=[io.Model.Output(display_name="model")],
         )
 
     @classmethod
-    def execute(cls, model, lora_name, strength=1.0) -> io.NodeOutput:
+    def execute(cls, model, lora_name, strength=1.0, modules="all", blocks="all",
+                start_percent=0.0, end_percent=1.0) -> io.NodeOutput:
+        if not start_percent < end_percent:
+            raise ValueError(f"start_percent {start_percent} must be below end_percent {end_percent}")
         path = folder_paths.get_full_path_or_raise("loras", lora_name)
         branches = parse_lora(comfy.utils.load_torch_file(path, safe_load=True), strength)
+        branches = select(branches, modules, parse_blocks(blocks))
+        if not branches:
+            raise ValueError(f"modules={modules!r}, blocks={blocks!r} keep no module of {lora_name}")
+        windowed = (start_percent, end_percent) != (0.0, 1.0)
+        if windowed:
+            window = _Window(start_percent, end_percent)
+            for br in branches.values():
+                br.gate = window
         m = attach(model, branches)
-        log.info("[h3] LoRA branch: %s at strength %g, %d module(s) applied at the call",
-                 lora_name, strength, len(branches))
+        if windowed:
+            m.add_wrapper_with_key(WrappersMP.DIFFUSION_MODEL, "h3_lora_branch_window",
+                                   _window_wrapper(window))
+        log.info("[h3] LoRA branch: %s at strength %g, %d module(s) applied at the call "
+                 "(modules %s, blocks %s, steps %g-%g)", lora_name, strength, len(branches),
+                 modules, blocks, start_percent, end_percent)
         return io.NodeOutput(m)

@@ -4,6 +4,30 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.152.0
+
+### Added
+
+- **`MiniMaxH3LoRABranch` takes granular controls**, all optional and appended
+  (owner: vary "what's running for each adapter and what it runs or skips or
+  whatever and when at granular levels"):
+  - `modules`: all, no adaln, adaln only, attention only, or mlp only;
+  - `blocks`: "all", or DiT block indices and ranges;
+  - `start_percent` / `end_percent`: a window over the sampler's steps.
+  - **Check:** `bench/check_lora_branch.py` grades each against a float32
+    merge of exactly what it keeps, and a closed window against the base.
+- **`bench/measure_clip_tone.py` reads more of the picture:**
+  - warmth, saturation and a cut count;
+  - per-channel means and the orange and blue hue shares;
+  - flicker;
+  - the container's codec and colour tags, since a misread range tag would
+    wash a clip out with its pixels unchanged.
+- **`bench/measure_clip_delta.py --json`** keeps the per-frame delta series and
+  the cut times.
+- **For the fresh distill run:** `bench/make_distill_run_manifest.py`,
+  `bench/adherence_checklists.json` (per-scene beats, drafted from each
+  prompt's text) and `bench/rubrics/distill_run.json`.
+
 ## 0.151.2
 
 ### Changed

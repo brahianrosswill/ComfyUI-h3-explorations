@@ -33,6 +33,19 @@ holds (no linearisation), with luma Y from BT.709 weights:
   `bench/results/2026-09-26_subway_v2_s1.md` measured it ad hoc first).
 - `sat`: the mean of (max - min) / max over pixels with max above 0.02, HSV-style
   saturation with the near-black pixels left out.
+- `r`, `g`, `b`: the mean of each channel, so a colour cast shows as which
+  channel moved.
+- `orange` / `blue`: the share of reasonably saturated pixels (sat above 0.25)
+  whose hue falls in 15-45 or 190-250 degrees. The owner's "orangeish" read as
+  a hue, not only as warmth.
+- `flicker`: the standard deviation, over the sampled frames, of each frame's
+  mean luma, which is brightness pumping over time. Cuts inflate it, so read it
+  beside `cuts`.
+- Container tags, from `ffprobe`: codec, pixel format, colour range, colour
+  space, primaries, transfer and bitrate, in the JSON only. A range or space tag
+  the player misreads makes a clip look washed out with the pixels unchanged,
+  so a look difference between clips is only a pixel difference if their tags
+  agree (added 2026-09-26 at the owner's request).
 - `cuts`: hard cuts, counted as frames whose ffmpeg scene score (`select`'s
   `scene`, over every frame at full rate) exceeds `CUT_SCORE`. Set it beside the
   prompt's shot count as a cheap adherence proxy: a three-shot prompt should
@@ -107,7 +120,33 @@ def stats(f: np.ndarray) -> dict:
         "detail": round(float(lap.mean()), 4),
         "warmth": round(float((f[..., 0] - f[..., 2]).mean()), 3),
         "sat": round(float(sat.mean()), 3),
+        "r": round(float(f[..., 0].mean()), 3),
+        "g": round(float(f[..., 1].mean()), 3),
+        "b": round(float(f[..., 2].mean()), 3),
+        "orange": round(float(_hue_share(f, sat, 15, 45)), 4),
+        "blue": round(float(_hue_share(f, sat, 190, 250)), 4),
+        "flicker": round(float(y.reshape(len(y), -1).mean(axis=1).std()), 4),
     }
+
+
+def _hue_share(f: np.ndarray, sat: np.ndarray, lo: float, hi: float) -> float:
+    """Share of pixels with sat above 0.25 whose hue (degrees) is in [lo, hi)."""
+    r, g, b = f[..., 0], f[..., 1], f[..., 2]
+    mx, mn = f.max(axis=-1), f.min(axis=-1)
+    d = np.maximum(mx - mn, 1e-6)
+    h = np.where(mx == r, ((g - b) / d) % 6, np.where(mx == g, (b - r) / d + 2, (r - g) / d + 4)) * 60.0
+    sel = sat > 0.25
+    return float((sel & (h >= lo) & (h < hi)).mean())
+
+
+def container(path: Path) -> dict:
+    """The video stream's codec and colour tags, from ffprobe."""
+    out = subprocess.run(
+        ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+         "stream=codec_name,pix_fmt,color_range,color_space,color_primaries,color_transfer,bit_rate,avg_frame_rate",
+         "-of", "json", str(path)], capture_output=True, text=True).stdout
+    streams = json.loads(out or "{}").get("streams") or [{}]
+    return streams[0]
 
 
 def cuts(path: Path) -> int:
@@ -125,7 +164,8 @@ def main() -> int:
     ap.add_argument("--json", type=Path, default=None)
     args = ap.parse_args()
     keys = ["black", "white", "range", "mid", "rms_contrast", "crushed", "clipped",
-            "chroma", "haze", "detail", "warmth", "sat", "cuts"]
+            "chroma", "haze", "detail", "warmth", "sat", "r", "g", "b", "orange", "blue",
+            "flicker", "cuts"]
     rows = []
     print(f"{'clip':<58}" + "".join(f"{k:>13}" for k in keys))
     for clip in args.clips:
@@ -138,7 +178,10 @@ def main() -> int:
         for tag, sub in parts:
             s = stats(sub)
             s["cuts"] = n_cuts if tag == "all" else ""
-            rows.append({"clip": clip.name, "part": tag, **s})
+            row = {"clip": clip.name, "part": tag, **s}
+            if tag == "all":
+                row["container"] = container(clip)
+            rows.append(row)
             name = clip.stem if tag == "all" else f"  {tag}"
             print(f"{name[:58]:<58}" + "".join(f"{s[k]:>13}" for k in keys))
     if args.json:

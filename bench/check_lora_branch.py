@@ -211,6 +211,62 @@ def main() -> int:
     check("control: diff_b dropped is caught", rel(bad, ref) > 100 * max(err, 1e-9),
           f"{rel(bad, ref):.3g}")
 
+    # the granular controls, each against a merge of exactly what it keeps
+    def merged_subset(keep):
+        ref_ = copy.deepcopy(dm)
+        with torch.no_grad():
+            for path in targets(dm):
+                if not keep(path):
+                    continue
+                mod = ref_.get_submodule(path)
+                k = f"diffusion_model.{path}"
+                mod.weight += STRENGTH * ALPHA / RANK * (sd[f"{k}.lora_B.weight"] @ sd[f"{k}.lora_A.weight"])
+                if f"{k}.diff_b" in sd:
+                    mod.bias += STRENGTH * sd[f"{k}.diff_b"]
+        return run(ref_)
+
+    def branched_select(modules, blocks):
+        saved = lb.parse_lora
+        lb.parse_lora = lambda sd_, st: lb.select(saved(sd_, st), modules, lb.parse_blocks(blocks))
+        try:
+            return branched(dm, sd)[0]
+        finally:
+            lb.parse_lora = saved
+
+    out_na = branched_select("no adaln", "all")
+    ref_na = merged_subset(lambda p: "adaln_proj" not in p)
+    check("modules 'no adaln' equals a merge without the adaln modules",
+          rel(out_na, ref_na) < 1e-5 and rel(out_na, ref) > 1e-3,
+          f"{rel(out_na, ref_na):.3g} from its merge, {rel(out_na, ref):.3g} from the full merge")
+    out_b1 = branched_select("all", "1")
+    ref_b1 = merged_subset(lambda p: p.startswith("blocks.1."))
+    check("blocks '1' equals a merge of block 1 alone",
+          rel(out_b1, ref_b1) < 1e-5 and rel(out_b1, ref) > 1e-3,
+          f"{rel(out_b1, ref_b1):.3g}")
+    w = lb._Window(0.5, 1.0)
+    sched = torch.tensor([1.0, 0.8, 0.5, 0.2, 0.0])
+    active = []
+    for sig in sched[:-1]:
+        w.update({"sample_sigmas": sched, "sigmas": sig.reshape(1)})
+        active.append(w.active)
+    check("the step window applies from its start fraction on",
+          active == [False, False, True, True], str(active))
+    gate = lb._Window(0.0, 1.0)
+    gate.active = False
+    saved = lb.parse_lora
+    def gated(sd_, st):
+        br = saved(sd_, st)
+        for b in br.values():
+            b.gate = gate
+        return br
+    lb.parse_lora = gated
+    try:
+        out_off = branched(dm, sd)[0]
+    finally:
+        lb.parse_lora = saved
+    check("a closed window applies nothing", rel(out_off, base) < 1e-6,
+          f"{rel(out_off, base):.3g} from the base")
+
     try:
         lb.parse_lora({"diffusion_model.blocks.0.attn.qkv_proj.hada_w1_a": torch.zeros(1)}, 1.0)
         check("an unplaceable key is refused", False)

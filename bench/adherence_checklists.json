@@ -1,0 +1,948 @@
+{
+ "_comment": "Per-scene adherence beats for bench/results/2026-09-26 big run; drafted from each prompt's text; a viewer marks each yes/no/partly.",
+ "scenes": {
+  "t2va_noodle_bar": {
+   "frames": 107,
+   "shots": 1,
+   "beats": [
+    {
+     "shot": 0,
+     "kind": "style",
+     "beat": "Live-action photographic look, not animated or painted"
+    },
+    {
+     "shot": 0,
+     "kind": "cut",
+     "beat": "One continuous shot; no cut anywhere in the clip"
+    },
+    {
+     "shot": 0,
+     "kind": "cast",
+     "beat": "Exactly two people: a customer in a grey raincoat and a cook in a white apron; no extra or cloned people"
+    },
+    {
+     "shot": 1,
+     "kind": "text",
+     "beat": "A red neon sign reading \"老张牛肉面\" hangs above the serving hatch, legible and correctly written"
+    },
+    {
+     "shot": 1,
+     "kind": "geography",
+     "beat": "Customer is on the street side of the counter; cook is behind the steaming stockpot"
+    },
+    {
+     "shot": 1,
+     "kind": "camera",
+     "beat": "The camera zooms out slowly, widening from the sign to the whole counter"
+    },
+    {
+     "shot": 1,
+     "kind": "count",
+     "beat": "The customer holds up two fingers toward the cook"
+    },
+    {
+     "shot": 1,
+     "kind": "dialogue",
+     "beat": "The customer, not the cook, says \"两碗牛肉面，一碗不要辣。\" in Chinese"
+    },
+    {
+     "shot": 1,
+     "kind": "role",
+     "beat": "The cook nods once and lifts a ladle, and never speaks"
+    },
+    {
+     "shot": 1,
+     "kind": "audio",
+     "beat": "A small radio behind the counter is heard playing a thin, tinny pop song"
+    },
+    {
+     "shot": 0,
+     "kind": "audio",
+     "beat": "No music other than the radio; stockpot simmer and street traffic audible"
+    }
+   ]
+  },
+  "t2va_post_office": {
+   "frames": 141,
+   "shots": 1,
+   "beats": [
+    {
+     "shot": 0,
+     "kind": "style",
+     "beat": "Watercolor look: soft painted edges, visible paper grain, bleeding colour"
+    },
+    {
+     "shot": 0,
+     "kind": "cut",
+     "beat": "One continuous shot; no cut anywhere in the clip"
+    },
+    {
+     "shot": 1,
+     "kind": "camera",
+     "beat": "The camera stays static for the whole clip"
+    },
+    {
+     "shot": 0,
+     "kind": "cast",
+     "beat": "No person is visible; the only animal is one tabby cat, not duplicated"
+    },
+    {
+     "shot": 1,
+     "kind": "text",
+     "beat": "A card inside the window reads \"CLOSED FOR STOCKTAKING\" in black capitals on cream board"
+    },
+    {
+     "shot": 1,
+     "kind": "geography",
+     "beat": "Brass letter slot at the left of frame, stone step below the window"
+    },
+    {
+     "shot": 1,
+     "kind": "action",
+     "beat": "Snow falls throughout and visibly gathers on the window rail and the step"
+    },
+    {
+     "shot": 1,
+     "kind": "geography",
+     "beat": "The cat sits on the inner sill, behind the glass, not outside"
+    },
+    {
+     "shot": 1,
+     "kind": "action",
+     "beat": "The cat blinks and folds its paws"
+    },
+    {
+     "shot": 1,
+     "kind": "count",
+     "beat": "Exactly one envelope is pushed out through the letter slot from inside and lands face down on the step"
+    },
+    {
+     "shot": 1,
+     "kind": "audio",
+     "beat": "The cat makes no sound; no voices at all"
+    },
+    {
+     "shot": 1,
+     "kind": "audio",
+     "beat": "The slot flap and the envelope landing are heard"
+    },
+    {
+     "shot": 0,
+     "kind": "audio",
+     "beat": "Soft celesta notes with a low sustained string play as score"
+    }
+   ]
+  },
+  "t2va_rooftop_pov": {
+   "frames": 192,
+   "shots": 2,
+   "beats": [
+    {
+     "shot": 0,
+     "kind": "style",
+     "beat": "Live-action photographic look, not animated"
+    },
+    {
+     "shot": 0,
+     "kind": "cast",
+     "beat": "One runner only; the woman who shouts is heard but never seen"
+    },
+    {
+     "shot": 1,
+     "kind": "camera",
+     "beat": "Shot 1 is first-person POV: gloved hands pump at the bottom of frame"
+    },
+    {
+     "shot": 1,
+     "kind": "camera",
+     "beat": "The POV shakes strongly with each stride"
+    },
+    {
+     "shot": 1,
+     "kind": "geography",
+     "beat": "Running across a gravel rooftop toward a low brick parapet, with the lit windows of the next building beyond"
+    },
+    {
+     "shot": 1,
+     "kind": "dialogue",
+     "beat": "An off-screen woman's voice shouts \"Left, go left!\"; the runner does not say it"
+    },
+    {
+     "shot": 1,
+     "kind": "geography",
+     "beat": "After the shout, the POV swings toward the left corner of the parapet"
+    },
+    {
+     "shot": 2,
+     "kind": "cut",
+     "beat": "The clip cuts to a wide shot from the neighbouring roof"
+    },
+    {
+     "shot": 2,
+     "kind": "cast",
+     "beat": "The runner is now seen on-screen in a dark hooded jacket and gloves, one person"
+    },
+    {
+     "shot": 2,
+     "kind": "action",
+     "beat": "The runner plants a foot on the parapet, vaults the gap, and lands on the near roof"
+    },
+    {
+     "shot": 2,
+     "kind": "action",
+     "beat": "The runner skids to a crouch with both hands down"
+    },
+    {
+     "shot": 2,
+     "kind": "camera",
+     "beat": "The camera pulls out fast and wide during the vault"
+    },
+    {
+     "shot": 2,
+     "kind": "dialogue",
+     "beat": "The runner speaks no words; only hard panting is heard"
+    },
+    {
+     "shot": 0,
+     "kind": "audio",
+     "beat": "A fast drum-and-synth score that ends on a single hit at the landing"
+    }
+   ]
+  },
+  "t2va_box_office": {
+   "frames": 209,
+   "shots": 1,
+   "beats": [
+    {
+     "shot": 0,
+     "kind": "style",
+     "beat": "Vintage 16mm film look: grain, warm faded colour, halation around lights"
+    },
+    {
+     "shot": 0,
+     "kind": "cut",
+     "beat": "One continuous shot; no cut anywhere in the clip"
+    },
+    {
+     "shot": 0,
+     "kind": "cast",
+     "beat": "Exactly two people: an older woman cashier behind the glass and a teenage boy customer at the window"
+    },
+    {
+     "shot": 1,
+     "kind": "text",
+     "beat": "A red-lettered board above the window reads \"TONIGHT ONLY 7:30\""
+    },
+    {
+     "shot": 1,
+     "kind": "camera",
+     "beat": "The camera tilts down slowly from the lettered board to the coin dish"
+    },
+    {
+     "shot": 1,
+     "kind": "dialogue",
+     "beat": "The cashier taps the glass and says \"Seven thirty, nothing after.\""
+    },
+    {
+     "shot": 1,
+     "kind": "count",
+     "beat": "The customer slides a folded note and two coins into the brass dish"
+    },
+    {
+     "shot": 1,
+     "kind": "dialogue",
+     "beat": "The customer answers \"Two, back row.\""
+    },
+    {
+     "shot": 1,
+     "kind": "dialogue",
+     "beat": "The cashier, not the customer, says \"Back row is gone, love.\""
+    },
+    {
+     "shot": 1,
+     "kind": "count",
+     "beat": "The cashier tears two tickets from the roll and pushes them across"
+    },
+    {
+     "shot": 1,
+     "kind": "dialogue",
+     "beat": "The three lines come in order, one speaker at a time, with no overlap"
+    },
+    {
+     "shot": 0,
+     "kind": "audio",
+     "beat": "No music; coins ring in the dish and tickets tear"
+    }
+   ]
+  },
+  "t2va_radio_drama": {
+   "frames": 243,
+   "shots": 2,
+   "beats": [
+    {
+     "shot": 0,
+     "kind": "style",
+     "beat": "Live-action photographic look, not animated"
+    },
+    {
+     "shot": 1,
+     "kind": "cast",
+     "beat": "Shot 1 shows three actors at microphones plus one foley artist; no extra or cloned people"
+    },
+    {
+     "shot": 1,
+     "kind": "text",
+     "beat": "A red \"ON AIR\" sign on a white panel is lit above the door, top left of frame"
+    },
+    {
+     "shot": 1,
+     "kind": "role",
+     "beat": "The foley artist in a grey cardigan carries a pair of leather shoes from the door to the foley table at the left and sets them on gravel"
+    },
+    {
+     "shot": 1,
+     "kind": "camera",
+     "beat": "The camera tracks slowly with the foley artist"
+    },
+    {
+     "shot": 1,
+     "kind": "dialogue",
+     "beat": "The older actor in a waistcoat at the first microphone says \"Someone is on the stairs.\""
+    },
+    {
+     "shot": 1,
+     "kind": "dialogue",
+     "beat": "The actress in a green scarf at the second microphone answers \"Then put out the lamp.\""
+    },
+    {
+     "shot": 1,
+     "kind": "role",
+     "beat": "The foley artist never speaks; she walks the shoes across the gravel and the steps are heard"
+    },
+    {
+     "shot": 2,
+     "kind": "cut",
+     "beat": "The clip cuts to a close shot of a third actor, a young man in headphones"
+    },
+    {
+     "shot": 2,
+     "kind": "camera",
+     "beat": "The camera stays static in shot 2"
+    },
+    {
+     "shot": 2,
+     "kind": "text",
+     "beat": "A white sans-serif subtitle in the lower third reads \"I can hear him breathing.\""
+    },
+    {
+     "shot": 2,
+     "kind": "text",
+     "beat": "The subtitle appears once, not doubled or garbled"
+    },
+    {
+     "shot": 2,
+     "kind": "dialogue",
+     "beat": "The young man in headphones, not another actor, whispers \"I can hear him breathing.\""
+    },
+    {
+     "shot": 0,
+     "kind": "audio",
+     "beat": "A low sustained double-bass note with a plucked figure entering around the cut"
+    }
+   ]
+  },
+  "t2va_desert_crew": {
+   "frames": 294,
+   "shots": 3,
+   "beats": [
+    {
+     "shot": 0,
+     "kind": "style",
+     "beat": "Documentary live-action look, not stylised"
+    },
+    {
+     "shot": 0,
+     "kind": "cast",
+     "beat": "Exactly two crew: an older woman supervisor in hi-vis vest and wide-brimmed hat, and a younger man in the same vest; no others"
+    },
+    {
+     "shot": 1,
+     "kind": "geography",
+     "beat": "A two-lane desert highway with a yellow road roller parked at the edge of fresh asphalt"
+    },
+    {
+     "shot": 1,
+     "kind": "geography",
+     "beat": "Supervisor stands at the centre line with a clipboard; the younger man kneels at a seam on the right of frame"
+    },
+    {
+     "shot": 1,
+     "kind": "camera",
+     "beat": "The camera pushes in slowly along the centre line toward them"
+    },
+    {
+     "shot": 2,
+     "kind": "cut",
+     "beat": "The clip cuts to a medium shot of the pair at the seam, roller drum at the left edge"
+    },
+    {
+     "shot": 2,
+     "kind": "dialogue",
+     "beat": "The supervisor, not the younger man, taps the clipboard on her thigh and says \"Give it another pass before the sun drops.\""
+    },
+    {
+     "shot": 3,
+     "kind": "cut",
+     "beat": "The clip cuts to a low close shot of the roller's drum against the seam"
+    },
+    {
+     "shot": 3,
+     "kind": "dialogue",
+     "beat": "The supervisor's line is not chopped or restarted by the cut"
+    },
+    {
+     "shot": 3,
+     "kind": "camera",
+     "beat": "The camera stays static on the drum"
+    },
+    {
+     "shot": 3,
+     "kind": "action",
+     "beat": "The roller stays parked; nobody drives it"
+    },
+    {
+     "shot": 3,
+     "kind": "dialogue",
+     "beat": "The younger man leans into frame above the drum and says \"Two more and it's flat.\""
+    },
+    {
+     "shot": 0,
+     "kind": "audio",
+     "beat": "No music; an idling diesel engine and wind are heard"
+    }
+   ]
+  },
+  "t2va_slapstick_moving_piano": {
+   "frames": 345,
+   "shots": 3,
+   "beats": [
+    {
+     "shot": 0,
+     "kind": "style",
+     "beat": "Vintage slapstick comedy look"
+    },
+    {
+     "shot": 1,
+     "kind": "cast",
+     "beat": "Two moving men in bowler hats and dungarees plus one bystander with a tiny poodle at the top landing; no extra or cloned people"
+    },
+    {
+     "shot": 1,
+     "kind": "text",
+     "beat": "A painted enamel street sign reads \"HIGH STREET STAIRS\""
+    },
+    {
+     "shot": 1,
+     "kind": "role",
+     "beat": "The two men carry an upright piano down narrow outdoor steps, the lead mover at the lower end"
+    },
+    {
+     "shot": 1,
+     "kind": "dialogue",
+     "beat": "The lead mover at the lower end looks up and yelps \"Hold the handbrake rope, Barnaby, it's slipping through my fingers!\""
+    },
+    {
+     "shot": 1,
+     "kind": "camera",
+     "beat": "The camera pedestals down slowly following the piano"
+    },
+    {
+     "shot": 2,
+     "kind": "cut",
+     "beat": "The clip cuts to a medium shot of the heavyset partner at the top of the stairs"
+    },
+    {
+     "shot": 2,
+     "kind": "action",
+     "beat": "The rope in the partner's hands snaps in two with a puff of dust"
+    },
+    {
+     "shot": 2,
+     "kind": "dialogue",
+     "beat": "The partner, not the lead mover, mutters \"Well, look on the bright side, it's much lighter now.\""
+    },
+    {
+     "shot": 2,
+     "kind": "camera",
+     "beat": "The camera zooms in fast on the partner's face"
+    },
+    {
+     "shot": 3,
+     "kind": "cut",
+     "beat": "The clip cuts to a wide shot from the bottom of the stairs"
+    },
+    {
+     "shot": 3,
+     "kind": "action",
+     "beat": "The lead mover dives onto the banister and the piano slides down the steps and crashes into a fruit cart, sending oranges flying"
+    },
+    {
+     "shot": 3,
+     "kind": "role",
+     "beat": "Both movers slide down the banister rails after the piano"
+    },
+    {
+     "shot": 3,
+     "kind": "camera",
+     "beat": "The camera stays static in shot 3"
+    }
+   ]
+  },
+  "t2va_kpop_dance_studio": {
+   "frames": 345,
+   "shots": 3,
+   "beats": [
+    {
+     "shot": 0,
+     "kind": "style",
+     "beat": "Modern music-video look in a minimalist studio with ice-blue lighting and a mirrored back wall"
+    },
+    {
+     "shot": 0,
+     "kind": "cast",
+     "beat": "One woman lead vocalist and exactly four backup dancers; no extra or cloned people"
+    },
+    {
+     "shot": 1,
+     "kind": "text",
+     "beat": "An illuminated wall graphic reads \"STUDIO ZERO\""
+    },
+    {
+     "shot": 1,
+     "kind": "role",
+     "beat": "The four backup dancers hold a freeze pose in the mirrored corner while the vocalist dances at a standing microphone"
+    },
+    {
+     "shot": 1,
+     "kind": "camera",
+     "beat": "The camera pans right fast across the dance line"
+    },
+    {
+     "shot": 1,
+     "kind": "dialogue",
+     "beat": "The vocalist sings the Korean line \"심장이 뛰는 소리를 들어봐.\""
+    },
+    {
+     "shot": 0,
+     "kind": "role",
+     "beat": "Only the vocalist sings; the backup dancers never sing or speak"
+    },
+    {
+     "shot": 2,
+     "kind": "cut",
+     "beat": "The clip cuts to a tight low-angle medium close shot of the vocalist with white and violet LED bars strobing behind"
+    },
+    {
+     "shot": 2,
+     "kind": "dialogue",
+     "beat": "The vocalist sings \"Never stop the beat, light up the night!\" in English"
+    },
+    {
+     "shot": 2,
+     "kind": "camera",
+     "beat": "The camera pushes in fast toward her eyes"
+    },
+    {
+     "shot": 3,
+     "kind": "cut",
+     "beat": "The clip cuts to a wide centre-stage shot"
+    },
+    {
+     "shot": 3,
+     "kind": "count",
+     "beat": "The singer and four backup dancers (four, not more or fewer) drop into a floor spin together"
+    },
+    {
+     "shot": 3,
+     "kind": "camera",
+     "beat": "The camera pulls out slowly, then holds static as the performers freeze in a silhouette formation"
+    },
+    {
+     "shot": 0,
+     "kind": "audio",
+     "beat": "A fast electronic dance track with heavy bass plays as score"
+    }
+   ]
+  },
+  "t2va_courtroom_verdict": {
+   "frames": 345,
+   "shots": 3,
+   "beats": [
+    {
+     "shot": 0,
+     "kind": "style",
+     "beat": "Black-and-white 1950s courtroom look"
+    },
+    {
+     "shot": 0,
+     "kind": "cast",
+     "beat": "A robed judge, a prosecutor in a three-piece suit, and a defendant who is a different man; no cloned principals"
+    },
+    {
+     "shot": 1,
+     "kind": "text",
+     "beat": "A carved oak seal reading \"JUSTICE UNDER LAW\" sits behind the bench"
+    },
+    {
+     "shot": 1,
+     "kind": "role",
+     "beat": "The judge sits motionless with folded hands and never speaks"
+    },
+    {
+     "shot": 1,
+     "kind": "action",
+     "beat": "The prosecutor strides along the jury rail holding a gold pocket watch"
+    },
+    {
+     "shot": 1,
+     "kind": "dialogue",
+     "beat": "The prosecutor, turning to the witness stand, says \"Did you or did you not sign the transfer deed at midnight?\""
+    },
+    {
+     "shot": 1,
+     "kind": "camera",
+     "beat": "The camera pushes in slowly toward the witness box"
+    },
+    {
+     "shot": 2,
+     "kind": "cut",
+     "beat": "The clip cuts to a close medium shot of the defendant gripping the brass rail of the witness stand"
+    },
+    {
+     "shot": 2,
+     "kind": "dialogue",
+     "beat": "The defendant, not the prosecutor, says \"That signature was forged before I even reached the docks.\""
+    },
+    {
+     "shot": 2,
+     "kind": "camera",
+     "beat": "The camera stays static on the defendant"
+    },
+    {
+     "shot": 3,
+     "kind": "cut",
+     "beat": "The clip cuts to a high-angle shot looking down over the bench across the courtroom"
+    },
+    {
+     "shot": 3,
+     "kind": "role",
+     "beat": "The prosecutor sets the pocket watch down on the defense table"
+    },
+    {
+     "shot": 3,
+     "kind": "camera",
+     "beat": "The camera trucks right slowly, bringing the spectator benches into frame"
+    },
+    {
+     "shot": 0,
+     "kind": "audio",
+     "beat": "A slow, brooding string score under the scene"
+    }
+   ]
+  },
+  "t2va_samurai_bamboo_duel": {
+   "frames": 345,
+   "shots": 3,
+   "beats": [
+    {
+     "shot": 0,
+     "kind": "style",
+     "beat": "Live-action period drama in a misty bamboo grove"
+    },
+    {
+     "shot": 0,
+     "kind": "cast",
+     "beat": "Exactly two warriors: a ronin in a grey kimono and straw sandals, and a rival in dark armour and a lacquered straw hat; no others"
+    },
+    {
+     "shot": 1,
+     "kind": "text",
+     "beat": "A wooden trail marker with carved lettering stands beside the path (prompt quotes \"SEKIGAHARA ROAD\" but says carved in kanji)"
+    },
+    {
+     "shot": 1,
+     "kind": "geography",
+     "beat": "The two stand far apart across the clearing, the ronin's hand on his sheathed katana"
+    },
+    {
+     "shot": 1,
+     "kind": "dialogue",
+     "beat": "The ronin, not the rival, says \"この道を行くなら、剣を抜け。\" in Japanese; the rival does not answer"
+    },
+    {
+     "shot": 1,
+     "kind": "camera",
+     "beat": "The camera pedestals down slowly to the ronin's scabbard"
+    },
+    {
+     "shot": 2,
+     "kind": "cut",
+     "beat": "The clip cuts to an extreme close shot of the rival's gloved fingers thumbing the tsuba, loosening the blade"
+    },
+    {
+     "shot": 2,
+     "kind": "dialogue",
+     "beat": "The rival says \"我が刃はお前の首を望んでいる。\" in Japanese"
+    },
+    {
+     "shot": 2,
+     "kind": "camera",
+     "beat": "The camera zooms in fast on the blade edge"
+    },
+    {
+     "shot": 3,
+     "kind": "cut",
+     "beat": "The clip cuts to a wide profile shot of both warriors sprinting toward each other"
+    },
+    {
+     "shot": 3,
+     "kind": "count",
+     "beat": "Their blades cut through exactly three bamboo stalks, which topple"
+    },
+    {
+     "shot": 3,
+     "kind": "action",
+     "beat": "The duelists pass each other and freeze back-to-back with drawn swords"
+    },
+    {
+     "shot": 3,
+     "kind": "camera",
+     "beat": "The camera stays static in shot 3"
+    },
+    {
+     "shot": 0,
+     "kind": "audio",
+     "beat": "Sparse taiko and shakuhachi score; a blade click is heard in shot 2"
+    }
+   ]
+  },
+  "t2va_silent_film": {
+   "frames": 362,
+   "shots": 3,
+   "beats": [
+    {
+     "shot": 0,
+     "kind": "style",
+     "beat": "Silent-era black-and-white look: heavy grain, vignetted corners, exposure flicker"
+    },
+    {
+     "shot": 0,
+     "kind": "audio",
+     "beat": "No voices and no sound effects anywhere in the clip"
+    },
+    {
+     "shot": 0,
+     "kind": "audio",
+     "beat": "A solo piano plays throughout and fades out on the final frame"
+    },
+    {
+     "shot": 1,
+     "kind": "cast",
+     "beat": "One young woman in a high-collared blouse sits at a lace-curtained window holding an open letter"
+    },
+    {
+     "shot": 1,
+     "kind": "camera",
+     "beat": "The camera stays static in shot 1"
+    },
+    {
+     "shot": 1,
+     "kind": "action",
+     "beat": "She reads, lifts her eyes to the window, mouths words silently, and presses the letter to her chest"
+    },
+    {
+     "shot": 2,
+     "kind": "cut",
+     "beat": "The clip changes to a black intertitle card filling the frame"
+    },
+    {
+     "shot": 2,
+     "kind": "text",
+     "beat": "The card reads \"SHE NEVER WROTE BACK.\" in centred white serif capitals inside a thin white ornamental border"
+    },
+    {
+     "shot": 2,
+     "kind": "camera",
+     "beat": "The card is held static"
+    },
+    {
+     "shot": 3,
+     "kind": "cut",
+     "beat": "A fade to black, then a wide shot of a railway platform under a glass canopy"
+    },
+    {
+     "shot": 3,
+     "kind": "cast",
+     "beat": "One man in a long overcoat and bowler hat beside a leather case; no other people"
+    },
+    {
+     "shot": 3,
+     "kind": "camera",
+     "beat": "The camera pans left slowly, following him"
+    },
+    {
+     "shot": 3,
+     "kind": "action",
+     "beat": "He picks up the case and walks off, turns once toward the camera and mouths silent words with his hat held to his chest"
+    },
+    {
+     "shot": 3,
+     "kind": "action",
+     "beat": "He puts the hat back on and walks into the steam until only his silhouette remains"
+    }
+   ]
+  },
+  "t2va_subway_chase": {
+   "frames": 345,
+   "shots": 3,
+   "beats": [
+    {
+     "shot": 0,
+     "kind": "style",
+     "beat": "Live-action photographic look, not animated"
+    },
+    {
+     "shot": 0,
+     "kind": "cast",
+     "beat": "Exactly two people in the whole station: the suspect in a grey hooded windbreaker and the agent in a black leather jacket; no bystanders, no clones"
+    },
+    {
+     "shot": 1,
+     "kind": "text",
+     "beat": "An illuminated overhead sign reads \"DOWNTOWN PLATFORM\""
+    },
+    {
+     "shot": 1,
+     "kind": "role",
+     "beat": "The suspect vaults the turnstile first and the agent vaults the same turnstile behind him: the agent chases the suspect, not the reverse"
+    },
+    {
+     "shot": 1,
+     "kind": "geography",
+     "beat": "The suspect runs toward a concrete stairwell that leads down"
+    },
+    {
+     "shot": 1,
+     "kind": "camera",
+     "beat": "A fast tracking shot alongside the agent, with strong shake"
+    },
+    {
+     "shot": 2,
+     "kind": "cut",
+     "beat": "The clip cuts to a medium close shot of the agent alone on the stairwell landing, the suspect out of frame"
+    },
+    {
+     "shot": 2,
+     "kind": "dialogue",
+     "beat": "The agent, not the suspect, touches his earpiece and says \"Suspect is heading down to the lower tracks!\""
+    },
+    {
+     "shot": 2,
+     "kind": "camera",
+     "beat": "The camera pushes in fast and large toward the agent's face"
+    },
+    {
+     "shot": 2,
+     "kind": "geography",
+     "beat": "The agent runs on down the stairs, not up"
+    },
+    {
+     "shot": 3,
+     "kind": "cut",
+     "beat": "The clip cuts to a wide low-angle shot from the platform floor looking up the stairwell, yellow strobes pulsing"
+    },
+    {
+     "shot": 3,
+     "kind": "role",
+     "beat": "The suspect lands on the platform first; the agent jumps down behind him, tackles him, and ends pinning him on the floor"
+    },
+    {
+     "shot": 3,
+     "kind": "camera",
+     "beat": "The camera stays static in shot 3"
+    },
+    {
+     "shot": 0,
+     "kind": "dialogue",
+     "beat": "Only one voice speaks, the agent's; the suspect makes no vocal sound"
+    }
+   ]
+  },
+  "t2va_subway_chase_short": {
+   "frames": 124,
+   "shots": 2,
+   "beats": [
+    {
+     "shot": 0,
+     "kind": "style",
+     "beat": "Live-action photographic look, not animated"
+    },
+    {
+     "shot": 0,
+     "kind": "cast",
+     "beat": "Exactly two people in the whole station: the suspect in a grey hooded windbreaker and the agent in a black leather jacket; no bystanders, no clones"
+    },
+    {
+     "shot": 1,
+     "kind": "text",
+     "beat": "An illuminated overhead sign reads \"DOWNTOWN PLATFORM\""
+    },
+    {
+     "shot": 1,
+     "kind": "role",
+     "beat": "The suspect vaults the turnstile first and the agent vaults the same turnstile behind him: the agent chases the suspect, not the reverse"
+    },
+    {
+     "shot": 1,
+     "kind": "geography",
+     "beat": "The suspect runs toward a concrete stairwell that leads down"
+    },
+    {
+     "shot": 1,
+     "kind": "camera",
+     "beat": "A fast tracking shot alongside the agent, with strong shake"
+    },
+    {
+     "shot": 2,
+     "kind": "cut",
+     "beat": "The clip cuts to a medium close shot of the agent at the top of the stairwell"
+    },
+    {
+     "shot": 2,
+     "kind": "geography",
+     "beat": "The suspect is below the agent, running down the steps"
+    },
+    {
+     "shot": 2,
+     "kind": "dialogue",
+     "beat": "The agent, not the suspect, touches his earpiece and says \"He's heading down!\""
+    },
+    {
+     "shot": 2,
+     "kind": "camera",
+     "beat": "The camera pushes in fast and large toward the agent's face"
+    },
+    {
+     "shot": 2,
+     "kind": "geography",
+     "beat": "The agent runs down the stairs after the suspect, not up"
+    },
+    {
+     "shot": 0,
+     "kind": "dialogue",
+     "beat": "Only one voice speaks, the agent's; the suspect makes no vocal sound"
+    }
+   ]
+  }
+ }
+}
