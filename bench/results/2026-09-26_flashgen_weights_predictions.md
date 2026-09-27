@@ -47,3 +47,37 @@ FastH3's full weights (`2026-09-26_fasth3_weights_predictions.md`). CPU only.
   batch are this dial at two points.
 
 Each gets a dated verdict line when its number is in.
+
+## Verdicts, 2026-09-26
+
+The numbers are in `2026-09-26_flashgen_weights.json`, from
+`bench/analyze_flashgen_weights.py`.
+
+- **FP1, rank: held on the headline, failed on both shapes.**
+  - **Held:** the effective rank is far below 64. 95% of the energy sits in
+    18 singular values on average (predicted about 13) and 99% in 31
+    (predicted under 40). The conversion keeps every non-adaln module
+    exactly: singular values agree to 5e-16.
+  - **Failed, by kind:** fc2 needs the most rank, not qkv.
+  - **Failed, by depth, and the wrong way round:** blocks 34 to 49 are nearly
+    rank 2, against about 30 in blocks 0 to 16. FlashGen's substantive change
+    is in the early blocks, where content and layout form, and the late
+    blocks carry a very low-dimensional adjustment.
+  - The source's adaln LoRA is rank 2 to 3 per block.
+- **FP3, adaln in t: held.**
+  - The change is smooth in t, with no structure at the four training
+    sigmas.
+  - It is slightly larger in the trained band than below 0.6.
+  - It is tiny: about a tenth of a percent of the base's modulation, where
+    the VAE session measured FastH3 at about 5%. FlashGen barely touches
+    timestep conditioning.
+  - So the follow-up batch's `flashgen_noadaln` arm will likely look almost
+    like full FlashGen, and Claude's P3 in the run predictions ("without
+    adaln: less contrast") is probably wrong. That is inference until the arm
+    lands.
+- **FP2** waits for the VAE session's change map, and **FP4** for the
+  strength arms.
+- **Suggested by the rank map, not yet run:** a block transplant through
+  `MiniMaxH3LoRABranch.blocks`, FlashGen on 0-33 only against 34-49 only. It
+  asks whether FlashGen's look and its adherence loss live where its
+  high-rank change is.
