@@ -1,5 +1,5 @@
 {
- "what": "open_experiments #34: PDD8 to sigma 0.8, then FlashGen on blocks 34-49 finishing (rev_late_h080), against the same switch with full FlashGen (rev_h080), on noodle_bar, radio_drama and courtroom_verdict (PDD8's largest contrast gaps) plus subway_chase, at seed 730451892. subway_chase__rev_h080 and every <scene>__pdd8 already exist in bench/results/2026-09-26_followup.jsonl.",
+ "what": "open_experiments #34: PDD8 to sigma 0.8, then FlashGen on blocks 34-49 finishing (rev_late_h080), against the same switch with full FlashGen (rev_h080), on noodle_bar, radio_drama and courtroom_verdict (PDD8's largest contrast gaps) plus subway_chase, at seed 730451892, each at its bank prompt's written length (the comparison rows' lengths). subway_chase__rev_h080 and every <scene>__pdd8 already exist in bench/results/2026-09-26_followup.jsonl.",
  "why": "FT1: FlashGen's late blocks carry the 4-step finish and its early blocks the haze. If the late-only finisher lifts PDD8's highlights as rev_h080 does with less haze, it replaces full FlashGen as the finisher.",
  "arms": {
   "noodle_bar__rev_late_h080": "workflows/distill_experiments/h3_probe_t2v_step_switch_pdd8_flashgen_late_h080_savelat_api.json",
@@ -12,13 +12,13 @@
  },
  "patches": [
   "noodle_bar__rev_late_h080:MiniMaxH3Conditioning.prompt=@bank:t2va_noodle_bar",
-  "noodle_bar__rev_late_h080:MiniMaxH3Resolution.length=345",
+  "noodle_bar__rev_late_h080:MiniMaxH3Resolution.length=107",
   "noodle_bar__rev_h080:MiniMaxH3Conditioning.prompt=@bank:t2va_noodle_bar",
-  "noodle_bar__rev_h080:MiniMaxH3Resolution.length=345",
+  "noodle_bar__rev_h080:MiniMaxH3Resolution.length=107",
   "radio_drama__rev_late_h080:MiniMaxH3Conditioning.prompt=@bank:t2va_radio_drama",
-  "radio_drama__rev_late_h080:MiniMaxH3Resolution.length=345",
+  "radio_drama__rev_late_h080:MiniMaxH3Resolution.length=243",
   "radio_drama__rev_h080:MiniMaxH3Conditioning.prompt=@bank:t2va_radio_drama",
-  "radio_drama__rev_h080:MiniMaxH3Resolution.length=345",
+  "radio_drama__rev_h080:MiniMaxH3Resolution.length=243",
   "courtroom_verdict__rev_late_h080:MiniMaxH3Conditioning.prompt=@bank:t2va_courtroom_verdict",
   "courtroom_verdict__rev_late_h080:MiniMaxH3Resolution.length=345",
   "courtroom_verdict__rev_h080:MiniMaxH3Conditioning.prompt=@bank:t2va_courtroom_verdict",
