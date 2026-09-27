@@ -99,7 +99,7 @@ behind the §5.1 bug.
 ### 2.1 One direct `sol_attn` call
 
 1. **Pool.** Block means of K and block sums of V, over live rows
-   (`sol_attn_preprocess.cu:65-96`).
+   (`coderef/comfy-kitchen/comfy_kitchen/backends/cuda/sage_attention/sol_attn_preprocess.cu` (lines 65-96 at `8176242`)).
 2. **K statistics.** `kmean` is the mean of the block means, with every
    block weighted equally. `kcvar[d]` is the variance of the block means
    across blocks (`:101-116`).
@@ -112,13 +112,13 @@ behind the §5.1 bug.
 4. **Quantize.** Q rows and centred K rows go to int8 with one scale per
    token. `qk_balance` first scales q·f and k/f. `rotate` applies
    sign·H128/√128. The pooled keys and the centroid get the same transforms.
-5. **Route** (`sol_attn_route.cu:157-163`). Block b is exact for query block
+5. **Route** (`coderef/comfy-kitchen/comfy_kitchen/backends/cuda/sage_attention/sol_attn_route.cu` (lines 157-163 at `8176242`)). Block b is exact for query block
    q if its score ≥ thr, or |q − b| ≤ 1, or b is a sink. For `sink_q` rows,
    every live block is exact.
-6. **Tail** (`route.cu:197-276`). Each unrouted block becomes one pooled
+6. **Tail** (`coderef/comfy-kitchen/comfy_kitchen/backends/cuda/sage_attention/sol_attn_route.cu` (lines 197-276 at `8176242`)). Each unrouted block becomes one pooled
    term: its logit is the centroid score, its value the block's V sum.
    `tail=False` drops it.
-7. **Token stage** (only when `token_aug` > 0; `sol_attn_token.cu`).
+7. **Token stage** (only when `token_aug` > 0; `coderef/comfy-kitchen/comfy_kitchen/backends/cuda/sage_attention/sol_attn_token.cu`).
    - Query blocks are paired (TOK_GROUP=2) and a group centroid is formed.
    - For blocks that both partners left unrouted, every token is scored and
      the top ones are admitted, by histogram bins, up to the budget.
@@ -133,13 +133,13 @@ behind the §5.1 bug.
 
 | Argument | Inert when | Decided at |
 |---|---|---|
-| `tau` | `topk_ratio > 0` | `sol_attn.cu:161` |
-| `tau`, `topk_ratio`, tail | query rows inside `sink_q` | `route.cu:163` |
-| `token_aug` | `sink_q` rows, **and their pair partner**: a non-sink block paired with a sink_q block loses token routing | `route.cu:186-189` |
-| `token_aug`'s remainder | `tail=False` (selection still runs) | `token.cu:340` |
-| `qk_balance` | heads whose top-4 K channels hold < 20% of K energy; the codes are bit-identical | `preprocess.cu:184-188` |
-| `qk_balance`, `rotate` | the threshold and the coarse branch, which are always raw space | `preprocess.cu:327-332` |
-| `scale` | the tau routing decision (thr scales with it) | `preprocess.cu:58-60` |
+| `tau` | `topk_ratio > 0` | `coderef/comfy-kitchen/comfy_kitchen/backends/cuda/sage_attention/sol_attn.cu` (line 161 at `8176242`) |
+| `tau`, `topk_ratio`, tail | query rows inside `sink_q` | `coderef/comfy-kitchen/comfy_kitchen/backends/cuda/sage_attention/sol_attn_route.cu` (line 163 at `8176242`) |
+| `token_aug` | `sink_q` rows, **and their pair partner**: a non-sink block paired with a sink_q block loses token routing | `coderef/comfy-kitchen/comfy_kitchen/backends/cuda/sage_attention/sol_attn_route.cu` (lines 186-189 at `8176242`) |
+| `token_aug`'s remainder | `tail=False` (selection still runs) | `coderef/comfy-kitchen/comfy_kitchen/backends/cuda/sage_attention/sol_attn_token.cu` (line 340 at `8176242`) |
+| `qk_balance` | heads whose top-4 K channels hold < 20% of K energy; the codes are bit-identical | `coderef/comfy-kitchen/comfy_kitchen/backends/cuda/sage_attention/sol_attn_preprocess.cu` (lines 184-188 at `8176242`) |
+| `qk_balance`, `rotate` | the threshold and the coarse branch, which are always raw space | `coderef/comfy-kitchen/comfy_kitchen/backends/cuda/sage_attention/sol_attn_preprocess.cu` (lines 327-332 at `8176242`) |
+| `scale` | the tau routing decision (thr scales with it) | `coderef/comfy-kitchen/comfy_kitchen/backends/cuda/sage_attention/sol_attn_preprocess.cu` (lines 58-60 at `8176242`) |
 | `blk_cnt` | always: it is output only | `cuda/__init__.py` |
 
 ### 2.3 The dense path: `int8_attention`, where "dense" goes
@@ -261,7 +261,7 @@ behind the §5.1 bug.
 
 1. **Kernel bug: `qk_balance` plus `token_aug` score in different spaces.**
    - The token stage builds its group centroid from `qmean`, the
-     **unbalanced** block mean (`sol_attn_token.cu:79-84`). It is rotated
+     **unbalanced** block mean (`coderef/comfy-kitchen/comfy_kitchen/backends/cuda/sage_attention/sol_attn_token.cu` (lines 79-84 at `8176242`)). It is rotated
      when `rotate` is on, but never multiplied by the factor.
    - The key rows it scores against are balanced by 1/f (`prep_k` receives
      `fk`).
@@ -296,9 +296,9 @@ behind the §5.1 bug.
      `dense_blocks` ships empty.
    - `sol_attn_h3.py:780, 861, 879, 104` say the kernel is bf16-only. Direct
      `sol_attn` takes fp16; only the chunked entry is bf16-only.
-   - `h3_config.py:728` says empty is how the node spells off. Since
+   - `workflows/h3_config.py` (line 728 as of 2026-09-27, before the redesign) says empty is how the node spells off. Since
      2026-09-25 it has been `token_routing="off"`.
-   - `h3_config.py:209-213` calls kijai "the algorithm's author". The paper
+   - `workflows/h3_config.py` (lines 209-213 as of 2026-09-27, before the redesign) calls kijai "the algorithm's author". The paper
      is NVLabs' (arXiv 2607.24027); kijai wrote the ComfyUI nodes.
 
 ---
@@ -320,7 +320,7 @@ behind the §5.1 bug.
 **One constraint on any removal:** editor-saved graphs map widgets by
 position, so removing or reordering a widget re-points the saved values. API
 graphs are regenerated and unaffected (`sol_attn_h3.py` (lines 1678-1681 as of 2026-09-27; the file was restructured 2026-09-27),
-`h3_config.py:966-968`).
+`workflows/h3_config.py` (lines 966-968 as of 2026-09-27, before the redesign)).
 
 ---
 
@@ -351,7 +351,7 @@ is an H3-specific lever added later.
 
 | Difference | Reason | Kind |
 |---|---|---|
-| tau 1.0 vs 1.3 | Owner, 2026-08-20, from kijai's remark that 1.0 is max quality (`h3_config.py:213-253`). sglang, Sana and LongMedia's upper bound also use 1.0 (§9), so the adopt-upstream rule does not decide it. | reasoned, not measured |
+| tau 1.0 vs 1.3 | Owner, 2026-08-20, from kijai's remark that 1.0 is max quality (`workflows/h3_config.py` (lines 213-253 as of 2026-09-27, before the redesign)). sglang, Sana and LongMedia's upper bound also use 1.0 (§9), so the adopt-upstream rule does not decide it. | reasoned, not measured |
 | token routing off vs 256 everywhere | `docs/research/2026-09-04_sol_token_aug_grade.md`: better on 4 captured blocks, worse on 49. | measured |
 | dense tail 45/48/49 | Owner, 2026-09-25. Kitchen dense int8 beats Sol's routed error on block 49 (`2026-09-15_ck_int8_attention_block49.json`). | measured on a capture; the render is unscored |
 | `qk_balance` on | Owner, 2026-09-15, together with the kitchen floor. Lower block-49 error, neutral on blocks 0 and 32. | measured on captures |
@@ -366,7 +366,7 @@ is an H3-specific lever added later.
 From the upstream-survey subagent, which read every `coderef/` checkout.
 lookingdude spot-checked three claims against the source:
 - sglang's Sol defaults of `dense_steps` 10 and `dense_layers` "0,1"
-  (`sglang/.../attention/backends/sol_attn.py:79-80`);
+  (`coderef/sglang/python/sglang/multimodal_gen/runtime/layers/attention/backends/sol_attn.py:79-80`);
 - Sana Sol-H3's prefix sink with every prefix row dense;
 - LightX2V's refusal of Morton for H3.
 
@@ -376,7 +376,7 @@ vendored Sol node and FastH3 V2.
 
 | Technique | Who does it | Relation to us and core |
 |---|---|---|
-| Hadamard rotation of q/k before low-bit attention | vllm-omni (sign·H/√d on q and k before FP8/MXFP dense and sparse attention, NPU, `diffusion/attention/backends/flash_attn.py:595-600`); vllm (int4 KV cache, the same form); sglang (plain Hadamard on its sparse *indexer*); Model-Optimizer (fake-quant, no signs); kitchen's dense `int8_attention` (the same matrix as ours). None in FlashInfer, NVLabs Sol, FastVideo, TurboDiffusion, LightX2V or diffusers. | The technique is established upstream. **Doing it inside a sparse Sol kernel's int8 quantizers is ours alone.** |
+| Hadamard rotation of q/k before low-bit attention | vllm-omni (sign·H/√d on q and k before FP8/MXFP dense and sparse attention, NPU, `coderef/vllm-omni/vllm_omni/diffusion/attention/backends/flash_attn.py:595-600`); vllm (int4 KV cache, the same form); sglang (plain Hadamard on its sparse *indexer*); Model-Optimizer (fake-quant, no signs); kitchen's dense `int8_attention` (the same matrix as ours). None in FlashInfer, NVLabs Sol, FastVideo, TurboDiffusion, LightX2V or diffusers. | The technique is established upstream. **Doing it inside a sparse Sol kernel's int8 quantizers is ours alone.** |
 | Per-channel q·f / k/f balancing | Nobody independent. Model-Optimizer's SmoothQuant is Linear-only, and FastVideo's attention QAT rejects `smooth_q`. K mean-smoothing (sage, FlashInfer, TurboDiffusion, kitchen's `kmean`) is common, and is a different thing. | **Ours alone.** |
 | Top-k count rounding | `round`: kitchen, and so ours and core. `ceil`: FastVideo, sglang VSA-H3. `floor`: TurboDiffusion, LightX2V and T8 SLA, Model-Optimizer VSA. | The kitchen side of the VSA mismatch in the parity record. |
 | Forced ±1 diagonal | kitchen, kijai, NVLabs Sol (`triton_ref/fwd.py`), LongMedia. Not forced in FastVideo, sglang VSA, vllm-omni or Model-Optimizer; sglang SubBlock leaves it out on purpose, citing a measurement. | Sol-family practice; foreign to VSA's trainers. |
@@ -459,7 +459,7 @@ override. Sol wraps that forward in its compose gate
   block but 49, and differ there in the sixth digit. So sage's "fp8++
   balanced" mode and a `MiniMaxH3ChannelBalance` node on top of the rotated
   chain are redundant. The chain spec already leaves both out
-  (`h3_config.py`, `DENSE_CHAINS` comment;
+  (`workflows/h3_config.py`, `DENSE_CHAINS` comment;
   `2026-09-17_channel_balance_vs_sage_balanced_b49_s15.json`).
 - **Nothing on the Sol side.** Sol's `rotate` and `qk_balance` act inside
   Sol's kernel, which sage never touches.
