@@ -2,15 +2,15 @@
  "what": "The specificity ladder for the owner's O2 on FlashGen, PDD8 and FastH3 at 124 frames, seed 730451892.",
  "why": "The owner: specific or unusual prompts push FlashGen off its guided path; the seed-collapse arms were cancelled as a poor test.",
  "arms": {
-  "spec_typical__flashgen": "workflows/h3_text_to_video_flashgen_savelat_api.json",
-  "spec_specific__flashgen": "workflows/h3_text_to_video_flashgen_savelat_api.json",
-  "spec_unusual__flashgen": "workflows/h3_text_to_video_flashgen_savelat_api.json",
-  "spec_typical__pdd8": "workflows/h3_text_to_video_pdd_savelat_api.json",
-  "spec_specific__pdd8": "workflows/h3_text_to_video_pdd_savelat_api.json",
-  "spec_unusual__pdd8": "workflows/h3_text_to_video_pdd_savelat_api.json",
-  "spec_typical__fasth3": "workflows/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
-  "spec_specific__fasth3": "workflows/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
-  "spec_unusual__fasth3": "workflows/h3_probe_t2v_fasth3_8step_contract_savelat_api.json"
+  "spec_typical__flashgen": "workflows/distill_experiments/h3_text_to_video_flashgen_savelat_api.json",
+  "spec_specific__flashgen": "workflows/distill_experiments/h3_text_to_video_flashgen_savelat_api.json",
+  "spec_unusual__flashgen": "workflows/distill_experiments/h3_text_to_video_flashgen_savelat_api.json",
+  "spec_typical__pdd8": "workflows/distill_experiments/h3_text_to_video_pdd_savelat_api.json",
+  "spec_specific__pdd8": "workflows/distill_experiments/h3_text_to_video_pdd_savelat_api.json",
+  "spec_unusual__pdd8": "workflows/distill_experiments/h3_text_to_video_pdd_savelat_api.json",
+  "spec_typical__fasth3": "workflows/distill_experiments/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
+  "spec_specific__fasth3": "workflows/distill_experiments/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
+  "spec_unusual__fasth3": "workflows/distill_experiments/h3_probe_t2v_fasth3_8step_contract_savelat_api.json"
  },
  "patches": [
   "spec_typical__flashgen:MiniMaxH3Conditioning.prompt=@bank:t2va_spec_typical",

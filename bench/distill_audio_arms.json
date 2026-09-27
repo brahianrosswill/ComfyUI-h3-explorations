@@ -8,15 +8,15 @@
  "prompts": "named by bank id through the runner's @bank: value; the text lives only in prompt_bank/",
  "arms": {
   "diner_pdd8": "workflows/h3_text_to_video_pdd_api.json",
-  "diner_pdd8_refine": "workflows/h3_probe_t2v_pdd8_audio_refine_api.json",
-  "diner_fasth3": "workflows/h3_probe_t2v_fasth3_8step_api.json",
-  "diner_flashgen": "workflows/h3_probe_t2v_flashgen_4step_api.json",
-  "diner_flashgen_refine": "workflows/h3_probe_t2v_flashgen_4step_audio_refine_api.json",
+  "diner_pdd8_refine": "workflows/distill_experiments/h3_probe_t2v_pdd8_audio_refine_api.json",
+  "diner_fasth3": "workflows/distill_experiments/h3_probe_t2v_fasth3_8step_api.json",
+  "diner_flashgen": "workflows/distill_experiments/h3_probe_t2v_flashgen_4step_api.json",
+  "diner_flashgen_refine": "workflows/distill_experiments/h3_probe_t2v_flashgen_4step_audio_refine_api.json",
   "subway_pdd8": "workflows/h3_text_to_video_pdd_api.json",
-  "subway_pdd8_refine": "workflows/h3_probe_t2v_pdd8_audio_refine_api.json",
-  "subway_fasth3": "workflows/h3_probe_t2v_fasth3_8step_api.json",
-  "subway_flashgen": "workflows/h3_probe_t2v_flashgen_4step_api.json",
-  "subway_flashgen_refine": "workflows/h3_probe_t2v_flashgen_4step_audio_refine_api.json"
+  "subway_pdd8_refine": "workflows/distill_experiments/h3_probe_t2v_pdd8_audio_refine_api.json",
+  "subway_fasth3": "workflows/distill_experiments/h3_probe_t2v_fasth3_8step_api.json",
+  "subway_flashgen": "workflows/distill_experiments/h3_probe_t2v_flashgen_4step_api.json",
+  "subway_flashgen_refine": "workflows/distill_experiments/h3_probe_t2v_flashgen_4step_audio_refine_api.json"
  },
  "patches": [
   "diner_pdd8:MiniMaxH3Conditioning.prompt=@bank:t2va_diner_breakup",

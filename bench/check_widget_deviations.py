@@ -293,6 +293,11 @@ DECLARED: dict[tuple[str, str], tuple] = {
     # LoraLoaderModelOnly.strength_model's row moved here in 0.154.0, when
     # every LoRA on int8 moved to the branch node and the stock loader was left
     # on one control graph at its default.
+    ("MiniMaxH3LoRABranch", "blocks"):
+        ("ARM", "'34-49' on h3_text_to_video_flashgen_late_blocks (2026-09-27): "
+                "FlashGen on its late blocks alone keeps the 4-step finish with "
+                "about half the haze (fastdude's FT1). 'all', the node default, "
+                "everywhere else."),
     ("MiniMaxH3PDDLoRA", "backbone_apply"):
         ("ARM", "'merge' on h3_probe_t2v_pdd8_merge alone, the control for the "
                 "0.154.0 default 'exact branch': PDD's backbone merged into the int8 "

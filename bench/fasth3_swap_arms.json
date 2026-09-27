@@ -15,15 +15,15 @@
   "falsifier": "if swap_baseadaln looks like FastH3 and swap_fasth3adaln like the floor, FastH3's few-step ability lives in the backbone and gates despite their small norm, and the weight-space map misleads about function."
  },
  "arms": {
-  "look_anchor__swap_fasth3adaln": "workflows/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
-  "look_anchor__swap_baseadaln": "workflows/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
-  "look_anchor__fl2va_contract": "workflows/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
-  "slapstick_moving_piano__swap_fasth3adaln": "workflows/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
-  "slapstick_moving_piano__swap_baseadaln": "workflows/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
-  "slapstick_moving_piano__fl2va_contract": "workflows/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
-  "radio_drama__swap_fasth3adaln": "workflows/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
-  "radio_drama__swap_baseadaln": "workflows/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
-  "radio_drama__fl2va_contract": "workflows/h3_probe_t2v_fasth3_8step_contract_savelat_api.json"
+  "look_anchor__swap_fasth3adaln": "workflows/distill_experiments/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
+  "look_anchor__swap_baseadaln": "workflows/distill_experiments/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
+  "look_anchor__fl2va_contract": "workflows/distill_experiments/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
+  "slapstick_moving_piano__swap_fasth3adaln": "workflows/distill_experiments/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
+  "slapstick_moving_piano__swap_baseadaln": "workflows/distill_experiments/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
+  "slapstick_moving_piano__fl2va_contract": "workflows/distill_experiments/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
+  "radio_drama__swap_fasth3adaln": "workflows/distill_experiments/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
+  "radio_drama__swap_baseadaln": "workflows/distill_experiments/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
+  "radio_drama__fl2va_contract": "workflows/distill_experiments/h3_probe_t2v_fasth3_8step_contract_savelat_api.json"
  },
  "patches": [
   "look_anchor__swap_fasth3adaln:MiniMaxH3Conditioning.prompt=@bank:t2va_look_anchor",

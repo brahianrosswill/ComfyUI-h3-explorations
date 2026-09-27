@@ -2,11 +2,11 @@
  "what": "Seed-collapse test for the owner's O2 (bench/results/2026-09-26_distill_run_predictions.md): t2va_subway_chase_short at FlashGen's trained 5 s, PDD8 at three seeds and FlashGen at two more; FlashGen at 730451892 is subway_chase_short__flashgen in the follow-up rerun.",
  "why": "An overfit, mode-collapsed distill gives nearly the same scene whatever the seed; compare FlashGen's spread across seeds with PDD8's.",
  "arms": {
-  "subway_chase_short__pdd8__s730451892": "workflows/h3_text_to_video_pdd_savelat_api.json",
-  "subway_chase_short__pdd8__s730451893": "workflows/h3_text_to_video_pdd_savelat_api.json",
-  "subway_chase_short__pdd8__s730451894": "workflows/h3_text_to_video_pdd_savelat_api.json",
-  "subway_chase_short__flashgen__s730451893": "workflows/h3_text_to_video_flashgen_savelat_api.json",
-  "subway_chase_short__flashgen__s730451894": "workflows/h3_text_to_video_flashgen_savelat_api.json"
+  "subway_chase_short__pdd8__s730451892": "workflows/distill_experiments/h3_text_to_video_pdd_savelat_api.json",
+  "subway_chase_short__pdd8__s730451893": "workflows/distill_experiments/h3_text_to_video_pdd_savelat_api.json",
+  "subway_chase_short__pdd8__s730451894": "workflows/distill_experiments/h3_text_to_video_pdd_savelat_api.json",
+  "subway_chase_short__flashgen__s730451893": "workflows/distill_experiments/h3_text_to_video_flashgen_savelat_api.json",
+  "subway_chase_short__flashgen__s730451894": "workflows/distill_experiments/h3_text_to_video_flashgen_savelat_api.json"
  },
  "patches": [
   "subway_chase_short__pdd8__s730451892:MiniMaxH3Conditioning.prompt=@bank:t2va_subway_chase_short",

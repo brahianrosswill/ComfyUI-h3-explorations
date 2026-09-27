@@ -17,6 +17,12 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-26
 
+- **Distill research graphs moved to `workflows/distill_experiments/`**
+  (owner, 2026-09-27; 0.157.0). 49 graphs, routed by
+  `build_workflows._is_distill_experiment`; the everyday distill graphs stay
+  at the root. The TaoMate graphs failed the live validation because their
+  LoRA files are no longer on disk, so that build was written without
+  validation; every other graph validated.
 - **FastH3's pruned file does not share fl2va's curve basis** (measured,
   `bench/results/2026-09-26_fasth3_weights.md`). Its `adaln_t_table` and
   every `adaln_proj` differ from fl2va's by several times their own norm, so

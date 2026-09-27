@@ -1922,7 +1922,13 @@ CAPTURE_REF_IMAGES = (
 #: tuple now derives an EMPTY one -- that is the correct answer, and
 #: `bench/check_attention_defaults.py` was checked against it rather than
 #: left to pass vacuously.
-GRAPH_DIRS: tuple[str, ...] = ("",)
+#: **`distill_experiments` added 2026-09-27** (owner: "you and fastdude's
+#: modified/new workflows can go into a new subfolder called
+#: distill_experiments"). The generator routes a graph there by
+#: `build_workflows._is_distill_experiment`: every `_savelat` or `_x0` twin,
+#: every `h3_probe_*` graph that runs a distill, and entries marked
+#: `distill_experiment=True`. The shipped distill graphs stay at the root.
+GRAPH_DIRS: tuple[str, ...] = ("", "distill_experiments")
 
 # What `bench/` is exempt from is schema grading, and only that. A bench graph
 # naming a model file that no longer exists is not schema drift -- it is the

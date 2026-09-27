@@ -5,7 +5,7 @@
   "base": "workflows/h3_text_to_video_api.json",
   "pdd8": "workflows/h3_text_to_video_pdd_api.json",
   "flashgen": "workflows/h3_text_to_video_flashgen_api.json",
-  "fasth3": "workflows/h3_probe_t2v_fasth3_8step_contract_api.json"
+  "fasth3": "workflows/distill_experiments/h3_probe_t2v_fasth3_8step_contract_api.json"
  },
  "patches": [
   "base:MiniMaxH3Conditioning.prompt=@bank:t2va_subway_chase",

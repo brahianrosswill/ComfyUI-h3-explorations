@@ -4,6 +4,39 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.157.0
+
+### Added
+
+- **Three "try these" graphs** (owner, 2026-09-27), in `workflows/distill_experiments/`:
+  - `h3_text_to_video_flashgen_late_blocks`: FlashGen on blocks 34-49 only,
+    about half the haze at 4 steps (fastdude's FT1).
+  - `h3_first_frame_to_video_pdd`: PDD8 from a first frame alone. Until now
+    only the first+last graph existed.
+  - `h3_probe_i2v_step_switch_pdd8_flashgen_h080`: i2v PDD8 to sigma 0.8,
+    then FlashGen finishing.
+  - `build_api` gains `lora_blocks` (the LoRA branch's `blocks`) and
+    `step_switch_blocks` (the same, for a switch's FlashGen pass).
+
+### Changed
+
+- **`workflows/distill_experiments/`** (owner: "you and fastdude's
+  modified/new workflows can go into a new subfolder called
+  distill_experiments").
+  - 46 graphs moved there, plus the three new ones.
+  - The generator routes a graph there by `_is_distill_experiment`: every
+    `_savelat` and `_x0` twin, every `h3_probe_*` graph that runs a distill,
+    and entries marked `distill_experiment=True`.
+  - The everyday distill graphs stay at `workflows/`. The folder's README
+    lists the graphs to try first.
+  - `h3_config.GRAPH_DIRS` gains the folder. Every existing graph is
+    byte-identical after the move.
+  - The paths in 22 run manifests and the two manifest builders are
+    rewritten; run records keep the paths they rendered from.
+  - `check_attention_defaults` no longer treats every non-root folder as
+    single-frame, and `check_distill_grid` knows the i2v reverse switch.
+  - `check_widget_deviations` declares `MiniMaxH3LoRABranch.blocks` "34-49".
+
 ## 0.156.1
 
 ### Changed

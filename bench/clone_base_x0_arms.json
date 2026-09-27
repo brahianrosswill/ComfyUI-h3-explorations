@@ -9,7 +9,7 @@
   "read": "python bench/x0_step_frames.py <final> <32 step latents> --preview 4:10, previews at the base steps matching PDD8's knots (every 4th: 0, 4, 8, ...)"
  },
  "arms": {
-  "subway_chase__base_euler32": "workflows/h3_probe_t2v_base_euler32_x0_api.json"
+  "subway_chase__base_euler32": "workflows/distill_experiments/h3_probe_t2v_base_euler32_x0_api.json"
  },
  "patches": [
   "subway_chase__base_euler32:MiniMaxH3Conditioning.prompt=@bank:t2va_subway_chase",

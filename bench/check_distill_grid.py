@@ -356,7 +356,8 @@ def main() -> int:
             # ignore the schedule and fuse uniform blocks at that count.
             nfe = found.pdd_nfe or found.steps
             _ss = path.stem.removesuffix("_api").removesuffix("_savelat")
-            if _ss.startswith("h3_probe_t2v_step_switch_pdd8_flashgen_"):
+            if _ss.startswith(("h3_probe_t2v_step_switch_pdd8_flashgen_",
+                               "h3_probe_i2v_step_switch_pdd8_flashgen_")):
                 # The reverse switch: PDD runs FIRST, on PDD8's own schedule cut
                 # at a knot (h3_config.STEP_SWITCH_REV). Every point it samples
                 # must be one of PDD8's knots, 0, 4, 8, ...

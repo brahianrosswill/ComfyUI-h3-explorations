@@ -38,17 +38,17 @@ MODELS = ["base", "pdd8", "flashgen", "fasth3"]
 #: The saved-latent twins (the VAE session, 0.153.0): every arm's latent is
 #: kept, so routing experiments can reuse these renders with no card time.
 DEFAULT_GRAPHS = {
-    "base": "workflows/h3_text_to_video_savelat_api.json",
-    "pdd8": "workflows/h3_text_to_video_pdd_savelat_api.json",
-    "flashgen": "workflows/h3_text_to_video_flashgen_savelat_api.json",
-    "fasth3": "workflows/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
-    "flashgen_dense": "workflows/h3_probe_t2v_flashgen_r64_4step_branch_dense_savelat_api.json",
-    "pdd8_refine": "workflows/h3_probe_t2v_pdd8_audio_refine_savelat_api.json",
-    "flashgen_refine": "workflows/h3_probe_t2v_flashgen_4step_audio_refine_savelat_api.json",
-    "route3": "workflows/h3_probe_t2v_step_switch_flashgen_pdd8_savelat_api.json",
-    "flashgen_s08": "workflows/h3_text_to_video_flashgen_savelat_api.json",
-    "flashgen_s12": "workflows/h3_text_to_video_flashgen_savelat_api.json",
-    "flashgen_noadaln": "workflows/h3_text_to_video_flashgen_savelat_api.json",
+    "base": "workflows/distill_experiments/h3_text_to_video_savelat_api.json",
+    "pdd8": "workflows/distill_experiments/h3_text_to_video_pdd_savelat_api.json",
+    "flashgen": "workflows/distill_experiments/h3_text_to_video_flashgen_savelat_api.json",
+    "fasth3": "workflows/distill_experiments/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
+    "flashgen_dense": "workflows/distill_experiments/h3_probe_t2v_flashgen_r64_4step_branch_dense_savelat_api.json",
+    "pdd8_refine": "workflows/distill_experiments/h3_probe_t2v_pdd8_audio_refine_savelat_api.json",
+    "flashgen_refine": "workflows/distill_experiments/h3_probe_t2v_flashgen_4step_audio_refine_savelat_api.json",
+    "route3": "workflows/distill_experiments/h3_probe_t2v_step_switch_flashgen_pdd8_savelat_api.json",
+    "flashgen_s08": "workflows/distill_experiments/h3_text_to_video_flashgen_savelat_api.json",
+    "flashgen_s12": "workflows/distill_experiments/h3_text_to_video_flashgen_savelat_api.json",
+    "flashgen_noadaln": "workflows/distill_experiments/h3_text_to_video_flashgen_savelat_api.json",
 }
 #: A short bank scene NOT in the run, for one warmup per model state (the VAE
 #: session: the first render of each state pays pinning, staging and LoRA

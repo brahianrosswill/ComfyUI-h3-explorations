@@ -25,7 +25,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 BANK = REPO / "prompt_bank" / "bank.json"
-W = "workflows/"
+W = "workflows/distill_experiments/"
 
 #: Graphs by role; each saves its latent.
 G = {

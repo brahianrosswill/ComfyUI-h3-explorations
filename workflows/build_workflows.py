@@ -765,7 +765,30 @@ def _suffix_output_prefixes(wf: dict, chain: str) -> None:
             node["inputs"]["filename_prefix"] = f"{prefix}_{chain}"
 
 
-def _graph_dir(out, extra: dict):
+def _is_distill_experiment(fname: str, extra: dict) -> bool:
+    """A graph from the distill experiments (2026-09-25 on), not a shipped pick.
+
+    Derived like the image split was: every `_savelat` or `_x0` twin (the
+    experiments' instrumentation), and every `h3_probe_*` graph that runs a
+    distill, whether a PDD or FlashGen LoRA, FastH3's checkpoint, a step
+    switch or an audio refine pass. Entries that are experiments without being
+    probes say so with `distill_experiment=True`. The shipped distill graphs
+    (`h3_text_to_video_pdd`, `_flashgen`, the PDD ref and fl2v graphs) stay at
+    the root. The owner, 2026-09-27: "you and fastdude's modified/new
+    workflows can go into a new subfolder called distill_experiments".
+    """
+    stem = fname.removesuffix(".json")
+    if extra.get("distill_experiment") or stem.endswith(("_savelat", "_x0")):
+        return True
+    if not stem.startswith("h3_probe_"):
+        return False
+    lora = str((extra.get("lora") or ("",))[0]).lower()
+    return bool(extra.get("pdd") or "pdd" in lora or "flashgen" in lora
+                or "fasth3" in str(extra.get("unet", "")).lower()
+                or extra.get("step_switch") or extra.get("audio_refine"))
+
+
+def _graph_dir(out, extra: dict, fname: str = ""):
     """Which directory under `workflows/` a graph is written to.
 
     **Derived from `single_frame`, never declared per graph.** The split is by
@@ -779,7 +802,9 @@ def _graph_dir(out, extra: dict):
     `h3_config.GRAPH_DIRS` is the matching list on the reading side. If a third
     use case ever appears, both have to learn about it.
     """
-    return out / "image" if extra.get("single_frame") else out
+    if extra.get("single_frame"):
+        return out / "image"
+    return out / "distill_experiments" if _is_distill_experiment(fname, extra) else out
 
 
 def _ref_image_slots(ref_images_on: bool, ref_image_count: int,
@@ -1389,6 +1414,10 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
               # default since 0.154.0 (owner, 2026-09-26: every small LoRA on
               # int8 goes through our branch); False only on a merge control.
               lora_branch: bool = True,
+              # MiniMaxH3LoRABranch's `blocks`: "all", or a range like "34-49".
+              # FlashGen on its late blocks alone keeps the 4-step finish with
+              # about half the haze (fastdude's FT1, 2026-09-27).
+              lora_blocks: str = "all",
               steps: int | None = None, shift: dict | None = None,
               sampler_name: str | None = None, scheduler_name: str | None = None,
               head_chunks: int | None = None,
@@ -1526,6 +1555,8 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
               # graph's own PDD chain, then FlashGen at step_switch_sigmas).
               step_switch_to: str = "pdd8",
               step_switch_sigmas: str | None = None,
+              # The FlashGen pass's `blocks` in a PDD-first switch.
+              step_switch_blocks: str = "all",
               # Save every step's x0 prediction (MiniMaxH3StepX0Observer, node
               # 113) on the main pass's model, for finding the step where a
               # moving person first appears twice (docs/h3_distills.md). About
@@ -1929,7 +1960,7 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
             # what it does and a runner patch can reach them (0.152.0).
             g["18"] = {"class_type": LORA_BRANCH_NODE,
                        "inputs": {"model": model_src, "lora_name": lora[0],
-                                  "strength": lora[1], "modules": "all", "blocks": "all",
+                                  "strength": lora[1], "modules": "all", "blocks": lora_blocks,
                                   "start_percent": 0.0, "end_percent": 1.0}}
         else:
             g["18"] = {"class_type": "LoraLoaderModelOnly",
@@ -2398,6 +2429,7 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
                            sol=(sol_for_graph(False, FLASHGEN_STEPS) if sol is not None else None),
                            sol_impl=sol_impl, dense_backend=dense_backend,
                            lora=(FLASHGEN_R64_LORA, FLASHGEN_STRENGTH), lora_branch=True,
+                           lora_blocks=step_switch_blocks,
                            steps=FLASHGEN_STEPS, sampler_name=FLASHGEN_SAMPLER,
                            manual_sigmas=pass2_sigmas, unet=unet, clip=clip, **canvas)
         if g2["1"] != g["1"]:
@@ -4967,6 +4999,15 @@ def main():
               manual_sigmas=FLASHGEN_MANUAL_SIGMAS,
               out_prefix="Video/text_to_video_flashgen"),
          "text -> video + audio at 4 steps via FlashGen at full rank, applied at the call, kitchen dense + Sol"),
+        # FlashGen on its late blocks only (owner, 2026-09-27: make the "try
+        # these" graphs). fastdude's FT1: blocks 34-49 alone keep the 4-step
+        # finish with about half the haze; 0-33 alone is broken.
+        ("h3_text_to_video_flashgen_late_blocks.json", "texttovideoflashgenlate", "t2v", LONG_T2V_PROMPT,
+         dict(lora=(FLASHGEN_R64_LORA, FLASHGEN_STRENGTH), lora_branch=True, lora_blocks="34-49",
+              steps=FLASHGEN_STEPS, sampler_name=FLASHGEN_SAMPLER,
+              manual_sigmas=FLASHGEN_MANUAL_SIGMAS, distill_experiment=True,
+              out_prefix="Video/text_to_video_flashgen_late_blocks"),
+         "text -> video + audio at 4 steps via FlashGen on blocks 34-49 only (less haze), kitchen dense + Sol"),
 
         # FlashGen beyond T2VA, 2026-09-26, the owner: "even if it wasnt
         # trained with that, its worth testing". Both are the shipped t2v
@@ -5000,6 +5041,22 @@ def main():
               manual_sigmas=PDD_MANUAL_SIGMAS, steps=PDD_MANUAL_EVALS,
               out_prefix="Video/text_to_video_pdd_manual_sigmas"),
          "text -> video + audio on a tail-weighted PDD partition, kitchen dense + Sol"),
+
+        # PDD8 on first frame alone (owner, 2026-09-27): the fl2va sidecar
+        # covers it; until now only the first+last graph existed.
+        ("h3_first_frame_to_video_pdd.json", "firstframetovideopdd", "i2v", None,
+         dict(pdd=True, sampler_name="euler",
+              lora=(PDD_FL2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS, distill_experiment=True,
+              out_prefix="Video/first_frame_to_video_pdd"),
+         "first frame -> video + audio at 8 steps via PDD, kitchen dense + Sol"),
+        # ... and PDD8 finished by FlashGen from sigma 0.8, the reverse switch's
+        # better handoff on t2v (`2026-09-27_reverse_switch.md`).
+        ("h3_probe_i2v_step_switch_pdd8_flashgen_h080.json", "i2v-step-switch-pdd8-flashgen-h080", "i2v", None,
+         dict(pdd=True, sampler_name="euler", lora=(PDD_FL2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS,
+              manual_sigmas=STEP_SWITCH_REV["h080"][0], step_switch=True, step_switch_to="flashgen",
+              step_switch_sigmas=STEP_SWITCH_REV["h080"][1],
+              out_prefix="Video/h3_probe_i2v_step_switch_pdd8_flashgen_h080"),
+         "first frame: PDD8 to 0.8, then FlashGen finishing"),
 
         ("h3_first_last_frame_to_video_pdd.json", "firstlastframetovideopdd", "i2v", None,
          dict(last_frame=True, **FL2V_CANVAS,
@@ -5562,7 +5619,7 @@ def main():
             extra = _on_chain(extra, args.chain)
         sage_on, sol_on, _dense_mode, _vsa_on = _attention_plan(extra)
         api_extra = {k: v for k, v in extra.items()
-                     if k not in ("sol_on", "dense_attn", "sol_overrides")}
+                     if k not in ("sol_on", "dense_attn", "sol_overrides", "distill_experiment")}
         wf = build_api(task, sage=sage_on,
                        prompt=prompt,
                        sol=(_sol_with_overrides(extra) if sol_on else None),
@@ -5571,7 +5628,7 @@ def main():
                        **{**api_extra, "length": graph_length(api_extra)})
         if alt_chain:
             _suffix_output_prefixes(wf, args.chain)
-        p = _graph_dir(out, extra) / fname.replace(".json", "_api.json")
+        p = _graph_dir(out, extra, fname) / fname.replace(".json", "_api.json")
         written.append((label, p, wf))
         print(f"  {p.name}: {note}")
 
@@ -5584,7 +5641,7 @@ def main():
         _saved = "latents/text_to_video_flashgen_savelat"
         wf = build_decode_saved_latent(f"{_saved}_video_00001_.latent [output]",
                                        f"{_saved}_audio_00001_.latent [output]")
-        p = out / "h3_decode_saved_latent_api.json"
+        p = out / "distill_experiments" / "h3_decode_saved_latent_api.json"
         written.append(("decodesavedlatent", p, wf))
         print(f"  {p.name}: a draft's saved latents through the real video decoder, no sampling")
 

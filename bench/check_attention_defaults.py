@@ -355,12 +355,15 @@ def single_frame_dirs():
     """The image class, from the generator's own routing rather than filenames.
 
     Empty while the single-frame lane is parked, which is the CORRECT answer
-    and not a broken derivation -- `GRAPH_DIRS` is `("",)`, so no graph sits in
-    a subdirectory and nothing is exempted on this ground. `main` prints the
+    and not a broken derivation: no image directory is in `GRAPH_DIRS`, so
+    nothing is exempted on this ground. `distill_experiments/` is video. `main` prints the
     size either way; an exemption class that silently covers nothing is the
     shape this file's header argues against.
     """
-    return {d for d in h3_config.GRAPH_DIRS if d}
+    # Only the image use case is single-frame. `distill_experiments` (added
+    # 2026-09-27) is video, held to the same Sol rule as the root; reading
+    # every non-root dir as single-frame exempted it wholesale.
+    return {d for d in h3_config.GRAPH_DIRS if d and d != "distill_experiments"}
 
 
 def wires_dense_kernel(graph) -> bool:

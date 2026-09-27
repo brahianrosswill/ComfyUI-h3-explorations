@@ -9,18 +9,18 @@
   "caveat": "one seed; each arm is a different sample from the same noise, so the read is look and softness, not attribution"
  },
  "arms": {
-  "look_anchor__pdd8_s085": "workflows/h3_text_to_video_pdd_savelat_api.json",
-  "look_anchor__pdd8_s07": "workflows/h3_text_to_video_pdd_savelat_api.json",
-  "subway_chase__pdd8_s085": "workflows/h3_text_to_video_pdd_x0_api.json",
-  "subway_chase__pdd8_s07": "workflows/h3_text_to_video_pdd_x0_api.json",
-  "slapstick_moving_piano__pdd8_s085": "workflows/h3_text_to_video_pdd_savelat_api.json",
-  "slapstick_moving_piano__pdd8_s07": "workflows/h3_text_to_video_pdd_savelat_api.json",
-  "radio_drama__pdd8_s085": "workflows/h3_text_to_video_pdd_savelat_api.json",
-  "radio_drama__pdd8_s07": "workflows/h3_text_to_video_pdd_savelat_api.json",
-  "samurai_bamboo_duel__pdd8_s085": "workflows/h3_text_to_video_pdd_savelat_api.json",
-  "samurai_bamboo_duel__pdd8_s07": "workflows/h3_text_to_video_pdd_savelat_api.json",
-  "look_anchor__pdd8_s07all": "workflows/h3_text_to_video_pdd_savelat_api.json",
-  "slapstick_moving_piano__pdd8_s07all": "workflows/h3_text_to_video_pdd_savelat_api.json"
+  "look_anchor__pdd8_s085": "workflows/distill_experiments/h3_text_to_video_pdd_savelat_api.json",
+  "look_anchor__pdd8_s07": "workflows/distill_experiments/h3_text_to_video_pdd_savelat_api.json",
+  "subway_chase__pdd8_s085": "workflows/distill_experiments/h3_text_to_video_pdd_x0_api.json",
+  "subway_chase__pdd8_s07": "workflows/distill_experiments/h3_text_to_video_pdd_x0_api.json",
+  "slapstick_moving_piano__pdd8_s085": "workflows/distill_experiments/h3_text_to_video_pdd_savelat_api.json",
+  "slapstick_moving_piano__pdd8_s07": "workflows/distill_experiments/h3_text_to_video_pdd_savelat_api.json",
+  "radio_drama__pdd8_s085": "workflows/distill_experiments/h3_text_to_video_pdd_savelat_api.json",
+  "radio_drama__pdd8_s07": "workflows/distill_experiments/h3_text_to_video_pdd_savelat_api.json",
+  "samurai_bamboo_duel__pdd8_s085": "workflows/distill_experiments/h3_text_to_video_pdd_savelat_api.json",
+  "samurai_bamboo_duel__pdd8_s07": "workflows/distill_experiments/h3_text_to_video_pdd_savelat_api.json",
+  "look_anchor__pdd8_s07all": "workflows/distill_experiments/h3_text_to_video_pdd_savelat_api.json",
+  "slapstick_moving_piano__pdd8_s07all": "workflows/distill_experiments/h3_text_to_video_pdd_savelat_api.json"
  },
  "patches": [
   "look_anchor__pdd8_s085:MiniMaxH3Conditioning.prompt=@bank:t2va_look_anchor",

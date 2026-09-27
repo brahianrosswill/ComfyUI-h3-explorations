@@ -4,7 +4,7 @@
 A graph built with `draft_decode` (`workflows/build_workflows.py::build_api`)
 decodes its video with `h3_config.DRAFT_VAE` and saves the sampled latent in
 two halves. This finds each draft row's two files in the server's `/history`
-and runs `workflows/h3_decode_saved_latent_api.json` on them through
+and runs `workflows/distill_experiments/h3_decode_saved_latent_api.json` on them through
 `bench/run_graph_arms.py`, one row out per draft, all under one label, so
 the result is a JSONL that `bench/blind_batch.py` can blind like any other.
 
@@ -29,7 +29,7 @@ import urllib.request
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-GRAPH = REPO / "workflows" / "h3_decode_saved_latent_api.json"
+GRAPH = REPO / "workflows" / "distill_experiments" / "h3_decode_saved_latent_api.json"
 #: node ids `build_api(draft_decode=True)` gives the two SaveLatent nodes. Inherited.
 VIDEO_SAVE, AUDIO_SAVE = "102", "103"
 #: node ids of the two LoadLatent nodes in the keeper graph. Inherited.
