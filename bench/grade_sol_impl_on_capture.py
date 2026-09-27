@@ -306,8 +306,7 @@ def main() -> int:
             # sink ranges, each node's own derivation
             video = next(((a, b) for a, b, kind in (segments or []) if kind == "video"), None)
             audio = next(((a, b) for a, b, kind in (segments or []) if kind == "audio"), None)
-            ours_to = {"sol_h3_video_span": video, "sol_h3_audio_span": audio}
-            ours_sinks = ours_mod._sink_blocks(ours_to, s_len, sink_mode)
+            ours_sinks = ours_mod.sink_ranges(video, audio, s_len, sink_mode)
             patch = core_sparse.SparseAttnPatch(
                 tau=tau, topk_ratio=0.0, vsa=False, sigma_start=float("inf"), sigma_end=float("-inf"),
                 min_tokens=min_tokens, dense_blocks=set(), sink_conditioning=sink_mode,

@@ -135,13 +135,20 @@ def cosine(a, b):
 
 def sink_cases(node, check):
     """`_sink_blocks` per mode on fixture layouts. Pure, so no tensor and no
-    kernel: the sink pair is derived from the published spans alone."""
+    kernel: the sink pair is derived from the layout core publishes
+    (`minimax_h3_layout`, read through `h3_layout`), shaped as core builds it."""
+    import types
     B = node.BLOCK_SIZE
     modes = node.SINK_CONDITIONING_MODES
+
+    def layout(*segments):
+        return {"minimax_h3_layout": types.SimpleNamespace(
+            seq_len=segments[-1][1], segments=list(segments))}
     # [text][audio][video]: t2v-shaped, text immediately before the target audio
-    t2v = dict(sol_h3_video_span=(640, 4096), sol_h3_audio_span=(320, 640))
+    t2v = layout((0, 320, "text"), (320, 640, "audio"), (640, 4096, "video"))
     # [text][ref][audio][video]: ref2v-shaped, reference rows between them
-    ref = dict(sol_h3_video_span=(4160, 8192), sol_h3_audio_span=(3840, 4160))
+    ref = layout((0, 320, "text"), (320, 3840, "ref_img"), (3840, 4160, "audio"),
+                 (4160, 8192, "video"))
     T2V, REF = 4096, 8192
     kv = (0, 10)                       # ceil(640 / 64) and ceil(4160 / 64) == 65
     kv_ref = (0, 65)
@@ -158,7 +165,7 @@ def sink_cases(node, check):
     check("exact_kv_and_all_rows: dense queries over every conditioning row",
           pair(t2v, T2V, "exact_kv_and_all_rows") == (kv, kv)
           and pair(ref, REF, "exact_kv_and_all_rows") == (kv_ref, kv_ref))
-    no_audio_t2v = {k: v for k, v in t2v.items() if k != "sol_h3_audio_span"}
+    no_audio_t2v = layout((0, 640, "text"), (640, 4096, "video"))
     check("exact_kv_and_rows without an audio span falls back to the all-rows range",
           pair(no_audio_t2v, T2V, "exact_kv_and_rows") == pair(t2v, T2V, "exact_kv_and_all_rows") == (kv, kv))
     rows_t2v = pair(t2v, T2V, "exact_kv_and_rows")[1]
@@ -172,9 +179,9 @@ def sink_cases(node, check):
           and rows_ref[0] - all_ref[0] == text_blocks + ref_blocks
           and rows_t2v[1] == all_t2v[1] and rows_ref[1] == all_ref[1],
           f"t2v {rows_t2v[0] - all_t2v[0]} blocks, ref2v {rows_ref[0] - all_ref[0]} blocks")
-    check("no video span, or a sequence shorter than it, is zeros in every mode",
+    check("no layout, or a call shorter than the layout (the text-only refiner), is zeros in every mode",
           all(pair({}, T2V, m) == ((0, 0), (0, 0)) for m in modes)
-          and all(pair(t2v, 640 - 1, m) == ((0, 0), (0, 0)) for m in modes))
+          and all(pair(t2v, 320, m) == ((0, 0), (0, 0)) for m in modes))
     try:
         pair(t2v, T2V, "exact_kv_rows"); refused = False
     except ValueError:

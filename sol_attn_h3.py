@@ -115,6 +115,7 @@ import torch
 from comfy_api.latest import io
 
 from .block_spec import parse_blocks
+from . import h3_layout as _h3layout
 from . import sol_observe
 from . import h3_capture as _capture
 from . import sol_block_probe as _probe
@@ -981,14 +982,20 @@ def _sink_blocks(transformer_options, tokens, mode):
     change, not dead code (docs/SOLATTN.md, the sink section). Pure: no
     tensor, no kernel, graded on CPU by bench/check_sol_node_equivalence.py.
     """
+    return sink_ranges(_h3layout.span(transformer_options, "video", tokens),
+                       _h3layout.span(transformer_options, "audio", tokens), tokens, mode)
+
+
+def sink_ranges(video, audio, tokens, mode):
+    """The pure half of `_sink_blocks`: the two block ranges from the target
+    video and target audio spans (each `(start, stop)` or None). Callers that
+    hold spans rather than transformer_options (the capture graders) call this
+    directly."""
     if mode not in SINK_CONDITIONING_MODES:
         raise ValueError(f"sink_conditioning {mode!r} is not one of {SINK_CONDITIONING_MODES}")
-    if mode == "off":
+    if mode == "off" or video is None:
         return (0, 0), (0, 0)
-    span = (transformer_options or {}).get("sol_h3_video_span")
-    if span is None:
-        return (0, 0), (0, 0)
-    video_start, video_stop = span
+    video_start, video_stop = video
     if tokens < video_stop or video_start <= 0:
         return (0, 0), (0, 0)
     blocks = (0, (video_start + BLOCK_SIZE - 1) // BLOCK_SIZE)
@@ -998,8 +1005,7 @@ def _sink_blocks(transformer_options, tokens, mode):
         return blocks, blocks
     # exact_kv_and_rows: dense-query protection exists for the TARGET AUDIO
     # rows; reference rows only need the exact-KV side. Fall back to the whole
-    # conditioning range when the layout did not publish an audio span.
-    audio = (transformer_options or {}).get("sol_h3_audio_span")
+    # conditioning range when the layout has no audio segment.
     if audio is None:
         return blocks, blocks
     audio_start, _audio_stop = audio

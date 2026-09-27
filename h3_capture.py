@@ -94,6 +94,11 @@ import os
 import re
 import threading
 
+try:                                    # a module of the pack, or on sys.path in a bench
+    from . import h3_layout as _h3layout
+except ImportError:                     # pragma: no cover
+    import h3_layout as _h3layout
+
 _SPEC = os.environ.get("H3_CAPTURE", "")
 enabled = bool(_SPEC)
 
@@ -263,20 +268,11 @@ def _write_record(render, block, step, qkv_host, length_hint, kernel,
     name = (f"qkv_L{length_hint if length_hint is not None else 'na'}"
             f"_S{seq}_b{block}_s{step}{ktag}{suffix}.pt")
     path = os.path.join(_config["dir"], name)
-    # Segment bounds, when the layout published them. `sol_h3_video_span` is
-    # what the Sol node's rope hook publishes; the full table is preferred and
-    # the span is the fallback, so a capture taken with Sol absent still says
-    # where video starts rather than saying nothing.
-    segments = None
-    if isinstance(transformer_options, dict):
-        segments = transformer_options.get("h3_segments")
-        if segments is None:
-            span = transformer_options.get("sol_h3_video_span")
-            audio = transformer_options.get("sol_h3_audio_span")
-            if span is not None:
-                segments = [(int(span[0]), int(span[1]), "video")]
-                if audio is not None:
-                    segments.insert(0, (int(audio[0]), int(audio[1]), "audio"))
+    # Segment bounds, from the layout core publishes for every H3 forward
+    # (`h3_layout`). Since 2026-09-27 this no longer depends on the Sol node:
+    # it used to read a table Sol's layout patch published, and a capture
+    # taken without Sol had only what a fallback could piece together.
+    segments = _h3layout.segments(transformer_options, seq)
 
     # **Index fields are TOP-LEVEL SCALARS, not filename-encoded**, so a
     # consumer joins on a dict lookup instead of writing its own parser. Asked
@@ -325,15 +321,9 @@ def _write_record(render, block, step, qkv_host, length_hint, kernel,
               "server": _server_stamp()}
     if segments is not None:
         record["segments"] = segments
-    # Token order. With Sol's reorder on, q/k/v are captured in PERMUTED row
-    # order while `segments` above describes the raster layout, and until
-    # 2026-09-17 nothing in the file said which. A consumer that permutes a
-    # capture itself (bench/sweep_sol_orderings_on_capture.py) needs a raster
-    # one, and can now check instead of trusting the caller.
-    if isinstance(transformer_options, dict):
-        record["sol_morton"] = bool(transformer_options.get("sol_morton", False))
-        if record["sol_morton"]:
-            record["sol_morton_curve"] = str(transformer_options.get("sol_morton_curve", "3d"))
+    # Token order is always raster: the Sol node's Morton reorder, which
+    # captured q/k/v in permuted rows, was retired 2026-09-27. Captures from
+    # 2026-09-17 to that date carry a `sol_morton` field saying which.
 
     # **The capture asserts its own shape before it is written.** Adopted from
     # the PDD lane, which hit two silent short-capture bugs in one day: a file

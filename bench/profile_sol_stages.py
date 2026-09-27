@@ -128,8 +128,8 @@ def main() -> int:
         del q, k, v
         tokens = qs.shape[1]
         a0, a1 = (int(x) for x in args.audio_span.split(","))
-        layout = {"sol_h3_video_span": (args.video_start, tokens), "sol_h3_audio_span": (a0, a1)}
-        sink_kv, sink_q = node._sink_blocks(layout, tokens, recipe["sink_conditioning"])
+        sink_kv, sink_q = node.sink_ranges((args.video_start, tokens), (a0, a1), tokens,
+                                           recipe["sink_conditioning"])
         m = re.search(r"_b(\d+)_s(\d+)", Path(cap).name)
         cell = f"b{m.group(1)}_s{m.group(2)}" if m else Path(cap).stem
         print(f"{cell}: S={tokens} heads {qs.shape[2]} sinks kv={sink_kv} q={sink_q}")

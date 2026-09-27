@@ -718,8 +718,12 @@ def _cond_or_uncond(options) -> list | None:
         return None
 
 
-def _segments(options) -> list | None:
-    segs = options.get("h3_segments") if isinstance(options, dict) else None
+def _segments(options, tokens=None) -> list | None:
+    try:
+        from . import h3_layout
+    except ImportError:                                # pragma: no cover
+        import h3_layout
+    segs = h3_layout.segments(options, tokens)
     if not segs:
         return None
     return [[int(a), int(b), str(kind)] for a, b, kind in segs]
@@ -815,7 +819,7 @@ def record(*, route: str, reason: str | None, counts: torch.Tensor | None, optio
     routed_stats = _stats(adaptive.flatten())
     if routed_stats is not None:
         routed_stats["weighting"] = "query"
-    segments = _segments(options)
+    segments = _segments(options, tokens)
     row.update({
         "forced": {"sink": sink_count, "sink_range_clamped": [s0, s1],
                    "diag_min": int(diag.min()) if diag is not None else None,
