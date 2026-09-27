@@ -36,6 +36,12 @@ runs the tool each prediction names
   switch with full FlashGen (`rev_h080`) and with FlashGen on blocks 34-49
   (`rev_late_h080`): tone, temporal and resolution on the clips, and latent
   distance with PDD8 as the reference. Its files are dated 2026-09-27.
+- `grid`: the PDD8 finisher grid (`bench/pdd8_finisher_grid_arms.json`,
+  2026-09-27). Per scene, PDD8 against its finishes from 0.8: full FlashGen,
+  FlashGen on blocks 34-49 and the base. Arms from earlier rows files are found
+  on the share by label.
+- `fg46`: #46 in the same batch. Per scene, full FlashGen against FlashGen
+  alone on blocks 34-49 (`flashgen_late`).
 
 **Latent distance is divergence, not effect size.** Any change to the model
 diverges the trajectory from step 0, so a final-latent distance says how far
@@ -109,9 +115,9 @@ def run(tool: str, args: list, json_out: Path):
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--group", action="append",
-                    choices=("looks", "ladder", "vsa", "spec", "reverse", "swap", "transplant", "late_switch"))
+                    choices=("looks", "ladder", "vsa", "spec", "reverse", "swap", "transplant", "late_switch", "grid", "fg46"))
     args = ap.parse_args()
-    groups = args.group or ["looks", "ladder", "vsa", "spec", "reverse", "swap", "transplant", "late_switch"]
+    groups = args.group or ["looks", "ladder", "vsa", "spec", "reverse", "swap", "transplant", "late_switch", "grid", "fg46"]
     out_root = comfy_output()
     if not ROWS.exists():
         print(f"no rows yet: {ROWS.relative_to(REPO)} does not exist")
@@ -190,7 +196,11 @@ def main() -> int:
             ("transplant", "2026-09-26_flashgen_transplant.jsonl", "flashgen",
              ("flashgen_blk0_49", "flashgen_blk0_33", "flashgen_blk34_49"), "2026-09-26"),
             ("late_switch", "2026-09-27_late_switch.jsonl", "pdd8",
-             ("rev_h080", "rev_late_h080"), "2026-09-27")):
+             ("rev_h080", "rev_late_h080"), "2026-09-27"),
+            ("grid", "2026-09-27_finisher_grid.jsonl", "pdd8",
+             ("rev_h080", "rev_late_h080", "rev_base_h080"), "2026-09-27"),
+            ("fg46", "2026-09-27_finisher_grid.jsonl", "flashgen",
+             ("flashgen_late",), "2026-09-27")):
         if group not in groups:
             continue
         landed = rows(OUT / rows_file)
@@ -209,7 +219,7 @@ def main() -> int:
                 print(f"== {group}: {scene} temporal")
                 run("measure_clip_temporal.py", [*got, "--stride", "4"],
                     OUT / f"{day}_{group}_{scene}_temporal.json")
-            if group == "late_switch":
+            if group in ("late_switch", "grid", "fg46"):
                 print(f"== {group}: {scene} resolution")
                 run("measure_clip_resolution.py", got, OUT / f"{day}_{group}_{scene}_resolution.json")
             if lats[0] and any(lats[1:]):
