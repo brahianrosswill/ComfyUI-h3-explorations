@@ -1344,12 +1344,12 @@ def _apply_patch(model, *, tau, start_percent, end_percent, min_tokens,
         # path it would become a silent dense render.
         raise RuntimeError(
             "qk_balance is on, but the installed comfy_kitchen.sol_attn has no "
-            "qk_balance argument. It is carried on the owner's fork (h3-build); "
+            "qk_balance argument. It is carried on the owner's fork (h3-frontier); "
             "rebuild with vendor/rebuild_kernel.sh, or turn the widget off.")
     if rotate and "rotate" not in inspect.signature(_ck.sol_attn).parameters:
         raise RuntimeError(
             "rotate is on, but the installed comfy_kitchen.sol_attn has no rotate "
-            "argument. It is carried on the owner's fork (h3-build); rebuild with "
+            "argument. It is carried on the owner's fork (h3-frontier); rebuild with "
             "vendor/rebuild_kernel.sh, or turn the widget off.")
     diffusion_model = model.get_model_object("diffusion_model")
     is_h3 = hasattr(diffusion_model, "rope_freqs") and hasattr(diffusion_model, "_forward")
@@ -1396,7 +1396,7 @@ def _apply_patch(model, *, tau, start_percent, end_percent, min_tokens,
                     "rotate is on together with token routing, and the installed "
                     "comfy_kitchen build predates the fix for that pair (its token "
                     "stage mixes rotated and unrotated spaces). Rebuild from the "
-                    "owner's fork (h3-build) with vendor/rebuild_kernel.sh, or turn "
+                    "owner's fork (h3-frontier) with vendor/rebuild_kernel.sh, or turn "
                     "one of the two off.")
     observing = sol_observe.enabled()
     # `_capture.enabled`: the capture seam in the override files each call under

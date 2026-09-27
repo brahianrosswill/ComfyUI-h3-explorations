@@ -4,6 +4,37 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.158.0
+
+### Changed
+
+- **The kitchen build tracks upstream main (owner, 2026-09-27).** It was
+  `0.2.35+sol.8176242`: `h3-build`, v0.2.35 plus our Sol commits, and every
+  render through 2026-09-27 ran on it. It is now `0.2.35+sol.863e953.up.c8c7825`:
+  `h3-frontier`, upstream main at c8c7825 plus the same 13 commits (our diff is
+  identical apart from hunk offsets).
+  - What arrives from upstream: #207/#208, kitchen's dense int8 attention
+    (#208 adds an Ada-only cached-Q path at head_dim 128 with no mask, which
+    is how H3's dense backend calls it), and #192's `fp16_conv3d` depth gate
+    (8192 to 16384). Under `--fast fp16_accumulation` the depth gate moves the
+    H3 VAE encoder's 512-channel 3x3x3 convs to fp16 accumulation (open
+    experiment #33, unblocked). Also W6A8, flash head_dim 256, and the Ascend
+    and HIP work. None of it touches Sol, VSA or CUDA rope.
+  - Rows before and after are different builds. Their `comfy_kitchen` field
+    says which.
+  - `vendor/rebuild_kernel.sh`: the gate no longer refuses untagged main. It
+    refuses only a source whose base predates the pin or is off upstream
+    main, and a declared version other than the pin is now a warning. The
+    installed version names the upstream base (`+sol.<ours>.up.<base>`), and
+    `comfy_kitchen_build.json` adds `upstream_base`, its date, the commits
+    past the pin, and the carried list. The branch moves forward by merge,
+    never by rebase, so nothing in the shared clone is rewritten.
+  - Prose that named `h3-build` as the build is corrected (`sol_attn_h3.py`
+    messages, the `h3_config.py` comment, `docs/SOLATTN.md`,
+    `docs/wiki/references.md`, `docs/sol_upstream.md`,
+    `docs/open_experiments.md` #33), and `docs/wiki/decisions.md` records the
+    reversal.
+
 ## 0.157.2
 
 ### Docs

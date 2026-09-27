@@ -2480,6 +2480,9 @@ bf16's, the encode needs fp32 accumulation. kijai's fork has an
 node can scope that to the encode, since the checkout stays stock. If it
 sits with fp16's, the rebuild record says so and this closes.
 
-**Blocker:** the tag. Upstream `main` is past `v0.2.35` and untagged, and by
-policy an untagged main is not built.
+**Blocker:** none since 2026-09-27. The build tracks upstream main
+(`vendor/rebuild_kernel.sh`), and `0.2.35+sol.863e953.up.c8c7825` carries
+`ef40891`. The "before" arm is
+`bench/results/2026-09-27_vae_encoder_fp16acc_before_672.json`. *Until then
+this said the tag was the blocker: untagged main was not built by policy.*
 

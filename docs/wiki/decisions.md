@@ -17,6 +17,19 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-27
 
+- **Reversed: the kitchen build tracks upstream main, not ComfyUI's pinned
+  tag** (owner: "I want to be able to stay on the frontier here... So long as
+  we know what exists where and why"). It used to be that untagged main was
+  "not built by policy" (`vendor/rebuild_kernel.sh`, since 2026-09-11). That
+  kept #207/#208 (kitchen int8 attention; #208 adds an Ada-only cached-Q path
+  at head_dim 128 with no mask, which is how H3's dense backend calls it) and
+  #192's `fp16_conv3d` depth gate out for a release cycle. Now we build
+  `h3-frontier`, upstream main plus our Sol commits, moved forward by merge.
+  The installed version names both halves (`+sol.<ours>.up.<base>`), and the
+  build record lists the base, its distance past the pin and the carried
+  commits. `h3-build` (8176242) is the retired tag-based line. A rebase of it
+  was refused as a destructive rewrite of a shared clone, which is also why
+  the branch moves by merge. 0.158.0.
 - **Corrected: `vsa_attention.py` "cannot run", its defect "unreachable".**
   Stock core has built `to_gate_compress` since e308cc73 (#16072), so the old
   refusal passes and the `_publish_layout` leak is reachable. The node is

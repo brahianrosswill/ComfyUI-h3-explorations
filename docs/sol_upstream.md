@@ -60,6 +60,10 @@ the read, so the next start runs this checkout.
 holding the `h3-build` tip. Upstream `main` is past `v0.2.35` and untagged,
 so by policy it is not built. What it holds, for the next rebase:
 
+*2026-09-27: that policy is reversed. The build now tracks upstream main
+(`h3-frontier`, `vendor/rebuild_kernel.sh` "Track upstream main"), and
+everything below is in it from `0.2.35+sol.863e953.up.c8c7825`.*
+
 - **`ef40891` (#192, kijai) will reach H3's video VAE encode on the next
   tag.** Its `zero_pad` and `out=` work is for the SeedVR2 VAE, which closes
   the 2026-09-19 note that the fork commit named no model. The same PR also

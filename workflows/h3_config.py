@@ -750,7 +750,7 @@ SOL_RECOMMENDED_CUDA = dict(
     token_aug_blocks="",
     # On since 2026-09-15, owner decision; off from its introduction that
     # morning. The kernel's own per-head q/k channel rebalancing inside its
-    # INT8 quantizers, carried on the owner's kitchen fork (h3-build) and
+    # INT8 quantizers, carried on the owner's kitchen fork (h3-frontier) and
     # graded on captures by bench/grade_channel_balance.py; exact for every
     # attention score, so what it changes is the INT8 error on the blocks
     # whose K-norm is lopsided (docs/h3_block49_quant_error.md). Measured on

@@ -21,10 +21,10 @@
 # "0.2.32", ...), identical to the PyPI wheel ComfyUI pins, so a fork build
 # and the stock wheel are indistinguishable to `pip list` -- and a stock wheel
 # silently has no sol_attn, which makes every Sol call fall back to dense with
-# no error. PEP 440 still matches `X.Y.Z+sol.<sha>` against `==X.Y.Z`, so a
-# plain requirements install stays satisfied and will not clobber it -- but
-# only while X.Y.Z is exactly ComfyUI's pin, which is why the base has to be
-# the pinned tag (see "Carry blk_cnt, track everything else" below).
+# no error. PEP 440 still matches `X.Y.Z+sol.<sha>.up.<base>` against
+# `==X.Y.Z`, so a plain requirements install stays satisfied and will not
+# clobber it -- but only while X.Y.Z is exactly ComfyUI's pin (see "Track
+# upstream main" below for what happens when it is not).
 #
 #   2026-09-03: this used to be `git apply vendor/patches/001-local-version-tag.patch`,
 #   a diff hardcoded against `version = "0.2.31"`. Upstream released 0.2.32 on
@@ -40,17 +40,32 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-# --- Carry blk_cnt, track everything else (owner, 2026-09-11) ----------------
-# We carry the `blk_cnt` commits indefinitely, whether or not upstream ever
-# merges them (Comfy-Org/comfy-kitchen #168), and take everything else from
-# upstream. "Current" means those commits rebased onto the tag ComfyUI's
-# requirements pin: not upstream's newest tag, and not main. The reason is
-# PEP 440. Our build declares `X.Y.Z+sol.<sha>`, which satisfies
-# `comfy-kitchen==X.Y.Z` only when X.Y.Z IS the pin; built on a newer tag it
-# stops matching, and the next requirements install silently swaps in the
-# stock wheel, which has no `blk_cnt`. So a newer upstream tag is news, not an
-# instruction: when ComfyUI moves its pin, rebase onto the new tag. The gate
-# below refuses any source that is not `v<pin>` plus our commits, and
+# --- Track upstream main, carry ours on top (owner, 2026-09-27) ---------------
+# We carry our Sol commits (blk_cnt, qk_balance, rotate) indefinitely and take
+# everything else from upstream MAIN, not from a tag: kitchen moves faster than
+# its releases, and the owner wants its frontier ("so long as we know what
+# exists where and why"). What makes that safe is that the build names its
+# own contents. The wheel installs as `<declared>+sol.<ours>.up.<base>`: the
+# version upstream's pyproject declares, our tip's short sha, and the upstream
+# main commit our commits sit on. Every bench record carries that string
+# (provenance.py, substrate.py), and the build record below adds the base's
+# date, its distance past the pinned tag, and the carried commits.
+#
+# The gate below refuses only what would make that string lie or the build
+# unusable: a source that does not contain ComfyUI's pinned tag, or a source
+# whose base is not on upstream main. A declared version other than the pin
+# is a WARNING, not a refusal: PEP 440 then stops matching the pin, so a later
+# `pip install -r requirements.txt` swaps in the stock wheel. That is loud,
+# not silent: MiniMaxH3SolAttn refuses at patch time on a wheel without
+# qk_balance (sol_attn_h3.py::_apply_patch), and this script's --check names
+# the installed build. Rebuild after any requirements install.
+#
+# Until 2026-09-27 the base had to be the tag ComfyUI pins, and untagged main
+# was "not built by policy". That kept kitchen's int8 attention work (#207,
+# #208) and the fp16_conv3d depth gate (#192) out for a release cycle; the
+# last tag-based build is `h3-build` at 8176242 (0.2.35+sol.8176242), which
+# every render through 2026-09-27 ran on.
+#
 # `--check` runs only the gate.
 #
 # Derived from this checkout, not typed: the repo sits at
@@ -67,35 +82,33 @@ CHECK_ONLY=0
 if [ "${1:-}" = "--check" ]; then CHECK_ONLY=1; shift; fi
 ARCH="${1:-89}"
 
-# --- The build branch: one name, always (owner, 2026-09-11) ------------------
-# The owner's fork (the clone's `origin`) holds exactly:
+# --- The build branch (owner, 2026-09-11; frontier since 2026-09-27) ---------
+# The owner's fork (the clone's `origin`) holds:
 #
 #   main            a mirror of upstream main; never built
-#   h3-build        ComfyUI's pinned tag plus our commits (blk_cnt, and from
-#                   2026-09-15 qk_balance): what we build
+#   h3-frontier     upstream main plus our commits: what we build. It lives in
+#                   its own worktree beside the clone (the lookup below
+#                   follows the branch, not a path)
+#   h3-build        the tag-based line, v0.2.35 plus our commits at 8176242;
+#                   retired 2026-09-27, kept because every record before then
+#                   cites it
 #   sol-blk-cnt-pr  PR 168's head, our commits on upstream main; for the PR
 #                   only, and deleted when the PR closes
 #   archive/* tags  retired builds that records here cite by sha, kept
 #                   reachable so those shas still resolve
 #
-# Until 2026-09-11 every pin got its own branch (sol-blk-cnt-0.2.32,
-# sol-blk-cnt-0.2.33, ...) and the old ones piled up on the fork. Now a pin
-# move rebases h3-build in place, after tagging its old tip
-# archive/h3-build-<old version>.
+# `git -C <clone> log --no-merges upstream/main..h3-frontier` is everything we
+# add, and `.up.<base>` in the installed version says which upstream main it
+# sits on (the merge-base, so the newest upstream commit merged in).
 #
-# A build from h3-build installs as `<pin>+sol.<sha>`: the version names the
-# upstream release and the sha names our commits, so
-# `git -C coderef/comfy-kitchen log v<pin>..<sha>` is everything we add. That
-# is why the base is a tag and never main: main declares the last release's
-# version while holding later code, so the version would stop saying what is
-# in the build.
-#
-# The rebase stays manual on purpose. The gate below refuses a build whose
-# base is not the pin and prints the exact steps (recipe), so a forgotten
-# rebase cannot produce a wrong build. An automatic one would rewrite a branch
-# in a clone other agents share, and would make what is in the build depend
-# on when it was last built.
-BRANCH="h3-build"
+# h3-frontier moves forward by MERGING upstream main, never by rebasing: the
+# clone is shared with other agents, a rebase rewrites a branch they may be
+# reading and needs a force-push to the fork, and a merge needs neither. Every
+# sha a record ever cited stays on the branch. It stays manual on purpose: an
+# automatic merge would make what is in the build depend on when it was last
+# built. --check says how far upstream main has moved past the build's base;
+# recipe() prints the steps.
+BRANCH="${BRANCH:-h3-frontier}"
 branch_worktree() {   # the worktree that has $BRANCH checked out, or nothing
     git -C "$CLONE" worktree list --porcelain 2>/dev/null |
         awk -v b="branch refs/heads/$BRANCH" '/^worktree /{w=substr($0,10)} $0==b{print w; exit}'
@@ -111,22 +124,16 @@ recipe() {
         return 0
     fi
     if [ -z "$(branch_worktree)" ]; then
-        echo "$CLONE is not on $BRANCH; put it there:"
-        echo "  git -C $CLONE switch $BRANCH"
+        echo "No worktree has $BRANCH checked out. Give it one beside the clone, leaving"
+        echo "the clone itself on whatever branch it is on:"
+        echo "  git -C $CLONE worktree add $(dirname "$CLONE")/comfy-kitchen-frontier $BRANCH"
         return 0
     fi
-    local old
-    old="$(git -C "$CLONE" show "$BRANCH:pyproject.toml" 2>/dev/null |
-           sed -n 's/^version = "\([^"+]*\).*/\1/p' | head -1 || true)"
-    # On the pin already: the refusal above says what else is wrong.
-    if [ -z "$old" ] || [ "$old" = "$PIN" ]; then return 0; fi
-    echo "ComfyUI now pins v$PIN and $BRANCH is built on v$old. Keep the old build"
-    echo "reachable, carry our commits onto the new tag, build, and back it up:"
+    echo "To move $BRANCH onto the newest upstream main (a merge: nothing is rewritten):"
     echo "  git -C $CLONE fetch upstream --tags"
-    echo "  git -C $CLONE tag -a archive/$BRANCH-$old $BRANCH -m \"$BRANCH on v$old, retired when ComfyUI pinned v$PIN\""
-    echo "  git -C $CLONE rebase --onto v$PIN v$old $BRANCH    # commits upstream already has drop out"
+    echo "  git -C $(branch_worktree) merge --no-edit upstream/main"
     echo "  vendor/rebuild_kernel.sh --check && vendor/rebuild_kernel.sh"
-    echo "  git -C $CLONE push --force-with-lease origin $BRANCH refs/tags/archive/$BRANCH-$old"
+    echo "  git -C $CLONE push origin $BRANCH    # only when the owner says"
 }
 
 # Default source: the checkout that has $BRANCH, which is the fork clone
@@ -145,8 +152,8 @@ recipe() {
 if [ -z "${SRC:-}" ]; then
     SRC="$(branch_worktree)"
     if [ -z "$SRC" ]; then
-        echo "REFUSED: $CLONE is not on $BRANCH, the branch that carries our"
-        echo "commits on ComfyUI's pinned tag."
+        echo "REFUSED: no worktree of $CLONE has $BRANCH checked out, the branch that"
+        echo "carries our commits on upstream main."
         recipe; exit 1
     fi
 fi
@@ -154,41 +161,44 @@ fi
 cd "$SRC"
 echo "== source: $(git rev-parse --abbrev-ref HEAD) @ $(git rev-parse --short HEAD)  (ComfyUI pins comfy-kitchen==$PIN)"
 
-# --- The currency gate -------------------------------------------------------
-# Fetching tags moves refs only, never this tree. Offline, it judges against
-# the tags already here and says so.
+# --- The gate ----------------------------------------------------------------
+# Refuses only a build whose version string would lie or that ComfyUI cannot
+# use (see "Track upstream main" in the header); everything else is reported.
+# Fetching moves remote-tracking refs only, never this tree. Offline, it
+# judges against the refs already here and says so.
 git fetch --quiet upstream --tags 2>/dev/null ||
-    echo "== WARNING: could not fetch upstream; judging against the tags already here"
+    echo "== WARNING: could not fetch upstream; judging against the refs already here"
 CURRENT=1
 DECLARED="$(sed -n 's/^version = "\([^"+]*\).*/\1/p' pyproject.toml | head -1)"
-if ! git rev-parse -q --verify "refs/tags/v$PIN" >/dev/null; then
+BASE="$(git merge-base HEAD upstream/main 2>/dev/null || true)"
+if [ -z "$BASE" ]; then
+    echo "REFUSED: this source shares no history with upstream/main"; CURRENT=0
+elif ! git rev-parse -q --verify "refs/tags/v$PIN" >/dev/null; then
     echo "REFUSED: tag v$PIN, ComfyUI's pin, is not in this checkout"; CURRENT=0
-elif ! git merge-base --is-ancestor "v$PIN" HEAD; then
-    echo "REFUSED: this source is not based on v$PIN, the comfy-kitchen ComfyUI pins"; CURRENT=0
+elif ! git merge-base --is-ancestor "v$PIN" "$BASE"; then
+    echo "REFUSED: this source's upstream base predates v$PIN, the comfy-kitchen ComfyUI pins"; CURRENT=0
 fi
+[ "$CURRENT" = 1 ] || { recipe; exit 1; }
+BASE7="$(git rev-parse --short=7 "$BASE")"
+echo "== upstream base: $BASE7 ($(git log -1 --format='%cs %s' "$BASE"))"
+echo "     $(git rev-list --count "v$PIN..$BASE") upstream commit(s) past v$PIN, ComfyUI's pin"
+BEHIND="$(git rev-list --count "$BASE..upstream/main")"
+if [ "$BEHIND" = 0 ]; then
+    echo "     upstream main has nothing newer"
+else
+    echo "     upstream main has $BEHIND newer commit(s), not in this build; merge to take them (recipe below)"
+fi
+echo "== carried on top (+ ours; - already upstream as an equivalent patch, drop it):"
+git cherry -v upstream/main HEAD | sed 's/^/     /'
 if [ "$DECLARED" != "$PIN" ]; then
-    echo "REFUSED: the source declares $DECLARED but ComfyUI pins $PIN; $DECLARED+sol.<sha>"
-    echo "would not satisfy the pin, and a requirements install would put the stock wheel back"
-    CURRENT=0
-fi
-if [ "$CURRENT" = 1 ]; then
-    echo "== carried on top of v$PIN (+ ours; - already in v$PIN, drop it on the next rebase):"
-    while read -r mark sha subject; do
-        if git merge-base --is-ancestor "$sha" upstream/main 2>/dev/null; then
-            echo "     $mark ${sha:0:7} $subject   <-- upstream main, in no tag"
-            CURRENT=0
-        else
-            echo "     $mark ${sha:0:7} $subject"
-        fi
-    done < <(git cherry -v "v$PIN" HEAD)
-    [ "$CURRENT" = 1 ] ||
-        echo "REFUSED: the source carries untagged upstream work; the base is a tag, never main"
+    echo "== WARNING: the source declares $DECLARED and ComfyUI pins $PIN, so the installed"
+    echo "   $DECLARED+sol.<sha>.up.<base> no longer satisfies the pin: a later requirements"
+    echo "   install puts the stock wheel back. Rebuild after one (see the header)."
 fi
 NEWEST="$(git tag -l 'v[0-9]*' --sort=-version:refname | head -1)"
 [ "$NEWEST" = "v$PIN" ] ||
-    echo "== upstream has $NEWEST, newer than the pin: news, not an instruction (see the header)"
-echo "== upstream main past $NEWEST, untagged, not built by policy: $(git rev-list --count "$NEWEST"..upstream/main 2>/dev/null || echo unknown) commit(s)"
-[ "$CURRENT" = 1 ] || { recipe; exit 1; }
+    echo "== upstream has tagged $NEWEST, newer than ComfyUI's pin v$PIN"
+[ "$BEHIND" = 0 ] || recipe
 
 # --- Submodules: the commits this source pins, on every build (owner, 2026-09-11)
 # The CUDA build compiles against third_party/flash-attention and
@@ -223,7 +233,7 @@ if [ "$CHECK_ONLY" = 1 ]; then
         echo "== --check: submodules NOT at this source's pins ('-' empty, '+' other commit); a build checks them out:"
     fi
     sed 's/^/     /' <<<"$SUBS"
-    WOULD="$PIN+sol.$(git rev-parse --short=7 HEAD)"
+    WOULD="$DECLARED+sol.$(git rev-parse --short=7 HEAD).up.$BASE7"
     # -I (isolated): without it `-c` puts the current directory -- this source
     # checkout -- first on sys.path, and its build-left comfy_kitchen.egg-info
     # answered instead of the venv (2026-09-11: an empty venv read as the
@@ -268,12 +278,13 @@ fi
 cleanup() { git -C "$SRC" checkout -- pyproject.toml 2>/dev/null || true; }
 trap cleanup EXIT
 
-# Append the local segment to whatever version the checkout declares; the
-# tag is the built commit's short sha, derived rather than typed, so it
-# cannot go stale on an update.
+# Append the local segment to whatever version the checkout declares: our
+# tip's short sha, then the upstream main commit it sits on. Both derived
+# rather than typed, so neither can go stale on an update, and two builds
+# that differ in either half never share a version string.
 SHA="$(git rev-parse --short=7 HEAD)"
-sed -i "s/^version = \"\([0-9][^\"+]*\)\"/version = \"\1+sol.$SHA\"/" pyproject.toml
-if ! grep -q "^version = \".*+sol.$SHA\"" pyproject.toml; then
+sed -i "s/^version = \"\([0-9][^\"+]*\)\"/version = \"\1+sol.$SHA.up.$BASE7\"/" pyproject.toml
+if ! grep -q "^version = \".*+sol.$SHA.up.$BASE7\"" pyproject.toml; then
     echo "ERROR: could not tag the version line in pyproject.toml:"
     grep -n '^version' pyproject.toml; exit 1
 fi
@@ -314,9 +325,9 @@ uv pip install --python "$PY" --force-reinstall --no-deps "${WHL[0]}"
 # because the node refuses an armed route observer on a wheel without blk_cnt
 # (sol_attn_h3.py::_require_kernel) and --check covers the pin.
 RECORD="$VIRTUAL_ENV/comfy_kitchen_build.json"
-"$PY" - "$RECORD" "$VER" "$SRC" "${WHL[0]}" "$ARCH" <<'PYEOF'
+"$PY" - "$RECORD" "$VER" "$SRC" "${WHL[0]}" "$ARCH" "$BASE" "$PIN" <<'PYEOF'
 import json, subprocess, sys, time
-record, ver, src, whl, arch = sys.argv[1:6]
+record, ver, src, whl, arch, base, pin = sys.argv[1:8]
 def git(*a):
     return subprocess.run(["git", "-C", src, *a], capture_output=True, text=True).stdout.strip()
 json.dump({
@@ -327,6 +338,13 @@ json.dump({
     "origin": git("remote", "get-url", "origin"),
     "wheel": whl,
     "cuda_arch": arch,
+    # What exists where: the upstream main commit the build sits on, how far
+    # past ComfyUI's pinned tag that is, and every commit we carry on top.
+    "upstream_base": base,
+    "upstream_base_date": git("log", "-1", "--format=%cI", base),
+    "comfyui_pin": pin,
+    "upstream_commits_past_pin": int(git("rev-list", "--count", f"v{pin}..{base}") or 0),
+    "carried": git("log", "--no-merges", "--format=%h %s", f"{base}..HEAD").splitlines(),
     "built_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
     "written_by": "vendor/rebuild_kernel.sh",
 }, open(record, "w"), indent=2)
