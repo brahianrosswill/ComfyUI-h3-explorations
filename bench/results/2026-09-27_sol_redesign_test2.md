@@ -104,5 +104,14 @@ serves the dense tail better than the sage chain.
     small. When and whether to flip is the owner's call.
   - The "all blocks" routing preset requires a balanced quantizer (bug #7).
     Test 3 re-derives that on the fixed kernel.
-- **Not graded here:** Sol itself on blocks 45, 48 and 49, so whether the
-  dense tail still beats Sol there on PDD8 is open. The cells for it exist.
+- **The dense tail still beats Sol on PDD8** (graded the same night on the
+  same 12 tail cells; record `2026-09-27_sol_quantizer_grade_pdd8_tail.json`,
+  set against the dense-tail kernel grade above):
+  - Sol's total error against fp32 dense is 0.07 to 0.13 under `rotated`.
+  - Kitchen int8 dense is 0.009 to 0.037 on the same cells, several times
+    closer on all 12, in both modes.
+  - So `dense_blocks` 45,48,49 stays.
+  - These are also the cells where the quantizer matters most. On block 49
+    `plain` is several times worse than `rotated`, and `balanced+rotated`
+    is lower again. That doesn't bear on the default, because the tail runs
+    dense.
