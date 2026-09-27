@@ -10,9 +10,11 @@ in place -- v3.1 and v3.2 in its lineage table are ours, not drops. So this
 file takes vendor/README.md's third option, the one it says not to reach for
 casually: fork it, rename it so the fork is obvious, and record the divergence.
 
-Forked from vendored v3.2. Every local change is listed below; nothing else
-differs, which is what keeps a future upstream drop a diff rather than a
-rewrite.
+Forked from vendored v3.2. The changes made at the fork are listed below.
+Later additions are not: among them `qk_balance`, `rotate`, token routing,
+the `SOL_DENSE_TAIL` default for `dense_blocks`, and the capture seams, each
+documented where it is defined. A diff against `vendor/sol_attn_minimax.py` is
+the complete list.
 
   - **`centroid_tail` and `reuse_qkv_memory` are gone**, along with the
     signature probing that existed to pass them where they were accepted.
@@ -1504,7 +1506,9 @@ class MiniMaxH3SolAttn(io.ComfyNode):
                 "2607.24027) for MiniMax-H3, on comfy_kitchen's merged CUDA "
                 "kernel. bf16 and head_dim 128 only; ineligible calls fall "
                 "back to whatever attention node sits upstream, which on "
-                "these graphs is sage rather than dense torch. The win grows "
+                "the default graphs is core's ModelAttentionBackend set to "
+                "comfy kitchen attention (sage only on arms that declare "
+                "it), not dense torch. The win grows "
                 "with sequence length, so leave min_tokens high.\n\n"
                 "Forked from the vendored upstream node. Two of its widgets "
                 "(centroid_tail, reuse_qkv_memory) are gone because "

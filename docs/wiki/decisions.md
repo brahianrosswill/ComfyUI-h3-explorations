@@ -24,6 +24,46 @@ Older history lives elsewhere and is not copied here:
   module docstring, `docs/research/vsa/vsa_node.md`, and
   `check_vsa_core_patch.py`'s "applied from the draft PR" message) is listed
   for correction.
+- **Corrected: the VSA prose, following the entry above.**
+  `vsa_attention.py`'s docstring, description and refusal said the node cannot
+  run, core has no `gate_compress`, PR #15958 is an unmerged draft, the defect
+  is unreachable, "nothing has been rendered", the T8 pack is "the only other
+  implementation", and keep 10 is "VSA's published 0.90 sparsity". They now
+  say it is parked, core builds the gate since e308cc73, it rendered on
+  2026-08-30 on a draft-patched core, and FastH3 V2 trains at keep 20
+  (`h3_config.FASTH3_CONTRACT_VSA`). `docs/research/vsa/vsa_node.md` said core
+  was stock without the gate and the blocker stood until #15958 merged; it now
+  says the same as the module. `bench/check_vsa_core_patch.py` said present
+  support was "applied from PR #15958 ... DRAFT"; it now says stock core has
+  it and that the check cannot tell stock from a local edit.
+- **Corrected: `docs/SOLATTN.md` and `docs/wiki/next_steps.md` on Sol against
+  core.** The upstream-policy table had the `dense_blocks` cells swapped
+  (core's column held our `SOL_DENSE_TAIL`, ours said empty); the option table
+  said the node and configs "ship empty as of 2026-09-02" and called
+  `qk_balance` off and a declared deviation of the policy graph; the kernel
+  table called `sol_attn_chunked` structurally unreachable. Now: core's
+  default is empty and ours is the tail; empty was 2026-09-02 to 2026-09-25;
+  `qk_balance` is off in the node and shipped on; `MiniMaxH3SolChunked`
+  reaches the chunked kernel. Both pages said core's and our Sol outputs
+  "differ by no more than the all-routed floor" and that ours as shipped "sits
+  closer to exact" than core's defaults. The 2026-09-10 record
+  (`bench/results/2026-09-10_sol_impl_capture_grade.json`, the `vs_ours`
+  fields) has them above our floor in most cells and in every carried cell,
+  and ours at that day's policy losing on block 0 and the per-row mean while
+  winning the whole-tensor mean through block 49; that is what they say now.
+- **Corrected: Sol code prose.** `sol_chunked_h3.py` and
+  `bench/check_sol_chunked.py`'s docstring said the producer's routing
+  threshold is stale; it is the K centring mean and the V scale (with
+  kitchen's margin) that come from the previous step, and `kcvar` is current.
+  `sol_attn_h3.py` said every local change since the fork was listed and
+  named sage as the fallback; it now says only the fork-time changes are listed,
+  and names `ModelAttentionBackend` (comfy kitchen attention) on the default
+  graphs. `workflows/h3_config.py`'s `min_tokens` comment named sage as the
+  fallback on every graph, and `SOL_CUDA_DEFAULTS` was called what the node
+  "gives you untouched" while it pins `qk_balance` True; comments only, no
+  value changed. `docs/sol_upstream.md` cited core's `model.py` a line early
+  (:168-171, :623, :754; now :169-172, :624, :755) and now notes the V
+  scale's clip margin.
 ## 2026-09-26
 
 - **Distill research graphs moved to `workflows/distill_experiments/`**

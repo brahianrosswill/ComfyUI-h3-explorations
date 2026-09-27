@@ -37,7 +37,7 @@ as of this date.
 - **Selection:** int8 pooled scores against fp32. The kept count is
   `round(0.2n)` against FastVideo's `ceil`, plus a tie back-off that keeps
   extra blocks.
-- **The ±1 diagonal is forced exact** (`sol_attn_route.cu:162`); FastVideo
+- **The ±1 diagonal is forced exact** (`coderef/comfy-kitchen/comfy_kitchen/backends/cuda/sage_attention/sol_attn_route.cu:162`); FastVideo
   forces none. In cube order that means the w-neighbour cubes.
 - **Precision:** int8 Q/K/V against bf16. Kitchen fixes all three. No
   setting of core's node reaches them, and our kitchen fork could add a
@@ -148,7 +148,7 @@ Being corrected in the same pass as this record; see `docs/wiki/decisions.md`.
 - **`sol_attn_h3.py:1506-1507` and the `h3_config.py` min_tokens comment:**
   both name sage as the fallback, where the shipped graphs use the kitchen
   backend node.
-- **`h3_config.py:846-849`:** `SOL_CUDA_DEFAULTS` is called "untouched", but
+- **`workflows/h3_config.py:846-849`:** `SOL_CUDA_DEFAULTS` is called "untouched", but
   it pins qk_balance True.
 - **`docs/sol_upstream.md`:** line citations drifted by one, and the V-scale
   margin is not mentioned.

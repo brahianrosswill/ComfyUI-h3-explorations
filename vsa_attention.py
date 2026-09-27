@@ -2,27 +2,25 @@
 
 ## EXPERIMENTAL, AND NOT FINISHED. Read this before quoting anything from it
 
-**Every input this node needs is a draft or an experiment**, and none of it is
-a release. Treat a result from this node as a report about draft code, not
-about VSA.
+**The checkpoint this node was written for is an experiment**, and the node
+itself is unfinished. Treat a result from this node as a report about
+experimental code, not about VSA.
 
-**This node cannot run on this box as of 2026-08-31, by decision.** It refuses
-at execute, which is the designed behaviour and not a defect -- see core
-support below.
+**This node is parked: it refuses at execute while `PARK_OVERRIDE` is False**
+(below, pack 0.157.1). The reason is the `_publish_layout` defect in the next
+section. Use core's `BlockSparseAttention` with selection "vsa" instead
+(`h3_config.FASTH3_CONTRACT_VSA`).
 
-  core support   `github.com/comfyanonymous/ComfyUI` PR #15958, "Minimax-H3:
-                 support FastVideo VSA", by kijai. **Still a DRAFT and still
-                 open**, head `10febb01` on base `0a33ed6c`.
-                 **Corrected 2026-08-31.** This used to say the patch was
-                 "applied to this box on 2026-08-30 as an UNCOMMITTED
-                 working-tree change on master". It is NOT applied: a `git
-                 reset` and two pulls took the checkout to master `95d755cd`
-                 and carried the uncommitted change away with it. The decision
-                 taken rather than re-applying: **wait for the merge.** So core
-                 here is stock, no `to_gate_compress` slot is built, and
-                 `_gate_modules` refuses by name.
-                 `bench/check_vsa_core_patch.py` is the provenance record; it
-                 grades absence as correct and notices a half-applied patch.
+  core support   Stock ComfyUI core builds `to_gate_compress` since core
+                 commit e308cc73 ("Add Sparse Attention node", #16072):
+                 `comfy/ldm/minimax/model.py` creates it when the checkpoint
+                 carries it, and `comfy/model_detection.py` detects it from the
+                 state dict. Before that, the support existed only as the draft
+                 `github.com/comfyanonymous/ComfyUI` PR #15958 by kijai, applied
+                 here as an uncommitted change on 2026-08-30 and lost on
+                 2026-08-31 (`bench/check_vsa_core_patch.py` carries that
+                 history). So on current core `_gate_modules` finds the gates of
+                 a VSA checkpoint and no longer refuses it.
   the checkpoint `huggingface.co/Kijai/MiniMax-H3-experimental`,
                  `minimax_h3_fastvideo_vsa_datafree_1300step_4step_int8_convrot`.
                  The repository says experimental in its name. The artifact
@@ -31,14 +29,13 @@ support below.
                  its filename, including the "4step".
                  `docs/research/vsa/fastvideo_vsa_checkpoint.md` takes it apart.
   the kernel     `comfy_kitchen`'s `coarse_gate`, from
-                 Comfy-Org/comfy-kitchen#117. This half IS merged and released,
-                 and is the only one of the three that is.
+                 Comfy-Org/comfy-kitchen#117, merged and released.
   the method     VSA, "Faster Video Diffusion with Trainable Sparse Attention"
                  (arXiv 2505.13389). Not read here beyond its abstract and a
-                 summary; this node follows the KERNEL's contract and the one
-                 other H3 implementation, not the paper.
+                 summary; this node follows the KERNEL's contract and the T8
+                 pack's implementation (credited below), not the paper.
 
-## A known defect, unreachable today, and it must be fixed before un-parking
+## A known defect, and it must be fixed before un-parking
 
 `_publish_layout` mutates the SHARED model object directly --
 `diffusion_model._forward = ...` and `diffusion_model.rope_freqs = ...` -- not
@@ -50,16 +47,16 @@ from the graph, and keep publishing `h3_vsa_layout` into every later forward's
 keyed on `id(diffusion_model)` and is a module global, so it prevents double
 wrapping rather than providing any cleanup.
 
-**It cannot have leaked, and the reason is the refusal rather than the design.**
-`execute` raises at `_gate_modules` (line ~527) when the model has no
-`to_gate_compress`, which is every model on this box while
-Comfy-Org/ComfyUI#15958 is unmerged; `_publish_layout` is line ~544 and is
-never reached. That is the same shape as the PDD lane's observer arming itself
-with nothing to record: a real defect bounded to zero by a gate in front of it,
-which is a different finding from an escape.
+**The defect is reachable on current core, and the park is what holds it.**
+Until core built the gates, `execute` raised at `_gate_modules` on every model
+here, before `_publish_layout` ran, so the defect was bounded by that refusal.
+Since e308cc73 a VSA checkpoint passes `_gate_modules`, so the only thing in
+front of `_publish_layout` is the `PARK_OVERRIDE` refusal at the top of
+`execute`.
 
 **The fix when VSA is un-parked** is `add_object_patch("diffusion_model._forward", ...)`
-and the same for `rope_freqs`, so the patcher owns the lifetime. Five other
+and the same for `rope_freqs`, so the patcher owns the lifetime, or deleting
+`_publish_layout` in favour of core's own `minimax_h3_layout`. Five other
 places in this pack patch `diffusion_model.forward` THROUGH the patcher
 (`nodes.py`, `audio_carry_probe.py`, `quant_observe.py`, and PDD's), so this
 node is the only one taking the irreversible route. Do not un-park without it.
@@ -68,9 +65,8 @@ node is the only one taking the irreversible route. Do not un-park without it.
 projection, the kernel call and the output reordering had never run under a
 real forward. They have: it rendered on 2026-08-30 against a dense control,
 recorded in `bench/results/2026-08-30_vsa_first_render.json` and
-`_vsa_length_scaling.json`. Those runs were taken on the patched working tree
-described above, which no longer exists on this box, so they are not
-reproducible here until #15958 merges. Still unexercised: production canvas and
+`_vsa_length_scaling.json`. Those runs were taken on the draft-patched core
+described above. Still unexercised: production canvas and
 frame count (those ran at 22k rows), any sampler recipe matched to the
 checkpoint, and anything perceptual. `bench/check_vsa_geometry.py` asserts the
 reorder and the refusals, and that is all it asserts.
@@ -111,18 +107,19 @@ per block, not a scalar anyone can dial. A constant gate is not "VSA mode": it
 adds an untrained global-average term to every output and keeps the sparsity.
 `docs/research/vsa/fastvideo_vsa_checkpoint.md` takes the published one apart.
 
-**Core support for loading it.** As of 2026-08-30, ComfyUI master has no
-`gate_compress` in `comfy/ldm/minimax/model.py` and no detection for it in
-`comfy/model_detection.py`; Comfy-Org/ComfyUI#15958 is a draft that adds both.
-Without it the checkpoint's gate keys have no slot on the constructed model and
-are dropped with a warning -- **the render then succeeds and gives you the
-dense base checkpoint**. That is the failure mode this node exists to make
-loud: `_gate_modules` refuses by name rather than running something that looks
-like VSA and is not.
+**Core support for loading it.** Stock core has it since e308cc73 (#16072):
+`comfy/model_detection.py` sets `gate_compress` from the checkpoint's keys and
+`comfy/ldm/minimax/model.py` builds the slot. On a core older than that the
+checkpoint's gate keys have no slot on the constructed model and are dropped
+with a warning -- **the render then succeeds and gives you the dense base
+checkpoint**. That is the failure mode `_gate_modules` exists to make loud: it
+refuses rather than running something that looks like VSA and is not.
 
-Installing that PR is necessary and NOT sufficient. Its own comment says the
-gate is "unused by the dense forward; consumed by sparse attention patches" --
-so core loads the weight and something else has to compute it and pass it.
+Loading is necessary and NOT sufficient. Core's own comment says the gate is
+"unused by the dense forward; consumed by sparse attention patches" -- so core
+loads the weight and an attention patch has to compute it and pass it. Core's
+`BlockSparseAttention` does that itself (`comfy_extras/nodes_sparse_attention.py`,
+selection "vsa").
 
 ## What is asserted here rather than assumed
 
@@ -143,8 +140,10 @@ so core loads the weight and something else has to compute it and pass it.
 
 The shape of the integration follows
 `coderef/comfyui-minimax-h3-audio-T8/fast_h3_vsa_advanced.py`, read
-2026-08-30, which got there first and is the only other implementation of VSA
-for H3 anywhere. Two deliberate differences:
+2026-08-30, which got there first. Since then core's `BlockSparseAttention`
+(selection "vsa") and FastVideo's own H3 path implement it too;
+`bench/results/2026-09-27_attention_parity.md` compares all three. Two
+deliberate differences from the T8 pack:
 
   - **It restricts itself to plain text/audio/video packing and falls back to
     the dense block otherwise.** This one accepts any prefix, because the
@@ -152,7 +151,8 @@ for H3 anywhere. Two deliberate differences:
     geometry actually needs is that VIDEO IS LAST, which core guarantees. So
     reference graphs work here.
   - It refuses when an `optimized_attention_override` is present. This one
-    warns instead, because every shipped graph here wires sage: the override is
+    warns instead, because every shipped graph here installs one (the kitchen
+    backend node on the default graphs, sage on the arms that declare it): it is
     correctly bypassed on the 50 main blocks this node replaces, and correctly
     still runs on the 2 token-refiner blocks, which have no gate and are not
     VSA's business.
@@ -299,14 +299,16 @@ def _gate_modules(model, block_count):
                     "this model has no `to_gate_compress`, so it is not a "
                     "VSA-trained checkpoint -- or ComfyUI cannot build the "
                     "slot for one.\n\n"
-                    "If you loaded a VSA checkpoint and got this, that is the "
-                    "expected result on stock ComfyUI: `gate_compress` reaches "
-                    "`comfy/ldm/minimax/model.py` only through "
-                    "Comfy-Org/ComfyUI#15958, which is still a draft. Without "
-                    "it the gate weights have nowhere to go and are dropped on "
-                    "load with a warning -- and the render then SUCCEEDS, "
-                    "giving you the dense base checkpoint. This node refuses "
-                    "rather than let that pass for VSA.")
+                    "If you loaded a VSA checkpoint and got this, your ComfyUI "
+                    "core predates e308cc73 (\"Add Sparse Attention node\", "
+                    "#16072), which is where `comfy/ldm/minimax/model.py` "
+                    "gained the gate slot (before that it existed only in the "
+                    "draft Comfy-Org/ComfyUI#15958). Update core. Without it "
+                    "the gate weights have "
+                    "nowhere to go and are dropped on load with a warning -- "
+                    "and the render then SUCCEEDS, giving you the dense base "
+                    "checkpoint. This node refuses rather than let that pass "
+                    "for VSA.")
             return None, (
                 f"block {index} has no `to_gate_compress` while block 0 does. "
                 f"A partial gate set would run some blocks VSA and some dense.")
@@ -484,11 +486,14 @@ class MiniMaxH3VSAAttention(io.ComfyNode):
             is_experimental=True,
             category="model/attention/minimax",
             description=(
-                "EXPERIMENTAL AND UNFINISHED. Needs a DRAFT ComfyUI PR "
-                "(comfyanonymous/ComfyUI#15958) for core to load the gate at "
-                "all, and an experimental checkpoint from "
-                "Kijai/MiniMax-H3-experimental whose only self-description is "
-                "its filename. Nothing has been rendered through this node. "
+                "EXPERIMENTAL AND UNFINISHED, and PARKED: it refuses at "
+                "execute, because its layout wrappers would leak into every "
+                "later render on the server. Use core's BlockSparseAttention "
+                "with selection 'vsa' instead. It rendered once, on "
+                "2026-08-30, on a draft-patched core; stock core loads the "
+                "gate since e308cc73 (#16072). Written for an experimental "
+                "checkpoint from Kijai/MiniMax-H3-experimental whose only "
+                "self-description is its filename. "
                 "See docs/research/vsa/.\n\n"
                 "FastVideo VSA (Video Sparse Attention) for MiniMax-H3, on "
                 "comfy_kitchen's Sol kernel. Replaces the 50 main DiT blocks: "
@@ -501,19 +506,22 @@ class MiniMaxH3VSAAttention(io.ComfyNode):
                 "VSA, and a checkpoint whose gate weights failed to load "
                 "renders as the dense base without saying so.\n\n"
                 "Do not combine with a Sol-Attn node: both decide how the same "
-                "50 blocks attend. A sage node upstream is fine and is left to "
-                "handle the 2 token-refiner blocks, which have no gate."
+                "50 blocks attend. An attention-backend or sage node upstream "
+                "is fine and is left to handle the 2 token-refiner blocks, "
+                "which have no gate."
             ),
             inputs=[
                 io.Model.Input("model"),
                 io.Float.Input("keep_percent", default=10.0, min=0.5, max=95.0,
                                step=0.5,
                                tooltip="Percent of key blocks each query block "
-                                       "attends exactly. VSA's published "
-                                       "sparsity is 0.90, which is 10 here. "
-                                       "This is the fraction the checkpoint was "
-                                       "distilled at, not a free quality dial: "
-                                       "moving it away from the training value "
+                                       "attends exactly. FastH3 V2 trains at "
+                                       "keep 20 "
+                                       "(h3_config.FASTH3_CONTRACT_VSA), not "
+                                       "this default. Set it to the fraction "
+                                       "the checkpoint was distilled at; it is "
+                                       "not a free quality dial: moving it "
+                                       "away from the training value "
                                        "is off-distribution in the direction "
                                        "the distillation cannot help with."),
                 io.Boolean.Input("pooled_tail", default=False,
@@ -582,8 +590,8 @@ class MiniMaxH3VSAAttention(io.ComfyNode):
                 "the block forward and cannot share it.")
         if "optimized_attention_override" in options:
             logger.warning(
-                "[h3-vsa] an attention override is installed (sage, or a "
-                "Sol-Attn node). VSA replaces the block forward, so that "
+                "[h3-vsa] an attention override is installed (an attention "
+                "backend, sage, or a Sol-Attn node). VSA replaces the block forward, so that "
                 "override is BYPASSED on all %d main blocks and still runs on "
                 "the 2 token-refiner blocks. If that override is a Sol-Attn "
                 "node, remove it -- both decide how these blocks attend.",

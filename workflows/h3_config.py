@@ -93,10 +93,11 @@ MODELS = dict(
     # and the trunk measurably unmoved. So it is a base checkpoint carrying a
     # gate, not a different model.
     #
-    # **Loading it needs a DRAFT ComfyUI PR** (comfyanonymous/ComfyUI#15958,
-    # head 10febb01, applied to this box's working tree 2026-08-30). Without
-    # it the 150 gate keys have no slot, are dropped on load, and the render
-    # SUCCEEDS as the dense base. `bench/check_vsa_core_patch.py` is the
+    # **Loading it needs core's gate support**, in stock core since core
+    # commit e308cc73 (#16072); before that it was the draft
+    # comfyanonymous/ComfyUI#15958 (head 10febb01, applied here 2026-08-30).
+    # Without it the 150 gate keys have no slot, are dropped on load, and the
+    # render SUCCEEDS as the dense base. `bench/check_vsa_core_patch.py` is the
     # provenance record; `MiniMaxH3VSAAttention` refuses rather than let a
     # dense render pass for VSA.
     unet_vsa=("minimax_h3_fastvideo_vsa_datafree_1300step"
@@ -617,15 +618,18 @@ SOL_RECOMMENDED_CUDA = dict(
     #
     # The reason is what this gate actually chooses between, which is not what
     # the name suggests. Below the threshold Sol declines and the call falls
-    # through to `previous` -- and on every graph here that is SAGE, not dense
-    # torch (`vendor/sol_attn_minimax.py::make_override`'s `dense()`, read
-    # 2026-08-27; the render log says it too, "sage registered as the
-    # attention-override fallback" then "chaining onto an existing attention
-    # override"). So this is Sol against sage.
+    # through to `previous`, which is a good dense kernel, not dense torch
+    # (`vendor/sol_attn_minimax.py::make_override`'s `dense()`, read
+    # 2026-08-27). When this was written that was SAGE on every graph. Since
+    # 2026-09-15 the default graphs install `DENSE_BACKEND_NODE` below
+    # (kitchen's `int8_attention`) under Sol, and sage remains only on the arms
+    # `bench/check_attention_defaults.py::FLOOR_STEMS` names. So this is Sol
+    # against the kitchen kernel, and the crossover against it is unmeasured.
     #
-    # That moves the crossover UP. `docs/SOLATTN.md` puts sage about 2.7x ahead
-    # of torch's flash backend on this shape, so a sparse kernel has to clear a
-    # good dense one, not a naive one. `SOL_CUDA_DEFAULTS` above already
+    # The sage argument moved the crossover UP. `docs/SOLATTN.md` puts sage
+    # about 2.7x ahead of torch's flash backend on this shape, so a sparse
+    # kernel has to clear a good dense one, not a naive one. `SOL_CUDA_DEFAULTS`
+    # below already
     # recorded the direction -- upstream puts the crossover near 12k and "4096
     # engages Sol-Attn in the regime where it costs time" -- and the sage
     # baseline only sharpens it.
@@ -846,10 +850,14 @@ def sol_for_graph(pdd, steps):
     return sol
 
 # **What `MiniMaxH3SolAttn` gives you untouched, for the arm that wants the
-# node's own answer rather than ours.** Retargeted 2026-08-30 from the vendored
-# upstream node to our fork; `bench/check_sol_kernel.py`'s schema case grades
-# every key here against what the node file declares, so a knob that goes away
-# fails rather than silently stops reaching anything.
+# node's own answer rather than ours, except `qk_balance`.** The node declares
+# `qk_balance` False; this dict pins it True to follow SOL_RECOMMENDED_CUDA (the
+# comment on the key says why). Every other value matched the node's
+# `define_schema` default when read on 2026-09-27; nothing asserts the values.
+# Retargeted 2026-08-30 from the vendored upstream node to our fork;
+# `bench/check_sol_kernel.py`'s schema case grades every key name here against
+# what the node file declares, so a knob that goes away fails rather than
+# silently stops reaching anything.
 #
 # Three of these differ from what this dict held while it described the
 # vendored node, and all three are the fork's own defaults rather than

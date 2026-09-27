@@ -13,7 +13,8 @@ Claims, i.e. what breaks if a case is deleted:
       on an H3-shaped attention module with random weights, the delegate's
       output against `out_proj(sol_attn(q, k, v))` where q, k come from
       core's own fused norm-and-rope on the full projection. Not bitwise --
-      the producer thresholds on the PREVIOUS step's K-mean -- so cosine is
+      the producer quantises K and V with the PREVIOUS step's K-mean and V
+      scale (`sol_chunked_h3.py`'s docstring) -- so cosine is
       the bar, at the value the kernel-vs-eager check uses, and the distance
       is printed. A wrong chunk layout, a wrong rope table, a wrong scale or
       a doubled rope would all land far below the bar.

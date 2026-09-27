@@ -4,6 +4,30 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.157.2
+
+### Docs
+
+- **Attention prose corrected against the code** (prose only: comments,
+  docstrings, docs and message strings; code structure checked identical).
+  The findings are in `bench/results/2026-09-27_attention_parity.md`, and
+  `docs/wiki/decisions.md` records what each passage said before.
+  - `vsa_attention.py`, `docs/research/vsa/vsa_node.md` and
+    `fastvideo_vsa_checkpoint.md`: stock core carries the gate support since
+    e308cc73; the node is parked.
+  - `bench/check_vsa_core_patch.py` messages and the `docs/checks.md` row:
+    the check greps a token, so it cannot tell stock support from a local
+    patch. A logic fix is proposed, not made.
+  - `docs/SOLATTN.md` and `docs/wiki/next_steps.md` on Sol against core:
+    - the dense-layers columns are un-swapped;
+    - qk_balance ships on;
+    - the 2026-09-10 comparison is restated as its record shows.
+  - `sol_chunked_h3.py` and `check_sol_chunked.py`: only the K centring and
+    the V scale are stale; the routing threshold is current.
+  - `sol_attn_h3.py`, the `h3_config.py` comments and `docs/sol_upstream.md`:
+    the kitchen backend is the shipped fallback, `SOL_CUDA_DEFAULTS` pins
+    qk_balance, and core's line citations are fixed.
+
 ## 0.157.1
 
 ### Fixed

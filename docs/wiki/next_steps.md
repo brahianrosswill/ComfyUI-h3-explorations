@@ -701,13 +701,17 @@ mapped to the owner decision it feeds. None of the decisions is made here.
 - Pair B, GRADED on activations
   (`bench/results/2026-09-10_sol_impl_capture_grade.json`, capture
   `2026-09-10_sol_impl_courtroom`, its repo records beside it): at matched
-  knobs core's chunked producer and our node differ by no more than the
-  kernel's own all-routed floor in every cell, carried statistics are inert,
-  and the rebuilt Q/K/V equal the capture. So pair B's rendered pairs can only
-  show sample divergence. The same record has ours as shipped closer to exact
-  than core's defaults; pair A's scores say whether that is visible. The text
-  segment is the worst segment in every arm, which is the all-rows argument
-  again.
+  knobs core's chunked producer and our node land the same distance from
+  exact in every cell, carried statistics do not move that distance, and the
+  rebuilt Q/K/V equal the capture. Against each other they sit above the
+  kernel's all-routed floor in most cells (every carried cell), so pair B's
+  rendered pairs mostly show sample divergence. Ours at the then-shipped
+  policy is not uniformly closer to exact than core's defaults: it loses on
+  the block-0 cells and the per-row mean and wins the whole-tensor mean
+  through block 49 (`docs/SOLATTN.md`, the 2026-09-10 core section; corrected
+  2026-09-27); pair A's scores say whether the policy difference is visible.
+  The text segment is the worst segment in every arm, which is the all-rows
+  argument again.
 - A/B scoring: the owner scores `sol_core_ab_2026-09-10`; then
   `bench/score_session.py`, the loudness record
   (`bench/measure_clip_loudness.py --outputs

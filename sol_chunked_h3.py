@@ -21,10 +21,14 @@ owns exactly what core's forward does between the projection and the kernel:
     out = attention(q, k, v); out_proj(out)
 
 The producer applies the SAME fused norm-and-rope per chunk, so the per-chunk
-arithmetic is core's own, not a re-implementation. What differs is the
-routing threshold: the direct path centres keys on the current call's K-mean,
-the producer on the PREVIOUS step's, returned by each call and fed to the
-next (it runs twice on a module's first call to bootstrap). So counts and
+arithmetic is core's own, not a re-implementation. What differs is two
+quantisation statistics, both carried from the PREVIOUS step, returned by each
+call and fed to the next (it runs twice on a module's first call to
+bootstrap): the K-mean the producer centres keys on before INT8, and the V
+scale, last step's V absmax with a margin (`_SOL_VSCALE_MARGIN` in the
+installed comfy_kitchen's CUDA backend), so V can clip. The direct path
+measures both from the current call. The routing threshold's key variance
+(`kcvar`) is computed from the current call on both paths. So counts and
 output are close to the direct path, not bitwise equal to it; the check
 reports how close.
 

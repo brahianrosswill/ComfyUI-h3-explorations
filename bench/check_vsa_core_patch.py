@@ -1,18 +1,24 @@
 #!/usr/bin/env python3
-"""Report whether this ComfyUI carries the draft VSA patch, and which one.
+"""Report whether this ComfyUI builds H3's VSA gate, and whether consistently.
 
 VSA on H3 needs ComfyUI core to build a `to_gate_compress` slot on every DiT
-block, which stock master does not. That support exists only as a DRAFT pull
-request. This file is the provenance record for the copy applied here and the
-thing that notices when it half-exists.
+block. **Stock core does since core commit e308cc73** ("Add Sparse Attention
+node", #16072). Before that the support existed only as the DRAFT pull request
+recorded below, which was applied here as an uncommitted change on 2026-08-30
+and lost on 2026-08-31. This file keeps that provenance and notices when the
+support half-exists.
+
+**It does not tell stock support from a local patch.** "Present" means the
+token is in both files, which is true of stock core past e308cc73 and of a
+draft-patched older core alike. Whether this checkout carries a local change
+is core's git state, which this check does not read.
 
 ## Why absence is reported and not failed
 
-A machine without the patch is a legitimate state -- it is what everyone else
-has, and it is what this repo's own graphs assume. Failing on it would train a
-reader to ignore red. What is NOT legitimate is the patch applied to one file
-and not the other, because the two halves fail in opposite directions and the
-combination is silent:
+A core without the support (older than e308cc73) is a legitimate state, and
+failing on it would train a reader to ignore red. What is NOT legitimate is
+the support present in one file and not the other, because the two halves fail
+in opposite directions and the combination is silent:
 
   model.py only          every H3 model gets a `gate_compress` PARAMETER, but
                          detection never sets it, so it stays False and no
@@ -26,16 +32,15 @@ So the graded case is CONSISTENCY, not presence.
 
 ## What this cannot tell you
 
-That the patch is CORRECT, or that it still matches upstream. It matches the
-recorded commit by content hash of the two touched files' relevant lines, which
-catches local edits, not an upstream force-push. The PR is a draft and its head
-may move; when it does, the recorded sha below is what says which version this
-box ran.
+That the support is CORRECT, or where it came from. The check greps both
+files for one token; it compares no content hash and reads no git state, so
+stock support, the old draft and a local edit all read as "present".
 
-**And it cannot tell you the gate is USED.** The PR's own comment says the
-weight is "unused by the dense forward; consumed by sparse attention patches".
-Core loading it is necessary and not sufficient -- `MiniMaxH3VSAAttention` is
-what computes it and passes it to the kernel.
+**And it cannot tell you the gate is USED.** Core's comment on the slot says
+the weight is "unused by the dense forward; consumed by sparse attention
+patches". Core loading it is necessary and not sufficient -- an attention
+patch computes it and passes it to the kernel: core's `BlockSparseAttention`
+(selection "vsa"), or `MiniMaxH3VSAAttention`, which is parked.
 
     python bench/check_vsa_core_patch.py
 """
@@ -49,15 +54,17 @@ REPO = Path(__file__).resolve().parent.parent
 COMFY = REPO.parent.parent
 
 # ---------------------------------------------------------------------------
-# Provenance of the patch applied on this box. Written by hand because a draft
-# PR is not a release and there is nothing to read it from.
+# Provenance of the draft patch applied on this box on 2026-08-30, kept as
+# history. Stock core carries gate support since e308cc73 (#16072), so the
+# constants below describe what this box once ran, not what it runs now.
 # ---------------------------------------------------------------------------
 UPSTREAM_REPO = "github.com/comfyanonymous/ComfyUI"
 PR_NUMBER = 15958
 PR_TITLE = "Minimax-H3: support FastVideo VSA"
 PR_AUTHOR = "kijai"
 PR_STATE = "DRAFT, still open as of 2026-08-31"
-#: **The decision, 2026-08-31: do not apply it. Wait for the merge.**
+#: **The decision, 2026-08-31: do not apply it. Wait for the merge.** Superseded
+#: 2026-09-27: core built the gates itself in e308cc73 (#16072).
 #: It was applied to this box's working tree on 2026-08-30 and is GONE --
 #: a `git reset` followed by two pulls took master to 95d755cd and carried
 #: the uncommitted change away with it. Rather than re-apply a draft, this
@@ -93,7 +100,8 @@ def check(name, ok, detail=""):
 
 
 def main():
-    print(f"VSA core support: {UPSTREAM_REPO} PR #{PR_NUMBER} ({PR_STATE})")
+    print("VSA core support: stock core since e308cc73 (#16072). Before that, "
+          f"{UPSTREAM_REPO} PR #{PR_NUMBER} ({PR_STATE})")
     print(f"  \"{PR_TITLE}\" by {PR_AUTHOR}, head {PR_HEAD} on {PR_BASE}\n")
 
     present = {}
@@ -110,27 +118,29 @@ def main():
     patched = bool(hits) and not misses
 
     if not hits:
-        print("  none  the patch is ABSENT, which is stock ComfyUI and is not a "
-              "failure.")
-        print(f"        Policy: {PR_APPLY_POLICY}.")
+        print("  none  gate support is ABSENT: this core predates e308cc73 "
+              "(#16072). Not a failure.")
+        print("        Update core rather than apply the old draft PR.")
         print("        H3 VSA checkpoints load with their gate keys DROPPED and "
               "render as\n        the dense base. MiniMaxH3VSAAttention refuses "
               "rather than let that pass.")
         check("consistent", True, "absent from both files, which is coherent")
     elif misses:
         check("consistent", False,
-              f"applied to {hits} but not {misses}. A half-applied patch is "
+              f"present in {hits} but not {misses}. Half-present support is "
               f"worse than none: with only the model change every H3 model "
               f"takes a gate_compress parameter that detection never sets, so "
               f"it silently stays False and looks exactly like stock.")
     else:
         check("consistent", True,
               f"present in both files ({', '.join(TOUCHED)})")
-        print(f"        Applied from PR #{PR_NUMBER} head {PR_HEAD}. This is a "
-              f"DRAFT, so\n        the H3 model on this box differs from stock "
-              f"ComfyUI and any H3 result\n        taken here should say so.")
+        print("        Stock core carries this since e308cc73 (#16072). This "
+              "check cannot tell\n        stock support from a local edit; "
+              "core's git state can.")
 
-    # Is the SERVER running the patched core, or code from before it?
+    # Is the SERVER running the core with gate support, or code from before it?
+    # ("patch" in the case names below dates from the draft; on stock core it
+    # means the two gate-support files.)
     #
     # **This case was vacuous when first written**, and the way it was vacuous
     # is worth keeping. It imported `comfy.ldm.minimax.model` in this process
@@ -180,11 +190,11 @@ def main():
         else:
             newest = max((COMFY / rel).stat().st_mtime for rel in TOUCHED)
             check("the server postdates the patch", started > newest,
-                  f"pid {pid} started after the patched files were written"
+                  f"pid {pid} started after the gate-support files were written"
                   if started > newest else
                   f"pid {pid} started {newest - started:.0f}s BEFORE the "
-                  f"patched files were last written, so it is serving "
-                  f"pre-patch code. Restart before believing any VSA result.")
+                  f"gate-support files were last written, so it is serving "
+                  f"older code. Restart before believing any VSA result.")
 
     # Does the patch actually do its job on the artifact it exists for?
     #
@@ -199,11 +209,12 @@ def main():
     # absence is legitimate and that failing on it "would train a reader to
     # ignore red" -- then this case failed on exactly that, because it asked
     # whether the gate keys find a slot without first asking whether anything
-    # was supposed to build one. Patch absent plus checkpoint present is a
-    # coherent state (it is stock ComfyUI with a file downloaded), and since
-    # 2026-08-31 it is the DECIDED state. Red there is noise. The case still
-    # has teeth where they belong: with the patch applied, a checkpoint whose
-    # gate keys find no slot is a real failure and still fails.
+    # was supposed to build one. Support absent plus checkpoint present is a
+    # coherent state (core older than e308cc73 with a file downloaded), and it
+    # was the decided state from 2026-08-31 until core gained the support. Red
+    # there is noise. The case still has teeth where they belong: with the
+    # support present, as on stock core now, a checkpoint whose gate keys find
+    # no slot is a real failure and still fails.
     #
     # Nothing is allocated: the state dict is meta tensors carrying only the
     # real shapes, because detection reads `.shape` on a handful of entries and
@@ -212,11 +223,10 @@ def main():
     if not patched:
         skipped.append("the checkpoint's gate keys find a slot")
         print(f"  SKIP  the checkpoint's gate keys find a slot   "
-              f"the patch is absent, so NO gate slot is built and all gate "
-              f"weights\n        would be dropped on load. That is what stock "
-              f"ComfyUI does and what this\n        box has chosen; it is not a "
-              f"shortfall to grade. MiniMaxH3VSAAttention\n        refuses on "
-              f"such a model, which is the control that matters here.")
+              f"gate support is absent, so NO gate slot is built and all "
+              f"gate weights\n        would be dropped on load. That is what "
+              f"core before e308cc73 does;\n        it is not a shortfall to "
+              f"grade. MiniMaxH3VSAAttention\n        refuses on such a model.")
     elif not ckpt.exists():
         skipped.append("the checkpoint's gate keys find a slot")
         print(f"  SKIP  the checkpoint's gate keys find a slot   "
@@ -249,12 +259,12 @@ def main():
             check("the checkpoint's gate keys find a slot",
                   gates and placed == len(gates) and not orphans,
                   f"{placed} of {len(gates)} gate weights placed, "
-                  f"{len(orphans)} weight key(s) with no slot. Without the "
-                  f"patch all {len(gates)} are dropped on load and the render "
+                  f"{len(orphans)} weight key(s) with no slot. Without gate "
+                  f"support all {len(gates)} are dropped on load and the render "
                   f"succeeds as the dense base."
                   if not (gates and placed == len(gates) and not orphans) else
                   f"all {placed} gate weights placed, no orphan weight keys. "
-                  f"Without the patch all {placed} would be dropped and the "
+                  f"Without gate support all {placed} would be dropped and the "
                   f"render would succeed as the dense base.")
         except Exception as exc:
             skipped.append("the checkpoint's gate keys find a slot")

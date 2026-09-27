@@ -1,6 +1,7 @@
 # What upstream says: the paper, Sol-Engine, Sol-H3, and the other packs
 
-Last updated: 2026-09-25 (section "comfy-kitchen and core, 2026-09-25", with
+Last updated: 2026-09-27 (core's model.py line citations and the chunked
+producer's V scale only); 2026-09-25 (section "comfy-kitchen and core, 2026-09-25", with
 ComfyUI's workflow templates; a dated note under sglang's SubBlock router);
 2026-09-22 (section "comfy-kitchen, 2026-09-22": kitchen only,
 core not re-read); 2026-09-19 (section "comfy-kitchen and core, 2026-09-19", with
@@ -782,12 +783,15 @@ display name "Model Sparse Attention", experimental
   previous step**, per conditioning branch (`:263-270`, `:292-301`). The CUDA
   backend's `sol_attn_chunked` docstring at comfy-kitchen tag `v0.2.33`
   describes those two tensors as the last step's statistics, computed fresh
-  when absent.
+  when absent. The V scale is last step's V absmax times a clip margin
+  (`_SOL_VSCALE_MARGIN` in the installed backend's `vscale_of`), so a V
+  louder than last step's by more than the margin clips; the routing
+  threshold's key variance is taken from the current call.
 - **What core's model gained for it**: a `to_gate_compress` layer created when
-  the checkpoint carries one (`comfy/ldm/minimax/model.py:168-171`, detected at
+  the checkpoint carries one (`comfy/ldm/minimax/model.py:169-172`, detected at
   `comfy/model_detection.py:415`, i.e. FastH3 VSA weights), and two
   `transformer_options` keys for attention patches, `minimax_h3_layout`
-  (`comfy/ldm/minimax/model.py:623`) and `block_index` (`:754`).
+  (`comfy/ldm/minimax/model.py:624`) and `block_index` (`:755`).
 
 *2026-09-19: PR 16239 was closed unmerged on 2026-09-16 and this paragraph no
 longer describes a pending change; section "comfy-kitchen and core,

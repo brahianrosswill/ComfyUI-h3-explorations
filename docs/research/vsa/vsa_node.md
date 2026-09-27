@@ -1,13 +1,20 @@
 # Running VSA on H3: what the node does and what still blocks it
 
-last updated: 2026-09-04 (the 4-step provenance note and blocker 5 only)
+last updated: 2026-09-27 (core's gate support and the park only)
 
 **This file owns `MiniMaxH3VSAAttention` -- what it does, what it refuses, and
 what is verified about it.** It does not own the checkpoint
 ([`fastvideo_vsa_checkpoint.md`](fastvideo_vsa_checkpoint.md)) or the kernel
 ([`../../SOLATTN.md`](../../SOLATTN.md)), and asserts nothing against either.
 
-**It has now rendered, once, and that answers a mechanical question only.**
+**Parked since 2026-09-27 (pack 0.157.1).** The node refuses at execute
+while `vsa_attention.PARK_OVERRIDE` is False, because `_publish_layout`
+mutates the shared model outside `ModelPatcher` and would leak into every
+later render on the server; the module docstring owns the defect and the fix.
+For FastH3, use core's `BlockSparseAttention` with selection "vsa"
+(`h3_config.FASTH3_CONTRACT_VSA`).
+
+**It has rendered, once, and that answers a mechanical question only.**
 2026-08-30: VSA runs, its gate is consumed, and it reproduces itself at a fixed
 seed. Nothing about output QUALITY is established and nothing here should be
 read as a recommendation. See "The first render" below.
@@ -24,7 +31,7 @@ all three together with `topk_ratio`.
 | sage | the arithmetic: quantised dense attention | no | shipped |
 | Sol-Attn | the algorithm: route a subset exact, pooled term for the rest | no | shipped |
 | SLA | the algorithm: route, no pooled term | yes, and the Turbo-SLA LoRA exists | `MiniMaxH3SolAttn` with `pooled_tail` off |
-| VSA | route, no pooled term, plus a gated coarse branch | yes, the gate is a learned projection | this node, once the blocker clears |
+| VSA | route, no pooled term, plus a gated coarse branch | yes, the gate is a learned projection | core's `BlockSparseAttention` (selection "vsa"); this node is parked |
 | PDD | the sampler: fewer evaluations | yes, the Acc LoRAs | shipped |
 
 **VSA competes with PDD rather than complementing it.** The published
@@ -54,11 +61,12 @@ The real reasons are weaker and worth stating as what they are:
   collision, not an impossibility;
 - the two regimes are **mutually exclusive** at the same 50 blocks, so sharing
   a node would mean one silently winning;
-- the one other H3 implementation replaces the block forward too.
+- the T8 pack's implementation, which this node follows, replaces the block
+  forward too.
 
 So the block forward is replaced, through `patches_replace["dit"]`, on the 50
 main blocks. The 2 token-refiner blocks carry no gate and are left alone -- an
-upstream sage node still handles those, which is why this node warns about an
+upstream attention node (the kitchen backend or sage) still handles those, which is why this node warns about an
 existing attention override rather than refusing one.
 
 ## The geometry, and what it costs
@@ -102,46 +110,34 @@ them as keys but still stages them.
 None of this touches the kernel call, the gate projection or the output
 ordering under a real forward. Those are unexercised.
 
-## The blocker: cleared for one day, and back by decision
+## Core support: in stock core since e308cc73
 
-**Corrected 2026-08-31.** This section used to say half the blocker was
-"CLEARED on this box, and only on this box", the patch having been applied on
-2026-08-30 as an uncommitted working-tree change. **That is withdrawn: the
-patch is gone and is not coming back until it merges.** A `git reset` followed
-by two pulls took the checkout to master `95d755cd` and carried the
-uncommitted change away with it; the working-tree arrangement was chosen so a
-pull would refuse rather than merge a draft, and a reset is the case it does
-not cover. Rather than re-apply, the decision on 2026-08-31 is to **wait for
-#15958 to merge**. So core here is stock and the blocker stands in full.
+Stock ComfyUI core builds `to_gate_compress` since core commit e308cc73
+("Add Sparse Attention node", #16072): `comfy/model_detection.py` sets
+`gate_compress` from the checkpoint's own keys and `comfy/ldm/minimax/model.py`
+creates the slot. So the blocker this section used to describe is gone, and
+with it the refusal that kept `_publish_layout` from running; the node is
+parked for that reason (see the top of this page).
 
-ComfyUI master carries no `gate_compress`;
-`github.com/comfyanonymous/ComfyUI` PR #15958 adds it in twelve lines across
-two files, it is **still a DRAFT and still open** at head `10febb01`, and it
-still applies cleanly to current master (verified 2026-08-31).
+*2026-09-27: until today this section said core here was stock with no
+`gate_compress`, and that the blocker stood until the draft PR #15958 merged.
+That draft was applied as an uncommitted change on 2026-08-30 and lost on
+2026-08-31; `bench/check_vsa_core_patch.py` holds that history.*
 
-`bench/check_vsa_core_patch.py` is the provenance record. It reports absence
-rather than failing on it -- a machine without the patch is the normal state,
-and failing on it would train a reader to ignore red. What it does fail on is a
-HALF-applied patch, because the two halves fail in opposite directions and one
-of them is silent: with only the model change, every H3 model takes a
-`gate_compress` parameter that detection never sets, so it stays False and
-behaves exactly like stock while `grep` says the support is there.
+`bench/check_vsa_core_patch.py` checks that the gate support is consistent
+across the two core files (a half-present change is silent in one direction)
+and, when the VSA checkpoint is on disk, that all its gate keys find a slot.
+It cannot tell stock support from a local edit.
 
-**Verified against the artifact, not just the source.** Detection sets
-`gate_compress` from the checkpoint's own keys, 50 `to_gate_compress` modules
-are constructed, all 50 gate weights find a slot and no weight key is left
-without one -- executed on meta tensors, so nothing was allocated. Before the
-patch all 50 were dropped on load and the render succeeded as the dense base.
-
-**Consequence worth stating in any measurement taken here:** the H3 model this
-box builds is not the one stock ComfyUI builds.
-
-**Half two, core would not use it anyway: REMAINS.** That PR's own comment says
-the weight is "unused by the dense forward; consumed by sparse attention
-patches". So core now loads the gate and something else still has to compute it
-and pass it to `sol_attn` as `coarse_gate`. This node is that something. As far
-as searching found on 2026-08-30, the only other one is
-`coderef/comfyui-minimax-h3-audio-T8/fast_h3_vsa_advanced.py`.
+**Half two, core would not use it by itself: still true of the model code.**
+Core's comment on the slot says the weight is "unused by the dense forward;
+consumed by sparse attention patches". Core's own `BlockSparseAttention`
+(`comfy_extras/nodes_sparse_attention.py`, selection "vsa") is such a patch
+and passes the gate to `sol_attn_chunked` as `coarse_gate`; this node is
+another, and `coderef/comfyui-minimax-h3-audio-T8/fast_h3_vsa_advanced.py` a
+third.
+`bench/results/2026-09-27_attention_parity.md` compares this node, core's and
+FastVideo's.
 
 The kernel half was never blocked: the installed `comfy_kitchen` exposes
 `coarse_gate`, `tail` and `block_len`, and
@@ -259,16 +255,14 @@ the only question those two renders can answer.
 
 ## What would settle the rest
 
-1. **#15958 merging.** It was applied to the working tree on 2026-08-30 and
-   that is withdrawn -- see the correction above. The decision is to wait for
-   the merge rather than carry a draft, so this is now a blocker held by
-   upstream and not by us. `bench/check_vsa_core_patch.py` reports the state.
-2. ~~Confirm the gate keys are no longer dropped.~~ Done 2026-08-30, all 50
-   placed -- **on the patched tree, which no longer exists here.** The check
-   now skips this case rather than failing it, because absence is the state we
-   chose.
+1. ~~Core support.~~ In stock core since e308cc73 (#16072); see above.
+   What blocks this node now is the park, which lifts only with the
+   `_publish_layout` fix.
+2. ~~Confirm the gate keys are no longer dropped.~~ Done 2026-08-30 on the
+   draft-patched tree, all 50 placed. `bench/check_vsa_core_patch.py` re-runs
+   it on current core when the checkpoint is on disk.
 3. ~~Run it, with a dense control.~~ Done 2026-08-30; see above. Not
-   reproducible on this box until step 1.
+   re-run on stock core, and the park stops this node running at all.
 4. **A length where sparse attention is supposed to win.** The shipped canvas
    at a shipped frame count, which is 31k-128k rows against this run's 22k.
 5. **A sampler recipe.** The checkpoint's "4step" is a filename, not a

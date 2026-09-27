@@ -267,6 +267,9 @@ comfy-kitchen#117 the model card points at.
 **The core half is not.** ComfyUI here is on `master` at `8a33128f`, and
 `gate_compress` appears nowhere in `comfy/` or `comfy_extras/`. So
 Comfy-Org/ComfyUI#15958 is not in this install. It is still a draft PR.
+*(Dated note, 2026-09-27: stock core has carried `gate_compress` since core
+commit e308cc73, #16072, so this paragraph describes the 2026-08-31 state
+only; `../vsa/vsa_node.md` has the current one.)*
 
 What that produces, *executed* rather than reasoned: feeding the checkpoint's
 header to this install's `detect_unet_config` returns a config **identical** to
