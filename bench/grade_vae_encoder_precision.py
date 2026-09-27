@@ -81,7 +81,14 @@ def _encode(vae_name: str, encoder: str | None, pixels):
                                             decoder="unchanged")
         vae = out[0] if isinstance(out, (tuple, list)) else out.result[0]
     enc_dtype = _dtype(vae.first_stage_model.encoder)
-    return vae.encode(pixels), enc_dtype
+    lat = vae.encode(pixels).detach().cpu()
+    # Each arm loads its own VAE; free it before the next, or a full-size
+    # keyframe (#33 reads 1344x768) runs the card out of memory by arm three.
+    import comfy.model_management as mm
+    del vae
+    mm.unload_all_models()
+    mm.soft_empty_cache()
+    return lat, enc_dtype
 
 
 def _delta(a, b):
@@ -112,6 +119,9 @@ def main() -> int:
     # `--fast fp16_accumulation`'s switch on, as start.sh launches the server.
     # kitchen's fp16_conv3d only runs on CUDA with the switch on, so this arm
     # needs the card; comparing it across kitchen builds is the experiment.
+    ap.add_argument("--size", default=None, metavar="WxH",
+                    help="input size; default SIZE. #33 reads 1344x768, a real keyframe, "
+                         "since a tiny input may never reach the kitchen kernel's launch rules")
     ap.add_argument("--fp16-accumulation", action="store_true",
                     help="add the fp16-accumulate encode as an arm (#33); needs CUDA")
     ap.add_argument("--out", type=Path,
@@ -132,8 +142,9 @@ def main() -> int:
     import h3_config
     vae_name = h3_config.MODELS["video_vae"]
 
+    size = tuple(int(v) for v in args.size.split("x")) if args.size else SIZE
     torch.manual_seed(SEED)
-    pixels = torch.rand(1, SIZE[1], SIZE[0], 3)
+    pixels = torch.rand(1, size[1], size[0], 3)
 
     base, base_dtype = _encode(vae_name, None, pixels)
     if base is None:
@@ -191,7 +202,7 @@ def main() -> int:
 
     record = {
         "question": "does promoting the H3 video VAE encoder change the latent?",
-        "vae": vae_name, "input": {"seed": SEED, "size": list(SIZE)},
+        "vae": vae_name, "input": {"seed": SEED, "size": list(size)},
         "device": str(__import__("comfy.model_management").model_management.get_torch_device()),
         "comfy_kitchen": _kitchen_version(),
         "baseline_encoder_dtype": str(base_dtype),
