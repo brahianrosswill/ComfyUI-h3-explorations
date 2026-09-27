@@ -43,7 +43,7 @@ from pathlib import Path
 #: `ktag`), and a whole capture of such files was recorded as holding nothing.
 #: `gate_` since 2026-09-27: the VSA coarse-gate records `core_sparse_capture.py`
 #: writes beside each qkvpre file (open_experiments #45).
-NAME = re.compile(r"(qkvpre|qkv|gate)_L(\d+)_S(\d+)_b(\d+)_s(\d+)(?:_k[a-z0-9_]+)?(?:_r(\d+))?\.pt$")
+NAME = re.compile(r"(qkvpre|qkv|gate)_L(\d+)_S(\d+)_b(\d+)_s(\d+)(?:_k[a-z0-9_]+?)?(?:_r(\d+))?\.pt$")
 KIND_OF = {"qkvpre": "qkv_pre", "qkv": "qkv", "gate": "coarse_gate"}
 
 

@@ -4,6 +4,18 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.164.4
+
+### Fixed
+
+- **`bench/record_capture_inventory.py` misread a second render's cells when
+  they carried a kernel tag.** The kernel tag `_k...` matched greedily and
+  swallowed the `_r<n>` after it, so `qkv_..._ksol_r1.pt` parsed as render 0.
+  The tag is now non-greedy. The one record affected,
+  `bench/results/2026-09-27_capture_inventory_sol_test2_ref2va.json`, is
+  regenerated: renders [1], where it said [0]. No older inventory has a
+  kernel-tagged `_r` file. (Found by fastdude.)
+
 ## 0.164.3
 
 ### Fixed

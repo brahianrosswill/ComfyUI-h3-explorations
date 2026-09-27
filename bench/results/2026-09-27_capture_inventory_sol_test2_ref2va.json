@@ -33,7 +33,7 @@
         120582
       ],
       "renders": [
-        0
+        1
       ],
       "unparsed_files": [],
       "files": [
@@ -44,7 +44,7 @@
           "sequence": 120582,
           "block": 0,
           "step": 2,
-          "render": 0,
+          "render": 1,
           "bytes": 5185996715
         },
         {
@@ -54,7 +54,7 @@
           "sequence": 120582,
           "block": 0,
           "step": 6,
-          "render": 0,
+          "render": 1,
           "bytes": 5185996715
         },
         {
@@ -64,7 +64,7 @@
           "sequence": 120582,
           "block": 24,
           "step": 2,
-          "render": 0,
+          "render": 1,
           "bytes": 5185996788
         },
         {
@@ -74,7 +74,7 @@
           "sequence": 120582,
           "block": 24,
           "step": 6,
-          "render": 0,
+          "render": 1,
           "bytes": 5185996788
         },
         {
@@ -84,7 +84,7 @@
           "sequence": 120582,
           "block": 40,
           "step": 2,
-          "render": 0,
+          "render": 1,
           "bytes": 5185996788
         },
         {
@@ -94,7 +94,7 @@
           "sequence": 120582,
           "block": 40,
           "step": 6,
-          "render": 0,
+          "render": 1,
           "bytes": 5185996788
         },
         {
@@ -104,7 +104,7 @@
           "sequence": 120582,
           "block": 44,
           "step": 2,
-          "render": 0,
+          "render": 1,
           "bytes": 5185996788
         },
         {
@@ -114,7 +114,7 @@
           "sequence": 120582,
           "block": 44,
           "step": 6,
-          "render": 0,
+          "render": 1,
           "bytes": 5185996788
         },
         {
@@ -124,7 +124,7 @@
           "sequence": 120582,
           "block": 45,
           "step": 2,
-          "render": 0,
+          "render": 1,
           "bytes": 5185996860
         },
         {
@@ -134,7 +134,7 @@
           "sequence": 120582,
           "block": 45,
           "step": 6,
-          "render": 0,
+          "render": 1,
           "bytes": 5185996860
         },
         {
@@ -144,7 +144,7 @@
           "sequence": 120582,
           "block": 46,
           "step": 2,
-          "render": 0,
+          "render": 1,
           "bytes": 5185996788
         },
         {
@@ -154,7 +154,7 @@
           "sequence": 120582,
           "block": 46,
           "step": 6,
-          "render": 0,
+          "render": 1,
           "bytes": 5185996788
         },
         {
@@ -164,7 +164,7 @@
           "sequence": 120582,
           "block": 47,
           "step": 2,
-          "render": 0,
+          "render": 1,
           "bytes": 5185996788
         },
         {
@@ -174,7 +174,7 @@
           "sequence": 120582,
           "block": 47,
           "step": 6,
-          "render": 0,
+          "render": 1,
           "bytes": 5185996788
         },
         {
@@ -184,7 +184,7 @@
           "sequence": 120582,
           "block": 48,
           "step": 2,
-          "render": 0,
+          "render": 1,
           "bytes": 5185996860
         },
         {
@@ -194,7 +194,7 @@
           "sequence": 120582,
           "block": 48,
           "step": 6,
-          "render": 0,
+          "render": 1,
           "bytes": 5185996860
         },
         {
@@ -204,7 +204,7 @@
           "sequence": 120582,
           "block": 49,
           "step": 2,
-          "render": 0,
+          "render": 1,
           "bytes": 5185996860
         },
         {
@@ -214,7 +214,7 @@
           "sequence": 120582,
           "block": 49,
           "step": 6,
-          "render": 0,
+          "render": 1,
           "bytes": 5185996860
         },
         {
@@ -224,7 +224,7 @@
           "sequence": 120582,
           "block": 8,
           "step": 2,
-          "render": 0,
+          "render": 1,
           "bytes": 5185996715
         },
         {
@@ -234,7 +234,7 @@
           "sequence": 120582,
           "block": 8,
           "step": 6,
-          "render": 0,
+          "render": 1,
           "bytes": 5185996715
         }
       ],
