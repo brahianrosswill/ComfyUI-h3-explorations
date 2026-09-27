@@ -9,6 +9,6 @@
     "t2v_slapstick_capture:MiniMaxH3Conditioning.prompt=@bank:t2va_slapstick_moving_piano",
     "t2v_slapstick_capture:MiniMaxH3Resolution.length=345"
   ],
-  "server_env": "H3_CAPTURE=dir=$H3_CAPTURE_ROOT/2026-09-27_sol_test2_pdd8,blocks=0:8:40:44:45:46:47:48:49,steps=2:6,cycle=8 (reasoned: PDD8 is 8 steps; Sol's start_percent 0.2 leaves steps 0-1 before its window, so 2 and 6 are an early and a late Sol step)",
+  "server_env": "H3_CAPTURE=dir=$H3_CAPTURE_ROOT/2026-09-27_sol_test2_pdd8,blocks=0:8:24:40:44:45:46:47:48:49,steps=2:6,cycle=8 (reasoned: PDD8 is 8 steps; Sol's start_percent 0.2 leaves steps 0-1 before its window, so 2 and 6 are an early and a late Sol step). No pre key: these graphs run the kitchen chain, whose seam writes the post-RoPE file. #45's FastH3 render (bench/fasth3_vsa_capture_arms.json) runs on a SECOND launch with its own spec, dir=$H3_CAPTURE_ROOT/2026-09-27_fasth3_vsa_pdd8,blocks=0:24:49,steps=2:6,cycle=8,pre=only, so neither render writes cells the other's grade does not read.",
   "run": "run_graph_arms.py --manifest bench/sol_redesign_test2_capture_arms.json --runs 1 --seed 730451892 --hold-seed --no-alternate --out bench/results/2026-09-27_sol_redesign_test2_capture.jsonl"
 }
