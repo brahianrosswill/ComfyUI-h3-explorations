@@ -6,7 +6,7 @@ right while the sampler still evaluates somewhere else, because the scheduler
 is what turns (shift, steps) into actual sigmas. A distill fitted at four
 evaluations saw four specific sigmas; a scheduler that puts its four steps
 elsewhere is running a distilled model off its own grid, and nothing errors.
-Since 2026-09-26 the graded populations are PDD and TaoMate; the lightx2v
+Since 2026-09-26 the graded population is PDD; the lightx2v
 turbo arms this file was written for are retired (`docs/wiki/decisions.md`),
 and their cases went with them. The vendor README they shipped with stays the
 external anchor for the flow-shift rule itself.
@@ -65,7 +65,6 @@ Claims, i.e. what breaks if a case is deleted:
                          identical would leave every other case green
   pdd graphs on grid     every PDD graph samples exactly the block boundaries
                          its fused heads were built at, both streams
-  taomate graphs on grid every TaoMate graph samples its adapter's grid
 
 Needs ComfyUI importable (CPU only -- no CUDA, no model, no server) and
 `coderef/`. Neither absence can produce a pass: a missing README SKIPS and
@@ -101,11 +100,10 @@ VENDOR_README = REPO / "coderef" / "Minimax-H3-Turbo" / "README.md"
 
 from h3_config import graph_paths  # noqa: E402
 import h3_config  # noqa: E402
-import taomate_streaming as taomate  # noqa: E402
 from pdd_math import block_bounds, partition_bounds  # noqa: E402
 from pdd_lora import envelope_partition  # noqa: E402
 from check_distill_settings import (  # noqa: E402
-    classify_pdd, pdd_grid, pdd_nfe, pdd_block_size, classify_taomate, read_api,
+    classify_pdd, pdd_grid, pdd_nfe, pdd_block_size, read_api,
 )
 
 #: The closed form is exact only where the discrete table lands on the step
@@ -492,67 +490,6 @@ def main() -> int:
         return f"{seen} PDD graph(s), exact on both streams"
 
     check("pdd graphs on their fused grid", pdd_graphs_on_their_fused_grid)
-
-    def taomate_graphs_on_their_grid():
-        """A TaoMate-H3 graph samples the adapter's own retained sigmas, on both streams.
-
-        Ground truth is the inherited copy in `taomate_streaming.py`
-        (`student_sigmas`; `UPSTREAM` names the source). The video vector is the graph's
-        `ManualSigmas`. The audio vector is never in a graph: core's DiT
-        derives it through `time_shift_sigma`, so that function is graded
-        against the adapter's audio list rather than assumed to land on it.
-
-        Not covered by the cases above: a TaoMate filename is not PDD.
-        """
-        import re
-        try:
-            from comfy.ldm.minimax.model import time_shift_sigma
-        except ImportError as exc:
-            raise AssertionError(
-                f"ComfyUI is not importable from {COMFY}; the audio half of "
-                f"this case grades core's own derivation and has no fallback "
-                f"({exc})") from exc
-        sv, sa = taomate.SHIFT_VIDEO, taomate.SHIFT_AUDIO
-        want_v = taomate.student_sigmas(sv)
-        want_a = taomate.student_sigmas(sa)
-        derived = [float(time_shift_sigma(s, sv, sa)) for s in want_v]
-        dev = max(abs(a - b) for a, b in zip(derived, want_a))
-        assert dev <= EXACT, (
-            f"core's audio clock at the adapter's video sigmas deviates "
-            f"{dev:.2e} from the adapter's audio list, so a TaoMate graph with "
-            f"a correct ManualSigmas would still sample audio off its grid")
-        bad, seen = [], 0
-        number = re.compile(r"[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?")
-        for path in graph_paths(WORKFLOWS, "*_api.json"):
-            doc = json.loads(path.read_text())
-            found = read_api(doc)
-            if not any(classify_taomate(n) for n in found.loras):
-                continue
-            seen += 1
-            rel = path.relative_to(REPO)
-            vectors = [n["inputs"].get("sigmas") for n in doc.values()
-                       if isinstance(n, dict) and n.get("class_type") == "ManualSigmas"]
-            if len(vectors) != 1 or not isinstance(vectors[0], str):
-                bad.append(f"{rel}: loads TaoMate but carries {len(vectors)} "
-                           f"ManualSigmas node(s) with a literal vector; its "
-                           f"grid cannot be read")
-                continue
-            got = [float(v) for v in number.findall(vectors[0])]
-            if len(got) != len(want_v):
-                bad.append(f"{rel}: {len(got)} sigmas, the adapter's grid has "
-                           f"{len(want_v)}")
-                continue
-            dev = max(abs(a - b) for a, b in zip(got, want_v))
-            if dev > EXACT:
-                bad.append(f"{rel}: ManualSigmas deviates {dev:.2e} from the "
-                           f"adapter's grid")
-        assert not bad, "\n         ".join(bad)
-        assert seen, ("no API graph was recognised as loading TaoMate, so this "
-                      "case graded nothing and passed. If the TaoMate probes "
-                      "were retired, retire this case with them.")
-        return f"{seen} TaoMate graph(s), exact on both streams"
-
-    check("taomate graphs on their grid", taomate_graphs_on_their_grid)
 
     if failures:
         print(f"\n{len(sorted(set(failures)))} case(s) FAILED: "

@@ -429,26 +429,10 @@ mapped to the owner decision it feeds. None of the decisions is made here.
 
 **2026-09-15:**
 
-- **TaoMate-H3: the whole-clip arms lost; the streaming runtime is being
-  ported.**
-  - **Verdict.** The owner judged PDD8 far better than the whole-clip TaoMate
-    arms in every scene, with ours and kijai's indistinguishable
-    (`bench/results/2026-09-15_taomate_verdicts.json`).
-  - **Reopened the same day** to port upstream's chunked, cached runtime
-    ([`../h3_taomate.md`](../h3_taomate.md) section 7). The sampler node is
-    built, and its whole-clip equality check matched core
-    (`bench/results/2026-09-15_taomate_verify_whole_clip.json`).
-  - **Rendered the same day.** The control, a 124-frame throwaway, then the
-    243-frame dancer stream at 1344x768 beside a dense whole-clip control and
-    PDD at 5 and 8 steps.
-    - **Verdict on the two TaoMate arms:** both a lot better than the earlier
-      TaoMate renders. The stream reads as a normal distill with no duplicated
-      people and no obvious artifacts
-      (`bench/results/2026-09-15_taomate_stream_verdict.json`).
-    - **TaoMate against PDD: not comparable on this pair.** The stream framed
-      far tighter, "way too zoomed in".
-    - **Next, if wanted:** a framing-pinned prompt (wide, static, no push-in)
-      for both.
+- **TaoMate-H3: deprecated by the owner on 2026-09-27 and removed, not
+  pursued** ([`decisions.md`](decisions.md), 2026-09-27). What was tried that
+  day, the whole-clip arms and the ported streaming runtime, is in the
+  `bench/results/2026-09-15_taomate_*` records and in git.
 - **Cafe prompt pair: the rewrite wins, and so does 8 steps.** An outside
   prompt verbatim against its house-structure rewrite (`t2va_cafe_kids`), PDD
   at 5 and 8 steps. The owner judged the rewrite way better at both counts,

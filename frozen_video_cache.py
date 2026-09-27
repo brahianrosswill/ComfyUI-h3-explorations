@@ -31,7 +31,7 @@ nearly verbatim; the rest is rewritten against current core. What differs:
   AudioRefine keeps it across prompts behind a sum/abs-sum fingerprint, which
   nothing shows can tell two seeds of one prompt apart.
 - **Refuses what it would silently skip**: a foreign `patches_replace["dit"]`
-  entry (core VSA, taomate, FunControl) at patch time, and an object-patched
+  entry (core VSA, FunControl) at patch time, and an object-patched
   block or attention forward (sage capture, `exact_blocks.py`) at run time.
 - **RAM store and the hidden contents only.** No VRAM or disk backend and no
   K/V contents.
@@ -588,7 +588,7 @@ def attach(model, precision="int4", refresh=False, refresh_every=2, verify=False
     if existing:
         raise ValueError(
             f"this model already carries patches_replace['dit'] entries ({sorted(existing)[:3]}...): "
-            f"core's sparse attention, taomate or FunControl. A cached step would skip "
+            f"core's sparse attention or FunControl. A cached step would skip "
             f"them, so the cache refuses to compose. Put it on a model without them.")
     m = model.clone()
     state = _State(dm, precision, refresh, refresh_every, verify)

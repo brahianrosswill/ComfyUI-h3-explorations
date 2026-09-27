@@ -66,7 +66,6 @@ from .reference_conditioning import (
 from .reference_report import MiniMaxH3ReferenceReport
 from .prompt_lists import MiniMaxH3FillPromptLists, MiniMaxH3PromptList, register_wildcards_folder
 from . import h3_capture
-from .taomate_stream_sampler import MiniMaxH3TaoMateStreamSampler
 
 from .attention import (
     MODES,
@@ -320,8 +319,6 @@ class H3ExplorationsExtension(ComfyExtension):
                 # one, the name above IS that pack's class (see the import), so both
                 # registrations hold one object and load order decides nothing.
                 MiniMaxH3ChannelBalance,
-                # appended 2026-09-15, the TaoMate streaming runtime (docs/h3_taomate.md section 7)
-                MiniMaxH3TaoMateStreamSampler,
                 # appended 2026-09-25, the audio-only refinement mask (audio_refine.py)
                 MiniMaxH3AudioRefineMask,
                 # appended 2026-09-25, the refine pass's frozen-video cache (frozen_video_cache.py)

@@ -8,7 +8,7 @@ Scenes are ordered by how many graphs carry them, so the defaults that reach the
 
 | scene | bank id | graphs | words | shots | speakers | markers |
 |---|---|---|---|---|---|---|
-| [`LONG_T2V_PROMPT`](#long-t2v-prompt) | `t2va_covered_market` | 72 | 290 | 3 | 2 | `<d>` |
+| [`LONG_T2V_PROMPT`](#long-t2v-prompt) | `t2va_covered_market` | 70 | 290 | 3 | 2 | `<d>` |
 | [`ref2va_role_character_environment`](#ref2va-role-character-environment) | `ref2va_role_character_environment` | 10 | 135 | 1 | 0 | — |
 | [`ref2va_role_character_garment_environment`](#ref2va-role-character-garment-environment) | `ref2va_role_character_garment_environment` | 9 | 173 | 1 | 0 | — |
 | [`ref2va_image_video_audio_music`](#ref2va-image-video-audio-music) | `ref2va_image_video_audio_music` | 5 | 264 | 1 | 0 | — |
@@ -48,7 +48,7 @@ Scenes are ordered by how many graphs carry them, so the defaults that reach the
 
 ## LONG_T2V_PROMPT
 
-Carried by **72** graph(s). Sections: `integrated_multimodal_description`, `overall_soundscape`, `non_diegetic_music`.
+Carried by **70** graph(s). Sections: `integrated_multimodal_description`, `overall_soundscape`, `non_diegetic_music`.
 
 <details><summary>graphs</summary>
 
@@ -107,8 +107,6 @@ Carried by **72** graph(s). Sections: `integrated_multimodal_description`, `over
 - `h3_probe_t2v_step_switch_pdd8_flashgen_h063_savelat_api`
 - `h3_probe_t2v_step_switch_pdd8_flashgen_h080_api`
 - `h3_probe_t2v_step_switch_pdd8_flashgen_h080_savelat_api`
-- `h3_probe_taomate_3step_api`
-- `h3_probe_taomate_3step_audio_freeze_api`
 - `h3_probe_vsa_api`
 - `h3_probe_vsa_dense_api`
 - `h3_text_to_video_api`

@@ -527,8 +527,8 @@
       "mode": "t2va",
       "frames": 243,
       "donor": null,
-      "brief": "The studio dancer as one continuous ten-second medium shot pushing in, no cut, for the TaoMate streaming runtime's two-request length (docs/h3_taomate.md section 7); written for a frozen drum-machine track.",
-      "tests": "whether one person stays one person across a streamed chunk and request boundary: identity, body count and the face under a slow push-in, with the moves on the beat of the frozen track. The TaoMate whole-clip render of the dancer split her into two people."
+      "brief": "The studio dancer as one continuous ten-second medium shot pushing in, no cut; written for a frozen drum-machine track.",
+      "tests": "whether one person stays one person across one long continuous shot: identity, body count and the face under a slow push-in, with the moves on the beat of the frozen track."
     },
     {
       "id": "t2va_pirate_deck_mutiny",

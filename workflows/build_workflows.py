@@ -103,7 +103,6 @@ from h3_config import (  # noqa: E402
     sol_for_graph,
     PDD_FL2VA_LORA, PDD_REF2VA_LORA, PDD_STEPS, PDD_STEPS_FAST,
     PDD_STRENGTH, PDD_FL2VA_STRIPPED_LORA,
-    TAOMATE_LORA,
     AUDIO_REFINE, FROZEN_VIDEO_CACHE, FROZEN_VIDEO_CACHE_NODE, FLASHGEN_LORA,
     FLASHGEN_R64_LORA, FLASHGEN_R64_REF2VA_LORA, LORA_BRANCH_NODE, FLASHGEN_STRENGTH, FLASHGEN_STEPS,
     FLASHGEN_MANUAL_SIGMAS, FLASHGEN_SAMPLER,
@@ -1177,7 +1176,6 @@ from h3_rules import (  # noqa: E402
     duration_in_range, duration_of, is_single_frame, max_legal_length,
     min_legal_length, snap_length,
 )
-import taomate_streaming as taomate  # noqa: E402
 
 
 def _core_cpu_when_no_card():
@@ -4252,27 +4250,6 @@ def main():
         # **The lightx2v turbo and SLA graphs were here and are retired as of
         # 2026-09-26** (owner: "lightx and turbo stuff irrelevant"); the list is
         # in docs/wiki/decisions.md under that date and the entries in git.
-
-        # TaoMate-H3 (docs/h3_taomate.md): the full-rank conversion on the
-        # plain fl2va checkpoint, at the adapter's own three distilled sigmas
-        # and Euler step, over the whole clip at once rather than in the
-        # causal chunks its authors run. Probes, not candidates. kijai's
-        # resize and the swapped-fc1 control are arms patched onto these
-        # graphs (bench/taomate_probe_arms.json), not graphs of their own.
-        ("h3_probe_taomate_3step.json", "t2v-taomate-3step", "t2v",
-         LONG_T2V_PROMPT,
-         dict(lora=(TAOMATE_LORA, taomate.STRENGTH), steps=taomate.STEPS,
-              sampler_name=taomate.SAMPLER, manual_sigmas=taomate.MANUAL_SIGMAS,
-              out_prefix="Video/h3_probe_taomate_3step"),
-         "text -> video + audio at 3 steps via the TaoMate-H3 adapter on its distilled grid"),
-
-        ("h3_probe_taomate_3step_audio_freeze.json", "t2v-taomate-3step-audio-freeze", "t2v",
-         LONG_T2V_PROMPT,
-         dict(lora=(TAOMATE_LORA, taomate.STRENGTH), steps=taomate.STEPS,
-              sampler_name=taomate.SAMPLER, manual_sigmas=taomate.MANUAL_SIGMAS,
-              freeze_audio=True,
-              out_prefix="Video/h3_probe_taomate_3step_audio_freeze"),
-         "text + a frozen audio track -> video at 3 steps via the TaoMate-H3 adapter"),
 
         # **The 2026-09-25 distill and audio-recovery probes** (docs/wiki/next_steps.md,
         # the 2026-09-25 blocks). Same prompt, seed, canvas and length as the

@@ -4,6 +4,31 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.161.0
+
+### Removed
+
+- **TaoMate-H3, deprecated by the owner** (2026-09-27: "taomate is
+  deprecated you can remove everything from it here. we're not gonna pursue
+  it anymore."). Gone:
+  - the `MiniMaxH3TaoMateStreamSampler` node and its runtime
+    (`taomate_stream_sampler.py`, `taomate_streaming.py`). A saved graph
+    that uses the node no longer loads;
+  - the probes `h3_probe_taomate_3step` and
+    `h3_probe_taomate_3step_audio_freeze`;
+  - `h3_config`'s `TAOMATE_*` constants;
+  - `bench/check_taomate_streaming.py`, and the TaoMate cases in
+    `check_distill_settings.py` and `check_distill_grid.py`;
+  - `bench/convert_taomate_lora.py`, `bench/verify_taomate_stream.py`, the
+    three TaoMate arm manifests, `measure_merge_noise.py`'s TaoMate pairs;
+  - `docs/h3_taomate.md`, and the prose that pointed at it.
+
+  `MiniMaxH3FrozenVideoCache` stays; the PDD8 and FlashGen audio-refine
+  graphs use it. The `2026-09-15_taomate_*` records stay in `bench/results/`,
+  and the lane is in `docs/roadmap.md` "Closed lanes" as deprecated, not
+  refuted (`docs/wiki/decisions.md`, 2026-09-27). The validated workflow
+  build no longer fails on the missing TaoMate LoRA files.
+
 ## 0.160.0
 
 ### Changed
