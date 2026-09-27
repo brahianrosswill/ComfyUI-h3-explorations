@@ -125,3 +125,16 @@ control for that, against the full `<scene>__flashgen` rows.
 A caveat on reading it. On its own, a late-only arm runs an almost-base model
 through FlashGen's 4 steps, which the base never trained for. A poor render
 there shows the schedule mismatch, not the late blocks.
+
+*Annotation, 2026-09-26, before the transplant rendered.* The VAE session
+(`2026-09-26_fasth3_weights.md`, last section) finds FastH3 V2 to be roughly:
+the base, plus a retrained time embedder (a 5.6% modulation change, which is
+training, not conversion), plus the VSA gates, plus a backbone drift of about
+1e-4.
+
+A cosine carries no magnitude. So the late-block direction FlashGen shares
+with FastH3 is too small on FastH3's side to drive FastH3's look, which
+would come from its time embedder (the VAE session's swap test, S4). That
+weakens FP2's reading of the shared direction as the common
+distribution-matching look. FT1 still tests whether FlashGen's own grade
+lives in its late blocks. It no longer tests a mechanism shared with FastH3.
