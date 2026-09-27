@@ -3,7 +3,7 @@
 > **Provenance, 2026-09-19.** Written by a research subagent of the `libguy`
 > session for the lead's wider sweep, read-only, no GPU. The commissioning
 > session re-checked its code pointers and found them correct: the forced-exact
-> prefix range in `sol_attn_h3.py:934`, and the per-latent-frame time spans in
+> prefix range in `sol_attn_h3.py` (line 934 as of 2026-09-19; the file was restructured 2026-09-27), and the per-latent-frame time spans in
 > ComfyUI core `comfy/ldm/minimax/model.py` (`FRAME_PER_TOKEN`,
 > `FRAME_RESCALE`, `_video_t_spans`). Paper figures came through a
 > summarising fetch tool, as the agent says below; recheck against the PDF
@@ -36,7 +36,7 @@ inference. **[?]** not verified; says what was searched.
 One word needs splitting before anything else. In this pack **"sink"** is the
 name of a kernel range: `_sink_blocks` returns key blocks
 `[0, ceil(video_start/64))`, the whole conditioning prefix, forced exact
-(`sol_attn_h3.py:934`). In the literature an **attention sink** is a measured
+(`sol_attn_h3.py` (line 934 as of 2026-09-19; the file was restructured 2026-09-27)). In the literature an **attention sink** is a measured
 phenomenon: a key position that draws a disproportionate share of every
 query's softmax mass. They are different objects. The useful question falls
 out of keeping them apart: does H3 have measured attention sinks, and do they
@@ -146,13 +146,13 @@ reference-specific measurement below waits on that one capture render.
 4. **ref2va: Sol already protects the copy; the open items are the
    reference rows' own queries and the price of forcing every reference key
    exact.** [V for code and papers, I for the ranking] Every target query
-   sees every reference key unpooled (`sol_attn_h3.py:934`), so the path the
+   sees every reference key unpooled (`sol_attn_h3.py` (line 934 as of 2026-09-19; the file was restructured 2026-09-27)), so the path the
    literature says carries identity, reference to target directly (FLUX.2
    knockout: blocking reference-to-image attention damages human identity,
    blocking reference-to-text does little; arXiv 2605.24624 Table 2), is not
    approximated by routing. Two things are: (a) under the shipped mode the
    reference rows' **queries** are routed, because the dense-query range is
-   target audio only (`sol_attn_h3.py:946`), so the K/V those rows present
+   target audio only (`sol_attn_h3.py` (line 946 as of 2026-09-19; the file was restructured 2026-09-27)), so the K/V those rows present
    to later blocks carry Sol error, and `docs/SOLATTN.md` calls this
    second-order without a measurement; (b) the forced-exact range grows with
    every reference row, which `docs/SOLATTN.md` ("References are pinned
@@ -244,7 +244,7 @@ reference version reuses unchanged.
   `SOL_CORE_DEFAULTS["sink_conditioning"]`, `exact_kv_and_rows` when read):
   key blocks `[0, ceil(video_start/64))` exact for every query, which covers
   text, keyframe cond rows, every reference row and target audio; dense
-  queries only for target audio (`sol_attn_h3.py:894-946`). So reference
+  queries only for target audio (`sol_attn_h3.py` (lines 894-946 as of 2026-09-19; the file was restructured 2026-09-27)). So reference
   **keys** are always unpooled, reference **queries** are routed. The mode
   `exact_kv_and_all_rows` makes reference queries dense too; its price is in
   `docs/SOLATTN.md`, "References are pinned exact".
@@ -311,7 +311,7 @@ prefix's INT8 precision.
   `[text | target audio | references]` inside the attention call. The
   permutation is output-equivalent after the inverse because RoPE is applied
   before attention (`comfy/ldm/minimax/model.py:181-190`), the same argument
-  the video reorder relies on (`sol_attn_h3.py:430`, `_perm_for`). Making the
+  the video reorder relies on (`sol_attn_h3.py` (line 430 as of 2026-09-19; the file was restructured 2026-09-27), `_perm_for`). Making the
   reference exact in only a few blocks would additionally need a per-block
   sink setting, which the node does not have
   (`internal/2026-09-19_question_review.md` section D lists what it can set).
@@ -419,7 +419,7 @@ localisation findings, not as scorers.
   2605.09313, sections 3.2 and 3.6, Tables 1-2). [V, HTML digests]
 - **Why it is new here.** The pack's forced-exact range covers the prefix by
   construction; nothing checks whether a measured sink lies outside it.
-  [V: `sol_attn_h3.py:934`; the question review's C.4 asks for mass outside
+  [V: `sol_attn_h3.py` (line 934 as of 2026-09-19; the file was restructured 2026-09-27); the question review's C.4 asks for mass outside
   "diagonal and sink ranges" but not for the sinks' location]
 - **H3 specifics.** Periodic one-pixel-frame latent frames (`FRAME_PER_TOKEN`,
   `comfy/ldm/minimax/model.py:30`) [V]; small value norms would mean a routed
@@ -587,7 +587,7 @@ Code read (ComfyUI core and this repo cited by repo-relative path; clones as
 
 - `comfy/ldm/minimax/model.py` (ComfyUI core): `:5-7`, `:30-33`, `:95-96`,
   `:117-123`, `:181-199`, `:291-297`, `:350-470`, `:532-545`, `:633-637`.
-- `sol_attn_h3.py:430` (`_perm_for`), `:894-946` (`_sink_blocks`).
+- `sol_attn_h3.py` (line 430 as of 2026-09-19; the file was restructured 2026-09-27) (`_perm_for`), `:894-946` (`_sink_blocks`).
 - `workflows/h3_config.py`, `SOL_CORE_DEFAULTS`, `SOL_RECOMMENDED`.
 - `docs/wiki/decisions.md:51`; `docs/SOLATTN.md`, "References are pinned
   exact" and the sink table; `docs/morton.md`, "Related papers".

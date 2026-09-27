@@ -340,6 +340,16 @@ An entry asserts that someone looked and the target is *deliberately* gone. It
 is not a way to silence a broken link.
 
 ```doc-link-absent
+PATH: bench/analyze_morton.py
+WHY: Morton block-geometry analysis, deleted 2026-09-27 with the Morton lane
+     (docs/research/2026-09-27_sol_node_redesign.md); last present at commit
+     e0b8cc55. docs/morton.md is that lane's history and keeps citing it.
+
+PATH: sol_curves.py
+WHY: the Hilbert/2d curve helpers behind the Sol node's morton_curve, deleted
+     2026-09-27 with the Morton lane; last present at commit e0b8cc55.
+     docs/morton.md is that lane's history and keeps citing it.
+
 PATH: _morton.py
 WHY: the Triton pack's Wan Morton file, deleted with the pack on 2026-08-16
      (commit 6872dfd). docs/morton.md quotes its docstring as the only stated

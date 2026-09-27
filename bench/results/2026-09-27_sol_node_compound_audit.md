@@ -35,7 +35,7 @@ Only the dense `int8_attention` differs (§2.3).
 
 ### Our node
 
-Each attention call passes through the override (`sol_attn_h3.py:1122-1208`)
+Each attention call passes through the override (`sol_attn_h3.py` (lines 1122-1208 as of 2026-09-27; the file was restructured 2026-09-27))
 in this order:
 
 ```
@@ -231,7 +231,7 @@ behind the §5.1 bug.
    | both | 0.0347 | 0.0337 (the best of any arm) |
 
    - Our "all blocks" preset demands balance **and** rotate
-     (`sol_attn_h3.py:298-302`), and its error text says token routing
+     (`sol_attn_h3.py` (lines 298-302 as of 2026-09-27; the file was restructured 2026-09-27)), and its error text says token routing
      "measured worse" without them. The record supports "needs balance",
      not "needs both".
    - **Every balance-plus-token arm ran on a kernel with a balance/token
@@ -289,7 +289,7 @@ behind the §5.1 bug.
    their relative weight then shifts by about q·Δkmean·scale. This is core's
    H3 path, not ours.
 4. **Prose that lost to code** (listed for correction, not corrected here):
-   - The "all blocks" error text (`sol_attn_h3.py:301`), per §4.5.
+   - The "all blocks" error text (`sol_attn_h3.py` (line 301 as of 2026-09-27; the file was restructured 2026-09-27)), per §4.5.
    - The `qk_balance` tooltip calls it "an experiment" (`:1693`), yet 129
      graphs ship it on.
    - `docs/roadmap.md:757-763` says Sol "ships off" and that
@@ -319,7 +319,7 @@ behind the §5.1 bug.
 
 **One constraint on any removal:** editor-saved graphs map widgets by
 position, so removing or reordering a widget re-points the saved values. API
-graphs are regenerated and unaffected (`sol_attn_h3.py:1678-1681`,
+graphs are regenerated and unaffected (`sol_attn_h3.py` (lines 1678-1681 as of 2026-09-27; the file was restructured 2026-09-27),
 `h3_config.py:966-968`).
 
 ---
@@ -355,7 +355,7 @@ is an H3-specific lever added later.
 | token routing off vs 256 everywhere | `docs/research/2026-09-04_sol_token_aug_grade.md`: better on 4 captured blocks, worse on 49. | measured |
 | dense tail 45/48/49 | Owner, 2026-09-25. Kitchen dense int8 beats Sol's routed error on block 49 (`2026-09-15_ck_int8_attention_block49.json`). | measured on a capture; the render is unscored |
 | `qk_balance` on | Owner, 2026-09-15, together with the kitchen floor. Lower block-49 error, neutral on blocks 0 and 32. | measured on captures |
-| direct entry vs chunked | An override receives Q/K/V after `qkv_proj` and RoPE, so the chunked saving is already spent (`sol_attn_h3.py:80-86`). | structural |
+| direct entry vs chunked | An override receives Q/K/V after `qkv_proj` and RoPE, so the chunked saving is already spent (`sol_attn_h3.py` (lines 80-86 as of 2026-09-27; the file was restructured 2026-09-27)). | structural |
 | falls back on a kernel exception | Inherited from the vendored node. | no recorded reason |
 | installs once | none | no recorded reason |
 
@@ -412,7 +412,7 @@ since 2026-09-17 is that neither chain has won (`h3_config.DENSE_CHAINS`).
 
 The sage node patches every block's `attn.forward` and also registers an
 override. Sol wraps that forward in its compose gate
-(`sol_attn_h3.py:1241-1291`).
+(`sol_attn_h3.py` (lines 1241-1291 as of 2026-09-27; the file was restructured 2026-09-27)).
 
 - **The gate** checks `min_tokens` and the sigma window. It does **not**
   check `dense_blocks`.

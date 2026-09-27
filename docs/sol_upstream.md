@@ -164,8 +164,10 @@ under an unrelated title can be missed.
   only in the route record. This pack's own attention forwards also lack the
   PR's fp16 `out_proj` rescale. The dtype choice was run; the Sol fallback
   and the rescale are reasoned from the code, with no render under the PR.
-  *Since 0.139.0 the Sol node refuses a non-bf16 H3 model at patch time
-  (`sol_attn_h3.py::_require_bf16_compute`), so this would now fail loudly.* It is the one open PR here worth watching.
+  *Since 0.139.0 the Sol node refused a non-bf16 H3 model at patch time. Since
+  2026-09-27 `MiniMaxH3Sol` takes fp16 as well (the direct kernel entry
+  accepts it; `sol_attn_h3.py::_apply_sol`), so an fp16 DiT under this PR
+  would run Sol rather than fail.* It is the one open PR here worth watching.
 - **16460 (packed-row memory estimate) and 16542 (dynamic-VRAM headroom)**
   would together change what gets paged out when sampling is admitted: the
   first changes the estimate, and the second makes `free_memory` partially

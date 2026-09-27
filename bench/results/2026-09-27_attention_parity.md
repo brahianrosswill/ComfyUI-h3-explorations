@@ -143,9 +143,9 @@ Being corrected in the same pass as this record; see `docs/wiki/decisions.md`.
     `docs/wiki/next_steps.md`).
 - **`sol_chunked_h3.py:22-27`:** the routing threshold uses the current
   `kcvar`; only the K int8 centering and the V scale are stale.
-- **`sol_attn_h3.py:13-15`:** "every local change is listed below", when
+- **`sol_attn_h3.py` (lines 13-15 as of 2026-09-27; the file was restructured 2026-09-27):** "every local change is listed below", when
   there are more now.
-- **`sol_attn_h3.py:1506-1507` and the `h3_config.py` min_tokens comment:**
+- **`sol_attn_h3.py` (lines 1506-1507 as of 2026-09-27; the file was restructured 2026-09-27) and the `h3_config.py` min_tokens comment:**
   both name sage as the fallback, where the shipped graphs use the kitchen
   backend node.
 - **`workflows/h3_config.py:846-849`:** `SOL_CUDA_DEFAULTS` is called "untouched", but

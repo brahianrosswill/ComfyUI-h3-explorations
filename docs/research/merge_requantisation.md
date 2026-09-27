@@ -243,7 +243,7 @@ patches a LINEAR's forward silently misses fc2 and looks clean across the other
 three kinds — the same reachability fact behind the 2026-08-30 `unmerged_blocks`
 defect that dropped fc2. **Checked for this pack: nothing here patches a
 linear's forward.** `exact_blocks.py:155` patches `blocks.{i}.attn.forward`,
-and `sol_attn_h3.py:870` only COMPOSES with patches whose owner segment already
+and `sol_attn_h3.py` (line 870 as of 2026-09-26; the file was restructured 2026-09-27) only COMPOSES with patches whose owner segment already
 contains `attn`; the VSA node replaces a whole DiT block, which reaches fc2
 through the ordinary call. Recorded because the trap is one lane over and the
 next person to add an object patch here will not know it.

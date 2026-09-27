@@ -143,11 +143,11 @@ renders, with no capture and no panel.
    nodes; check before building it.** [V for the code path; I that it works]
    Outside its window, and for blocks in its `dense_blocks`, the override
    calls `dense()`, which hands off to the previously installed override
-   (`sol_attn_h3.py:1028-1029`, `:1063-1066`, `:1068-1078`). So node B
+   (`sol_attn_h3.py` (lines 1028-1029 as of 2026-09-19; the file was restructured 2026-09-27), `:1063-1066`, `:1068-1078`). So node B
    (start 0.2, `dense_blocks` = S) over node A (start 0.4) should give "blocks
    in S dense until 0.4, others until 0.2". Risks: the node keeps one
    `sol_compose` dict per model, which a second node overwrites
-   (`sol_attn_h3.py:1386`). That dict gates foreign forward patches, not the
+   (`sol_attn_h3.py` (line 1386 as of 2026-09-19; the file was restructured 2026-09-27)). That dict gates foreign forward patches, not the
    override chain, so the default chain is probably unaffected; untested
    either way. Measure first: one short render on a server armed with
    `H3_SOL_OBSERVE` (ask before restarting a shared server),
@@ -158,7 +158,7 @@ renders, with no capture and no panel.
    for a block outside S past B's start, B logs `sol` and A logs nothing.
    If it fails, the cheap node
    change is a per-block sigma start read in the depth gate at
-   `sol_attn_h3.py:1063`. No kernel change either way.
+   `sol_attn_h3.py` (line 1063 as of 2026-09-19; the file was restructured 2026-09-27). No kernel change either way.
 4. **Build F.9 as a structured, multi-prompt, single-step injection:
    EpaCache's protocol with Sol as the perturbation.** [V for the protocol; I
    for the mapping] EpaCache injects the real approximation (cache reuse) at
@@ -577,7 +577,7 @@ From `docs/SOLATTN.md`, `sol_attn_h3.py` and question review D: per block
 | Skippable heads (Sparse-vDiT) | no | | yes, and a quality claim no H3 evidence supports |
 
 The gate order matters. `dense_blocks` is checked before the sigma window
-(`sol_attn_h3.py:1063` before `:1068`), so a block in `dense_blocks` is dense
+(`sol_attn_h3.py` (line 1063 as of 2026-09-19; the file was restructured 2026-09-27) before `:1068`), so a block in `dense_blocks` is dense
 at every step, unless a chained node below it takes the call.
 
 ## Sources

@@ -58,7 +58,7 @@ so no measurement can move it:
 
 **Ship a new node, `MiniMaxH3Sol` ("MiniMax H3 Sol-Attn"), appended to the
 node list, then delete the old one** (owner, 2026-09-27: "delete").
-Editor-saved graphs map widget values by position (`sol_attn_h3.py:1678-1681`),
+Editor-saved graphs map widget values by position (`sol_attn_h3.py` (lines 1678-1681 as of 2026-09-27; the file was restructured 2026-09-27)),
 so editing `MiniMaxH3SolAttn` in place would corrupt them. A new ID avoids
 that. Once the generated graphs are rebuilt on the new node,
 `MiniMaxH3SolAttn` and every piece of code only it reaches are deleted.

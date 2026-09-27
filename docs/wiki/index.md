@@ -100,6 +100,6 @@ under `docs/` that no link from `CLAUDE.md` or this wiki reaches.
 | [`bench/tally_judge_verdicts.py`](../../bench/tally_judge_verdicts.py) | the judge's tie rate and slot split over the structured verdict files; decoy verdicts counted apart, where a picked winner is a false positive |
 | [`bench/measure_dialogue_transcription.py`](../../bench/measure_dialogue_transcription.py) | whether a clip says its scripted lines: Whisper from the local cache against the prompt's `<d>` spans, CJK scored by character |
 | [`bench/map_attention_mass_on_capture.py`](../../bench/map_attention_mass_on_capture.py) | where exact attention mass goes on a capture, per head: by segment, by latent frame, and the heaviest keys |
-| [`bench/compare_sol_orderings.py`](../../bench/compare_sol_orderings.py), [`bench/depth_profile_tables.py`](../../bench/depth_profile_tables.py) | Sol's error by token ordering, and the depth profile's tables |
+| [`bench/depth_profile_tables.py`](../../bench/depth_profile_tables.py) | the depth profile's tables (raster order). The token-ordering comparison went with Morton on 2026-09-27 |
 | [`bench/probe_encoder_rope_kitchen.py`](../../bench/probe_encoder_rope_kitchen.py) | whether core's move of the text encoder's RoPE onto comfy-kitchen changed its numbers; the CUDA run is the one that counts |
 | `internal/` | gitignored: prompt research, session logs, postmortems (start with the newest). Not shipped |
