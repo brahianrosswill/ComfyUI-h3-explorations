@@ -31,12 +31,11 @@ Older history lives elsewhere and is not copied here:
   - Warm, it costs no sampling time: its evaluations replace PDD8's.
   - Whether it replaces the default t2v PDD graph is the owner's call.
   - `../../bench/results/2026-09-27_finisher_grid.md`, "The owner's review".
-- **Closed, no change: late-only FlashGen as PDD8's finisher (#34) and the
-  base finish (#37).**
-  - Late-only matched full FlashGen as a finisher on seven scenes, and the
-    full finish added no haze for it to remove
-    (`../../bench/results/2026-09-27_late_switch.md`).
-  - The base finish barely moved PDD8 and showed face morphing on courtroom.
+- **Closed, no change: late-only FlashGen as PDD8's finisher (#34).**
+  Late-only matched full FlashGen as a finisher on seven scenes, and the full
+  finish added no haze for it to remove
+  (`../../bench/results/2026-09-27_late_switch.md`). The base finish (#37) has
+  its own entry below.
 - **Closed: late-only FlashGen alone (#46); no stripped LoRA is built**
   (owner's review, ow-fd-10).
   - Late-only was more natural on the single-figure beach ladder, and more so
