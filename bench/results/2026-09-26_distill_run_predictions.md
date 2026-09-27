@@ -121,6 +121,22 @@ the unusual one, more than PDD8's or FastH3's does.*
   less of it.
 - **F5. In the per-step capture, the double image first appears at PDD8's
   last two steps, not in the early ones.**
+
+  *Verdict, 2026-09-26: failed.* The VAE session previewed the x0 of
+  `subway_chase__pdd8` (exact branch) through core's latent-to-RGB factors
+  (`bench/x0_step_frames.py`, `2026-09-26_x0_steps_subway_pdd8.json`).
+  - At step 0 there is one blob, already smearing wider at latent 9.
+  - At step 1 there are two distinct figures at latents 8 and 9, and steps
+    2-7 keep and sharpen both.
+  - Late-step change per latent frame is flat, with nothing concentrated
+    where the clone is.
+
+  The clone is a composition decision at the highest noise, not late-block
+  averaging, which fails the VAE session's P3 too. So a late handoff (the
+  reverse step-switch, at 0.8 or 0.632) should not remove it. A different
+  first block or early model might: route 3, FlashGen first. Whether the base
+  makes the same choice from this seed and prompt is the open control.
+  Registered before the reverse-switch renders land.
 - **F6. FastH3 with VSA off shows less temporal texture instability and the
   same grade.** Sparsity would explain the texture, and the weights the
   grade.
