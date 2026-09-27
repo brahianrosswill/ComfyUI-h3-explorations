@@ -31,12 +31,18 @@ inflates `pct_above` for multi-shot scenes relative to single-take ones; with
 three cuts in 362 frames the effect is under 1% of frames and is ignored here,
 but a scene with many cuts would need them removed first.
 
-    <comfy-venv-python> bench/measure_clip_delta.py <clip.mp4> ...
+    <comfy-venv-python> bench/measure_clip_delta.py [--json OUT] <clip.mp4> ...
+
+`--json` also writes each clip's per-frame delta series (frame n to n+1) and
+the times ffmpeg's scene score marks as cuts, so a delta spike can be set
+against a cut (added 2026-09-26 for the distill-routing mask question,
+`docs/research/2026-09-26_distill_routing.md`).
 """
 
 from __future__ import annotations
 
 import subprocess
+import json
 import sys
 from pathlib import Path
 
@@ -60,6 +66,7 @@ def motion(path: Path, w: int = W, h: int = H) -> dict | None:
     a = a.reshape(n, h, w).astype(np.float32) / 255.0
     d = np.abs(np.diff(a, axis=0)).mean(axis=(1, 2))
     return {
+        "series": [round(float(x), 5) for x in d],
         "frames": n,
         "median": float(np.median(d)),
         "mean": float(d.mean()),
@@ -68,10 +75,32 @@ def motion(path: Path, w: int = W, h: int = H) -> dict | None:
     }
 
 
+#: Scene score above which a frame counts as a cut, the same value and source
+#: as `measure_clip_tone.py`'s `CUT_SCORE`.
+CUT_SCORE = 0.3
+
+
+def cut_times(path: Path) -> list[float]:
+    """Seconds at which ffmpeg's scene score exceeds CUT_SCORE, over every frame."""
+    err = subprocess.run(
+        ["ffmpeg", "-v", "info", "-i", str(path), "-vf",
+         f"select=gt(scene\\,{CUT_SCORE}),showinfo", "-f", "null", "-"],
+        capture_output=True, text=True).stderr
+    out = []
+    for line in err.splitlines():
+        if "Parsed_showinfo" in line and "pts_time:" in line:
+            out.append(round(float(line.split("pts_time:")[1].split()[0]), 3))
+    return out
+
+
 def main(argv: list[str]) -> int:
+    json_out = None
+    if argv[:1] == ["--json"]:
+        json_out, argv = Path(argv[1]), argv[2:]
     if not argv:
-        print("usage: measure_clip_delta.py <clip.mp4> ...")
+        print("usage: measure_clip_delta.py [--json OUT] <clip.mp4> ...")
         return 2
+    records = []
     print(f"  {'clip':>44} {'median':>9} {'p90':>9} {'%busy':>8} {'frames':>7}")
     for p in argv:
         path = Path(p)
@@ -84,7 +113,13 @@ def main(argv: list[str]) -> int:
             continue
         print(f"  {path.name[-44:]:>44} {r['median']:>9.4f} {r['p90']:>9.4f} "
               f"{r['pct_above_busy']:>7.1f}% {r['frames']:>7}")
+        if json_out is not None:
+            records.append({"clip": path.name, "cut_times_s": cut_times(path), **r})
     print(f"\n  busy threshold {BUSY}; scale is this file's own -- see the docstring")
+    if json_out is not None:
+        json_out.write_text(json.dumps({"tool": Path(__file__).name, "size": [W, H],
+                                        "busy": BUSY, "cut_score": CUT_SCORE,
+                                        "clips": records}) + "\n")
     return 0
 
 
