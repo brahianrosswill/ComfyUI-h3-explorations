@@ -19,7 +19,10 @@ Saturation order by median: FastH3 0.387 > PDD8 0.364 > FlashGen 0.305
 (`tone_sat`). The owner's by-eye order, as fastdude relays it, was "fasth3 more
 saturated, fastgen slightly less, pdd least"; the measure agrees on FastH3 and
 swaps the other two. PDD8's low contrast and dim highlights may read as
-washed out by eye. Corrected 2026-09-27: this table first said FlashGen was
+washed out by eye. **Owner, 2026-09-27, asked whether PDD8 reads less
+colourful or flatter and dimmer: "The latter usually - but usually naturally
+so."** So the by-eye "pdd least" was the grade's contrast and level, not its
+colour, and the owner does not read that grade as a defect. Corrected 2026-09-27: this table first said FlashGen was
 "least saturated and warmest", which read as a contradiction; it is the least
 warm.
 
