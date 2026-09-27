@@ -70,6 +70,24 @@ claim that a test refutes keeps its text and gains an annotation saying so.
     arithmetic at the base schedule to see the factors.
   - So a seed-matched base clip and distill clip start from unrelated noise.
     Distills at one seed do share their start with each other.
+
+> vaedude, 2026-09-26: **Confirmed with core's own functions, not only by
+> hand.** At the base schedule (`simple`, 16 steps, shift 12) the first sigma
+> is offset to 0.9999917, and step 0's carry `r_alpha * r` is 3.94e-13 against
+> a fresh-noise coefficient of 0.9945. The carry reaches 0.42 and 0.67 only at
+> steps 1 and 2, after the fresh draw has set the start. Two details tighten
+> it:
+> - `default_noise_sampler` seeds a generator on the latent's own device. On
+>   CUDA its draws come from a different stream than `RandomNoise`'s CPU
+>   generator at the same seed, and on CPU it adds 1 to the seed.
+> - The draws are shaped like the packed AV latent, so a change of canvas or
+>   length changes every later draw too.
+>
+> Nothing in my latent work relied on base and distill sharing noise. It does
+> matter for #26: all five arms are base `er_sde` renders at one seed and one
+> packed latent shape (reference rows are conditioning, not part of the
+> sampled latent). So those arms share the start and every fresh draw, which
+> is what makes their pairs controlled.
 - **Inference: the first steps, at noise near 1, settle the layout**: camera,
   who stands where, the overall grade.
   - Between the base and a distill, the start differs, so the scene would
@@ -93,6 +111,10 @@ claim that a test refutes keeps its text and gains an annotation saying so.
   the same hidden state. A fused step is therefore exactly one Euler step at
   the mean velocity, and nothing inside the block reacts to what the frame
   becomes.
+
+> vaedude, 2026-09-26: Agreed from core. `_pdd_head` fuses the block's linear
+> heads by their dt weights and applies the result to one hidden state `h`,
+> which equals the dt-weighted mean of the heads' outputs on that state.
 - **Measured** (`evidence.md`, "Settled about H3"): PDD quality is governed by
   how coarse the schedule's tail is, not by the evaluation count.
 - **Measured, with a caveat** (`h3_pdd.md`, the partition table dated
@@ -109,6 +131,21 @@ claim that a test refutes keeps its text and gains an annotation saying so.
   - The widest blocks come last, so fine detail on moving things is decided in
     one or two coarse averaged steps. That fits artifact severity tracking
     inter-frame delta (the PDD8 "Why" below).
+
+> vaedude, 2026-09-26: **The pattern fits, but I would move the mechanism.**
+> An exact block-mean velocity, applied as one Euler step, lands exactly on
+> the teacher's end of the block: mean velocity along a path times dt is the
+> displacement. So averaging alone does not put a person in two places. The
+> error has to come from the heads predicting that mean from the block's
+> *start* state. Where the start state does not decide where a moving person
+> ends up, a readout trained toward the teacher's mean hedges between the
+> possible outcomes, and a hedge between two positions is a double image.
+> That predicts the same thing (worse with wider blocks and larger motion), but
+> puts the cause in prediction under uncertainty, not in averaging as such.
+> *Inference; I have not read PDD's training loss.* The frozen-row probe and
+> its pass-1 latents bear on neither: they test the refine pass, not PDD's
+> steps. What would separate the two readings is the per-step capture under
+> "Tests" (my note there), which localises where the error enters.
 - **Inference, not yet read in the paper:** PDD is the only one of the three
   that tries to reproduce the teacher's path. It was the closest to the base
   in every scene measured (`2026-09-26_distill_compare_s1.md`), but that
@@ -135,6 +172,21 @@ claim that a test refutes keeps its text and gains an annotation saying so.
     only the fraction of cubes `FASTH3_CONTRACT_VSA` keeps, with a coarse
     summary covering the rest. Fine texture is then partly invented locally.
 
+> vaedude, 2026-09-26: Consistent with the known mode-seeking pull of VSD and
+> DMD objectives: sharper, more contrast, less variety. On FastH3's texture,
+> two things from my side.
+> - **The decoder is ruled out.** The FastH3 contract subway clip (16:11)
+>   decoded through the fp16 VAE, before the INT8 switch, and the two decoders
+>   measured 54.9 dB apart anyway
+>   (`../bench/results/2026-09-26_vae_decoders_345f.md`).
+> - **A cheap test of the VSA reading, no card.** VSA's cube is 4x4x4 tokens
+>   (`comfy_extras/nodes_sparse_attention.py`, `VSA_CUBE`). A token is a 2x2
+>   patch of a 16x latent, so a cube spans 128x128 pixels and four latent
+>   frames. If the coarse branch invents the texture, FastH3's frames should
+>   show structure on a 128-pixel period (a spectral peak, or stronger
+>   gradients on 128-pixel boundaries) that the base and FlashGen do not. The
+>   "ps2 polygons" would be that grid.
+
 ### Tests that would move this section
 
 - **PDD's schedule, on motion scenes** (the owner, 2026-09-26: "we should
@@ -155,6 +207,29 @@ claim that a test refutes keeps its text and gains an annotation saying so.
   every distill, not only PDD. If PDD8 lands much closer to it than FlashGen
   or FastH3 do, PDD is following its teacher. If all three stay far, the
   scene difference is the weights.
+
+> vaedude, 2026-09-26: What I would capture for these two tests:
+> - **Saved latents on every arm.** Only `h3_text_to_video_pdd_savelat` exists
+>   today. I can add twins for the 4-step, 6-step and 16-step PDD graphs and for
+>   a base-on-Euler graph from the same generator switch; that is a small CPU
+>   change.
+> - **The base on Euler at 32 steps, not 16.** That is width 1 on PDD's own
+>   grid, the path PDD's heads were distilled from. Then each schedule's
+>   latent distance from it, per latent frame, measures path-following
+>   directly: no decode and no judge. It also shows where each schedule leaves
+>   the path, which should be the high-motion latent frames if either
+>   inference above is right.
+> - **Per-step predictions for one or two motion renders**, to see which
+>   block the clone first appears in. `x0` at each step, about 40 MB per step,
+>   through a small observer node like the mask probe (a node change, so a
+>   restart). Set against the Euler-32 base's `x0` at the same sigma, it shows
+>   which block first lands off the teacher's path, and whether the double
+>   image is already in that block's prediction. Both readings put the error in
+>   the fused step's prediction, so this localises the cause rather than
+>   choosing between them.
+> - **Telemetry armed.** Every PDD schedule attaches the same 308 merged
+>   patches, so per-step cost is comparable across schedules, and their
+>   re-patching under dynamic VRAM shows up in the records.
 - **FlashGen strength and module arms** in the 2026-09-26 run
   (`../bench/distill_run_arms.json`): whether the grade and adherence move
   with the LoRA's strength, or without its adaln.
