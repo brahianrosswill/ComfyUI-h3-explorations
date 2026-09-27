@@ -138,3 +138,27 @@ would come from its time embedder (the VAE session's swap test, S4). That
 weakens FP2's reading of the shared direction as the common
 distribution-matching look. FT1 still tests whether FlashGen's own grade
 lives in its late blocks. It no longer tests a mechanism shared with FastH3.
+
+*FT1 verdict, 2026-09-27: failed, and the result is more useful than the
+prediction.* Tone and temporal from `analyze_followup.py --group
+transplant` (`2026-09-26_transplant_<scene>_{tone,temporal}.json`). The
+transplant rows' timings are skewed: they ran interleaved with the VAE
+session's swap runner, and total_s includes queue wait. The renders are
+valid.
+- **"0-49" is effectively full FlashGen** on every tone and temporal column,
+  on both scenes. The refiner and final-layer changes do not move the grade.
+- **Early only (0-33) is broken, not neutral.** The anchor goes nearly black
+  (mid 0.04, white 0.67, against 0.19 and 0.92), with low detail. Slapstick
+  is dim and flat.
+- **Late only (34-49) is a finished render, with less haze and deeper blacks
+  than full FlashGen.**
+  - Anchor: white 0.96, shadow share 0.45 against 0.33, haze 0.053
+    against 0.094, detail level.
+  - Slapstick: motion detail 3.76 against 3.71, boil level, more saturation,
+    less haze.
+- **Inference:** FlashGen's near-rank-2 late adjustment does the 4-step
+  lifting. Its early high-rank change adds the hazy, lifted-black look, and
+  is where a composition bias (the owner's O2) would most plausibly live.
+- **Next test, the owner's call:** late-only FlashGen on the adherence
+  scenes, by the owner's eye. Is it a less hazy FlashGen that also follows
+  prompts better? It needs only `blocks="34-49"`.
