@@ -305,6 +305,7 @@ Every entry is from the audit. The workflow census is the one in audit §1:
 | 8 | **Node:** default `qk_balance=False` against True shipped | 129 graphs deviate from the node default | test 1 decides |
 | 9 | **Core:** `block_index` is never cleared, so refiner calls see a stale index | Output-neutral while `min_tokens` exceeds the refiner length | recorded, not ours to fix |
 | 11 | **Node:** our sink patches `PackedLayout.__init__` process-wide, and so does the LongMedia pack (`coderef/ComfyUI-MiniMax-H3-LongMedia/motion_context_layout_patch.py`, which only knows how to defer to KJNodes' `._morton_h3` patch) | Any install with both packs: two process-global patches stacked on one constructor | fix in the redesign (the sink reads core's layout) |
+| 12 | **Provenance:** the stamp recorded every Sol setting as "not detected" from 2026-09-19 to 2026-09-27. It read one closure level, and the override has been a wrapper since the capture seam (b3a15bd1). | Every Sol render stamped in that window: output unaffected, the settings record empty | **fixed** on `main`, 0.159.1 (7fe005b9) |
 | 10 | **Prose** that lost to code (audit §5.4) | n/a | correct with the redesign |
 
 Anything the tests turn up is added here with its reach.
