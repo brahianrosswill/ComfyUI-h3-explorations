@@ -13,6 +13,19 @@ pointer goes; this list is stale the moment the roadmap disagrees with it.
 Items from the `mrpink` helper lane first; `evalman`'s render lane appends its
 own below the rule.
 
+**Next, from the 2026-09-26 night** (`../../bench/results/2026-09-27_takeaways.md`),
+each small, in order of return:
+1. **The save setting.** The blocky darks are the 8-bit h264 encode
+   (`../../bench/results/2026-09-27_o1_lossless.md`). A lower CRF or a 10-bit
+   format in the generator's `VHS_VideoCombine` is the owner's call.
+2. **PDD first, finished by late-only FlashGen:** the reverse switch with
+   `blocks="34-49"` on the FlashGen pass. One render. Does it lift PDD's
+   highlights without adding FlashGen's haze?
+3. **Late-only FlashGen on the adherence scenes,** by the owner's eye.
+4. **The reverse switch on the lamp-lit interiors** (noodle_bar, radio_drama,
+   courtroom), where PDD8 trails most.
+5. **PDD6 as a default candidate** (`../../bench/results/2026-09-27_ladder.md`).
+
 **Idea saved for later, 2026-09-26: fix PDD's weakness with the other
 distills' strengths.** The owner: "i wonder if you could make pdd better by
 fixing its bad with the complements from flashgen and/or fasth3 ... and maybe
