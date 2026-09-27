@@ -4,6 +4,40 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.154.6
+
+### Changed
+
+- **Eleven bank prompts made specific enough for what the follow-up batch
+  tests them on** (the owner, 2026-09-26: be "certain about how specific and
+  well written that prompt is for testing what u wanna test"). Findings come
+  from a read-only fitness audit per test: adherence, clones, tone.
+  - **Head counts stated,** so a clone is countable: noodle_bar, post_office,
+    rooftop_pov, box_office, radio_drama, desert_crew, slapstick, kpop,
+    silent_film.
+  - **kpop's mirror wall is now matte black.** A mirror doubles every dancer
+    on purpose, so a clone could not be told apart.
+  - **samurai:**
+    - its trail marker quotes the kanji it claims ("関ヶ原街道");
+    - the self-contradicting "extreme close medium shot" is now a chest-up
+      close shot;
+    - the duellists have sides and sprint toward each other;
+    - "his scabbard" names its owner.
+  - **Genders stated at introduction** (docs/prompting.md section 5.2), and
+    contradictions fixed: an "empty" fruit cart that sprays oranges, an
+    unagented chair castor.
+  - `bench/adherence_checklists.json` updated to match.
+  - The distill run's base arms rendered on the earlier text for eight of
+    these scenes. The owner defers base renders, so those scenes get a fresh
+    base arm when one is needed.
+- **The follow-up batch's clone and x0 scene is `t2va_subway_chase`,** where
+  the owner saw PDD8 clone a man at 1 s at this seed.
+  - kpop is out of the clone test.
+  - Merged vs exact PDD8 runs there, so it tests whether the exact branch
+    removes that clone.
+  - `analysis_notes` lists the three scenes whose prompts ask for flicker,
+    to exclude from temporal measures.
+
 ## 0.154.5
 
 ### Added

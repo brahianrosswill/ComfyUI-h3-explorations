@@ -65,13 +65,17 @@ RUN_SCENES = ["t2va_noodle_bar", "t2va_post_office", "t2va_rooftop_pov", "t2va_b
               "t2va_radio_drama", "t2va_desert_crew", "t2va_slapstick_moving_piano",
               "t2va_kpop_dance_studio", "t2va_courtroom_verdict", "t2va_samurai_bamboo_duel",
               "t2va_silent_film"]
-#: The motion scenes the PDD ladder runs on. **Reasoned**, and set by the
-#: prompt-fitness audit: each fixes its head count so a clone is countable.
-MOTION = ["t2va_slapstick_moving_piano", "t2va_kpop_dance_studio", "t2va_samurai_bamboo_duel"]
+#: The motion scenes the PDD ladder runs on, set by the 2026-09-26
+#: prompt-fitness audit: each fixes its head count, so a clone is countable.
+#: kpop is out (its dancers were written against a mirror wall). subway_chase
+#: is in: "only two people in the whole station", and the owner saw PDD8 clone
+#: a man there at 1 s at this seed (`2026-09-26_subway_v2_s1.md`).
+MOTION = ["t2va_subway_chase", "t2va_slapstick_moving_piano", "t2va_samurai_bamboo_duel"]
 #: One still scene, for the merged-vs-exact and base-Euler pairs.
 STILL = "t2va_radio_drama"
-#: The scene that carries the per-step x0 capture (one render per model).
-X0_SCENE = "t2va_slapstick_moving_piano"
+#: The scene that carries the per-step x0 capture: the one where PDD8's clone
+#: was seen, so the capture can show the step it enters at.
+X0_SCENE = "t2va_subway_chase"
 #: The look family, cut by the owner, 2026-09-26, to "a black and white / rich
 #: blacks / shadows / lighting in different distills. i dont need the base
 #: versions": the low-key anchor and noir first, then neon and anime.
@@ -87,7 +91,7 @@ def main() -> int:
     ap.add_argument("--out", type=Path, required=True)
     args = ap.parse_args()
     frames = {p["id"]: p["frames"] for p in json.loads(BANK.read_text())["prompts"]}
-    for s in RUN_SCENES + LOOKS_CORE + LOOKS_REST + [WARMUP_SCENE, "t2va_subway_chase_short"]:
+    for s in RUN_SCENES + MOTION + LOOKS_CORE + LOOKS_REST + [WARMUP_SCENE, "t2va_subway_chase_short"]:
         if s not in frames:
             raise SystemExit(f"not in the bank: {s}")
 
@@ -126,16 +130,16 @@ def main() -> int:
         for role in ("pdd8", "flashgen", "fasth3"):
             warm(role)
             for s in RUN_SCENES:
-                if role == "pdd8" and s == X0_SCENE:
-                    add("pdd8_x0", s, label=f"{s.removeprefix('t2va_')}__pdd8")
-                else:
-                    add(role, s)
+                add(role, s)
             if role == "flashgen":
                 add(role, "t2va_subway_chase_short")
 
     def g_ladder():
         # The owner's 4-hour cap, 2026-09-26: no base renders, and pdd16 and
         # pdd32 cut (4 against 6 against 8 decides the tail question).
+        # PDD8 exact on the clone scene carries the x0 capture; merged beside it
+        # asks whether the exact branch removes the clone the owner saw.
+        add("pdd8_x0", X0_SCENE, label=f"{X0_SCENE.removeprefix('t2va_')}__pdd8")
         warm("pdd8_merge")
         for s in [X0_SCENE, STILL]:
             add("pdd8_merge", s)
@@ -143,7 +147,8 @@ def main() -> int:
             for s in MOTION:
                 add(role, s)
         warm("fasth3_novsa")
-        for s in MOTION[:2]:
+        # Not kpop, whose strobing LED bars confound the temporal measures.
+        for s in ["t2va_slapstick_moving_piano", "t2va_samurai_bamboo_duel"]:
             add("fasth3_novsa", s)
 
     def g_looks(looks):
@@ -180,6 +185,10 @@ def main() -> int:
                 "PDD merged; this finishes it on the exact branch and adds the tests the "
                 "registered predictions need."),
         "predictions": "bench/results/2026-09-26_distill_run_predictions.md",
+        "analysis_notes": ("exclude kpop (strobing LED bars), silent_film (exposure "
+                           "flicker) and subway_chase_short (flickering tubes) from "
+                           "measure_clip_temporal, or mask the flicker: each prompt asks "
+                           "for frame-to-frame brightness change"),
         "deferred": ("every base render (base-Euler 16 and 32, the base on the looks), "
                      "pdd16 and pdd32, refine, step-switch: the owner's 4-hour cap, "
                      "2026-09-26. F1, F2 and vaedude P2 and P4 wait for them"),
