@@ -115,10 +115,57 @@ def describe(g: dict) -> dict:
             "saves_latents": bool(by.get("SaveLatent"))}
 
 
-def outputs(root: Path, label: str) -> dict:
-    vid = sorted(p.name for p in (root / "Video").glob(f"*_{label}_0*") if p.suffix in (".mp4", ".png"))
-    lat = sorted(p.name for p in (root / "latents").glob(f"*_{label}_0*_.latent"))
-    x0 = sorted(p.name for p in (root / "latents").glob(f"*_x0_{label}_*_video.latent"))
+def _nearest_group(paths: list, key, ts: str | None, window_s: float = 900.0) -> list:
+    """The files of the group (a counter or a render stamp) written nearest the
+    row's `ts`, its completion time. A label rendered twice (a rerun, a
+    before/after) leaves one group per render; without this every row would
+    claim all of them. With no `ts`, every group is kept."""
+    groups: dict = {}
+    for p in paths:
+        groups.setdefault(key(p.name), []).append(p)
+    if not ts:
+        return sorted(p.name for p in paths)
+    import datetime as _dt
+    t = _dt.datetime.fromisoformat(ts).timestamp()
+    best, gap = None, None
+    for k, ps in groups.items():
+        d = min(abs(p.stat().st_mtime - t) for p in ps)
+        if gap is None or d < gap:
+            best, gap = k, d
+    return sorted(p.name for p in groups[best]) if gap is not None and gap <= window_s else []
+
+
+def graph_prefixes(g: dict) -> list:
+    """Every output filename prefix in a graph, as basenames. run_graph_arms.py
+    appends `_<label>` to each, so a file belongs to the row only if its name
+    starts with one of these plus `_<label>_`. Matching by label alone let
+    `flashgen` claim `subway_flashgen`'s files."""
+    out = []
+    for n in (g or {}).values():
+        v = (n.get("inputs") or {}).get("filename_prefix") if isinstance(n, dict) else None
+        if isinstance(v, str):
+            out.append(Path(v).name)
+    return out
+
+
+def outputs(root: Path, label: str, ts: str | None = None, prefixes: list | None = None) -> dict:
+    import re as _re
+
+    def mine(p):
+        if not prefixes:
+            return True
+        return any(p.name.startswith(f"{pre}_{label}_") for pre in prefixes)
+    # A group is one render's files: the graph's prefix (before the label)
+    # plus its counter, or its x0 render stamp. Two graphs can share a label.
+    counter = lambda n: (n.split(f"_{label}_")[0].replace("_audio", "").replace("_video", ""),  # noqa: E731
+                         (_re.search(r"_(\d{5})", n.rsplit(label, 1)[-1]) or [None, n])[1])
+    # `..._<label>_<YYYYMMDD>_<HHMMSS>r<n>_<step>_video.latent`: date and time together
+    stamp = lambda n: (n.split(f"_{label}_")[0], "_".join(n.rsplit(label, 1)[-1].split("_")[1:3]))  # noqa: E731
+    vid = _nearest_group([p for p in (root / "Video").glob(f"*_{label}_0*")
+                          if p.suffix in (".mp4", ".png") and mine(p)], counter, ts)
+    lat = _nearest_group([p for p in (root / "latents").glob(f"*_{label}_0*_.latent") if mine(p)], counter, ts)
+    x0 = _nearest_group([p for p in (root / "latents").glob(f"*_x0_{label}_*_video.latent") if mine(p)],
+                        stamp, ts)
     return {"video": vid, "latents": lat, "x0_steps": len(x0), "x0_example": x0[0] if x0 else None}
 
 
@@ -137,7 +184,8 @@ def main() -> int:
             r = json.loads(line)
             g, note = graph_at(r["graph"], r.get("graph_sha256", ""))
             d = describe(apply_patches(g, r.get("patches", []))) if g else {}
-            o = outputs(root, r["label"])
+            o = outputs(root, r["label"], r.get("ts"),
+                        graph_prefixes(apply_patches(g, r.get("patches", [])) if g else None))
             claimed.update(o["video"])
             claimed.update(o["latents"])
             claimed.update(p.name for p in (root / "latents").glob(f"*_x0_{r['label']}_*_video.latent"))

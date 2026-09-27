@@ -4,6 +4,40 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.159.2
+
+### Changed
+
+- **Kitchen build `0.2.35+sol.863e953.up.c8c7825` -> `0.2.35+sol.fc32da2.up.c8c7825`.**
+  - **What changed:** one kitchen commit on `h3-frontier` (fc32da2). The Sol
+    token stage's group centroid now takes the q-side balance factor.
+  - **The bug:** with `qk_balance` and `token_aug` both on, the stage scored
+    an unbalanced centroid against keys quantized as (k - m) / f.
+  - **Size:** measured on synthetic loud-channel data at block 49's 93%
+    top-4 K energy share. Turning token routing on moved the balanced output
+    from the plain one by 0.48 to 0.56 (rel L2). After the fix it moves
+    0.14 to 0.19, about what it moves with routing off (0.10 to 0.18).
+  - **Reach:** shipped graphs run token routing off, so their output is
+    unchanged. Every balanced token-routing grade before this build
+    (`bench/results/2026-09-15_sol_token_aug_x_options_b49_s15.json`) ran with
+    the bug.
+  - **Test:** `test_qk_balance_token_aug_scores_in_one_space` fails on
+    863e953 and passes on fc32da2.
+  - Pushed to the owner's fork and to `nas`.
+  - The plan and bug table are in
+    `docs/research/2026-09-27_sol_node_redesign.md` (bug #1).
+- **Upstream kitchen test failures, not ours.** Twelve binding-validation tests
+  and `test_topk_ties_over_select` fail on this card.
+  - **The binding tests** expect messages such as "workspace must be a
+    uint8" that no binding emits at v0.2.35 or at upstream main:
+    `need_workspace` checks only the size. So the test's short-buffer cases
+    run the kernel, and its illegal memory access poisons every later CUDA
+    test in the process.
+  - **Run separately,** the rest of `tests/test_sol_attn.py` passes 130 of
+    131. The one failure is the top-k tie test, which never passes
+    `qk_balance`, so this build's fix cannot reach it.
+  - Recorded, not fixed: the tests are upstream's.
+
 ## 0.159.1
 
 ### Fixed
