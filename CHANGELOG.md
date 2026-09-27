@@ -4,6 +4,21 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.154.2
+
+### Added
+
+- `h3_probe_t2v_base_euler16`: the base at its own 16 steps on Euler. It
+  shares the distills' starting noise, so it is the fair base-versus-distill
+  tone pair (prediction P4 in
+  `bench/results/2026-09-26_distill_run_predictions.md`).
+- `h3_probe_t2v_fasth3_8step_contract_novsa`: FastH3 V2 on its contract's
+  sampling with VSA off, dense on the kitchen backend. It is the texture
+  probe for `docs/h3_distills.md`. It is exempt from Sol in
+  `check_attention_defaults.py`, and `check_distill_settings.py` asserts it
+  carries no VSA node.
+- `_savelat` twins of both.
+
 ## 0.154.1
 
 ### Added

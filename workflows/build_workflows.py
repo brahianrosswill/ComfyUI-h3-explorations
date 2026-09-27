@@ -5616,7 +5616,23 @@ def main():
         for n in (16, 32)) + (
         ("h3_probe_t2v_base_euler32.json", "t2v-base-euler32", "t2v", LONG_T2V_PROMPT,
          dict(sampler_name="euler", steps=32, out_prefix="Video/h3_probe_t2v_base_euler32"),
-         "the base on Euler at 32 steps: PDD's teacher path, sharing the distills' starting noise"),)
+         "the base on Euler at 32 steps: PDD's teacher path, sharing the distills' starting noise"),
+        # The fair base-versus-distill pair (P4 in
+        # bench/results/2026-09-26_distill_run_predictions.md): the base at its
+        # own 16 steps, but on Euler, so it shares the distills' starting noise.
+        ("h3_probe_t2v_base_euler16.json", "t2v-base-euler16", "t2v", LONG_T2V_PROMPT,
+         dict(sampler_name="euler", out_prefix="Video/h3_probe_t2v_base_euler16"),
+         "the base on Euler at 16 steps, sharing the distills' starting noise"),
+        # FastH3 at its contract with VSA off (dense on the kitchen backend), for
+        # the "low bitrate" texture question (docs/h3_distills.md): off its
+        # training regime by design, a probe only.
+        ("h3_probe_t2v_fasth3_8step_contract_novsa.json", "t2v-fasth3-8step-contract-novsa", "t2v",
+         LONG_T2V_PROMPT,
+         dict(dense_attn="ck", sol_on=False, unet=MODELS["unet_fasth3_v2"],
+              steps=FASTH3_STEPS, sampler_name=FASTH3_CONTRACT_SAMPLER,
+              manual_sigmas=FASTH3_CONTRACT_SIGMAS, shift=FASTH3_SHIFT,
+              out_prefix="Video/h3_probe_t2v_fasth3_8step_contract_novsa"),
+         "FastH3 V2 on its contract's sampling with VSA off (dense): the texture probe"),)
     _savelat_more = ("h3_text_to_video_pdd_4step", "h3_text_to_video_pdd_manual_sigmas")
     _twins = []
     for fname, label, task, prompt, extra, note in (
@@ -5628,7 +5644,7 @@ def main():
             twin_extra["probe_frozen_rows"] = True
         _twins.append((f"{stem}_savelat.json", f"{label}-savelat", task, prompt, twin_extra,
                        f"{note}; saves its latents (the 2026-09-26 distill run)"))
-    for fname, label, task, prompt, extra, note in [_by_name["h3_text_to_video_pdd.json"], _pdd_tests[2]]:
+    for fname, label, task, prompt, extra, note in [_by_name["h3_text_to_video_pdd.json"], _pdd_tests[2]]:  # PDD8, base-Euler-32
         stem = fname.removesuffix(".json")
         _twins.append((f"{stem}_x0.json", f"{label}-x0", task, prompt,
                        dict(extra, save_latents=True, probe_step_x0=True,

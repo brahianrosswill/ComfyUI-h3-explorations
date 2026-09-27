@@ -772,6 +772,12 @@ def main():
                     f"{found.scheduler!r}/{found.steps}, samplers {sorted(map(str, samplers))}, "
                     f"ManualSigmas {manual}")
                 vsa = [n["inputs"] for n in nodes_all if n.get("class_type") == cfg.SOL_CORE_NODE]
+                if path.name.removesuffix("_api.json").removesuffix("_savelat") == \
+                        "h3_probe_t2v_fasth3_8step_contract_novsa":
+                    # The texture probe (docs/h3_distills.md): VSA off by design,
+                    # so it must carry NO VSA node, the inverse of the rule below.
+                    assert not vsa, f"{path.name}: the VSA-off probe carries a VSA node {vsa}"
+                    continue
                 assert vsa and all(v.get("selection") == "vsa" for v in vsa), (
                     f"{path.name}: FastH3 V2 was trained with VSA and ships with "
                     f"core's VSA node; graph has {vsa}")

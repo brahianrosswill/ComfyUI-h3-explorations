@@ -193,6 +193,10 @@ SOL_EXEMPT_STEMS = {
        for stem in ("h3_probe_t2v_fasth3_8step_contract",
                     "h3_probe_t2v_fasth3_8step_contract_attn",
                     "h3_probe_t2v_fasth3_8step_contract_sampling")},
+    "h3_probe_t2v_fasth3_8step_contract_novsa":
+        "FastH3 V2 with VSA off on the kitchen backend, a texture probe for "
+        "docs/h3_distills.md; Sol is off because the arm is FastH3 dense, the "
+        "control for its own VSA",
     "h3_probe_t2v_flashgen_r64_4step_branch_dense":
         "FlashGen as vllm-omni's NPU recipe runs it: dense attention with the "
         "sparse config dropped (vllm-omni recipes/MiniMaxAI/MiniMax-H3-NPU.md). "
