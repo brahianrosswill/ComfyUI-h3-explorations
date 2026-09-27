@@ -1,113 +1,48 @@
-"""Sol-Attn for MiniMax-H3, on comfy-kitchen's merged CUDA kernel.
+"""Sol-Attn for MiniMax-H3, on comfy-kitchen's CUDA kernel: `MiniMaxH3Sol`.
 
-## This is a FORK, and vendor/README.md's rules are why it exists here
-
-`vendor/sol_attn_minimax.py` is upstream's node, and its whole value is that
-it is upstream's: when it and our expectations disagree, that disagreement is
-a finding rather than a merge artifact. That property was spent on 2026-08-29,
-when the merged kernel's API change was absorbed by editing the vendored file
-in place -- v3.1 and v3.2 in its lineage table are ours, not drops. So this
-file takes vendor/README.md's third option, the one it says not to reach for
-casually: fork it, rename it so the fork is obvious, and record the divergence.
-
-Forked from vendored v3.2. The changes made at the fork are listed below.
-Later additions are not: among them `qk_balance`, `rotate`, token routing,
-the `SOL_DENSE_TAIL` default for `dense_blocks`, and the capture seams, each
-documented where it is defined. A diff against `vendor/sol_attn_minimax.py` is
-the complete list.
-
-  - **`centroid_tail` and `reuse_qkv_memory` are gone**, along with the
-    signature probing that existed to pass them where they were accepted.
-    Comfy-Org/comfy-kitchen#117 removed both from every entry. Keeping them as
-    inert widgets was the right call for a file whose node id sits in 145
-    saved graphs; it is the wrong call for a new node id, which pays no such
-    debt.
-  - **The kernel API is asserted once, at patch time**, rather than probed per
-    call. A missing kwarg used to surface as a TypeError inside `override`,
-    which catches everything and falls through to dense -- so a build without
-    the argument rendered successfully, slower and numerically different, and
-    said nothing. `_require_kernel` fails the node before sampling instead.
-  - **`pooled_tail` is exposed.** That is the kernel's `tail`, renamed here
-    because `centroid_tail` occupied the short name for two weeks and meant
-    something else entirely. See the section below.
-  - **`morton_curve` offers `hilbert` directly.** `sol_curves.install()`
-    monkey-patched `morton_perm` on the live vendored module to add it, which
-    needed the module resolved by identity and a zero-patched-modules guard.
-    Owning the file removes the problem rather than guarding it.
+**Redesigned 2026-09-27.** `docs/research/2026-09-27_sol_node_redesign.md` is
+the plan and the reasons, and `bench/results/2026-09-27_sol_node_compound_audit.md`
+the evidence. It replaced `MiniMaxH3SolAttn` (a fork of the vendored upstream
+node, 2026-08-30), which is deleted together with the code only it reached:
+Morton token reordering, `tau_profile`, top-k (SLA) selection with
+`pooled_tail`, the `sol_block` hooks and the `PackedLayout` patch. Git has
+them; `vendor/sol_attn_minimax.py` stays as the pristine upstream reference.
 
 ## What the kernel takes, and what this node does with each
 
-Read from `comfy_kitchen.sol_attn`'s signature and from `constraints.py`'s
-`sol_attn_common_call_rule`, not from a version string: both the pre-merge and
-post-merge builds call themselves `0.2.31`.
+Read from `comfy_kitchen.sol_attn`'s signature (asserted once, at patch time,
+by `_require_kernel`), not from a version string.
 
-  tau, topk_ratio   selection, exposed as the `selection` combo.
+  tau               the node's `tau`.
   scale             taken from the caller's kwargs.
-  sink_blocks       H3's conditioning sink, derived from the packed layout.
-  sink_q            see `_sink_blocks`.
-  tail              exposed as `pooled_tail`.
-  key_bias          NOT exposed. Reachable, and legal only where the biased
-                    keys are sink-covered, since the pooled term cannot see a
-                    per-token bias -- which on H3 means the conditioning rows
-                    and nothing else. It would be a prompt-adherence knob the
-                    model was never trained against, so it is documented here
-                    rather than offered. A mask is the only form core would
-                    hand us one in, and `override` declines those before
-                    `_run` is reached -- see the mask branch there.
-                    (`_ineligible`'s "masked attention" reason is dead from
-                    that path, since `_run` passes `None`; it guards a direct
-                    caller.)
-  block_len         NOT exposed, and inert for this path. It marks live rows
-                    in a caller-PADDED block. H3's packed sequence is
-                    contiguous and pads nothing, so the kernel derives the
-                    ragged final block from T on its own. The one caller that
-                    needs it is VSA cube tiling -- see the VSA node.
-  coarse_gate       NOT exposed here, and the reason is a DESIGN CHOICE rather
-                    than an impossibility. **Corrected 2026-08-30: this said it
-                    "cannot be", which is wrong.** It is a learned projection of
-                    the BLOCK INPUT, and an override receives Q/K/V already
-                    built -- but a forward pre-hook on `Attention` can stash `x`
-                    and the module into `transformer_options`, which the
-                    override does receive. That is exactly what
-                    `_install_block_index` below already does for the block
-                    index, and it was verified by executing the pattern rather
-                    than by reading. So it is reachable from here; VSA lives in
-                    its own node because it ALSO needs the cube reorder and the
-                    padding, and because the two regimes are mutually exclusive
-                    at the same 50 blocks, not because this hook cannot see the
-                    gate.
+  sink_blocks,      H3's conditioning sink, derived from the layout core
+  sink_q            publishes (`h3_layout`, `_sink_blocks`).
+  tail              always on: the pooled term for unselected blocks IS the
+                    method (the SLA lane that turned it off closed).
+  topk_ratio        always 0: tau is the only selection.
+  token_aug         the node's `token_routing`, per block.
+  qk_balance,       the node's `quantizer` (both are fork options; the node
+  rotate            refuses at patch time on a build without them).
+  blk_cnt           passed only when `H3_SOL_OBSERVE` is armed.
+  key_bias          NOT exposed: legal only where the biased keys are
+                    sink-covered, which on H3 means the conditioning rows,
+                    and the model was never trained against such a bias.
+  block_len,        NOT exposed here: they belong to VSA's cube tiling
+  coarse_gate       (`vsa_attention.py`, parked; FastH3 uses core's node).
 
-`sol_attn_chunked`, the second entry, IS structurally out of reach, and the
-difference from the row above is worth keeping. It exists to never materialise
-Q/K/V -- it consumes chunks of the fused `qkv_proj` output and applies rope and
-RMSNorm itself. By the time an override is called, `qkv_proj` has already run
-in full and rope has already been applied, so its saving is spent and feeding
-it post-rope tensors would apply rope twice. No hook recovers an allocation
-that already happened.
+`sol_attn_chunked`, the second entry, is out of reach from an attention
+override: it consumes chunks of the fused `qkv_proj` output and applies rope
+and RMSNorm itself, and by the time an override is called both have run. Its
+memory saving is `MiniMaxH3SolChunked`'s subject (`sol_chunked_h3.py`).
 
-## `pooled_tail`, which is the one new knob with teeth
-
-Sol-Attn's contribution is not the routing. Unselected blocks contribute one
-pooled term each, so the whole sequence stays in the softmax denominator, and
-the paper's ablation shows that advantage WIDENING as sparsity rises.
-`pooled_tail=False` deletes it: softmax over the routed blocks only.
-
-That is not a speed knob to reach for on this model. It is there because it is
-what SLA is -- with `top-k (SLA)` selection it reproduces the routing the
-lightx2v Turbo-SLA LoRA was distilled under, on the CUDA kernel and through
-`optimized_attention`, which reaches all 52 `Attention` modules rather than
-the 50 a per-module object patch on `diffusion_model.blocks` can see -- the
-limitation that retired the `MiniMaxH3SLARouter` arm (removed 2026-08-31). Covering the two
-token-refiner calls also needs `min_tokens` dropped below their ~311 rows;
-at the shipped threshold they stay dense.
-
-Requires comfy_kitchen with `sol_attn` (bf16, head_dim 128, sm_80+);
-everything else falls back to the existing attention backend.
+Requires comfy_kitchen with `sol_attn` (bf16 or fp16, head_dim 128, sm_80+).
+Calls this node declines (dense_blocks, outside the sigma window, short calls,
+masks) run on the attention override under it, which the node names in its
+log and settings record.
 """
 
 import logging
 import re
-import sys
 from functools import partial
 
 import torch
@@ -167,16 +102,6 @@ def _parse_block_profile(spec, count, name, cast, example):
     return profile
 
 
-def parse_tau_profile(spec, count):
-    """Parse "0-30=2.0; 39-42=0.9" into {block: tau}."""
-    def _tau(value, entry):
-        try:
-            return float(value)
-        except ValueError:
-            raise ValueError(f"tau_profile entry {entry!r} has a non-numeric tau")
-    return _parse_block_profile(spec, count, "tau_profile", _tau, "39-42=0.9")
-
-
 # The kernel's own admissible set, from `comfy_kitchen.sol_attn`'s docstring:
 # zero, or a multiple of 64 up to 256. Refused here rather than at the call,
 # for the reason `_parse_block_profile` gives.
@@ -211,20 +136,6 @@ def parse_token_aug_profile(spec, count):
     return _parse_block_profile(spec, count, "token_aug_blocks", _budget, "0,24,32=64")
 
 
-# `token_routing`: one dropdown for the whole setting (reworked 2026-09-25, the
-# owner: "that token routing field UX is confusing"). `off` is the default and
-# means off. Three presets need no syntax, and each name states how far its
-# blocks were measured, the one thing a list cannot say. `custom` is the only
-# option that reads the `token_aug_blocks` list. Budget 64 throughout;
-# `parse_token_aug_profile` says why. The blocks of the early-and-middle preset
-# are counted from the model's end, so the five left out are the last five at
-# any depth.
-#
-# Until 2026-09-25 the default was "text field", which read the list and meant
-# off only when the list was empty: off-by-emptiness, the shape the owner's
-# no-sentinel rule refuses. A graph still holding "text field" now fails
-# validation loudly instead of taking a new meaning. Pick `off`, or `custom`
-# with the list it had.
 #: The node's `dense_blocks` default (2026-09-25, the owner): the three blocks
 #: whose K-norm is lopsided on the released checkpoint, where Sol's routed INT8
 #: error is largest. On the block-49 capture, kitchen's dense INT8 kernel sits
@@ -235,116 +146,13 @@ def parse_token_aug_profile(spec, count):
 #: of it is unscored. `workflows/h3_config.py::SOL_DENSE_TAIL` carries the same
 #: value, and `bench/check_attention_defaults.py` holds the two together.
 SOL_DENSE_TAIL = "45,48,49"
-TOKEN_ROUTING_OFF = "off"
-TOKEN_ROUTING_MEASURED = "measured blocks (0, 24, 32, 40)"
-TOKEN_ROUTING_EARLY_MIDDLE = "early and middle (all but the last five)"
-TOKEN_ROUTING_ALL = "all blocks (needs qk_balance and rotate)"
-TOKEN_ROUTING_CUSTOM = "custom (the token_aug_blocks list)"
-TOKEN_ROUTING_MODES = (TOKEN_ROUTING_OFF, TOKEN_ROUTING_MEASURED,
-                       TOKEN_ROUTING_EARLY_MIDDLE, TOKEN_ROUTING_ALL, TOKEN_ROUTING_CUSTOM)
+#: Token routing's budget per query block when a preset turns it on;
+#: `parse_token_aug_profile` says why 64.
 TOKEN_ROUTING_BUDGET = 64
 # The four captured blocks where the grade improved; block 49 is the fifth
 # and the one it hurt (docs/research/2026-09-04_sol_token_aug_grade.md).
 TOKEN_ROUTING_MEASURED_BLOCKS = (0, 24, 32, 40)
 TOKEN_ROUTING_TAIL = 5
-
-
-def resolve_token_routing(mode, spec, count, *, qk_balance=False, rotate=False):
-    """{block: budget} for the node's `token_routing` choice and its list.
-
-    `custom` reads the list and refuses an empty one. A preset with text also
-    typed is refused rather than resolved by precedence: whichever won, the
-    other widget would be showing a setting the render did not use. `off` is
-    the exception, and the reason it ignores the text: an A/B that leaves a
-    typed list in place.
-
-    `mode` None is an API graph saved before the widget existed
-    (2026-09-17). There the list alone decided, so it keeps that meaning:
-    routing on the list if one is typed, off if not.
-    """
-    if mode is None:
-        mode = TOKEN_ROUTING_CUSTOM if str(spec or "").strip() else TOKEN_ROUTING_OFF
-    if mode not in TOKEN_ROUTING_MODES:
-        raise ValueError(
-            f"token_routing={mode!r} is not one of {list(TOKEN_ROUTING_MODES)}. A graph "
-            f"saved before 2026-09-25 may hold 'text field': choose "
-            f"{TOKEN_ROUTING_OFF!r}, or {TOKEN_ROUTING_CUSTOM!r} to keep its list.")
-    if mode == TOKEN_ROUTING_OFF:
-        return {}
-    if mode == TOKEN_ROUTING_CUSTOM:
-        if not str(spec or "").strip():
-            raise ValueError(
-                f"token_routing is {TOKEN_ROUTING_CUSTOM!r} but token_aug_blocks is "
-                f"empty. Type the blocks (e.g. '0,24,32,40=64'), or choose "
-                f"{TOKEN_ROUTING_OFF!r}.")
-        return parse_token_aug_profile(spec, count)
-    if str(spec or "").strip():
-        raise ValueError(
-            f"token_routing is {mode!r} and token_aug_blocks also has text "
-            f"({str(spec).strip()!r}). Clear the text, or choose "
-            f"{TOKEN_ROUTING_CUSTOM!r} to use it.")
-    if mode == TOKEN_ROUTING_MEASURED:
-        missing = [b for b in TOKEN_ROUTING_MEASURED_BLOCKS if b >= count]
-        if missing:
-            raise ValueError(
-                f"token_routing={mode!r} names MiniMax H3 blocks; this model has "
-                f"{count} and lacks {missing}")
-        blocks = TOKEN_ROUTING_MEASURED_BLOCKS
-    elif mode == TOKEN_ROUTING_EARLY_MIDDLE:
-        blocks = range(max(count - TOKEN_ROUTING_TAIL, 0))
-    else:
-        # The last blocks are where token routing RAISED the error on its own;
-        # it only lowered it there with both quantizer options on
-        # (bench/results/2026-09-15_sol_token_aug_x_options_b49_s15.json).
-        if not (qk_balance and rotate):
-            raise ValueError(
-                f"token_routing={mode!r} needs qk_balance and rotate both on: "
-                f"without them token routing measured worse on the last block. "
-                f"Turn both on, or use {TOKEN_ROUTING_EARLY_MIDDLE!r}.")
-        blocks = range(count)
-    return {int(b): TOKEN_ROUTING_BUDGET for b in blocks}
-
-
-def _install_block_index(model):
-    """Publish the running block index into transformer_options, and CLEAR it.
-
-    The pre-hook sets `sol_block` before each DiT block runs; the paired
-    post-hook removes it after. Until 2026-09-01 nothing removed it, so the
-    two token-refiner attention calls at the start of the next step -- which
-    run BEFORE the block loop with the same options dict
-    (`comfy/ldm/minimax/model.py`, refiner at `:692`, blocks at `:737`) --
-    inherited the previous step's last index. With 49 in `dense_blocks` they
-    were counted as `dense_block` rather than `dense_fallback`, and any
-    recorder reading the key labelled them block 49. Output-neutral: those
-    calls are dense either way, and the post-hook returns None so the block's
-    output is untouched.
-    """
-    blocks = getattr(model, "blocks", None)
-    if blocks is None:
-        return False
-    if getattr(model, "_sol_h3_block_index_hooked", False):   # see install_h3_morton on why not id()
-        return True
-
-    def make_hooks(index):
-        def pre(_module, _args, kwargs):
-            options = kwargs.get("transformer_options")
-            if isinstance(options, dict):
-                options["sol_block"] = index
-            return None
-
-        def post(_module, _args, kwargs, _output):
-            options = kwargs.get("transformer_options")
-            if isinstance(options, dict):
-                options.pop("sol_block", None)
-            return None
-        return pre, post
-
-    for index, block in enumerate(blocks):
-        pre, post = make_hooks(index)
-        block.register_forward_pre_hook(pre, with_kwargs=True)
-        block.register_forward_hook(post, with_kwargs=True)
-    model._sol_h3_block_index_hooked = True
-    return True
 
 
 def sol_attn_stats():
@@ -365,410 +173,6 @@ def _log_once(key, message, level=logging.INFO):
     if key not in _seen:
         _seen.add(key)
         logging.log(level, f"[h3-sol] {message}")
-
-
-def _log_kernel_failure(exc):
-    # Full traceback on the first distinct failure, short line on repeats.
-    key = ("kernel_failure", type(exc).__name__, str(exc))
-    first = key not in _seen
-    _seen.add(key)
-    logging.error(f"[h3-sol] kernel failed ({exc}); falling back", exc_info=first)
-
-
-# ---------------------------------------------------------------------------
-# Morton (Z-order) reordering of H3's video span. Inlined from the reference
-# pack's _morton.py / _morton_h3.py, minus the Wan path.
-# ---------------------------------------------------------------------------
-
-_PERM_CACHE = {}
-
-# Curve names owned by `sol_curves` rather than by this file. Imported lazily
-# inside `morton_perm` so this module stays importable without torch-heavy
-# siblings resolved, and named here so the combo and the dispatch cannot drift.
-_CURVES_OURS = ("hilbert",)
-#: Every curve name the node accepts; the combo is built from this and
-#: `morton_perm` refuses anything else. Until 2026-09-17 an unknown name fell
-#: through to "3d" without a word.
-#:
-#: Measured 2026-09-17 on full-length captures with the CUDA kernel
-#: (bench/results/2026-09-17_sol_orderings.md): "3d" is below raster on every
-#: captured cell, error against cost; "2d_frame" and "hilbert" are not
-#: improvements and lose badly on the last block. They stay selectable so that
-#: record can be reproduced, and are DEPRECATED as choices.
-MORTON_CURVES = ("3d", "2d_frame", "hilbert")
-
-
-def morton_perm(grid, device, curve="3d"):
-    """Token permutation and its inverse, for one video grid.
-
-    `hilbert` is dispatched to `sol_curves`. In the vendored node that curve
-    arrived by rebinding this global on the live module at execute time, which
-    needed the module resolved by identity because a running ComfyUI can hold
-    two module objects for one file. Owning the file makes it an import.
-
-    curve="3d"       interleave t/h/w equally.
-    curve="2d_frame" Z-order within each frame, frames left in original order.
-                     Use this when the temporal axis is not uniformly spaced --
-                     MiniMax-H3's FRAME_PER_TOKEN is (1, 4, 4, 4, 4), so
-                     index-adjacent frames are 1 or 4 real frames apart and a 3D
-                     curve groups temporally distant tokens together.
-    """
-    if curve not in MORTON_CURVES:
-        raise ValueError(f"morton_curve {curve!r} is not one of {MORTON_CURVES}")
-    if curve in _CURVES_OURS:
-        from .sol_curves import hilbert_perm
-        return hilbert_perm(grid, device)
-    key = (tuple(int(x) for x in grid), curve)
-    hit = _PERM_CACHE.get(key)
-    if hit is None:
-        frames, height, width = key[0]
-        linear = torch.arange(frames * height * width, dtype=torch.int64)
-        area = height * width
-        z = linear // area
-        rem = linear - z * area
-        y = rem // width
-        x = rem - y * width
-
-        def part1by2(value):
-            value = value & 0x1FFFFF
-            value = (value | (value << 32)) & 0x1F00000000FFFF
-            value = (value | (value << 16)) & 0x1F0000FF0000FF
-            value = (value | (value << 8)) & 0x100F00F00F00F00F
-            value = (value | (value << 4)) & 0x10C30C30C30C30C3
-            value = (value | (value << 2)) & 0x1249249249249249
-            return value
-
-        if curve == "2d_frame":
-            # frame index stays the most significant key, so frames never mix
-            code = (z << 42) | part1by2(x) | (part1by2(y) << 1)
-        else:
-            code = part1by2(x) | (part1by2(y) << 1) | (part1by2(z) << 2)
-        perm = linear[torch.argsort(code)]
-        hit = (perm, torch.argsort(perm))
-        _PERM_CACHE[key] = hit
-    return hit[0].to(device), hit[1].to(device)
-
-
-
-def _h3_log_once(message):
-    _log_once(("h3", message), f"H3 Morton: {message}")
-
-
-_PATCHED_LAYOUTS = set()
-BLOCK_SIZE = 64  # kernel block size; the permutation is aligned to this grid
-_DEVICE_CACHE = {}
-# id(position_ids) -> (layout, span). The layout is kept alive deliberately so
-# the id cannot be recycled underneath us; there is one entry per distinct shape.
-_SPANS = {}
-
-
-def _perm_for(grid, curve, device, start):
-    """Morton permutation for a video span starting at absolute row ``start``.
-
-    The kernels block from absolute position 0, so a span that does not start on
-    a block boundary splits every Z-order cell across two blocks, joining
-    opposite ends of the volume. Rotating by the misalignment realigns the
-    cells; the ragged group it displaces lands in the block shared with the
-    conditioning rows, which the exact-KV sink already keeps exact.
-    """
-    pad = (-int(start)) % BLOCK_SIZE
-    key = (tuple(grid), curve, str(device), pad)
-    hit = _DEVICE_CACHE.get(key)
-    if hit is None:
-        perm, inverse = morton_perm(grid, device, curve)
-        if pad:
-            perm = torch.roll(perm, pad)
-            inverse = torch.argsort(perm)
-        hit = (perm, inverse)
-        _DEVICE_CACHE[key] = hit
-    return hit
-
-
-def _video_span(layout, latent_t, latent_h, latent_w):
-    """(start, stop, grid) for the target video segment, or None.
-
-    The grid is stored rather than a permutation so the curve can be changed
-    between runs without rebuilding layouts.
-    """
-    segments = getattr(layout, "segments", None)
-    if not segments:
-        return None
-    span = next(((a, b) for a, b, kind in segments if kind == "video"), None)
-    if span is None:
-        return None
-    start, stop = span
-    grid = (int(latent_t), int(latent_h) // 2, int(latent_w) // 2)
-    if grid[0] * grid[1] * grid[2] != stop - start:
-        logging.info(f"[h3-sol] H3 Morton skipped: video segment {stop - start} rows "
-                     f"does not match grid {grid}")
-        return None
-    return start, stop, grid
-
-
-def _patch_packed_layout(module):
-    """Register the video span of every PackedLayout built, without mutating it."""
-    layout_cls = getattr(module, "PackedLayout", None)
-    if layout_cls is None:
-        raise RuntimeError(f"{module.__name__} has no PackedLayout")
-    if id(layout_cls) in _PATCHED_LAYOUTS:
-        return
-    original_init = layout_cls.__init__
-
-    def __init__(self, text_len, latent_t, latent_h, latent_w, audio_t, *args, **kwargs):
-        original_init(self, text_len, latent_t, latent_h, latent_w, audio_t, *args, **kwargs)
-        try:
-            span = _video_span(self, latent_t, latent_h, latent_w)
-        except Exception as exc:                      # never break model construction
-            logging.info(f"[h3-sol] H3 Morton span resolution failed: {exc}")
-            span = None
-        segs = getattr(self, "segments", []) or []
-        bounds = next(((a, b) for a, b, kind in segs if kind == "video"), None)
-        # Target audio is the segment immediately before video; sink_q only
-        # needs THOSE query rows dense, not the (possibly huge) reference rows.
-        audio = next(((a, b) for a, b, kind in segs if kind == "audio"), None)
-        if torch.is_tensor(getattr(self, "position_ids", None)) and bounds is not None:
-            _SPANS[id(self.position_ids)] = (self, bounds, audio, span)
-
-    layout_cls.__init__ = __init__
-    _PATCHED_LAYOUTS.add(id(layout_cls))
-
-
-def _outside_memory_compiler():
-    """A context in which allocations stay out of ComfyUI's memory compiler.
-
-    Since September 2026 core records every allocation of the H3 forward and
-    replays the plan (`comfy.model_prefetch`, aimdo's malloc graph). A tensor
-    allocated inside the forward that OUTLIVES the scope it was recorded in
-    breaks the recording: the forward raises "aimdo memory compile error", and
-    the tensor is then freed into a pool it did not come from, which is a CUDA
-    invalid-argument inside a destructor and takes the whole server down with
-    no Python traceback. Core's own sparse-attention node pauses the recorder
-    around its long-lived allocations; this is the same call. Found 2026-09-17
-    on the first full-length render with the reorder on: the server died
-    sixteen seconds in, on every attempt. Since 2026-09-18 the reorder makes no
-    tensor inside a block (see `install_h3_morton`), and the one thing still
-    wrapped in this is the permutation, which is cached on the device across
-    forwards and so belongs to no single forward's recording.
-    """
-    try:
-        import comfy.model_prefetch as model_prefetch
-        return model_prefetch.pause_malloc_graph()
-    except Exception:                       # an older core, or a bench with no comfy
-        import contextlib
-        return contextlib.nullcontext()
-
-
-#: Segment kinds whose rows pass through `video_patch_proj`, in the order core
-#: lays them into that module's input (segment order). Core's own tuple, read
-#: from `MiniMaxH3Model._forward`; a kind core adds later makes the row count
-#: disagree, and the reorder then declines rather than guessing a slice.
-_VIDEO_ROW_KINDS = ("cond", "ref_img", "video")
-
-
-def _mask_is_uniform(mask):
-    """True when a denoise mask cannot produce per-token modulation rows.
-
-    Core turns a non-uniform video denoise mask into per-token modulation
-    indices in raster order, for the blocks and for the final layer. Until
-    2026-09-18 the reorder permuted those indices inside block 0; it now does
-    nothing inside a block (see `install_h3_morton`), so it declines instead.
-    One value everywhere is the only case core collapses to a single row, and
-    min == max is a sufficient test for it.
-    """
-    if mask is None or not torch.is_tensor(mask) or mask.numel() == 0:
-        return True
-    return bool(mask.min() == mask.max())
-
-
-def _video_row_slice(layout, start, stop):
-    """(offset, total) of the target video rows inside `video_patch_proj`'s input."""
-    offset = total = None
-    count = 0
-    for a, b, kind in getattr(layout, "segments", None) or ():
-        if kind in _VIDEO_ROW_KINDS:
-            if kind == "video" and offset is None:
-                if (a, b) != (start, stop):
-                    return None
-                offset = count
-            count += b - a
-    total = count
-    return None if offset is None else (offset, total)
-
-
-def install_h3_morton(model):
-    """Idempotently install the reorder. Inert without transformer_options['sol_morton'].
-
-    Where each step happens, and why there. Core records one allocation plan
-    per DiT block and replays it for every block (`comfy.model_prefetch`), so a
-    block that allocates differently from the others fails the forward with
-    "aimdo memory compile error". Until 2026-09-18 the reorder cloned the hidden
-    states and gathered the RoPE table in a pre-hook on block 0, which is
-    exactly that. Core's forward has a module on each side of the block loop,
-    and both are per-token, so the work moves there:
-
-      decide    our `_forward` wrapper: wanted, and the denoise mask is uniform
-      permute   pre-hook on `video_patch_proj`: the target video rows of its
-                INPUT (a row-wise Linear, so this permutes its output rows, and
-                the input is patch-wide where the hidden states are model-wide)
-      RoPE      the `rope_freqs` wrapper: the same rows of `position_ids`,
-                only if the permute step happened
-      restore   forward hook on `final_layer`: its video OUTPUT rows
-
-    Nothing of the reorder runs inside a block.
-    """
-    # A marker on the model, not its id() in a module-level set: an id is
-    # recycled once a model is freed, and a reloaded model landing on a
-    # recycled id was taken for installed, which left it with no layout
-    # published and the conditioning sink silently off.
-    if getattr(model, "_sol_h3_morton_installed", False):
-        return
-    for attr in ("rope_freqs", "_forward", "blocks", "video_patch_proj", "final_layer"):
-        if not hasattr(model, attr):
-            raise RuntimeError(f"MiniMax-H3 Morton needs .{attr} on the diffusion model")
-
-    _patch_packed_layout(sys.modules[type(model).__module__])
-
-    original_forward = model._forward
-    original_rope_freqs = model.rope_freqs
-
-    def _forward(x, timestep, context, transformer_options={}, **kwargs):
-        previous = getattr(model, "_sol_morton_active", False)
-        wanted = bool(transformer_options.get("sol_morton"))
-        if wanted and not _mask_is_uniform(kwargs.get("denoise_mask")):
-            _h3_log_once("the video denoise mask is not uniform, so modulation is per token; "
-                         "Morton declined for such forwards")
-            wanted = False
-        model._sol_morton_active = wanted
-        model._sol_morton_curve = transformer_options.get("sol_morton_curve", "3d")
-        model._sol_morton_live = None
-        model._sol_transformer_options = transformer_options
-        try:
-            return original_forward(x, timestep, context,
-                                    transformer_options=transformer_options, **kwargs)
-        except BaseException as exc:
-            if getattr(model, "_sol_morton_live", None) is not None:
-                logging.error(f"[h3-sol] the forward raised with the reorder active: "
-                              f"{type(exc).__name__}: {exc}")
-            raise
-        finally:
-            model._sol_morton_active = previous
-            model._sol_morton_live = None
-            model._sol_transformer_options = None
-            transformer_options.pop("sol_h3_video_span", None)
-            transformer_options.pop("sol_h3_audio_span", None)
-            # Published inside rope_freqs, which runs AFTER token refinement;
-            # left in place it reached the next step's refiner calls as the
-            # previous layout. Cleared here since 2026-09-01, beside the spans.
-            transformer_options.pop("h3_segments", None)
-
-    def embed_pre_hook(_module, args):
-        """Permute the target video rows on their way into the embedder."""
-        model._sol_morton_live = None
-        if not getattr(model, "_sol_morton_active", False) or not args:
-            return None
-        options = getattr(model, "_sol_transformer_options", None) or {}
-        # Core publishes the layout it is ABOUT to use just before embedding;
-        # the one in the payload can be replaced inline on a signature mismatch.
-        layout = options.get("minimax_h3_layout")
-        entry = _SPANS.get(id(getattr(layout, "position_ids", None)))
-        if entry is None:
-            _h3_log_once("no layout published before the embedder; Morton inactive")
-            return None
-        span = entry[3]
-        if span is None:
-            _h3_log_once("video grid does not match the segment; Morton inactive")
-            return None
-        start, stop, grid = span
-        rows = args[0]
-        where = _video_row_slice(layout, start, stop)
-        if (where is None or not torch.is_tensor(rows) or rows.ndim != 2
-                or rows.shape[0] != where[1]):
-            _h3_log_once(f"the embedder's input {tuple(rows.shape) if torch.is_tensor(rows) else type(rows)} "
-                         f"does not line up with the layout's video rows {where}; Morton inactive")
-            return None
-        offset = where[0]
-        curve = getattr(model, "_sol_morton_curve", "3d")
-        _h3_log_once(f"ACTIVE: video span [{start}, {stop}), grid {grid}, curve {curve}")
-        # The permutation is cached on the device across forwards, so it must
-        # not belong to this forward's recording; see _outside_memory_compiler.
-        with _outside_memory_compiler():
-            perm, inverse = _perm_for(grid, curve, rows.device, start)
-        if offset == 0 and rows.shape[0] == stop - start:
-            rows = rows.index_select(0, perm)
-        else:
-            index = torch.arange(rows.shape[0], device=rows.device)
-            index[offset:offset + (stop - start)] = perm + offset
-            rows = rows.index_select(0, index)
-        model._sol_morton_live = (id(layout.position_ids), start, stop, grid, curve, inverse)
-        return (rows,) + tuple(args[1:])
-
-    def rope_freqs(position_ids, device):
-        """Publish the layout, and move the positions with the tokens.
-
-        `rope_rotation_table` is elementwise per row, so permuting the rows of
-        `position_ids` is the same as permuting the table. It happens only if
-        the embedder hook permuted the tokens of THIS layout: one decision, made
-        once, and this follows it.
-        """
-        entry = _SPANS.get(id(position_ids))
-        if entry is None:
-            _h3_log_once("no layout registered; Morton and the conditioning sink are inactive")
-            return original_rope_freqs(position_ids, device)
-
-        _layout, bounds, audio, _span = entry
-        # Publish the video-segment boundary so the attention override can keep
-        # the conditioning rows (text / audio / reference) exact.
-        options = getattr(model, "_sol_transformer_options", None)
-        if options is not None:
-            options["sol_h3_video_span"] = bounds
-            options["sol_h3_audio_span"] = audio
-            # The FULL segment table, for `h3_capture`. The two spans above are
-            # what Sol's own sink needs; a capture consumer needs every
-            # boundary, because `[text | cond | ref | audio | video]` have
-            # different activation statistics and a consumer without the table
-            # can only bin by position and hope -- which is why
-            # `bench/grade_sage_on_capture.py` samples positional strata and
-            # cannot answer whether error concentrates at a segment edge.
-            # Published here because this is the one place the layout object
-            # is in scope, and it costs a reference to a list core already
-            # built. Requested by three lanes on 2026-08-30.
-            segments = getattr(_layout, "segments", None)
-            if segments:
-                options["h3_segments"] = [
-                    (int(a), int(b), str(kind)) for a, b, kind in segments]
-        live = getattr(model, "_sol_morton_live", None)
-        if live is not None:
-            layout_id, start, stop, grid, curve, _inverse = live
-            if layout_id != id(position_ids) or position_ids.shape[0] < stop:
-                # The tokens are already permuted; positions that do not follow
-                # them would corrupt the render without an error.
-                raise RuntimeError("[h3-sol] H3 Morton: the video rows were reordered for one "
-                                   "layout and RoPE was asked for another")
-            perm, _ = _perm_for(grid, curve, position_ids.device, start)
-            index = torch.arange(position_ids.shape[0], device=position_ids.device)
-            index[start:stop] = perm + start
-            position_ids = position_ids.index_select(0, index)
-        return original_rope_freqs(position_ids, device)
-
-    def final_hook(_module, _args, output):
-        """Put the video output rows back in raster order."""
-        live = getattr(model, "_sol_morton_live", None)
-        model._sol_morton_live = None
-        if live is None:
-            return None
-        _layout_id, start, stop, _grid, _curve, inverse = live
-        video = output[0] if isinstance(output, (tuple, list)) and len(output) == 2 else None
-        if not torch.is_tensor(video) or video.shape[0] != stop - start:
-            raise RuntimeError("[h3-sol] H3 Morton: the final layer did not return "
-                               f"{stop - start} video rows; cannot restore order")
-        return (video.index_select(0, inverse.to(video.device)), output[1])
-
-    model._forward = _forward
-    model.rope_freqs = rope_freqs
-    model.video_patch_proj.register_forward_pre_hook(embed_pre_hook)
-    model.final_layer.register_forward_hook(final_hook)
-    model._sol_h3_morton_installed = True
-
 
 
 def _ineligible(q, k, mask, dim_head, min_tokens, dtypes=(torch.bfloat16,)):
@@ -858,32 +262,6 @@ def _require_kernel():
             "has no blk_cnt argument, so the route cannot be observed. Rebuild "
             "the kernel with vendor/rebuild_kernel.sh, or start the server "
             "without H3_SOL_OBSERVE.")
-
-
-def _require_bf16_compute(model):
-    """Refuse an H3 model that will not compute in bf16, before sampling.
-
-    The kernel is bf16-only, and `_ineligible` hands any other dtype back to
-    dense attention one call at a time. A whole render in another dtype would
-    therefore be a dense render that shows up only in the route record. Core
-    chooses the dtype at load (`comfy.model_management.unet_dtype` and
-    `unet_manual_cast`), and today bf16 is all H3 offers there. Open core PR
-    Comfy-Org/ComfyUI#16508 adds fp16, and under `--fast fp16_accumulation`,
-    which this box's launcher passes, core would then pick fp16 for the INT8
-    DiT (measured in-process: `bench/results/2026-09-25_upstream_survey_checks.md`,
-    check 4). Called from `_apply_patch` for the same reason as `_require_kernel`.
-    """
-    base = getattr(model, "model", None)
-    get = getattr(base, "get_dtype_inference", None)
-    if get is None:
-        return                      # not a core BaseModel; the call path decides
-    dtype = get()
-    if dtype != torch.bfloat16:
-        raise RuntimeError(
-            f"MiniMax-H3 is loaded to compute in {dtype}, and Sol-Attn's kernel is "
-            f"bf16-only, so every call would fall back to dense attention. Load the "
-            f"DiT in bf16: start ComfyUI with --bf16-unet, or without --fast "
-            f"fp16_accumulation. Or remove this node to render dense on purpose.")
 
 
 def _bthd(q, k, v, heads, skip_reshape):
@@ -1017,20 +395,25 @@ def sink_ranges(video, audio, tokens, mode):
     return blocks, (audio_start // BLOCK_SIZE, blocks[1])
 
 
-def make_override(tau=1.0, min_tokens=4096,
+#: The SLA lane closed on 2026-09-27, so the node runs Sol's own selection
+#: (tau) with its pooled tail on, always. Kept as names because the recorders
+#: (`sol_observe`, `sol_block_probe`) take them per call.
+_TOPK_RATIO = 0.0
+_TAIL = True
+#: What the direct kernel entry takes (`comfy_kitchen.sol_attn`'s docstring).
+_SOL_ACCEPTED_DTYPES = (torch.bfloat16, torch.float16)
+
+
+def make_override(tau=1.0, min_tokens=12288,
                   sigma_start=None, sigma_end=None, verbose=False,
                   sink_conditioning="exact_kv", dense_blocks=frozenset(),
-                  tau_profile=None, token_aug_profile=None,
-                  previous=None, topk_ratio=0.0, tail=True, qk_balance=False,
-                  rotate=False, settings=None, block_source="sol_block",
-                  on_kernel_error="dense", dtypes=(torch.bfloat16,)):
+                  token_aug_profile=None, previous=None, qk_balance=False,
+                  rotate=False, settings=None):
     """Build an optimized_attention_override callable.
 
-    `block_source`, `on_kernel_error` and `dtypes` are where the two nodes
-    differ (`docs/research/2026-09-27_sol_node_redesign.md`):
-    `MiniMaxH3SolAttn` reads the block from its own `sol_block` hooks, runs a
-    failed kernel call dense and takes bf16; `MiniMaxH3Sol` reads core's
-    `block_index` through `h3_layout`, raises, and takes bf16 and fp16.
+    The block index and segment bounds come from what core publishes
+    (`h3_layout`); a kernel error raises rather than rendering dense
+    (`docs/research/2026-09-27_sol_node_redesign.md`).
 
     ``previous`` chains any override already installed on the model: every path
     that declines hands off to it first, falling through to ``func`` only if
@@ -1041,15 +424,7 @@ def make_override(tau=1.0, min_tokens=4096,
     call row. Unused unless the observer is armed.
     """
     settings = dict(settings or {})
-    if block_source not in ("sol_block", "core"):
-        raise ValueError(f"block_source {block_source!r}")
-    if on_kernel_error not in ("dense", "raise"):
-        raise ValueError(f"on_kernel_error {on_kernel_error!r}")
-
-    def block_of(options, tokens):
-        if block_source == "core":
-            return _h3layout.block_index(options, tokens)
-        return (options or {}).get("sol_block")
+    topk_ratio, tail, dtypes = _TOPK_RATIO, _TAIL, _SOL_ACCEPTED_DTYPES
 
     def override(func, q, k, v, heads, mask=None, attn_precision=None,
                  skip_reshape=False, skip_output_reshape=False, **kwargs):
@@ -1063,7 +438,7 @@ def make_override(tau=1.0, min_tokens=4096,
         if _capture.enabled:
             options = kwargs.get("transformer_options")
             ticket = _capture.seam_begin(
-                block_of(options, q.shape[2] if skip_reshape else q.shape[1]),
+                _h3layout.block_index(options, q.shape[2] if skip_reshape else q.shape[1]),
                 q, k, v, heads, skip_reshape, transformer_options=options)
         out = _decide_and_run(func, q, k, v, heads, mask=mask, attn_precision=attn_precision,
                               skip_reshape=skip_reshape,
@@ -1086,10 +461,10 @@ def make_override(tau=1.0, min_tokens=4096,
         # 2026-09-01 only the depth gates read it, so an armed recorder on a
         # canonical graph (no dense_blocks, no profile) would have had no
         # block identity at all.
-        block = None
-        if dense_blocks or tau_profile or token_aug_profile or observing or _timer.enabled():
-            block = block_of(options, tokens)
-        block_tau = tau_profile.get(block, tau) if tau_profile else tau
+        # Core publishes the index for every block; `h3_layout` trusts it only
+        # when this call spans the whole packed sequence (not the refiner).
+        block = _h3layout.block_index(options, tokens)
+        block_tau = tau
         # Absent from the profile means zero, which is the kernel's default and
         # the shipped state: token routing is opt-in per block, never global.
         block_aug = token_aug_profile.get(block, 0) if token_aug_profile else 0
@@ -1211,17 +586,14 @@ def make_override(tau=1.0, min_tokens=4096,
         except Exception as exc:
             _stats["errors"] += 1
             route("kernel_error", f"{type(exc).__name__}: {exc}"[:200])
-            if on_kernel_error == "raise":
-                # A failed kernel call run dense is a render that succeeds and
-                # is not a Sol render; the new node refuses that, as this repo
-                # does everywhere else.
-                raise RuntimeError(
-                    f"[h3-sol] the Sol kernel failed on block {block} ({type(exc).__name__}: "
-                    f"{exc}). Not falling back to dense attention: the render would "
-                    f"succeed and not be a Sol render. Remove the node to render "
-                    f"without Sol.") from exc
-            _log_kernel_failure(exc)
-            return dense()
+            # A failed kernel call run dense is a render that succeeds and is
+            # not a Sol render; this node refuses that, as the repo does
+            # everywhere else. (MiniMaxH3SolAttn ran it dense and logged.)
+            raise RuntimeError(
+                f"[h3-sol] the Sol kernel failed on block {block} ({type(exc).__name__}: "
+                f"{exc}). Not falling back to dense attention: the render would "
+                f"succeed and not be a Sol render. Remove the node to render "
+                f"without Sol.") from exc
         if out is None:
             reason = None
             if observing:
@@ -1261,19 +633,14 @@ def _record_composed(module, gate, options, tensor, reason):
         batch = 1 if tensor.ndim == 2 else tensor.shape[0]
     else:
         tokens, batch = 0, 0
-    if settings.get("block_source") == "core":
-        block = _h3layout.block_index(options, tokens)
-    else:
-        block = options.get("sol_block") if isinstance(options, dict) else None
-    profile = settings.get("tau_profile") or {}
-    tau = settings.get("tau", 0.0)
-    block_tau = profile.get(str(block), tau) if block is not None else tau
+    block = _h3layout.block_index(options, tokens)
+    block_tau = settings.get("tau", 0.0)
     sink, sink_q = _sink_blocks(options, tokens, settings.get("sink_conditioning", "off"))
     sol_observe.record(
         route="composed_patch", reason=reason, counts=None, options=options, settings=settings,
         block=block, block_tau=block_tau, tokens=tokens, batch=batch,
         heads=getattr(module, "heads", None) or 0, sink=sink, sink_q=sink_q,
-        tail=bool(settings.get("tail", True)), topk_ratio=float(settings.get("topk_ratio", 0.0)),
+        tail=_TAIL, topk_ratio=_TOPK_RATIO,
         min_tokens=int(settings.get("min_tokens", 0)), path="composed_patch")
 
 
@@ -1343,7 +710,10 @@ def _install_compose_hooks(model, attn_attr):
     composition alone loses. The pre-hooks re-wrap any foreign attn forward
     before each block runs; inert unless sol_compose is published.
     """
-    if getattr(model, "_sol_h3_compose_hooked", False):   # see install_h3_morton on why not id()
+    # A marker on the model, not its id() in a module-level set: an id is
+    # recycled once a model is freed, and a reloaded model on a recycled id
+    # would be taken for hooked.
+    if getattr(model, "_sol_h3_compose_hooked", False):
         return
 
     def pre_hook(block, args):
@@ -1368,438 +738,13 @@ def _install_compose_hooks(model, attn_attr):
     model._sol_h3_compose_hooked = True
 
 
-def _apply_patch(model, *, tau, start_percent, end_percent, min_tokens,
-                 sink_conditioning, morton, morton_curve, dense_blocks,
-                 verbose, tau_profile, token_aug_blocks="",
-                 topk_ratio=0.0, tail=True, qk_balance=False, rotate=False,
-                 token_routing=None):
-    # Before anything else: fail here if the installed kernel cannot take what
-    # this node passes. Patch time is the only place that can be said -- see
-    # `_require_kernel`.
-    _require_kernel()
-    import inspect   # a later block in this function imports it too, which makes the name local here
-    if qk_balance and "qk_balance" not in inspect.signature(_ck.sol_attn).parameters:
-        # Same shape as the token_aug check below: raised from the dispatch
-        # path it would become a silent dense render.
-        raise RuntimeError(
-            "qk_balance is on, but the installed comfy_kitchen.sol_attn has no "
-            "qk_balance argument. It is carried on the owner's fork (h3-frontier); "
-            "rebuild with vendor/rebuild_kernel.sh, or turn the widget off.")
-    if rotate and "rotate" not in inspect.signature(_ck.sol_attn).parameters:
-        raise RuntimeError(
-            "rotate is on, but the installed comfy_kitchen.sol_attn has no rotate "
-            "argument. It is carried on the owner's fork (h3-frontier); rebuild with "
-            "vendor/rebuild_kernel.sh, or turn the widget off.")
-    diffusion_model = model.get_model_object("diffusion_model")
-    is_h3 = hasattr(diffusion_model, "rope_freqs") and hasattr(diffusion_model, "_forward")
-    if is_h3:
-        _require_bf16_compute(model)
-
-    # H3 publishes its segment layout from the same hooks Morton uses, so the
-    # conditioning sink needs them installed even when reordering is off.
-    reorder = False
-    if is_h3 and (morton or sink_conditioning != "off"):
-        install_h3_morton(diffusion_model)
-        reorder = morton
-    elif morton:
-        logging.warning(
-            f"[h3-sol] Morton skipped: {type(diffusion_model).__name__} is not "
-            "MiniMax-H3. Sol-Attn itself still applies.")
-
-    blocks = getattr(diffusion_model, "blocks", None)
-    count = len(blocks) if blocks is not None else 0
-    dense = parse_blocks(dense_blocks, count)
-    profile = parse_tau_profile(tau_profile or "", count)
-    aug = resolve_token_routing(token_routing, token_aug_blocks, count,
-                                qk_balance=qk_balance, rotate=rotate)
-    # A build without `token_aug` would take the keyword only to fail inside
-    # the override, where the failure becomes a silent dense render. Asserted
-    # here, and only when something actually asks for it, so a stock wheel
-    # keeps rendering every graph that leaves the profile empty.
-    if aug:
-        import inspect
-        if "token_aug" not in inspect.signature(_ck.sol_attn).parameters:
-            raise RuntimeError(
-                "token_aug_blocks is set, but the installed comfy_kitchen.sol_attn "
-                "has no token_aug argument. It landed in Comfy-Org/comfy-kitchen "
-                "#156, released in 0.2.33; upgrade, or clear the field.")
-        if rotate:
-            # The first build with `rotate` binned the token stage's group
-            # centroid unrotated against rotated keys, and the pair graded
-            # several times worse than either alone. The build that fixed it
-            # is the one that also gave the chunked producer the option, which
-            # is the only difference between the two visible from Python.
-            from comfy_kitchen.backends import cuda as _ck_cuda
-            if "rotate" not in inspect.signature(_ck_cuda.sol_attn_chunked).parameters:
-                raise RuntimeError(
-                    "rotate is on together with token routing, and the installed "
-                    "comfy_kitchen build predates the fix for that pair (its token "
-                    "stage mixes rotated and unrotated spaces). Rebuild from the "
-                    "owner's fork (h3-frontier) with vendor/rebuild_kernel.sh, or turn "
-                    "one of the two off.")
-    observing = sol_observe.enabled()
-    # `_capture.enabled`: the capture seam in the override files each call under
-    # `sol_block`, so an armed capture needs the index published even on a graph
-    # with no depth gate. Output-neutral: the hooks set and clear one options
-    # key, which nothing else reads unless a depth gate is set.
-    if (dense or profile or aug or observing or _capture.enabled or _timer.enabled()) \
-            and not _install_block_index(diffusion_model):
-        logging.warning(
-            f"[h3-sol] dense_blocks/tau_profile/token_aug_blocks ignored: "
-            f"{type(diffusion_model).__name__} has no .blocks list to index")
-        dense, profile, aug = frozenset(), {}, {}
-        if observing:
-            logging.warning("[h3-sol] route observation will carry no block identity "
-                            "on this model")
-    if dense:
-        logging.info(f"[h3-sol] keeping blocks {sorted(dense)} dense of {count}")
-
-    model_sampling = model.get_model_object("model_sampling")
-    sigma_start = float(model_sampling.percent_to_sigma(start_percent))
-    sigma_end = float(model_sampling.percent_to_sigma(end_percent))
-
-    m = model.clone()
-    previous = m.model_options["transformer_options"].get("optimized_attention_override")
-    if previous is not None:
-        logging.info("[h3-sol] chaining onto an existing attention override")
-
-    # Forward-level patches bypass optimized_attention entirely; gate each one.
-    composed = []
-    for key, patched in list(m.object_patches.items()):
-        if not key.endswith(".forward"):
-            continue
-        owner = key.rsplit(".", 2)[-2].lower()
-        if "attn" not in owner or "cross" in owner or owner == "attn2":
-            continue  # Sol-Attn never takes cross-attention; leave it patched
-        if getattr(patched, "_uses_optimized_attention", False):
-            continue
-        module = m.get_model_object(key[: -len(".forward")])
-        m.add_object_patch(key, _compose_module_patch(module, patched))
-        composed.append(key)
-    if composed:
-        logging.info(f"[h3-sol] composed with {len(composed)} patched attention forward(s)")
-    if is_h3:
-        _install_compose_hooks(diffusion_model, "attn")
-
-    # The configuration as the recorder sees it: one record per distinct
-    # dict, referenced by digest from every call row. Plain JSON types only.
-    settings = {
-        "node": "MiniMaxH3SolAttn", "tau": float(tau), "topk_ratio": float(topk_ratio),
-        "tail": bool(tail), "qk_balance": bool(qk_balance), "rotate": bool(rotate), "min_tokens": int(min_tokens),
-        "sink_conditioning": sink_conditioning,
-        "start_percent": float(start_percent), "end_percent": float(end_percent),
-        "sigma_start": sigma_start, "sigma_end": sigma_end,
-        "dense_blocks": sorted(int(b) for b in dense),
-        "tau_profile": {str(k): float(v) for k, v in sorted(profile.items())},
-        "token_aug_blocks": {str(k): int(v) for k, v in sorted(aug.items())},
-        "token_routing": str(token_routing) if token_routing else "unset (pre-widget graph: the list decides)",
-        "morton": bool(reorder), "morton_curve": morton_curve if reorder else None,
-        "n_blocks": count, "chained_previous": previous is not None,
-    }
-    # One line per patch, always: what this node is about to do to the render.
-    # The sigma window used to be printed by an assert node the generated
-    # graphs no longer carry, and nothing else said where Sol starts and stops.
-    logging.info(
-        f"[h3-sol] on: sigma window [{sigma_end:.4g}, {sigma_start:.4g}] "
-        f"(start_percent {start_percent}, end_percent {end_percent}), "
-        + (f"top-k {topk_ratio:.3f}" if topk_ratio else f"tau {tau}")
-        + f", qk_balance {bool(qk_balance)}, rotate {bool(rotate)}, "
-        f"token routing on {len(aug)} block(s), {len(dense)} dense block(s), "
-        f"pooled tail {bool(tail)}, fallback "
-        + ("the chained attention override" if previous is not None else "stock attention"))
-    if observing:
-        logging.info(f"[h3-sol] route observation ARMED ({sol_observe.spec()['spec']}); "
-                     f"every attention call is recorded and timings from this "
-                     f"render are not quotable")
-
-    m.model_options["transformer_options"]["sol_compose"] = {
-        "sigma_start": sigma_start, "sigma_end": sigma_end,
-        "min_tokens": min_tokens,
-        # for `_record_composed`: a declined call is recorded from the gate
-        "settings": settings}
-    m.model_options["transformer_options"]["optimized_attention_override"] = \
-        make_override(tau=tau, min_tokens=min_tokens,
-                      sigma_start=sigma_start, sigma_end=sigma_end,
-                      verbose=verbose, sink_conditioning=sink_conditioning,
-                      dense_blocks=dense, tau_profile=profile,
-                      token_aug_profile=aug, previous=previous,
-                      topk_ratio=topk_ratio, tail=tail, qk_balance=qk_balance,
-                      rotate=rotate, settings=settings)
-    if reorder:
-        m.model_options["transformer_options"]["sol_morton"] = True
-        m.model_options["transformer_options"]["sol_morton_curve"] = morton_curve
-    reset_sol_attn_stats()
-    return io.NodeOutput(m)
-
-
-class MiniMaxH3SolAttn(io.ComfyNode):
-    @classmethod
-    def define_schema(cls):
-        return io.Schema(
-            node_id="MiniMaxH3SolAttn",
-            display_name="MiniMax H3 Sol-Attn",
-            is_experimental=True,
-            category="model/attention/minimax",
-            description=(
-                "Training-free block-sparse attention (Sol-Attn, arXiv "
-                "2607.24027) for MiniMax-H3, on comfy_kitchen's merged CUDA "
-                "kernel. bf16 and head_dim 128 only; ineligible calls fall "
-                "back to whatever attention node sits upstream, which on "
-                "the default graphs is core's ModelAttentionBackend set to "
-                "comfy kitchen attention (sage only on arms that declare "
-                "it), not dense torch. The win grows "
-                "with sequence length, so leave min_tokens high.\n\n"
-                "Forked from the vendored upstream node. Two of its widgets "
-                "(centroid_tail, reuse_qkv_memory) are gone because "
-                "comfy-kitchen#117 removed them from the kernel, and "
-                "pooled_tail is new. See the module docstring for which "
-                "kernel arguments this node deliberately does not expose."
-            ),
-            inputs=[
-                io.Model.Input("model"),
-                io.DynamicCombo.Input("selection", options=[
-                    io.DynamicCombo.Option("adaptive tau", [
-                        io.Float.Input("tau", default=1.0, min=0.0, max=4.0,
-                                       step=0.05,
-                                       tooltip="Threshold beta, the paper's own "
-                                               "parameter. Higher is sparser: "
-                                               "1.0 ~ 16% of blocks kept exact, "
-                                               "1.5 ~ 7%, 2.0 ~ 2.7%. The paper "
-                                               "never sweeps it."),
-                        io.String.Input("tau_profile", optional=True,
-                                        force_input=True,
-                                        tooltip="Per-block tau overriding the base "
-                                                "value. 'blocks=tau' entries "
-                                                "separated by ';' or newlines."),
-                    ]),
-                    io.DynamicCombo.Option("top-k (SLA)", [
-                        io.Float.Input("keep_percent", default=10.0, min=0.5,
-                                       max=95.0, step=0.5,
-                                       tooltip="Percent of key blocks each query "
-                                               "block keeps exactly (sinks and the "
-                                               "diagonal ride on top). With the "
-                                               "lightx2v SLA turbo LoRA: 15 is the "
-                                               "value it was distilled against, 10 "
-                                               "is community-validated and faster. "
-                                               "Without the LoRA, higher is closer "
-                                               "to dense."),
-                    ]),
-                ], tooltip="How exact key blocks are chosen per query block. "
-                           "'adaptive tau': threshold at tau sigmas of the score "
-                           "distribution, so density varies per head and block. "
-                           "'top-k (SLA)': a fixed keep_percent everywhere, the "
-                           "selection the lightx2v SLA LoRAs were distilled "
-                           "against. Pair top-k with pooled_tail OFF to reproduce "
-                           "SLA exactly."),
-                io.Float.Input("start_percent", default=0.2, min=0.0, max=1.0, step=0.01,
-                               tooltip="Run dense before this point. The paper uses "
-                                       "0.2. Never measured here at any value, and "
-                                       "it costs a flat quarter of Sol's opportunity "
-                                       "at every step count."),
-                io.Float.Input("end_percent", default=1.0, min=0.0, max=1.0, step=0.01,
-                               tooltip="Run dense after this point. 1.0, the "
-                                       "default since 2026-09-11, keeps Sol on "
-                                       "through the last step, as sglang's Sol "
-                                       "backend and ComfyUI's own sparse-attention "
-                                       "node do. This is a SIGMA band, not a step "
-                                       "fraction, so a lower value covers a "
-                                       "different share of steps at different "
-                                       "step counts."),
-                io.String.Input("token_aug_blocks", optional=True, default="", advanced=True,
-                                tooltip=(
-                                    "Read ONLY when token_routing is 'custom'; the "
-                                    "presets there fill it for you.\n\n"
-                                    "Recovers detail that Sol's speed-up smooths "
-                                    "over, on the layers you name.\n\n"
-                                    "Sol makes H3 renders much faster by "
-                                    "approximating most of the attention work "
-                                    "instead of computing it. That approximation "
-                                    "is coarse: it skips whole 64-token chunks at "
-                                    "a time, so a few tokens that mattered get "
-                                    "averaged away with the chunk they sat in. "
-                                    "This reaches back and computes those "
-                                    "properly, and costs render time to do it.\n\n"
-                                    "A list rather than a switch because it does "
-                                    "not help everywhere: on the layers we "
-                                    "measured it helped four and hurt one.\n\n"
-                                    "Format 'layers=budget'. '0,24,32=64' turns it "
-                                    "on for DiT layers 0, 24 and 32 and leaves the "
-                                    "rest alone. The budget is how many tokens each "
-                                    "chunk may reach back for, one of "
-                                    f"{list(TOKEN_AUG_BUDGETS)}. Use 64; wider "
-                                    "measured no better. docs/SOLATTN.md has the "
-                                    "rest."),
-                                ),
-                io.Int.Input("min_tokens", default=12288, min=0, max=1 << 20, step=512,
-                             tooltip="Sequences shorter than this stay dense. "
-                                     "H3's two token-refiner attention calls run on "
-                                     "the text span alone (~311 rows), so any value "
-                                     "above that keeps them off Sol; the 50 DiT "
-                                     "calls are far above either. Drop it to 0 only "
-                                     "if you deliberately want the refiner blocks "
-                                     "routed too."),
-                io.Combo.Input("sink_conditioning",
-                               options=list(SINK_CONDITIONING_MODES),
-                               default="exact_kv_and_rows",
-                               tooltip="exact_kv: every query sees the packed "
-                                       "text/audio/reference rows exactly (~3% cost). "
-                                       "exact_kv_and_rows: additionally runs the TARGET "
-                                       "AUDIO query rows dense, which is what keeps "
-                                       "generated audio intact; reference rows stay "
-                                       "sparse, so the cost no longer scales with "
-                                       "reference size.\n\n"
-                                       "exact_kv_and_all_rows: every conditioning query "
-                                       "row dense, references included. The kernel takes "
-                                       "one dense-query range, so this is the only way to "
-                                       "run the TEXT rows dense as well as the audio rows. "
-                                       "On t2v there are no reference rows and the extra "
-                                       "cost over exact_kv_and_rows is the text rows alone, "
-                                       "a few hundred in a sequence of tens of thousands; "
-                                       "on ref2v with a video reference the extra cost is "
-                                       "the reference's rows, which can be tens of "
-                                       "thousands. Not the default; chosen by a patch at "
-                                       "render time."),
-                io.Boolean.Input("pooled_tail", default=True,
-                                 tooltip="The kernel's `tail`. ON, every unselected "
-                                         "block still contributes one pooled term, so "
-                                         "the whole sequence stays in the softmax "
-                                         "denominator. That correction IS Sol-Attn's "
-                                         "contribution, and the paper's ablation shows "
-                                         "its advantage growing as sparsity rises.\n\n"
-                                         "OFF, unselected blocks are dropped outright: "
-                                         "softmax over the routed blocks only. Upstream "
-                                         "calls this the SLA / VSA fine stage. Combined "
-                                         "with 'top-k (SLA)' it reproduces the routing "
-                                         "the Turbo-SLA LoRA was distilled under. "
-                                         "Turning it off WITHOUT such a LoRA removes "
-                                         "the method's own correction and is not a "
-                                         "speed setting to reach for."),
-                io.Boolean.Input("morton", default=False,
-                                 tooltip="Reorder the video tokens along a space-filling "
-                                         "curve so each 64-token block is a compact 3D "
-                                         "neighbourhood, which makes a block's centroid a "
-                                         "better stand-in for its members. Invisible to the "
-                                         "model (bench/check_sol_reorder_equivalence.py); "
-                                         "it changes what Sol approximates, not what is "
-                                         "computed exactly. On captures the 3d curve lowers "
-                                         "Sol's error at equal cost on every measured cell, "
-                                         "or the cost at equal error. Off by default: no "
-                                         "full-length clip has been judged with it yet."),
-                io.Combo.Input("morton_curve", options=list(MORTON_CURVES),
-                               default="3d",
-                               tooltip="Which curve orders the video tokens when morton is "
-                                       "on. Use 3d. Measured 2026-09-17 on full-length "
-                                       "captures, error against cost with tau swept: 3d "
-                                       "is better than plain order on every captured "
-                                       "cell; 2d_frame and hilbert are not improvements "
-                                       "and lose badly on the last block. They stay "
-                                       "selectable so that record can be reproduced "
-                                       "(bench/results/2026-09-17_sol_orderings.md)."),
-                io.Boolean.Input("verbose", default=True,
-                                 tooltip="Log, once per distinct call shape, whether the call "
-                                         "ran sparse or stayed dense and with which options "
-                                         "(token_aug, qk_balance, rotate), plus the conditioning "
-                                         "sink ranges. A handful of lines per server process, no "
-                                         "synchronisation and no cost. On by default since "
-                                         "2026-09-17: a render where Sol silently stayed dense "
-                                         "looks exactly like one where it ran, and these lines "
-                                         "are the cheap way to tell."),
-                io.String.Input("dense_blocks", default=SOL_DENSE_TAIL,
-                                tooltip="Transformer blocks kept off Sol, e.g. '0-2,32'. "
-                                        "Negative indices count from the end. Default "
-                                        f"'{SOL_DENSE_TAIL}': the blocks whose K-norm is "
-                                        "lopsided, where Sol's INT8 error is largest. "
-                                        "They run on the dense fallback, which on the "
-                                        "default chain is kitchen's rotated INT8 "
-                                        "attention, not exact attention -- use "
-                                        "MiniMaxH3ExactBlocks for bf16. Empty keeps "
-                                        "every block on Sol."),
-                # Declared LAST on purpose (2026-09-15): bench/check_node_ids.py
-                # matches widgets_values by index against the declared order,
-                # and the first placement (after token_aug_blocks, mid-list)
-                # re-pointed every later value in every saved graph.
-                io.Boolean.Input("qk_balance", optional=True, default=False,
-                                 tooltip=(
-                                     "Rebalance q/k channels inside the kernel's INT8 "
-                                     "quantizers, per head and per call. On MiniMax H3 "
-                                     "the last block carries most of its K energy in "
-                                     "four channels, and the kernel's one scale per key "
-                                     "row leaves the other channels a few levels; this "
-                                     "scales q up and k down on exactly those channels, "
-                                     "which changes no attention score in exact "
-                                     "arithmetic and leaves the routing threshold "
-                                     "alone. Heads without loud channels are untouched. "
-                                     "Off by default: an experiment under docs/SOLATTN.md's "
-                                     "decision standard, graded on captures by "
-                                     "bench/grade_channel_balance.py. Needs a kernel "
-                                     "build that takes qk_balance; the node refuses at "
-                                     "patch time otherwise."),
-                                 ),
-                io.Boolean.Input("rotate", optional=True, default=False,
-                                 tooltip=(
-                                     "Rotate every q/k row by one fixed orthogonal matrix "
-                                     "(sign diagonal + Hadamard) inside the kernel before "
-                                     "INT8 quantization, so a row's energy spreads across "
-                                     "all 128 channels and no loud channel or single spike "
-                                     "sets its scale. Exact for every attention score; "
-                                     "threshold unrotated. What comfy-kitchen's own "
-                                     "int8_attention does, done in Sol. Off by default: an "
-                                     "experiment graded on captures "
-                                     "(bench/results/2026-09-15_sol_rotate_*.json). Needs a "
-                                     "kernel build that takes rotate; refused at patch time "
-                                     "otherwise."),
-                                 ),
-                # Last again, for the reason above qk_balance gives.
-                io.Combo.Input("token_routing", optional=True,
-                               options=list(TOKEN_ROUTING_MODES),
-                               default=TOKEN_ROUTING_OFF,
-                               tooltip=(
-                                   "Recovers detail Sol's speed-up smooths over, on "
-                                   f"chosen layers, at budget {TOKEN_ROUTING_BUDGET}. "
-                                   "Costs render time.\n\n"
-                                   "off: no token routing (the default).\n\n"
-                                   "measured blocks: the four captured layers where "
-                                   "it lowered the error. The cautious choice.\n\n"
-                                   "early and middle: every layer but the last five. "
-                                   "An extrapolation from those four; the last layer "
-                                   "measured WORSE with it.\n\n"
-                                   "all blocks: every layer. Only lowered the last "
-                                   "layer's error with qk_balance and rotate both on, "
-                                   "so the node refuses it without them.\n\n"
-                                   "custom: use the token_aug_blocks list (under "
-                                   "advanced inputs), e.g. '0,24,32,40=64'.\n\n"
-                                   "No render has been judged by eye with token "
-                                   "routing on."),
-                               ),
-            ],
-            outputs=[io.Model.Output()],
-        )
-
-    @classmethod
-    def execute(cls, model, selection, start_percent, end_percent, min_tokens,
-                sink_conditioning, pooled_tail, morton, morton_curve, verbose,
-                dense_blocks, token_aug_blocks="", qk_balance=False, rotate=False,
-                token_routing=None) -> io.NodeOutput:
-        topk = selection["selection"] == "top-k (SLA)"
-        return _apply_patch(
-            model, tau=selection.get("tau", 1.0),
-            start_percent=start_percent, end_percent=end_percent,
-            min_tokens=min_tokens, sink_conditioning=sink_conditioning,
-            morton=morton, morton_curve=morton_curve, dense_blocks=dense_blocks,
-            verbose=verbose, tau_profile=selection.get("tau_profile"),
-            token_aug_blocks=token_aug_blocks,
-            topk_ratio=selection["keep_percent"] / 100.0 if topk else 0.0,
-            tail=pooled_tail, qk_balance=bool(qk_balance), rotate=bool(rotate),
-            token_routing=token_routing)
-
-
 # ---------------------------------------------------------------------------
 # MiniMaxH3Sol: the redesigned node (2026-09-27)
 # ---------------------------------------------------------------------------
 # docs/research/2026-09-27_sol_node_redesign.md is the plan and the reasons;
 # bench/results/2026-09-27_sol_node_compound_audit.md is the evidence. What
-# differs from MiniMaxH3SolAttn above, which is deleted once the generated
-# graphs move here:
+# differs from MiniMaxH3SolAttn, which it replaced and which was deleted with
+# the code only it reached:
 #
 #   - inputs: tau (the only selection left: the SLA lane closed), one
 #     `quantizer` combo in place of the qk_balance and rotate booleans, and
@@ -1900,9 +845,6 @@ def _describe_override(override):
     return f"{getattr(override, '__module__', '?')}.{getattr(override, '__qualname__', repr(override))}"
 
 
-_SOL_ACCEPTED_DTYPES = (torch.bfloat16, torch.float16)
-
-
 def _apply_sol(model, *, tau, quantizer, dense_blocks, sink_conditioning,
                token_routing, routing_blocks, start_percent, end_percent,
                min_tokens, verbose):
@@ -1949,7 +891,7 @@ def _apply_sol(model, *, tau, quantizer, dense_blocks, sink_conditioning,
         "dense_blocks": sorted(int(b) for b in dense),
         "token_routing": token_routing,
         "token_aug_blocks": {str(k): int(v) for k, v in sorted(aug.items())},
-        "n_blocks": count, "block_source": "core",
+        "n_blocks": count,
     }
     installed = set()
 
@@ -1964,10 +906,8 @@ def _apply_sol(model, *, tau, quantizer, dense_blocks, sink_conditioning,
         override = make_override(
             tau=tau, min_tokens=min_tokens, sigma_start=sigma_start, sigma_end=sigma_end,
             verbose=verbose, sink_conditioning=sink_conditioning, dense_blocks=dense,
-            tau_profile=None, token_aug_profile=aug, previous=current, topk_ratio=0.0,
-            tail=True, qk_balance=qk_balance, rotate=rotate,
-            settings=dict(settings, dense_fallback=fallback),
-            block_source="core", on_kernel_error="raise", dtypes=_SOL_ACCEPTED_DTYPES)
+            token_aug_profile=aug, previous=current, qk_balance=qk_balance, rotate=rotate,
+            settings=dict(settings, dense_fallback=fallback))
         installed.add(override)
         transformer_options["optimized_attention_override"] = override
         transformer_options["sol_compose"] = {

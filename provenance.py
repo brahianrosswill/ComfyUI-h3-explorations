@@ -154,14 +154,10 @@ def _closure_values(fn, names, depth=4):
 
 SOL_CLOSURE_KEYS = (
     "tau", "min_tokens", "sigma_start", "sigma_end", "verbose",
-    "sink_conditioning", "dense_blocks", "tau_profile",
-    "topk_ratio", "tail",
-    # 2026-09-15: the knobs check_provenance_stamp found unrecorded once the
-    # node grew them (qk_balance on in every default graph since 28d8ee5).
-    "token_aug_profile", "qk_balance", "rotate",
-    # 2026-09-27: where MiniMaxH3Sol differs from MiniMaxH3SolAttn in the one
-    # override they share (docs/research/2026-09-27_sol_node_redesign.md).
-    "block_source", "on_kernel_error", "dtypes",
+    "sink_conditioning", "dense_blocks", "token_aug_profile", "qk_balance", "rotate",
+    # 2026-09-27: `tau_profile`, `topk_ratio` and `tail` left with
+    # MiniMaxH3SolAttn (docs/research/2026-09-27_sol_node_redesign.md); the
+    # node runs tau selection with the tail on, always.
 )
 
 NOT_DETECTED = "not detected"
@@ -231,8 +227,8 @@ def _sol_state(transformer_options, sigmas):
     state: dict[str, object] = {"state": "present"}
     compose = transformer_options.get("sol_compose")
     state["sol_compose"] = {k: _jsonable(v) for k, v in compose.items()} if compose else NOT_DETECTED
-    state["morton"] = bool(transformer_options.get("sol_morton", False))
-    state["morton_curve"] = _jsonable(transformer_options.get("sol_morton_curve"))
+    # `morton`/`morton_curve` were recorded here until 2026-09-27, when the
+    # reorder was retired with MiniMaxH3SolAttn; token order is always raster.
 
     reached = {name: _jsonable(value)
                for name, value in _closure_values(override, SOL_CLOSURE_KEYS).items()}

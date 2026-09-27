@@ -137,7 +137,9 @@ def main() -> int:
     # `routed_cap_percent` are gone from the live node, so a list naming only
     # those would find nothing to flip and report a vacuous pass -- which is
     # the failure this list was written to avoid, arriving by the other route.
-    flippable = [k for k in ("tail", "topk_ratio", "tau")
+    # Updated 2026-09-27: `tail` and `topk_ratio` left with MiniMaxH3SolAttn;
+    # `qk_balance` is a boolean the node sets per quantizer.
+    flippable = [k for k in ("qk_balance", "tau")
                  if k in params and k in keys]
     if not flippable:
         report("closure_is_read_not_declared", False,

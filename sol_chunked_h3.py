@@ -124,21 +124,16 @@ def make_chunked_forward(chunk_rows=4096, verbose=False):
             return fallback()
         gate = options.get("sol_compose") or {}
         settings = gate.get("settings") or {}
-        if settings.get("block_source") == "core":
-            block = _h3layout.block_index(options, int(x.shape[0]))
-        else:
-            block = options.get("sol_block")
+        block = _h3layout.block_index(options, int(x.shape[0]))
         dense = set(settings.get("dense_blocks") or [])
         if block is not None and block in dense:
             return fallback()          # Sol's override routes it dense_block, as today
 
         tokens = int(x.shape[0])
         heads, head_dim = int(module.heads), int(module.head_dim)
-        tau = float(settings.get("tau", 1.0))
-        profile = settings.get("tau_profile") or {}
-        block_tau = float(profile.get(str(block), tau)) if block is not None else tau
-        topk = float(settings.get("topk_ratio", 0.0))
-        tail = bool(settings.get("tail", True))
+        block_tau = float(settings.get("tau", 1.0))
+        # MiniMaxH3Sol runs tau selection with the tail on, always (2026-09-27).
+        topk, tail = 0.0, True
         sink, sink_q = _sink_blocks(options, tokens, settings.get("sink_conditioning", "off"))
         # detached: comfy-kitchen's rope refuses any input that requires grad,
         # and a loaded weight never does, but a bench stub's might
@@ -207,7 +202,7 @@ class MiniMaxH3SolChunked(io.ComfyNode):
                 "Feeds Sol-Attn from chunks of the fused QKV projection so the full "
                 "Q, K and V are never built: comfy-kitchen's sol_attn_chunked as "
                 "H3's attention forward, for the calls Sol takes. Wire it AFTER "
-                "MiniMaxH3SolAttn, which must sit on a graph that also carries "
+                "MiniMaxH3Sol, which must sit on a graph that also carries "
                 "MiniMaxH3SageAttention (or another forward patch) below it; the "
                 "Sol gate hands the calls it takes to this node and the rest to "
                 "Sage, exactly as before. Memory lever, not a quality knob: the "
@@ -237,7 +232,7 @@ class MiniMaxH3SolChunked(io.ComfyNode):
         m = model.clone()
         to = m.model_options["transformer_options"]
         if "sol_compose" not in to:
-            raise RuntimeError("wire MiniMaxH3SolAttn before this node: it publishes the gate "
+            raise RuntimeError("wire MiniMaxH3Sol before this node: it publishes the gate "
                                "(sol_compose) this delegate is consulted through")
         has_patch = any(k.endswith(".forward") and "attn" in k.rsplit(".", 2)[-2].lower()
                         for k in m.object_patches)

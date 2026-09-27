@@ -83,7 +83,7 @@ because a `sol` record and a dense-fallback record are different kernels on the
 same inputs.
 
 **What is still not captured here:** the token-refiner calls, which carry no
-`sol_block` label at the seam and are only reached by the sage forward when the
+block index at the seam (`h3_layout.block_index`) and are only reached by the sage forward when the
 sage node patches the refiner. The block counter still warns when a render ends
 with nothing written.
 """
@@ -388,7 +388,7 @@ def _block_step(module, advance):
 def _step_at(block, advance):
     """(block, step) for a call to `block`, advancing its counter when asked.
     Call with `_lock` held. Split out of `_block_step` on 2026-09-19 so the Sol
-    seam (`seam_begin`), which knows the block from `sol_block` and has no
+    seam (`seam_begin`), which knows the block from `h3_layout.block_index` and has no
     module, counts on the SAME counters as the sage node's hook."""
     global _render
     # Render boundary. `cycle` is DECLARED, never guessed, and the default
@@ -439,7 +439,7 @@ def seam_begin(block, q, k, v, heads, skip_reshape, transformer_options=None):
     in place, so the tensors after the call are not guaranteed to be what the
     kernel received. The copy costs what it always cost; only its moment moves.
 
-    `block` is the `sol_block` label the Sol node's block pre-hook publishes.
+    `block` is core's block index, as `h3_layout.block_index` reads it.
     The token-refiner calls carry none and are neither counted nor captured
     here, the same as a refiner call the sage hook never labels as a DiT block.
 

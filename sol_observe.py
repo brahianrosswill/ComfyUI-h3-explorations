@@ -104,10 +104,13 @@ here is read inside the call:
         cannot be justified. `schedule_len` counts entries including the
         terminal value; `n_intervals` is one fewer.
   block
-        `transformer_options["sol_block"]`, published by the block pre-hook and
-        CLEARED by its paired post-hook (both in `sol_attn_h3.py`). Absent, the
-        row is `scope: "unknown"` -- not "token refiner", which is an inference
-        the row cannot support on its own.
+        core's `transformer_options["block_index"]`, read through
+        `h3_layout.block_index`, which trusts it only when the call spans the
+        whole packed sequence (core never clears it, so the next step's refiner
+        calls would otherwise inherit the last block). Until 2026-09-27 this was
+        `sol_block`, from the old node's block hooks. Absent, the row is
+        `scope: "unknown"` -- not "token refiner", which is an inference the row
+        cannot support on its own.
 
 ## Denominators, stated in every row
 
@@ -443,7 +446,7 @@ def graph_summary(graph: dict) -> dict:
             "scheduler": sched["inputs"].get("scheduler"), "steps": _linked(graph, sched["inputs"].get("steps"))},
         "resolution": None if res is None else {
             k2: v for k2, v in res["inputs"].items() if not isinstance(v, list)},
-        "sol_nodes": len(by_type.get("MiniMaxH3SolAttn", [])),
+        "sol_nodes": len(by_type.get("MiniMaxH3Sol", [])),
         "sage_nodes": len(by_type.get("MiniMaxH3SageAttention", [])),
     }
 

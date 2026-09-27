@@ -52,7 +52,7 @@ from .provenance import MiniMaxH3ProvenanceStamp
 from .quant_observe import MiniMaxH3QuantObserve
 from .reference_fit import MiniMaxH3ReferenceFit
 from .resolution import MiniMaxH3Resolution
-from .sol_attn_h3 import MiniMaxH3SolAttn, MiniMaxH3Sol
+from .sol_attn_h3 import MiniMaxH3Sol
 from .sol_chunked_h3 import MiniMaxH3SolChunked
 from .vsa_attention import MiniMaxH3VSAAttention
 from .vae_precision import MiniMaxH3VAEPrecision
@@ -306,7 +306,10 @@ class H3ExplorationsExtension(ComfyExtension):
                 MiniMaxH3EncoderLoader,
                 MiniMaxH3MarkerArm,
                 MiniMaxH3PDDLoRA, MiniMaxH3AudioCarryProbe,
-                MiniMaxH3ExactBlocks, MiniMaxH3SolAttn, MiniMaxH3SolChunked,
+                MiniMaxH3ExactBlocks,
+                # MiniMaxH3SolAttn sat here until 2026-09-27; replaced by MiniMaxH3Sol
+                # (appended below). Removal, unlike insertion, moves nothing that follows.
+                MiniMaxH3SolChunked,
                 MiniMaxH3VSAAttention,
                 MiniMaxH3QuantObserve,
                 MiniMaxH3FreezeAudio, MiniMaxH3FreezeAudioWindow,
