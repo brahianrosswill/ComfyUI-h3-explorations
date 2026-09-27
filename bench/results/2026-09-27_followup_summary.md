@@ -85,6 +85,15 @@ people's records are cited, not restated.
   - Worth the owner's eye: late-only FlashGen on the adherence scenes. If the
     early blocks are where it is "overfit", late-only might follow prompts
     better.
+- **FlashGen's settings on tone** (`2026-09-27_flashgen_variants_tone.json`):
+  - Without adaln, the grade matches full FlashGen.
+  - Dense attention matches Sol on tone.
+  - Strength 1.2 means less haze and more contrast and saturation, and 0.8
+    the reverse, so the haze does not come from over-applying the LoRA.
+  - Dense's effect on adherence is for the owner's eye.
+- **The combined inventory** of yesterday's renders and model files, with
+  rankings: `2026-09-27_inventory.md` (the VAE session), with this session's
+  half in `2026-09-27_inventory_fastdude.md`. Each cross-reviewed the other.
 - **FlashGen's weights** (`2026-09-26_flashgen_weights_predictions.md`,
   verdicts):
   - The effective rank is about 18 of 64.
