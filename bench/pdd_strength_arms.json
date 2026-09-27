@@ -1,0 +1,50 @@
+{
+ "what": "PDD8 strength dose-response (owner, 2026-09-26: 'back to strength since pdd was an outsized impact'). The exact branch at strength 0.85 and 0.7 with the fused heads held at 1.0, and 0.7 on every surface (head_strength -1 follows strength). The strength-1.0 reference is the followup rerun's <scene>__pdd8 row: same graph, prompt, length and seed.",
+ "why": "PDD's backbone delta is about 45x FastH3's and 10x FlashGen's (bench/results/2026-09-26_fasth3_weights_map.json). The node's strength scales backbone, adaln and heads together; head_strength splits the heads off, so turning the delta down need not weaken the block decoding.",
+ "predictions": {
+  "written": "2026-09-26, before rendering",
+  "D1": "s085 and s07 (heads at 1.0) read closer to the base's grade and contrast than the 1.0 row, and soften detail modestly; s07 more so",
+  "D2": "s07all is visibly softer or less converged than s07: weakening the heads costs the block decoding, not just the look",
+  "D3": "the subway_chase clone does not reliably change with strength; any change at one seed is a different sample, not an effect",
+  "caveat": "one seed; each arm is a different sample from the same noise, so the read is look and softness, not attribution"
+ },
+ "arms": {
+  "look_anchor__pdd8_s085": "workflows/h3_text_to_video_pdd_savelat_api.json",
+  "look_anchor__pdd8_s07": "workflows/h3_text_to_video_pdd_savelat_api.json",
+  "look_anchor__pdd8_s07all": "workflows/h3_text_to_video_pdd_savelat_api.json",
+  "subway_chase__pdd8_s085": "workflows/h3_text_to_video_pdd_x0_api.json",
+  "subway_chase__pdd8_s07": "workflows/h3_text_to_video_pdd_x0_api.json",
+  "subway_chase__pdd8_s07all": "workflows/h3_text_to_video_pdd_x0_api.json"
+ },
+ "patches": [
+  "look_anchor__pdd8_s085:MiniMaxH3Conditioning.prompt=@bank:t2va_look_anchor",
+  "look_anchor__pdd8_s085:MiniMaxH3Resolution.length=345",
+  "look_anchor__pdd8_s085:MiniMaxH3PDDLoRA.strength=0.85",
+  "look_anchor__pdd8_s085:MiniMaxH3PDDLoRA.head_strength=1.0",
+  "look_anchor__pdd8_s07:MiniMaxH3Conditioning.prompt=@bank:t2va_look_anchor",
+  "look_anchor__pdd8_s07:MiniMaxH3Resolution.length=345",
+  "look_anchor__pdd8_s07:MiniMaxH3PDDLoRA.strength=0.7",
+  "look_anchor__pdd8_s07:MiniMaxH3PDDLoRA.head_strength=1.0",
+  "look_anchor__pdd8_s07all:MiniMaxH3Conditioning.prompt=@bank:t2va_look_anchor",
+  "look_anchor__pdd8_s07all:MiniMaxH3Resolution.length=345",
+  "look_anchor__pdd8_s07all:MiniMaxH3PDDLoRA.strength=0.7",
+  "look_anchor__pdd8_s07all:MiniMaxH3PDDLoRA.head_strength=-1.0",
+  "subway_chase__pdd8_s085:MiniMaxH3Conditioning.prompt=@bank:t2va_subway_chase",
+  "subway_chase__pdd8_s085:MiniMaxH3Resolution.length=345",
+  "subway_chase__pdd8_s085:MiniMaxH3PDDLoRA.strength=0.85",
+  "subway_chase__pdd8_s085:MiniMaxH3PDDLoRA.head_strength=1.0",
+  "subway_chase__pdd8_s07:MiniMaxH3Conditioning.prompt=@bank:t2va_subway_chase",
+  "subway_chase__pdd8_s07:MiniMaxH3Resolution.length=345",
+  "subway_chase__pdd8_s07:MiniMaxH3PDDLoRA.strength=0.7",
+  "subway_chase__pdd8_s07:MiniMaxH3PDDLoRA.head_strength=1.0",
+  "subway_chase__pdd8_s07all:MiniMaxH3Conditioning.prompt=@bank:t2va_subway_chase",
+  "subway_chase__pdd8_s07all:MiniMaxH3Resolution.length=345",
+  "subway_chase__pdd8_s07all:MiniMaxH3PDDLoRA.strength=0.7",
+  "subway_chase__pdd8_s07all:MiniMaxH3PDDLoRA.head_strength=-1.0"
+ ],
+ "seeds": {
+  "first": 730451892,
+  "note": "held, the followup batch's seed"
+ },
+ "run": "run_graph_arms.py --manifest bench/pdd_strength_arms.json --runs 1 --seed 730451892 --hold-seed --no-alternate --out bench/results/2026-09-26_pdd_strength.jsonl"
+}
