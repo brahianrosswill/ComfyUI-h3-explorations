@@ -139,3 +139,27 @@ two time embeddings. In curve form that blend is exact without a refit: put
 both tables side by side (16 columns) and the two projections side by side,
 weighted 1-α and α. Core reads the table width as `time_embed_dim`
 (`comfy/model_detection.py`).
+
+## PDD on FastH3's conditioning: the #5 sidecar (built 2026-09-27, not rendered)
+
+PDD's adaln update is baked per checkpoint into that checkpoint's curve basis
+(`bench/convert_pdd_lora.py --pruned`), solved against `silu(time_embedder(t))`.
+To stack PDD on FastH3's time embedder, it is re-baked against both.
+`bench/build_pdd_base_shim.py` writes a minimal `--base`: the time embedder
+from a diffusers-form transformer, and the fingerprint and int8 probe from the
+pruned checkpoint the sidecar pairs with.
+
+- **Control, exact.** Official MiniMaxAI fl2va time embedder, paired with the
+  shipped pruned fl2va. It reproduces the shipped
+  `minimax_h3_fl2va_pdd_8step_comfy` bit for bit: all 732 tensors identical,
+  only provenance metadata differs. The shim method adds nothing of its own.
+- **The build.** FastH3 V2's time embedder paired with
+  `minimax_h3_fl2va_pruned_int8_convrot_fasth3adaln`, writing
+  `models/loras/h3/minimax_h3_fl2va_fasth3temb_pdd_8step_comfy`. Adaln
+  baked into 50 blocks, worst per-block reconstruction 1.67e-4 (the control's
+  was 1.10e-4). The node's live-table check binds the sidecar to that
+  checkpoint and refuses it on any other.
+
+The arm this makes: fl2va backbone, FastH3's time embedder, and PDD's
+backbone, adaln and heads at strength 1, on PDD8's schedule. Rendered only
+after the swap arms show what FastH3's time embedder does alone.
