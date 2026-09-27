@@ -29,6 +29,15 @@ holds (no linearisation), with luma Y from BT.709 weights:
   real blacks keeps it low.
 - `detail`: the mean absolute Laplacian of Y, a local-contrast and sharpness
   measure. It is scale-dependent, so compare only within one run.
+- `warmth`: the mean of R - B. The owner's "orangeish" grade (added 2026-09-26,
+  `bench/results/2026-09-26_subway_v2_s1.md` measured it ad hoc first).
+- `sat`: the mean of (max - min) / max over pixels with max above 0.02, HSV-style
+  saturation with the near-black pixels left out.
+- `cuts`: hard cuts, counted as frames whose ffmpeg scene score (`select`'s
+  `scene`, over every frame at full rate) exceeds `CUT_SCORE`. Set it beside the
+  prompt's shot count as a cheap adherence proxy: a three-shot prompt should
+  cut twice. A whip pan or a flash can score as a cut, so read it as a count to
+  check, not a verdict.
 
 `--quarters` also prints each quarter of the clip, since a multi-shot scene can
 change look shot to shot.
@@ -53,6 +62,10 @@ W, H = 480, 270
 #: Frames sampled: every Nth. **Reasoned**: a 345-frame clip gives 29 frames,
 #: enough to average over motion and cheap to decode.
 EVERY = 12
+#: Scene score above which a frame counts as a cut. **Inherited** from
+#: `bench/results/2026-09-18_timestamps_diner.md`, whose detected cuts at 0.3
+#: matched the owner's view of that pair.
+CUT_SCORE = 0.3
 #: Dark-channel patch side. **Inherited** from He et al.'s dark channel prior,
 #: 15x15 at their image size.
 PATCH = 15
@@ -80,6 +93,8 @@ def stats(f: np.ndarray) -> dict:
     dark = np.stack([_min_filter(fr.min(axis=-1), PATCH) for fr in f])
     lap = np.abs(4 * y[:, 1:-1, 1:-1] - y[:, :-2, 1:-1] - y[:, 2:, 1:-1]
                  - y[:, 1:-1, :-2] - y[:, 1:-1, 2:])
+    mx = f.max(axis=-1)
+    sat = np.where(mx > 0.02, chroma / np.maximum(mx, 1e-3), 0.0)
     black, mid, white = np.percentile(y, [1, 50, 99])
     return {
         "black": round(float(black), 3), "white": round(float(white), 3),
@@ -90,7 +105,17 @@ def stats(f: np.ndarray) -> dict:
         "chroma": round(float(chroma.mean()), 3),
         "haze": round(float(dark.mean()), 3),
         "detail": round(float(lap.mean()), 4),
+        "warmth": round(float((f[..., 0] - f[..., 2]).mean()), 3),
+        "sat": round(float(sat.mean()), 3),
     }
+
+
+def cuts(path: Path) -> int:
+    """Frames whose scene score exceeds CUT_SCORE, over every frame of the clip."""
+    cmd = ["ffmpeg", "-v", "info", "-i", str(path), "-vf",
+           f"select=gt(scene\\,{CUT_SCORE}),showinfo", "-f", "null", "-"]
+    err = subprocess.run(cmd, capture_output=True, text=True).stderr
+    return sum(1 for line in err.splitlines() if "Parsed_showinfo" in line and "pts_time" in line)
 
 
 def main() -> int:
@@ -100,17 +125,19 @@ def main() -> int:
     ap.add_argument("--json", type=Path, default=None)
     args = ap.parse_args()
     keys = ["black", "white", "range", "mid", "rms_contrast", "crushed", "clipped",
-            "chroma", "haze", "detail"]
+            "chroma", "haze", "detail", "warmth", "sat", "cuts"]
     rows = []
     print(f"{'clip':<58}" + "".join(f"{k:>13}" for k in keys))
     for clip in args.clips:
         f = frames(clip)
+        n_cuts = cuts(clip)
         parts = [("all", f)]
         if args.quarters:
             q = np.array_split(np.arange(len(f)), 4)
             parts += [(f"q{i + 1}", f[idx]) for i, idx in enumerate(q)]
         for tag, sub in parts:
             s = stats(sub)
+            s["cuts"] = n_cuts if tag == "all" else ""
             rows.append({"clip": clip.name, "part": tag, **s})
             name = clip.stem if tag == "all" else f"  {tag}"
             print(f"{name[:58]:<58}" + "".join(f"{s[k]:>13}" for k in keys))
