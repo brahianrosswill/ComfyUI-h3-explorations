@@ -102,8 +102,9 @@ distinction matters:
   this table. It supplied a `hilbert` token ordering by rebinding
   `morton_perm` on the vendored Sol node; that node stopped being loaded on
   2026-08-30, so the rebind patched nothing and its `execute` could only
-  raise. `MiniMaxH3SolAttn` owns the Morton code and offers `hilbert` in its
-  own `morton_curve` combo.
+  raise. `MiniMaxH3SolAttn` owned the Morton code and offered `hilbert` in its
+  own `morton_curve` combo, until both were deleted on 2026-09-27 with the
+  Morton lane (`docs/roadmap.md`, "Closed lanes"); the node is `MiniMaxH3Sol`.
 
 **The Sol node every shipped graph wires is this repo's own file.**
 `ComfyUI-SolAttn-cuda/sol_attn_minimax.py` is a symlink to

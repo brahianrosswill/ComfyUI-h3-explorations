@@ -84,7 +84,7 @@ branch". VSA is:
     block_len         because the tiles are PADDED, one cube per 64-row block
     topk_ratio        SLA-style selection rather than a tau threshold
 
-`MiniMaxH3SolAttn` does none of it, and the honest reason is separation rather
+The Sol node (`MiniMaxH3SolAttn`, now `MiniMaxH3Sol`) does none of it, and the honest reason is separation rather
 than impossibility. **Corrected 2026-08-30**, which previously said the gate
 "cannot be reached" from an attention override. It can: the override is handed
 Q, K and V already built, but a forward pre-hook on `Attention` can stash the
@@ -391,9 +391,10 @@ def _publish_layout(diffusion_model):
     `transformer_options` from `rope_freqs`, which is the one call that receives
     that tensor and runs once per forward.
 
-    The same trick as `sol_attn_h3.install_h3_morton`, and deliberately its own
-    copy: the two nodes are alternatives, so VSA must not need the Sol node
-    installed to see a layout.
+    The same trick the Sol node's retired Morton install used (removed
+    2026-09-27; the Sol node now reads core's `minimax_h3_layout`), and
+    deliberately its own copy: the two nodes are alternatives, so VSA must not
+    need the Sol node installed to see a layout.
     """
     import sys
     module = sys.modules[type(diffusion_model).__module__]

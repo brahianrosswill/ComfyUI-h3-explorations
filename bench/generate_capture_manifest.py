@@ -242,7 +242,7 @@ def _sol_attn_state(wf: dict) -> str:
     # carry. Only the vendored name was here until 2026-08-31, so a current
     # graph recorded `sol_attn: absent` -- a manifest asserting Sol was off
     # on a render that had it on.
-    state, _ = _class_state(wf, "MiniMaxH3SolAttn", "SolAttnMiniMax")
+    state, _ = _class_state(wf, "MiniMaxH3Sol", "MiniMaxH3SolAttn", "SolAttnMiniMax")
     return state
 
 
@@ -442,7 +442,7 @@ def extract_from_workflow(wf: dict, input_base: Path):
     # fraction of an 8-step run than a 16-step one, which is how the PDD arms
     # silently lost their dense final step. A manifest recording only
     # `sol_attn: wired` cannot tell two renders apart that differed in it.
-    _sol_state, _sol_nodes = _class_state(wf, "MiniMaxH3SolAttn", "SolAttnMiniMax")
+    _sol_state, _sol_nodes = _class_state(wf, "MiniMaxH3Sol", "MiniMaxH3SolAttn", "SolAttnMiniMax")
     _sol_cfg = _sol_nodes[0][1] if _sol_state == "wired" else {}
     _sage_state, _sage_nodes = _class_state(wf, "MiniMaxH3SageAttention")
     attention = {
@@ -452,7 +452,9 @@ def extract_from_workflow(wf: dict, input_base: Path):
         "sol_start_percent": _scalar(_sol_cfg.get("start_percent"), float),
         "sol_end_percent": _scalar(_sol_cfg.get("end_percent"), float),
         "sol_dense_blocks": _scalar(_sol_cfg.get("dense_blocks"), str),
-        "sol_tau": _scalar(_sol_cfg.get("selection.tau"), float),
+        # `tau` on MiniMaxH3Sol; `selection.tau` on the older MiniMaxH3SolAttn.
+        "sol_tau": _scalar(_sol_cfg.get("tau", _sol_cfg.get("selection.tau")), float),
+        "sol_quantizer": _scalar(_sol_cfg.get("quantizer"), str),
         "head_chunks": (_scalar(_sage_nodes[0][1].get("head_chunks"), int, missing=1)
                         if _sage_state == "wired" else 1),
         "dense_node": _dense_node(wf, _sage_state, _sage_nodes),

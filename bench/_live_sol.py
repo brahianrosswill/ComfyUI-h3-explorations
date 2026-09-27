@@ -32,7 +32,7 @@ executing `__init__.py` -- that would pull in every node in the pack and with
 it all of ComfyUI, which an offline analysis script does not need.
 
     from _live_sol import live_sol
-    perm, _ = live_sol().morton_perm(grid, "cpu", "hilbert")
+    sink_kv, sink_q = live_sol().sink_ranges(video, audio, tokens, mode)
 """
 
 from __future__ import annotations

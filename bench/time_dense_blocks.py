@@ -66,7 +66,7 @@ def build(base: dict, spec: str, steps: int, seed: int, tag: str) -> tuple[dict,
             raise SystemExit(f"expected one of {classes}, found {len(hits)}")
         return hits[0]
 
-    sol, sched, sampler, noise = (one("MiniMaxH3SolAttn", "SolAttnMiniMax"), one("BasicScheduler"),
+    sol, sched, sampler, noise = (one("MiniMaxH3Sol", "MiniMaxH3SolAttn", "SolAttnMiniMax"), one("BasicScheduler"),
                                   one("KSamplerSelect"), one("RandomNoise"))
     g[sched]["inputs"]["steps"] = steps
     g[sampler]["inputs"]["sampler_name"] = "euler"

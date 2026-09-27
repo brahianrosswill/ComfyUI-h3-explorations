@@ -136,8 +136,9 @@ not restated here.
    (`docs/sol_upstream.md`), and sglang's dropped "sink block" is a
    different mechanism, a reserved block inside a fixed budget, so it says
    nothing against it.
-4. **Block policy**: a per-block tau profile (`tau_profile`) or a dense set
-   on the band the probe ranks hottest, same footing.
+4. **Block policy**: a per-block tau profile (`tau_profile`, retired
+   unused on 2026-09-27 with the old node) or a dense set on the band the
+   probe ranks hottest, same footing.
 5. **Step policy**: the window's start, since the per-step trend rises
    toward the end of the window, not the start. **A prior arrived
    2026-09-04**: sglang's cube sparse backend, co-authored by MiniMax
@@ -762,7 +763,8 @@ Sol-Attn that ships off. Two sessions spent a day on a knob nobody runs.
 
 **What is still worth doing** is in `docs/open_experiments.md` and below: the
 density-vs-wall-clock consistency check, and depth-based sparsity
-(`dense_blocks` / `tau_profile`, both shipping empty) which is a lever on a
+(`dense_blocks` / `tau_profile`, both shipping empty then; since 2026-09-25
+`dense_blocks` ships `45,48,49`, and `tau_profile` was retired 2026-09-27) which is a lever on a
 knob that ships **on**. The 1440x736 and 1952x544 captures that would have
 settled the `3d` pin are **not** to be run -- that pin governs a knob that is
 off, and the question is only interesting if this section is reopened.

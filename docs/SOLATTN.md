@@ -385,74 +385,41 @@ retirement on 2026-09-26.)
 
 ## The CUDA node
 
-`SolAttnMiniMax`, driving `comfy_kitchen.sol_attn`.
+`MiniMaxH3Sol` (`sol_attn_h3.py`), driving `comfy_kitchen.sol_attn`.
+
+*2026-09-27: redesigned* (`docs/research/2026-09-27_sol_node_redesign.md`,
+evidence in `bench/results/2026-09-27_sol_node_compound_audit.md`). It replaced
+`MiniMaxH3SolAttn`, which is deleted together with the code only it reached.
+This page described that node until then; the history below the options table
+is kept where a reader would otherwise trust stale text, and git has the rest.
 
 ### Options
 
-Four have no Triton counterpart; three Triton options are gone, because the
-CUDA kernel routes in INT8 unconditionally and there is no quantization choice
-left to make.
-
-**Rows are in widget order, and that is not cosmetic.** A saved graph stores
-`widgets_values` as a bare list matched by index, so this table doubles as
-that list — regroup it semantically and you will pair a value with the wrong
-knob.
-
-Widget order is not quite the declared input order, for two reasons.
-
-`tau_profile` is `force_input`, so it is a socket rather than a widget and
-takes no slot in `widgets_values`; it sits last here. Checked against both the
-node source and a live `/object_info` — the two disagree in presentation
-(`/object_info` reports required inputs before optional ones), which is its
-own way to get this wrong.
-
-And since the v3 node (2026-08-22) `selection` is a **DynamicCombo**: picking
-an option adds that option's own inputs to the node, so the widget list has a
-variable middle. The chosen option's widgets are spliced in **immediately
-after the selector**, not appended — source read at ComfyUI_frontend v1.49.6,
-`src/core/graph/widgets/dynamicWidgets.ts`. The API form spells the same thing
-differently, keying them under the combo with a dot (`selection.tau`), which
-ComfyUI regroups into the dict the node receives.
-
-**Do not hand-edit a Sol node in a saved graph.** A graph carrying the old
-pre-v3 inputs passes ComfyUI's prompt validation and then dies at execute, so
-the queue is the first thing that tells you. `workflows/build_workflows.py`
-owns both spellings; regenerate.
+**Rows are in widget order, and that is not cosmetic.** An editor-saved graph
+stores `widgets_values` as a bare list matched by index; the new node id is
+why the redesign could reorder at all. `token_routing` is a **DynamicCombo**:
+its `custom` option splices a `blocks` widget in immediately after the
+selector, and the API form keys it `token_routing.blocks`.
+`workflows/build_workflows.py` owns both spellings; regenerate, do not
+hand-edit.
 
 | option | default | what it does |
 |---|---|---|
-| `selection` NEW | `adaptive tau` | Which rule picks the exact key blocks. `adaptive tau` is the threshold every number on this page was measured under and what every graph here ships. `top-k (SLA)` is the other option and brings `keep_percent` instead of `tau`. |
-| `keep_percent` NEW | 10.0 | Only under `top-k (SLA)`. Percent of key blocks each query block keeps exactly, a fixed density everywhere rather than one that varies per head and block; sinks and the diagonal still ride on top. **This is not a hard top-k router** — read the row below the table before treating the two as arms of one comparison. |
-| `tau` | 1.0 | Only under `adaptive tau`. *Corrected 2026-09-10:* this cell said 1.3, the node default before the 2026-08-20 change; the node's `define_schema` is the authority. Routing threshold in sigmas of the proxy row. A key block is exact when its mean score over the query block clears `tau * sqrt(var)`. Higher is sparser. Upstream densities: 1.0 keeps ~16% exact, 1.5 ~7%, 2.0 ~2.7%. |
+| `tau` | 1.0 | *Corrected 2026-09-10:* this cell said 1.3, the node default before the 2026-08-20 change; the node's `define_schema` is the authority. Routing threshold in sigmas of the proxy row. A key block is exact when its mean score over the query block clears `tau * sqrt(var)`. Higher is sparser. Upstream densities: 1.0 keeps ~16% exact, 1.5 ~7%, 2.0 ~2.7%. |
+| `quantizer` NEW 2026-09-27 | `balanced` | How Sol's INT8 quantizers treat q and k: `plain`, `balanced` (`qk_balance`), `rotated` (`rotate`), `balanced+rotated`. One choice in place of the two booleans, because they interact: rotation does most of what the balance does (audit, section 4.4). `balanced` is the shipped state inherited from `qk_balance=True`; test 1 of the redesign decides whether it earns its place behind the dense tail. The history of the balance factor: The kernel's own per-head q/k channel rebalancing inside its INT8 quantizers (`sol_attn(..., qk_balance=True)`, carried on the owner's kitchen fork, `h3-build`, not upstream). Per call and per head it scales q up and k down on the channels where K is loud, which changes no attention score in exact arithmetic and leaves the routing threshold in the unbalanced space; heads whose four loudest K channels hold under a fifth of K's energy are untouched, so on ordinary blocks it is inert. Exists for MiniMax H3's last blocks (`docs/h3_block49_quant_error.md`); graded on captures by `bench/grade_channel_balance.py` (its `kernel` row); the shipped graphs carry it on (`h3_config.SOL_RECOMMENDED_CUDA`, owner decision), and the graphs that carry False declare that as a deviation (`bench/check_attention_defaults.py`). Refused at patch time on a kernel build without it. |
+| `dense_blocks` | `45,48,49` since 2026-09-25 (owner; `""` before) | Blocks routed to the chained dense fallback instead of Sol, e.g. `0-2,-1`; this is not exact torch attention. The fallback was sage on every graph until 2026-09-15; since then it is core's kitchen backend node on the default graphs and sage only on the sage arms. Negative indices count from the end, so `-1` is block 49 on a 50-block DiT (`block_spec.py`). *From 2026-09-02 until 2026-09-25 the node and both shared configs shipped empty; since 2026-09-25 they ship `SOL_DENSE_TAIL` (`sol_attn_h3.py` and `workflows/h3_config.py`).* `0-2,32` shipped from 2026-08-29 until 2026-09-02, but the owner demoted it to an explicit experiment: its propagation record covered only 11/50 blocks, one base-model trajectory at a specially isolated sigma, and no perceptual or set-interaction A/B. See the propagation section and the 2026-09-02 production-geometry route record. |
+| `sink_conditioning` | `exact_kv_and_rows` | Keeps the target audio's queries exact. **NOT the dominant knob at reference load** — that was v1 arithmetic; under the v2 node the swing is ~0.5 points, not 23. See the reference section. **`exact_kv_and_all_rows` added 2026-09-04**, not the default and no graph ships it: every conditioning query row dense, references included. The kernel takes one dense-query range, so "text and audio dense, references sparse" is not expressible when reference rows sit between them; this is the range that covers both. On t2v the extra cost over the default is the text rows alone; on ref2v with a video reference it is the reference's rows, priced by the recomputed sink-share table. The modes are `sol_attn_h3.py::SINK_CONDITIONING_MODES`; `_sink_blocks` refuses any other string. Chosen by a patch at render time; the first probe run with it on is how it earns or loses its place (`docs/roadmap.md`, forward plan 2026-09-04, step 3). |
+| `token_routing` reworked 2026-09-27 | `off` | `off`, `measured blocks (0, 24, 32, 40)`, `early and middle (all but the last five)`, `all blocks (needs a balanced quantizer)`, `custom` (with its `blocks` list). Budget 64 in every preset. `all blocks` needs the balance on: on the block-49 grade token routing raised the error plain and rotated and lowered it only with the balance (`bench/results/2026-09-15_sol_token_aug_x_options_b49_s15.json`); those balanced rows ran on a kernel whose token stage scored an unbalanced centroid (fixed in kitchen fc32da2, CHANGELOG 0.159.2), and the re-grade is test 3 of the redesign. Asserted by `bench/check_token_routing.py`. **No render has been judged with any preset on.** |
 | `start_percent` | 0.2 | Dense before this point. **Never measured** — see the step table below, it is badly non-linear. |
 | `end_percent` | 1.0 | Dense after this point. **1.0 since 2026-09-11**, adopting upstream: sglang's `sol_attn` backend has no end cutoff and core's `BlockSparseAttention` defaults to 1.0, so Sol runs through the last step. It was 0.9, lowered per step count so the last step stayed dense (`h3_config.SOL_END_PERCENT_BY_STEPS`, now empty). Never measured at either value. |
 | `min_tokens` | 12288 | Shorter sequences fall through to whatever override is already installed — on every graph here until 2026-09-15 that was **sage**, not dense torch, so this gate chose Sol against a kernel about 2.7x ahead of torch flash rather than against a naive one. *Since 2026-09-15* the default graphs install core's `ModelAttentionBackend` at `h3_config.DENSE_BACKEND_NODE` (kitchen's `int8_attention`) under Sol instead, sage stays only on the arms `bench/check_attention_defaults.py::FLOOR_STEMS` names, and the crossover against the kitchen kernel is unmeasured. `SOL_RECOMMENDED_CUDA` **adopted 12288 on 2026-08-27**, having pinned 4096 since the CUDA migration; `SOL_CUDA_DEFAULTS` already recorded that upstream puts the crossover near 12k and that 4096 "engages Sol-Attn in the regime where it costs time", and the sage baseline only moves that crossover up. **Neither value has been measured here, and the change alters nothing this repo renders** — DiT calls are 31k-128k tokens, token-refiner calls ~311 rows, so both select identically. It closes one reachable gap: at ~22 frames, S ~ 7,194, 4096 ran Sol at a length nothing has shown it wins. **Corrected 2026-08-27:** this row previously argued both values were no-ops from S = 7,194 being "already above 4096" — 7,194 is below 12288, so they disagreed there, and the no-op claim needs the length qualifier. |
-| `sink_conditioning` | `exact_kv_and_rows` | Keeps the target audio's queries exact. **NOT the dominant knob at reference load** — that was v1 arithmetic; under the v2 node the swing is ~0.5 points, not 23. See the reference section. **`exact_kv_and_all_rows` added 2026-09-04**, not the default and no graph ships it: every conditioning query row dense, references included. The kernel takes one dense-query range, so "text and audio dense, references sparse" is not expressible when reference rows sit between them; this is the range that covers both. On t2v the extra cost over the default is the text rows alone; on ref2v with a video reference it is the reference's rows, priced by the recomputed sink-share table. The modes are `sol_attn_h3.py::SINK_CONDITIONING_MODES`; `_sink_blocks` refuses any other string. Chosen by a patch at render time; the first probe run with it on is how it earns or loses its place (`docs/roadmap.md`, forward plan 2026-09-04, step 3). |
-| `morton` | False | *2026-09-18: works with core's memory compiler; the node no longer refuses it. The reorder now runs outside the DiT blocks (embedder input, `position_ids`, final-layer output) and a full-length render with the compiler on is bit-identical to the compiler-off one (`bench/results/2026-09-18_sol_reorder_under_memory_compiler.md`). It declines under a non-uniform video denoise mask.* *2026-09-17: measured with the CUDA kernel at full length, error against routed density with tau swept: the `3d` curve is below plain order on every captured cell, `2d_frame` and `hilbert` are not improvements and are deprecated as choices (`bench/results/2026-09-17_sol_orderings.md`). Still off: no clip judged. The reorder is pinned invisible to the model by `bench/check_sol_reorder_equivalence.py`, which was written with a fix for per-token modulation rows not moving with their tokens.* Z-order the video tokens so each 64-token block is a compact 3D neighbourhood. Neutral for dense attention **in exact arithmetic** -- not bit-identical, measured. **Under Sol it is not a free toggle: block membership feeds `kcvar`, so turning it on moves the routing threshold and the routed density at a fixed `tau`.** Direction not derivable, unmeasured. `Canonical: docs/morton.md` |
-| `morton_curve` | `3d` | Node default, and what `SOL_RECOMMENDED_CUDA` pins since 2026-08-16, on a centroid-fidelity measurement; `2d_frame` orders within each frame and leaves frame order alone. Changes nothing while `morton=False`. *Corrected 2026-09-10:* this cell gave the node default as `2d_frame`; `sol_attn_h3.py`'s `define_schema` says `3d`. `Canonical: docs/morton.md` |
-| `pooled_tail` | True | The kernel's `tail`. ON, every unselected block contributes one pooled term, the paper's correction; OFF drops them, which is the SLA / VSA fine stage. See "`pooled_tail=False` is SLA" below. *Corrected 2026-09-10:* this table carried `centroid_tail` and `reuse_qkv_memory` rows here, two widgets the node dropped when comfy-kitchen#117 removed them from the kernel; `pooled_tail` replaced them in this position of the node's inputs. |
 | `verbose` | True | Per-shape dispatch logging, once per distinct shape per server process: sparse or dense and why, the options on the call (`token_aug`, `qk_balance`, `rotate`), the conditioning sink ranges. No synchronisation, no cost. **On by default since 2026-09-17** (owner): a render where Sol silently stayed dense looks exactly like one where it ran. Separately, and not gated on this widget, the node logs one `[h3-sol] on:` line each time it patches a model: the sigma window with the percents behind it, the selection rule, `qk_balance`, `rotate`, how many blocks carry token routing or are kept dense, and what the fallback is. |
-| `dense_blocks` | `45,48,49` since 2026-09-25 (owner; `""` before) | Blocks routed to the chained dense fallback instead of Sol, e.g. `0-2,-1`; this is not exact torch attention. The fallback was sage on every graph until 2026-09-15; since then it is core's kitchen backend node on the default graphs and sage only on the sage arms. Negative indices count from the end, so `-1` is block 49 on a 50-block DiT (`block_spec.py`). *From 2026-09-02 until 2026-09-25 the node and both shared configs shipped empty; since 2026-09-25 they ship `SOL_DENSE_TAIL` (`sol_attn_h3.py` and `workflows/h3_config.py`).* `0-2,32` shipped from 2026-08-29 until 2026-09-02, but the owner demoted it to an explicit experiment: its propagation record covered only 11/50 blocks, one base-model trajectory at a specially isolated sigma, and no perceptual or set-interaction A/B. See the propagation section and the 2026-09-02 production-geometry route record. |
-| `tau_profile` NEW | unset | Only under `adaptive tau`. Per-block tau, `blocks=tau` separated by `;` or newlines. `force_input`, so it needs a node wired to it — a socket, not a widget value. |
-| `token_aug_blocks` NEW 2026-09-08 | `""` (off) | Per-block token routing (Comfy-Org/comfy-kitchen #156, in 0.2.33). `blocks=budget` separated by `;` or newlines, e.g. `0,24,32=64`; budget is 0, 64, 128, 192 or 256 and anything else is refused when the node runs rather than mid-render. **A widget, unlike `tau_profile`**, and last in the widget order because it is declared optional. Off in both shared configs, and per block rather than global because the grade is per block: on the captured Base16 cells it lowered Sol's error against exact attention on four of five captured blocks at every captured step and RAISED it on block 49 at every step, so a global switch expresses only the configuration measured to be wrong. **No render has been judged with it on**; that is `docs/research/2026-09-05_token_aug_plan.md` stage 5. Use 64 if any: 64/128/256 measured indistinguishable in accuracy and in isolated kernel time, so wider buys nothing while switching it on at all costs. Verified 2026-09-08 that `token_aug=0` is byte-identical to omitting the argument, so shipping it off moves no existing measurement. |
-| `token_routing` NEW 2026-09-17, reworked 2026-09-25 | `off` | One dropdown for the whole setting: `off` (default), `measured blocks (0, 24, 32, 40)`, `early and middle (all but the last five)`, `all blocks (needs qk_balance and rotate)`, and `custom (the token_aug_blocks list)`, the only option that reads the list (now under the node's advanced inputs). Budget 64 in every preset. `measured blocks` is the four captured blocks where token routing lowered the error; `early and middle` extrapolates from them; `all blocks` reaches the last blocks, where token routing RAISED the error unless `qk_balance` and `rotate` were both on (`bench/results/2026-09-15_sol_token_aug_x_options_b49_s15.json`), so the node refuses it without them. `custom` with an empty list, and a preset with text typed, are refused. Until 2026-09-25 the default was `text field`, which read the list and meant off only when it was empty; a graph still holding that value now fails validation rather than taking a new meaning, and an API graph with no `token_routing` key at all keeps its list. The table is `sol_attn_h3.py::TOKEN_ROUTING_MODES`, asserted by `bench/check_token_routing.py`. **No render has been judged with any preset on.** Declared last, for the reason `qk_balance` is. |
-| `qk_balance` NEW 2026-09-15 | False (off) in the node; `SOL_RECOMMENDED_CUDA` ships it on since 2026-09-15 | The kernel's own per-head q/k channel rebalancing inside its INT8 quantizers (`sol_attn(..., qk_balance=True)`, carried on the owner's kitchen fork, `h3-build`, not upstream). Per call and per head it scales q up and k down on the channels where K is loud, which changes no attention score in exact arithmetic and leaves the routing threshold in the unbalanced space; heads whose four loudest K channels hold under a fifth of K's energy are untouched, so on ordinary blocks it is inert. Exists for MiniMax H3's last blocks (`docs/h3_block49_quant_error.md`); graded on captures by `bench/grade_channel_balance.py` (its `kernel` row); the shipped graphs carry it on (`h3_config.SOL_RECOMMENDED_CUDA`, owner decision), and the graphs that carry False declare that as a deviation (`bench/check_attention_defaults.py`). Refused at patch time on a kernel build without it. |
 
-`routed_cap_percent` was here until 2026-08-22 and the v3 node does not
-declare it. It capped the routed-block list as a percent of the sequence to
-bound the one workspace term growing with T².
-
-**`top-k` agrees with the algorithm less closely than `tau` does, measured
-2026-08-22.** At B=1 T=1024 H=8, kernel against the vendored oracle with the
-same selection on both sides, `tau=1.0` lands at cos 0.9987 while `topk_ratio`
-lands at 0.975-0.983 -- the top-k path is roughly an order of magnitude
-further from its own reference. Consistent with what the CUDA source says of
-its threshold ("matches exact top-k up to int8 rounding at the boundary"),
-which the tau path does not have to survive the same way. `bench/probe_sol_topk.py`
-is the run; **read its caveat before quoting either number** -- synthetic input
-gives a near-uniform softmax and nothing for a router to find, so only the
-ratio between the two selections at one shape means anything, and neither
-absolute figure does.
+**Retired 2026-09-27, with the code only they reached:** `selection` and
+`keep_percent` with top-k (the SLA lane closed), `pooled_tail` (always on:
+it is the method), `morton` and `morton_curve` (Morton closed, not refuted:
+`docs/morton.md`), `tau_profile` (never wired), and `token_aug_blocks` (now the
+`custom` option's `blocks`). Their rows are in git before that date.
 
 ### Two shipped configs, not one: PDD arms have their own
 
@@ -875,6 +842,9 @@ entry files against `site-packages` through `readlink -f`. The manifests match.
 
 ### The node is ours now, and what that changed
 
+*2026-09-27: `MiniMaxH3SolAttn` is deleted; the node is `MiniMaxH3Sol`
+("The CUDA node" above). This section is its history.*
+
 **Since 2026-08-30 every shipped graph wires `MiniMaxH3SolAttn`, a node in this
 pack, not the vendored `SolAttnMiniMax`.** `sol_attn_h3.py`'s header lists the
 four local changes; `vendor/README.md` records why forking was the right call
@@ -910,15 +880,15 @@ Read from the signature and from
 
 | kernel argument | status here | what it does |
 |---|---|---|
-| `tau` / `topk_ratio` | exposed, `selection` | threshold or SLA-style top-k |
+| `tau` / `topk_ratio` | `tau` exposed; `topk_ratio` always 0 since 2026-09-27 (the SLA lane closed) | threshold selection |
 | `scale`, `sink_blocks`, `sink_q` | derived | the conditioning sink |
-| `tail` | exposed as `pooled_tail` | ON, unselected blocks contribute one pooled term each. OFF, they are dropped: softmax over routed blocks only |
+| `tail` | always on since 2026-09-27 (was `pooled_tail`) | ON, unselected blocks contribute one pooled term each: Sol's own correction |
 | `key_bias` | **not exposed, deliberate** | per-key log-space bias, legal only where the biased keys are sink-covered -- on H3 that is the conditioning rows and nothing else. An untrained prompt-adherence knob; documented in `sol_attn_h3.py`, not offered |
 | `block_len` | **not exposed, inert here** | live rows per 64-row block, for a caller that PADS. H3's packed sequence is contiguous, so the kernel derives the ragged final block from T. VSA's cube tiling is the one caller that needs it |
 | `coarse_gate` | **not exposed, by choice** | VSA's gated coarse branch, a learned projection of the BLOCK INPUT. An override is handed Q/K/V already built, but a pre-hook can stash the block input into `transformer_options` -- the route this node already uses for the block index -- so it IS reachable. It lives in its own node because VSA also needs the cube reorder and padding, and because the two regimes are mutually exclusive at the same 50 blocks |
 | `sol_attn_chunked` | **unreachable from the Sol node's override; `MiniMaxH3SolChunked` (`sol_chunked_h3.py`) reaches it from the attention module's forward** | it exists to never materialise Q/K/V, and by the time an override runs `qkv_proj` has run in full and rope is applied -- so its saving is already spent and feeding it post-rope tensors would apply rope twice. Upstream reports ~5 GB less peak at 113k tokens, which is a length this repo renders |
 | `blk_cnt` | **ours, passed only when `H3_SOL_OBSERVE` is armed** | an int32 `(B, H, ceil(T/64))` out-parameter the CUDA backend fills from the plan's `cnt` slot after the same launch: how many key blocks each query block attended exactly, forced pairs included. Added on the `sol-blk-cnt` branch (2026-09-01), absent from upstream main. Unarmed, the node passes no such keyword, so an older wheel keeps rendering |
-| `qk_balance` | **ours, exposed as `qk_balance`; node default off, shipped on** | per-(batch, head, channel) rescale of q by f and k by 1/f inside the INT8 quantizers, f from the call's own channel rms (alpha 0.5, gate on the top-4 K energy share, constants in the kernel's `sol_layout.cuh` and mirrored in kitchen's eager reference). Exact for q.k; the threshold, kmean, kcvar and the coarse branch stay unbalanced. CUDA only; HIP refuses True; `sol_attn_chunked` does not take it (its q/k arrive chunk by chunk, before the sequence's rms exists). Carried on `h3-build` since 2026-09-15 beside `blk_cnt`. |
+| `qk_balance`, `rotate` | **ours, exposed through `quantizer` since 2026-09-27; `balanced` shipped** | per-(batch, head, channel) rescale of q by f and k by 1/f inside the INT8 quantizers, f from the call's own channel rms (alpha 0.5, gate on the top-4 K energy share, constants in the kernel's `sol_layout.cuh` and mirrored in kitchen's eager reference). Exact for q.k; the threshold, kmean, kcvar and the coarse branch stay unbalanced. CUDA only; HIP refuses True; `sol_attn_chunked` does not take it (its q/k arrive chunk by chunk, before the sequence's rms exists). Carried on `h3-build` since 2026-09-15 beside `blk_cnt`. |
 
 **Corrected 2026-08-30.** This said both were unreachable and that both "need
 the BLOCK forward replaced". Only `sol_attn_chunked` does. `coarse_gate` is
@@ -1061,6 +1031,9 @@ because `override` has already returned dense. The live handling is the one in
 `override`, and it was the silent one.
 
 ### `pooled_tail=False` is SLA, and that is the reason it is exposed
+
+*2026-09-27: the SLA lane is closed and `pooled_tail` is retired with it; the
+tail is always on. This section is the record of why the switch existed.*
 
 Upstream's own tests call it "the SLA / VSA fine stage". With `top-k (SLA)`
 selection it reproduces the routing the lightx2v Turbo-SLA LoRA was distilled

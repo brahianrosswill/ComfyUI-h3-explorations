@@ -98,6 +98,8 @@ def describe(g: dict) -> dict:
     for i in by.get("BlockSparseAttention", []):
         attn.append(f"VSA keep {i.get('selection.keep_percent')} from {i.get('start_percent')}"
                     if i.get("selection") == "vsa" else f"sparse {i.get('selection')}")
+    for i in by.get("MiniMaxH3Sol", []):
+        attn.append(f"Sol {i.get('quantizer')}")
     if by.get("MiniMaxH3SolAttn"):
         attn.append("Sol")
     if by.get("MiniMaxH3SageAttention"):

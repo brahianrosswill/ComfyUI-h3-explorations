@@ -38,11 +38,11 @@ routing arithmetic here IS that module's -- `block_stats`, `exact_mask` and
 routing rule rather than the CUDA kernel's INT8 arithmetic, it is not a speed
 measurement, and it is not valid at a length the capture was not taken at.
 
-**Raster ordering only.** The ordering question is `analyze_routing.py`'s and it
-is answered there; mixing it in here would produce a four-way table whose head
-axis nobody reads. The aggregate rows this emits are directly comparable to that
-tool's raster row on the same capture, head set and tau, which is how the reuse
-is verified -- see `--verify`.
+**Raster ordering only.** The ordering question was `analyze_routing.py`'s,
+and it left that tool on 2026-09-27 with Morton itself
+(docs/research/2026-09-27_sol_node_redesign.md). The aggregate rows this emits
+are directly comparable to that tool's density row on the same capture, head
+set and tau, which is how the reuse is verified -- see `--verify`.
 
 **A spread is not headroom, and the record says which.** A per-head density
 spread inside one cell is the router already responding to per-head content --
@@ -250,12 +250,11 @@ def main():
     ap.add_argument("--out", default=None, help="write the record here")
     ap.add_argument("--verify", action="store_true",
                     help="sweep one cell only and print the aggregate, for comparing "
-                         "against analyze_routing.py's raster row on the same input")
+                         "against analyze_routing.py's density row on the same input")
     args = ap.parse_args()
 
     ar = load_analyze_routing()
     pool = ar.load_eager()
-    ac = ar.load_capture_tools()
 
     capture = Path(args.capture).expanduser()
     files = sorted(
@@ -281,7 +280,7 @@ def main():
         d = torch.load(path, map_location="cpu", weights_only=True)
         q, k = d["q"][0], d["k"][0]
         H, S, _ = k.shape
-        start, stop, grid = ac.video_span(S, (w, h), args.length)
+        start, stop, grid = ar.video_span(S, (w, h), args.length)
 
         g = torch.Generator().manual_seed(0)
         n_heads = H if args.heads == 0 else args.heads
@@ -311,7 +310,7 @@ def main():
                   f"({agg['kernel_density_spread_x']}x)", flush=True)
 
     if args.verify:
-        print("\nCompare the aggregate above against analyze_routing.py's raster row\n"
+        print("\nCompare the aggregate above against analyze_routing.py's density row\n"
               "on the same capture file, --heads and --tau. They must agree exactly:\n"
               "both call the same block_stats/exact_mask/forced_masks.")
         return 0

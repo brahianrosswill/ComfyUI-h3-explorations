@@ -653,6 +653,9 @@ centroid. With the cost at zero, any quality gain at all would justify turning
 it on, so the default is no longer a trade — it is an untested knob left off.
 `Canonical: docs/morton.md`.
 
+*2026-09-27: closed with Morton (`docs/roadmap.md`, "Closed lanes"); the arms
+below are deleted from `bench_e2e_h3.py` and live in git.*
+
 **Arms:** `shipped` (tau 1.3, morton off), `shipped[tau=1.0]`,
 `shipped+morton2d`, `shipped+morton3d`, `shipped+hilbert`, and
 `shipped+reorder_only` for the cost-in-isolation control. All are named arms in
@@ -1986,7 +1989,7 @@ not asked for it.
 
 ## 27. The window's start, with the vendor's own step schedule as the prior
 
-Added 2026-09-04. `start_percent` on `MiniMaxH3SolAttn` has never been
+Added 2026-09-04. `start_percent` on the Sol node (`MiniMaxH3Sol` since 2026-09-27) has never been
 measured at any value (`workflows/h3_config.py`, the note above the CUDA
 dict), and roadmap step 5 asks where the window should start. sglang's cube
 sparse attention backend, merged 2026-09-02 with two MiniMax engineers as
@@ -2019,7 +2022,7 @@ and would be node code, so a restart before it counts.
 **The arm.** The shipped Sol graph with `start_percent` set from the
 mapping record's interval, against the shipped 0.2, both at the shipped tau
 and `end_percent`, matched seed, one bank scene; `bench/run_graph_arms.py
---set 'label:MiniMaxH3SolAttn.start_percent=<value>'` is the whole
+--set 'label:MiniMaxH3Sol.start_percent=<value>'` is the whole
 difference. Probe first (`sol_block_probe.py` on an armed restart), then one
 blind pair through `docs/eval_comparison.md` section 3; the roadmap's
 decision standard applies. Speed is the cheap half: each leading dense step

@@ -30,7 +30,7 @@ all three together with `topk_ratio`.
 |---|---|---|---|
 | sage | the arithmetic: quantised dense attention | no | shipped |
 | Sol-Attn | the algorithm: route a subset exact, pooled term for the rest | no | shipped |
-| SLA | the algorithm: route, no pooled term | yes, and the Turbo-SLA LoRA exists | `MiniMaxH3SolAttn` with `pooled_tail` off |
+| SLA | the algorithm: route, no pooled term | yes, and the Turbo-SLA LoRA existed | none since 2026-09-27: the SLA lane closed and `MiniMaxH3SolAttn` (which ran it with `pooled_tail` off) is deleted |
 | VSA | route, no pooled term, plus a gated coarse branch | yes, the gate is a learned projection | core's `BlockSparseAttention` (selection "vsa"); this node is parked |
 | PDD | the sampler: fewer evaluations | yes, the Acc LoRAs | shipped |
 
@@ -50,8 +50,8 @@ holds the pointers. Still unverified here, but no longer a guess.
 node because an `optimized_attention_override` is handed Q, K and V already
 built. That is true of the hook and false as a conclusion: a forward pre-hook
 on `Attention` can stash the block input into `transformer_options`, which the
-override receives, and `MiniMaxH3SolAttn` already uses exactly that route to
-publish the block index. Verified by executing the pattern rather than reading
+override receives, and `MiniMaxH3SolAttn` used exactly that route to publish
+the block index (until 2026-09-27; `MiniMaxH3Sol` reads core's `block_index`). Verified by executing the pattern rather than reading
 it. So the gate is reachable from there.
 
 The real reasons are weaker and worth stating as what they are:

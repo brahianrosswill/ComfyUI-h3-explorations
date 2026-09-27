@@ -111,7 +111,8 @@ SAGE_NODE_IDS = ("MiniMaxH3SageAttention",)
 # 2026-08-31**, so this went quietly blind to every regenerated graph -- it
 # found no Sol node and checked nothing, which reads exactly like a graph
 # that wires no Sol.
-SOL_NODE_IDS = ("SolAttnPatch", "SolAttnMiniMax", "MiniMaxH3SolAttn")
+# `MiniMaxH3Sol` since the redesign (2026-09-27); the older ids stay for older graphs.
+SOL_NODE_IDS = ("SolAttnPatch", "SolAttnMiniMax", "MiniMaxH3SolAttn", "MiniMaxH3Sol")
 
 
 def main() -> int:

@@ -12,17 +12,15 @@ validator's five checks against this page's light and dark panel surfaces; where
 two series share a hue they are separated by a hatch texture and direct labels,
 never by hue alone.
 
-Two entry points:
+`python bench/gen_figures.py postmortem --out FILE.html` writes the
+postmortem figures as a standalone HTML fragment, for looking at them without
+building the page. The page itself is built by
+`bench/render_postmortem_html.py`, which imports `postmortem_figures()`.
 
-- `python bench/gen_figures.py morton --out DIR` writes the Morton block maps.
-  `bench/gen_morton_figures.py` is a shim over this and prints the same lines.
-- `python bench/gen_figures.py postmortem --out FILE.html` writes the five
-  postmortem figures as a standalone HTML fragment, for looking at them without
-  building the page. The page itself is built by
-  `bench/render_postmortem_html.py`, which imports `postmortem_figures()`.
+The `morton` entry point and the Morton block maps it drew were removed on
+2026-09-27 with Morton itself (docs/research/2026-09-27_sol_node_redesign.md).
 
-CPU only. The Morton path needs torch (no CUDA, no model); the postmortem path
-needs nothing but the standard library.
+CPU only, and nothing but the standard library.
 """
 from __future__ import annotations
 
@@ -766,163 +764,6 @@ def postmortem_figures(commit_range: str) -> list[Figure]:
 
 
 # --------------------------------------------------------------------------
-# the Morton block maps, moved here verbatim from gen_morton_figures.py
-# --------------------------------------------------------------------------
-
-BS = 64
-CELL = 9
-FRAME = 2          # not frame 0: at 1344x768 a frame is 15.75 blocks, so frame 0
-                   # is the one frame whose blocks happen to start aligned.
-
-
-def _vendor():
-    """The LIVE Sol node. Named `_vendor` when that WAS the vendored file;
-    repointed 2026-08-31, since the vendored copy is a pristine reference
-    ComfyUI does not load and cannot run on the installed kernel."""
-    from _live_sol import live_sol
-    return live_sol()
-
-
-def block_map(grid, curve, frame):
-    import torch
-    T, H, W = grid
-    total = T * H * W
-    if curve == "raster":
-        perm = torch.arange(total, dtype=torch.int64)
-    else:
-        perm, _ = _vendor().morton_perm(grid, "cpu", curve)
-    block_of = torch.empty(total, dtype=torch.int64)
-    block_of[perm] = torch.arange(total, dtype=torch.int64) // BS
-    base = frame * H * W
-    return {(r, c): int(block_of[base + r * W + c]) for r in range(H) for c in range(W)}
-
-
-def runs(cells):
-    """Maximal rectangles covering a block: contiguous column runs per row,
-    merged vertically where a run repeats."""
-    by_row = {}
-    for r, c in cells:
-        by_row.setdefault(r, []).append(c)
-    spans = []
-    for r, cols in by_row.items():
-        cols.sort()
-        start = prev = cols[0]
-        for c in cols[1:]:
-            if c == prev + 1:
-                prev = c
-                continue
-            spans.append((r, start, prev))
-            start = prev = c
-        spans.append((r, start, prev))
-    remaining, out = set(spans), []
-    for r, c0, c1 in sorted(spans):
-        if (r, c0, c1) not in remaining:
-            continue
-        h = 1
-        while (r + h, c0, c1) in remaining:
-            h += 1
-        for k in range(h):
-            remaining.discard((r + k, c0, c1))
-        out.append((r, c0, c1, h))
-    return out
-
-
-def describe(cells):
-    """Plain-language shape of the highlighted block, from its own cells."""
-    pieces = runs(cells)
-    rs = [r for r, _ in cells]
-    cs = [c for _, c in cells]
-    bw, bh = max(cs) - min(cs) + 1, max(rs) - min(rs) + 1
-    if len(pieces) == 1:
-        _, c0, c1, h = pieces[0]
-        return f"one solid {c1 - c0 + 1} x {h} block"
-    sizes = {(c1 - c0 + 1, h) for _, c0, c1, h in pieces}
-    if len(sizes) == 1:
-        w, h = sizes.pop()
-        return (f"{len(pieces)} separate {w} x {h} pieces, "
-                f"{bw} x {bh} apart")
-    return f"{len(pieces)} separate pieces, {bw} x {bh} apart"
-
-
-def morton_panel(grid, curve, highlight_at=(0, 10)):
-    _, H, W = grid
-    m = block_map(grid, curve, FRAME)
-    hi = m[highlight_at]
-    by_block = {}
-    for (r, c), b in m.items():
-        by_block.setdefault(b, []).append((r, c))
-    w_px, h_px = W * CELL, H * CELL
-    parts = [f'<rect x="0" y="0" width="{w_px}" height="{h_px}" fill="none" '
-             f'stroke="currentColor" stroke-opacity=".3" stroke-width="1"/>']
-    for b, cells in sorted(by_block.items()):
-        for (r, c0, c1, h) in runs(cells):
-            x, y = c0 * CELL, r * CELL
-            wd, ht = (c1 - c0 + 1) * CELL, h * CELL
-            if b == hi:
-                parts.append(f'<rect x="{x}" y="{y}" width="{wd}" height="{ht}" '
-                             f'fill="{SIGNAL}" fill-opacity=".88"/>')
-            else:
-                op = 0.05 + 0.055 * (b % 4)
-                parts.append(f'<rect x="{x}" y="{y}" width="{wd}" height="{ht}" '
-                             f'fill="currentColor" fill-opacity="{op:.3f}" '
-                             f'stroke="currentColor" stroke-opacity=".22" '
-                             f'stroke-width=".6"/>')
-    return "".join(parts), w_px, h_px, describe(by_block[hi])
-
-
-def morton_figure(panels, gap=46, pad_top=36, pad_bot=28):
-    xs, total_w, max_h = [], 0, 0
-    for _, w, h, _, _, _ in panels:
-        xs.append(total_w)
-        total_w += w + gap
-        max_h = max(max_h, h)
-    total_w -= gap
-    total_h = pad_top + max_h + pad_bot
-    mono = "ui-monospace,SFMono-Regular,Menlo,monospace"
-    out = [f'<svg viewBox="0 0 {total_w} {total_h}" role="img" '
-           f'xmlns="http://www.w3.org/2000/svg">']
-    for (body, w, h, shape, label, sub), x in zip(panels, xs):
-        out.append(f'<text x="{x}" y="13" font-size="13" font-weight="700" '
-                   f'fill="currentColor" font-family="{mono}">{label}</text>')
-        out.append(f'<text x="{x}" y="28" font-size="11" fill="currentColor" '
-                   f'fill-opacity=".6" font-family="{mono}">{sub}</text>')
-        out.append(f'<g transform="translate({x},{pad_top})">{body}</g>')
-        out.append(f'<text x="{x}" y="{pad_top + h + 19}" font-size="11.5" '
-                   f'fill="{SIGNAL}" font-weight="700" font-family="{mono}">'
-                   f'&#9632; {shape}</text>')
-    out.append('</svg>')
-    return "".join(out)
-
-
-G1344 = (87, 24, 42)
-G1024 = (87, 24, 32)
-
-
-def morton_figures():
-    """(fig1, fig2, [shape lines]) for the Morton explainer page."""
-    b1, w1, h1, s1 = morton_panel(G1344, "raster")
-    b2, w2, h2, s2 = morton_panel(G1344, "2d_frame")
-    b4, w4, h4, s4 = morton_panel(G1024, "2d_frame")
-    fig1 = morton_figure([
-        (b1, w1, h1, s1, "raster order", "1344x768 &#183; 24 x 42 patches"),
-        (b2, w2, h2, s2, "morton 2d_frame", "1344x768 &#183; 24 x 42 patches"),
-    ])
-    fig2 = morton_figure([
-        (b2, w2, h2, s2, "1344x768", "24 x 42 &#183; 42 is not a multiple of 8"),
-        (b4, w4, h4, s4, "1024x768", "24 x 32 &#183; both are multiples of 8"),
-    ])
-    return fig1, fig2, [f"raster 1344   {s1}", f"morton 1344   {s2}",
-                        f"morton 1024   {s4}"]
-
-
-def write_morton(out_dir: Path) -> list[str]:
-    fig1, fig2, lines = morton_figures()
-    (out_dir / "fig1.svg").write_text(fig1)
-    (out_dir / "fig2.svg").write_text(fig2)
-    return lines + [f"bytes: fig1 {len(fig1)}, fig2 {len(fig2)}"]
-
-
-# --------------------------------------------------------------------------
 # CLI
 # --------------------------------------------------------------------------
 
@@ -944,18 +785,11 @@ code { font-family:ui-monospace,Menlo,monospace; font-size:.9em; }
 def main() -> None:
     ap = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
-    m = sub.add_parser("morton", help="write fig1.svg / fig2.svg")
-    m.add_argument("--out", default=".", help="directory to write into")
     p = sub.add_parser("postmortem", help="write the postmortem figures alone")
     p.add_argument("--out", default="figures.html")
     p.add_argument("--range", default="5264c66..878e8f9",
                    help="commit range for the timeline lane")
     args = ap.parse_args()
-
-    if args.cmd == "morton":
-        for lineval in write_morton(Path(args.out)):
-            print(lineval)
-        return
 
     figs = postmortem_figures(args.range)
     body = "".join(f.to_html() for f in figs)

@@ -1750,7 +1750,8 @@ def price(node: dict, graph: dict) -> list[str]:
 # 2026-08-31, so the active-but-unwired report could not fire on the node
 # every shipped graph now carries. The vendored id stays: saved graphs
 # predating the switch still wire it.
-ATTN_NODES = ("MiniMaxH3SageAttention", "SolAttnMiniMax", "MiniMaxH3SolAttn")
+# `MiniMaxH3Sol` since the redesign (2026-09-27).
+ATTN_NODES = ("MiniMaxH3SageAttention", "SolAttnMiniMax", "MiniMaxH3SolAttn", "MiniMaxH3Sol")
 _OUTPUT_TYPES = {"VHS_VideoCombine", "SaveImage", "PreviewImage", "SaveAudio",
                  "SaveAnimatedWEBP", "SaveWEBM", "SaveVideo", "PreviewAny"}
 

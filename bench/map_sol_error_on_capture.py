@@ -12,12 +12,11 @@ is. A morph is local: a few latent frames, part of the picture. This asks the
 local question of a capture taken from a render where the morph is known to
 happen, and where and when it happens was read off the clip.
 
-For each capture and each token ordering (plain raster, `3d`), one call of the
-real CUDA kernel at the shipped recipe and the given tau, and then per video
-token: the norm of (Sol output - exact fp32 output) over the head prefix,
-divided by the MEAN per-token norm of the exact output, so a token's number is
-comparable to any other token's and the mean over tokens is a relative error.
-Reported per ordering:
+For each capture, one call of the real CUDA kernel at the shipped recipe and
+the given tau, and then per video token: the norm of (Sol output - exact fp32
+output) over the head prefix, divided by the MEAN per-token norm of the exact
+output, so a token's number is comparable to any other token's and the mean
+over tokens is a relative error. Reported per cell:
 
   whole          mean over all video tokens
   region         mean over the tokens inside --region (token-grid indices,
@@ -26,17 +25,20 @@ Reported per ordering:
   by_frame       the mean per latent frame, so a peak in time is visible
   top_frames     the latent frames with the highest mean
 
-What would make this informative: under plain order the region (or its latent
-frames) stands out from the rest, and under `3d` it does not. What would make
-it uninformative: the region looks like everywhere else under both orderings,
-which says the whole-call error of a single attention call is the wrong
-instrument for this artifact, however it is sliced. Both are findings.
+What would make this informative: the region (or its latent frames) stands out
+from the rest. What would make it uninformative: the region looks like
+everywhere else, which says the whole-call error of a single attention call is
+the wrong instrument for this artifact, however it is sliced. Both are
+findings.
 
 Limits: a head prefix; the captured blocks and steps; one tau; error of ONE
 attention call against exact attention on the same inputs, not the error the
-trajectory accumulates over fifty blocks and twelve Sol steps; the routed
-densities of the two orderings differ slightly at a fixed tau and are reported.
-The capture must have been taken with reordering OFF.
+trajectory accumulates over fifty blocks and twelve Sol steps.
+
+The token-ordering axis (raster against Morton `3d`) was removed on 2026-09-27
+with Morton itself (docs/research/2026-09-27_sol_node_redesign.md); records
+written before then carry one row per ordering under each cell. A capture
+taken before then must have been taken with reordering OFF.
 """
 
 from __future__ import annotations
@@ -53,9 +55,6 @@ REPO = HERE.parent
 sys.path.insert(0, str(HERE))
 from analyze_sol_error import dense_reference, load_capture, load_cuda_kernel  # noqa: E402
 from _live_sol import live_sol  # noqa: E402
-
-ORDERINGS = ("raster", "3d")
-
 
 def _span(text):
     a, b = text.split(":")
@@ -79,6 +78,7 @@ def main() -> int:
     sys.path.insert(0, str(REPO / "workflows"))
     import h3_config
     recipe = h3_config.SOL_RECOMMENDED_CUDA
+    qk_balance, rotate = node.SOL_QUANTIZERS[recipe["quantizer"]]
     sol = load_cuda_kernel()
     grid = tuple(int(x) for x in args.grid.split(","))
     (t0, t1), (h0, h1), (w0, w1) = (_span(x) for x in args.region.split(","))
@@ -100,57 +100,47 @@ def main() -> int:
         ref = dense_reference(q, k, v)                                  # [1, H, S, D] fp32, raster order
         ref_tok = ref[0, :, start:].permute(1, 0, 2).reshape(n_video, -1)
         scale = float(ref_tok.norm(dim=-1).mean())
-        layout = {"sol_h3_video_span": (start, tokens), "sol_h3_audio_span": (a0, a1)}
-        sink_kv, sink_q = node._sink_blocks(layout, tokens, recipe["sink_conditioning"])
+        sink_kv, sink_q = node.sink_ranges((start, tokens), (a0, a1), tokens, recipe["sink_conditioning"])
         nb = (tokens + 63) // 64
-        rows = {}
-        for name in ORDERINGS:
-            if name == "raster":
-                index = torch.arange(tokens)
-            else:
-                perm, _ = node._perm_for(grid, name, "cpu", start)
-                index = torch.cat([torch.arange(start), start + perm.cpu()])
-            back = torch.argsort(index)
-            to = dict(device="cuda", dtype=torch.bfloat16)
-            qs, ks, vs = (x[:, :, index].to(**to).permute(0, 2, 1, 3).contiguous() for x in (q, k, v))
-            cnt = torch.zeros((1, qs.shape[2], nb), dtype=torch.int32, device="cuda")
-            out = sol(qs, ks, vs, tau=args.tau, scale=None, sink_blocks=list(sink_kv), sink_q=list(sink_q),
-                      topk_ratio=0.0, tail=bool(recipe["pooled_tail"]), qk_balance=bool(recipe["qk_balance"]),
-                      blk_cnt=cnt)
-            torch.cuda.synchronize()
-            out = out.permute(0, 2, 1, 3).float().cpu()[:, :, back]      # back to raster order
-            out_tok = out[0, :, start:].permute(1, 0, 2).reshape(n_video, -1)
-            err = ((out_tok - ref_tok).norm(dim=-1) / scale).reshape(grid)
-            by_frame = err.mean(dim=(1, 2))
-            top = torch.topk(by_frame, 8).indices.tolist()
-            rows[name] = {
-                "density": round(float(cnt.float().mean()) / nb, 5),
-                "whole": round(float(err.mean()), 5),
-                "region": round(float(err[inside].mean()), 5),
-                "region_over_whole": round(float(err[inside].mean() / err.mean()), 3),
-                "region_frames_over_whole": round(float(by_frame[t0:t1].mean() / err.mean()), 3),
-                "top_frames": sorted(top),
-                "by_frame": [round(float(x), 5) for x in by_frame],
-            }
-            r = rows[name]
-            print(f"{cell} {name:6s} density {r['density']:.3f}  whole {r['whole']:.4f}  region {r['region']:.4f} "
-                  f"({r['region_over_whole']:.2f}x)  region's frames {r['region_frames_over_whole']:.2f}x  "
-                  f"top frames {r['top_frames']}", flush=True)
-            del qs, ks, vs, out, cnt
-            torch.cuda.empty_cache()
-        cells[cell] = rows
+        to = dict(device="cuda", dtype=torch.bfloat16)
+        qs, ks, vs = (x.to(**to).permute(0, 2, 1, 3).contiguous() for x in (q, k, v))
+        cnt = torch.zeros((1, qs.shape[2], nb), dtype=torch.int32, device="cuda")
+        out = sol(qs, ks, vs, tau=args.tau, scale=None, sink_blocks=list(sink_kv), sink_q=list(sink_q),
+                  topk_ratio=0.0, tail=node._TAIL, qk_balance=qk_balance, rotate=rotate, blk_cnt=cnt)
+        torch.cuda.synchronize()
+        out = out.permute(0, 2, 1, 3).float().cpu()
+        out_tok = out[0, :, start:].permute(1, 0, 2).reshape(n_video, -1)
+        err = ((out_tok - ref_tok).norm(dim=-1) / scale).reshape(grid)
+        by_frame = err.mean(dim=(1, 2))
+        top = torch.topk(by_frame, 8).indices.tolist()
+        r = {
+            "density": round(float(cnt.float().mean()) / nb, 5),
+            "whole": round(float(err.mean()), 5),
+            "region": round(float(err[inside].mean()), 5),
+            "region_over_whole": round(float(err[inside].mean() / err.mean()), 3),
+            "region_frames_over_whole": round(float(by_frame[t0:t1].mean() / err.mean()), 3),
+            "top_frames": sorted(top),
+            "by_frame": [round(float(x), 5) for x in by_frame],
+        }
+        print(f"{cell} density {r['density']:.3f}  whole {r['whole']:.4f}  region {r['region']:.4f} "
+              f"({r['region_over_whole']:.2f}x)  region's frames {r['region_frames_over_whole']:.2f}x  "
+              f"top frames {r['top_frames']}", flush=True)
+        del qs, ks, vs, out, cnt
+        torch.cuda.empty_cache()
+        cells[cell] = r
         del ref, q, k, v
 
     import importlib.metadata
     Path(args.out).write_bytes(orjson.dumps({
-        "what": "per-token Sol-Attn error against fp32 dense attention on one call, CUDA kernel, by token ordering: "
+        "what": "per-token Sol-Attn error against fp32 dense attention on one call, CUDA kernel, raster order: "
                 "mean over the video, mean inside a named region, and the mean per latent frame",
         "model": "MiniMax H3, int8 convrot checkpoint, base 16-step t2v capture",
         "conditions": {"gpu": torch.cuda.get_device_name(0), "comfy_kitchen": importlib.metadata.version("comfy-kitchen"),
                        "heads": args.heads, "tau": args.tau, "grid_thw": grid, "video_start": start,
                        "audio_span": [a0, a1], "region_thw": [[t0, t1], [h0, h1], [w0, w1]],
-                       "sink_conditioning": recipe["sink_conditioning"], "pooled_tail": recipe["pooled_tail"],
-                       "qk_balance": recipe["qk_balance"], "capture_set": Path(args.captures[0]).resolve().parent.name,
+                       "sink_conditioning": recipe["sink_conditioning"], "pooled_tail": node._TAIL,
+                       "quantizer": recipe["quantizer"], "qk_balance": qk_balance, "rotate": rotate,
+                       "capture_set": Path(args.captures[0]).resolve().parent.name,
                        "captures": [Path(c).name for c in args.captures]},
         "how_to_read": "a token's error is the norm of its output difference over the head prefix divided by the mean "
                        "per-token norm of the exact output; region_over_whole above 1 means error concentrates there",

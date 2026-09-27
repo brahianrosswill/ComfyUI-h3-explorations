@@ -265,7 +265,7 @@ number came out the way it did.
 
 ### Sol-Attn, also from this repo
 
-**`MiniMax H3 Sol-Attn`** (`MiniMaxH3SolAttn`, `sol_attn_h3.py`) — block-sparse
+**`MiniMax H3 Sol-Attn`** (`MiniMaxH3Sol`, `sol_attn_h3.py`; `MiniMaxH3SolAttn` until 2026-09-27) — block-sparse
 attention on the CUDA kernel. **Must come after** the sage node; it composes
 with the attention patch it finds, and reversed it overwrites ours and you
 silently get sage only. Settings live in `workflows/h3_config.py`. This entry
@@ -344,7 +344,7 @@ Load Diffusion Model (UNETLoader)
   -> Model Attention Backend         (core's, "comfy kitchen attention": the
                                       dense kernel; the sage arms wire
                                       MiniMax H3 SageAttention here instead)
-  -> MiniMax H3 Sol-Attn             (ours, MiniMaxH3SolAttn; must be after
+  -> MiniMax H3 Sol-Attn             (ours, MiniMaxH3Sol; must be after
                                       the dense node)
   -> BasicScheduler / BasicGuider    (MODEL forks to both -- rewire both)
 ```

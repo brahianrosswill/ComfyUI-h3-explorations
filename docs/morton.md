@@ -1,5 +1,16 @@
 # Morton ordering in Sol-Attn: what it does, and what we actually know
 
+> **2026-09-27: closed, and the code is gone.** The owner closed the Morton
+> lane ("if morton doesnt exist anywhere or has no traction and you see no
+> value it can go"); `docs/roadmap.md`, "Closed lanes". The reorder, the curves
+> (`sol_curves.py`), the reorder check and the ordering arms were deleted with
+> the old Sol node (`docs/research/2026-09-27_sol_node_redesign.md`, section
+> "Morton"), and git has them. **Closed, not refuted:** the `3d` order's lower
+> Sol error at equal routed density on every captured cell
+> (`bench/results/2026-09-17_sol_orderings.md`) stands as a recorded
+> property. This page is the history of the lane; its code citations point at
+> files that no longer exist, or at line numbers that have moved.
+
 Last updated: 2026-08-16. Line numbers are valid at commit `7e5ba88` and are
 checked by `bench/check_doc_links.py`, which resolves every `path:line`
 citation on this page and fails when one goes out of range.

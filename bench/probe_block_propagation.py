@@ -119,7 +119,7 @@ def build_arm(base: dict, block: int | None, seed: int) -> tuple[dict, str]:
             raise SystemExit(f"expected exactly one of {classes}, found {len(hits)}")
         return hits[0]
 
-    sol, sched, sampler, noise = (one("MiniMaxH3SolAttn", "SolAttnMiniMax"), one("BasicScheduler"),
+    sol, sched, sampler, noise = (one("MiniMaxH3Sol", "MiniMaxH3SolAttn", "SolAttnMiniMax"), one("BasicScheduler"),
                                  one("KSamplerSelect"), one("RandomNoise"))
 
     g[sched]["inputs"]["steps"] = PROBE_STEPS

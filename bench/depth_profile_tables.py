@@ -39,7 +39,18 @@ import sys
 from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from compare_sol_orderings import summarize  # noqa: E402
+
+
+def _raster_cells(path, tau=1.0):
+    """{cell: (density, rel_l2)} at raster order and `tau`, from a Sol
+    orderings-sweep record. Inlined 2026-09-27 from `compare_sol_orderings.py`'s
+    `summarize`, which went with the Morton lane (only its raster half is
+    read here)."""
+    out = {}
+    for cell, curves in json.load(open(path))["cells"].items():
+        ref = next(p for p in curves["raster"] if p["tau"] == tau)
+        out[cell.replace("_ksol", "").replace("_ksage", "")] = (ref["density"], ref["rel_l2"])
+    return out
 
 
 def _cell(name):
@@ -89,8 +100,8 @@ def main():
     sol = defaultdict(dict)          # label -> (block, step) -> (density, error)
     for item in args.sol:
         label, _, path = item.partition("=")
-        for cell, row in summarize(path).items():
-            sol[label][_cell(cell)] = (row["raster"]["density"], row["raster"]["rel_l2"])
+        for cell, pair in _raster_cells(path).items():
+            sol[label][_cell(cell)] = pair
     dense = defaultdict(dict)        # label -> (block, step) -> {kernel: error}
     kernels = []
     for item in args.dense:

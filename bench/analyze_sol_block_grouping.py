@@ -29,8 +29,8 @@ once and reused.
 
 ## What it computes
 
-Per capture, per token ordering (raster, the node's `3d` Morton) and per block
-size (64, 16), at tau 1.0 with the shipped sink ranges:
+Per capture and per block size (64, 16), in the tokens' native (raster) order,
+at tau 1.0 with the shipped sink ranges:
 
   A  within-block spread. Per video block and head, the mean squared distance
      of the block's keys from the block's mean key over the mean squared norm
@@ -63,11 +63,11 @@ size (64, 16), at tau 1.0 with the shipped sink ranges:
 ## How to read it
 
 **Cells are at equal tau, NOT at equal cost.** tau is pinned at 1.0, so the
-four (ordering, size) cells route at four different densities, and a lower
-missed mass at block 16 is partly just "block 16 routed more". Every B and D
-row carries its `density` and `routed_tokens` for that reason. In this data the
-confound turns out to be small -- all four cells route within a few percent of
-one another on every capture -- but that is an observation about these
+two block sizes route at different densities, and a lower missed mass at
+block 16 is partly just "block 16 routed more". Every B and D row carries its
+`density` and `routed_tokens` for that reason. In the 2026-09-19 data the
+confound turned out to be small -- every cell routed within a few percent of
+the others on every capture -- but that is an observation about those
 captures, not a property of tau, and it is why the density is printed rather
 than argued about. `sweep_sol_block_size_on_capture.py` is the instrument that
 holds cost fixed by construction.
@@ -75,10 +75,16 @@ holds cost fixed by construction.
 **Missed mass is NOT output error.** It is the share of a query's exact mass
 that Sol routed through the POOLED branch, and Sol still supplies an
 approximation of that mass; how good that approximation is, this does not
-measure. `--cross-check` reads the output rel_l2 curves from
-`sweep_sol_block_size_on_capture.py` on the same captures and counts the cells
-where the two metrics rank the two orderings the same way. Read the
-disagreements it names before quoting a missed-mass ratio as an error ratio.
+measure. Output error on the same captures is
+`sweep_sol_block_size_on_capture.py`'s.
+
+The token-ordering axis (raster against the node's Morton `3d`) and the
+`--cross-check` that ranked the two orderings by missed mass against output
+error were removed on 2026-09-27 with Morton itself
+(docs/research/2026-09-27_sol_node_redesign.md). The 2026-09-19 record was
+measured with both orderings; its data file keys cells `<ordering>_b<size>`,
+and its measurement fingerprint belongs to the code before that date, so
+`--summarize` here refuses it by design.
 
 **Every Jaccard has a chance floor and it differs per cell.** Two random size-k
 subsets of N overlap at about k/(2N-k), which at these densities is around an
@@ -101,9 +107,10 @@ sample; fp32 throughout, so there is no INT8 term and this is a ceiling on what
 a grouping change could buy rather than a forecast of a kernel. B, C and D are
 properties of the exact attention distribution on captured q/k/v at one step of
 one DiT block: they bound what finer granularity COULD buy and predict neither
-a kernel nor a clip. Captures must have been taken with reordering OFF; the
-payload cannot say so, and that is on the caller. Routing COST, which grows
-with the square of the block count, is in no number here.
+a kernel nor a clip. A capture taken before 2026-09-27 must have been taken
+with reordering OFF; the payload cannot say so, and that is on the caller.
+Routing COST, which grows with the square of the block count, is in no number
+here.
 """
 
 from __future__ import annotations
@@ -129,8 +136,7 @@ import analyze_sol_error as ase  # noqa: E402
 from _live_sol import live_sol  # noqa: E402
 
 BLOCK_SIZES = (64, 16)
-ORDERINGS = ("raster", "3d")
-NODE_BLOCK = 64                 # the unit `_sink_blocks` and `_perm_for` speak in
+NODE_BLOCK = 64                 # the unit `sink_ranges` speaks in
 TAU = 1.0
 TOP_FRACTION = 8                # B(ii): the top 1/8 of a block's tokens
 COVER = 0.9                     # B(iii): the mass a token set must cover
@@ -182,7 +188,7 @@ VERDICT = [
     "**Routing decisions survive between steps.** Adjacent captured steps keep most",
     "of the routed set, steps six to eight apart keep well over half, and the widest",
     "pair measured -- eleven steps -- still keeps about half, against a chance floor",
-    "near an eighth. The `3d` order neither helps nor hurts this.",
+    "near an eighth.",
     "",
     "**What follows is inference, not measurement.** The per-query oracle is a",
     "bound, not a rule: it is what a decision taken per query could reach. The cheap",
@@ -286,7 +292,7 @@ VERDICT_ARMS = [
 #: touching any arithmetic on the measurement path does.
 MEASUREMENT_PATH = (
     "block_lengths", "forced_mask", "route_mask", "key_block_bounds", "quest_rank",
-    "topk_mask_by_count", "_sol_from_mask", "within_block_spread", "ordering_index",
+    "topk_mask_by_count", "_sol_from_mask", "within_block_spread",
     "video_blocks", "stratified_video_queries", "route_scores", "key_submean_scores",
     "forced_for", "_cost_of", "bisect_tau", "union_rows", "token_aug_group",
     "sol_style_output", "run_arms", "measure_query_disagreement", "run_step_pairs",
@@ -403,58 +409,6 @@ def key_block_bounds(k, size):
         kmin[head] = torch.cat([body.amin(1), fk[full:].amin(0, keepdim=True)])
         kmax[head] = torch.cat([body.amax(1), fk[full:].amax(0, keepdim=True)])
     return kmin, kmax
-
-
-def cross_check_rel_l2(doc, prior_paths):
-    """Does missed mass rank the two orderings the way OUTPUT ERROR does? Per cell, per block size.
-
-    Missed mass is the share of a query's exact mass routed through the pooled
-    branch. It is not error: Sol still supplies an approximation of that mass,
-    and the fidelity of the pooled term is a separate quantity nothing here
-    measures. So a cell can push less mass into the pooled branch and still
-    come out further from dense attention.
-
-    `sweep_sol_block_size_on_capture.py` measured output rel_l2 against fp32
-    dense attention on the SAME captures, the same head prefix and the same
-    tau, at matched routed density. This reads those curves at the density
-    plain order routes at tau 1.0 and counts the cells where the two metrics
-    put the two orderings in the same order. Disagreements are named, not
-    averaged away: they are the cells where this record must not be read as a
-    statement about error.
-    """
-    import orjson
-    import sweep_sol_block_size_on_capture as sweep
-    curves = {}
-    for path in prior_paths:
-        data = orjson.loads(Path(path).read_bytes())
-        capset = data.get("conditions", {}).get("capture_set", Path(path).stem)
-        for cell, rows in data["cells"].items():
-            curves[f"{capset}/{cell}"] = rows
-    out = {"prior_records": [Path(p).name for p in prior_paths], "by_block_size": {}}
-    for size in BLOCK_SIZES:
-        same, total, disagree = 0, 0, []
-        for cid, cell in doc["cells"].items():
-            rows = curves.get(cid)
-            if rows is None or f"3d_b{size}" not in rows:
-                continue
-            base = next((x for x in rows["raster_b64"] if x["tau"] == TAU), None)
-            if base is None:
-                continue
-            er = sweep.error_at(rows[f"raster_b{size}"], base["density"])
-            e3 = sweep.error_at(rows[f"3d_b{size}"], base["density"])
-            if er is None or e3 is None:
-                continue
-            mr = cell["B"][f"raster_b{size}"]["missed_mass"]["mean"]
-            m3 = cell["B"][f"3d_b{size}"]["missed_mass"]["mean"]
-            total += 1
-            if (e3 < er) == (m3 < mr):
-                same += 1
-            else:
-                disagree.append({"cell": cid, "rel_l2_3d_over_raster": round(e3 / er, 3),
-                                 "missed_3d_over_raster": round(m3 / mr, 3)})
-        out["by_block_size"][str(size)] = {"cells": total, "same_ordering": same,
-                                           "disagreements": disagree}
-    return out
 
 
 def quest_rank(centroid, kmin, kmax):
@@ -666,23 +620,12 @@ def controls():
 
 # ------------------------------------------------------------------ geometry
 
-def ordering_index(node, name, grid, start, tokens):
-    """`index[position] = token` for one ordering; only the video rows move."""
-    if name == "raster":
-        index = torch.arange(tokens)
-    else:
-        perm, _inv = node._perm_for(grid, name, "cpu", start)
-        index = torch.cat([torch.arange(start), start + perm.cpu()])
-    assert torch.equal(torch.sort(index).values, torch.arange(tokens)), f"{name}: not a bijection"
-    return index
-
-
 def video_blocks(start, tokens, size):
     """Block ids lying wholly inside the video span AND wholly live.
 
     The video span starts mid-block (1545 is 24 blocks and 9 rows), so one
     block mixes conditioning with video and the last block is ragged. Both are
-    dropped, so raster and `3d` describe the same set of blocks.
+    dropped.
     """
     n = (tokens + size - 1) // size
     first = (start + size - 1) // size
@@ -693,8 +636,8 @@ def video_blocks(start, tokens, size):
 def stratified_video_queries(grid, start, per_frame, seed):
     """`per_frame` raster token indices from each latent frame, fixed seed.
 
-    The SAME physical tokens for every ordering and block size, so a cell
-    difference is the grouping and not the sample.
+    The SAME tokens for every block size, so a cell difference is the
+    grouping and not the sample.
     """
     frames, height, width = grid
     gen = torch.Generator().manual_seed(seed)
@@ -742,8 +685,8 @@ def within_block_spread(x, size, blocks):
 
 # --------------------------------------------------------- the per-capture run
 
-def cell_key(ordering, size):
-    return f"{ordering}_b{size}"
+def cell_key(size):
+    return f"b{size}"
 
 
 def run_capture(path, args, node, recipe, verbose=True):
@@ -760,8 +703,7 @@ def run_capture(path, args, node, recipe, verbose=True):
                          f"capture has {tokens} rows")
     d = q.shape[-1]
     scale = d ** -0.5
-    layout = {"sol_h3_video_span": (start, tokens), "sol_h3_audio_span": (a0, a1)}
-    sink_kv64, sink_q64 = node._sink_blocks(layout, tokens, recipe["sink_conditioning"])
+    sink_kv64, sink_q64 = node.sink_ranges((start, tokens), (a0, a1), tokens, recipe["sink_conditioning"])
 
     sample = stratified_video_queries(grid, start, args.per_frame, args.seed)
     heads = q.shape[1]
@@ -771,31 +713,25 @@ def run_capture(path, args, node, recipe, verbose=True):
     cell = {"tokens": int(tokens), "heads": heads, "sample_queries": int(sample.numel()),
             "video_start": start, "audio_span": [a0, a1], "grid_thw": list(grid)}
 
-    # ---- the query's exact attention row is the same physical object for every
-    # ordering and size, so it is computed once and every cell reads it.
+    # ---- the query's exact attention row is the same object for every block
+    # size, so it is computed once and every cell reads it.
     prepared = {}
-    for ordering in ORDERINGS:
-        index = ordering_index(node, ordering, grid, start, tokens)
-        pos = torch.argsort(index)
-        for size in BLOCK_SIZES:
-            sc = NODE_BLOCK // size
-            sink_kv = (sink_kv64[0] * sc, sink_kv64[1] * sc)
-            sink_q = (sink_q64[0] * sc, sink_q64[1] * sc)
-            n = (tokens + size - 1) // size
-            qs = q[:, :, index]
-            ks = k[:, :, index]
-            mask, centroid = route_mask(qs, ks, TAU, sink_kv, sink_q, size)
-            vb = video_blocks(start, tokens, size)
-            lengths = block_lengths(tokens, size)
-            prepared[cell_key(ordering, size)] = dict(
-                index=index, pos=pos, keyblk=pos // size, size=size, n=n, mask=mask, centroid=centroid,
-                sink_kv=sink_kv, sink_q=sink_q, video=vb, lengths=lengths,
-                forced=forced_mask(n, sink_kv, sink_q),
-                spread_key=within_block_spread(ks, size, vb),
-                spread_query=within_block_spread(qs, size, vb),
-                kbounds=key_block_bounds(ks, size),
-            )
-            del qs, ks
+    for size in BLOCK_SIZES:
+        sc = NODE_BLOCK // size
+        sink_kv = (sink_kv64[0] * sc, sink_kv64[1] * sc)
+        sink_q = (sink_q64[0] * sc, sink_q64[1] * sc)
+        n = (tokens + size - 1) // size
+        mask, centroid = route_mask(q, k, TAU, sink_kv, sink_q, size)
+        vb = video_blocks(start, tokens, size)
+        lengths = block_lengths(tokens, size)
+        prepared[cell_key(size)] = dict(
+            keyblk=torch.arange(tokens) // size, size=size, n=n, mask=mask, centroid=centroid,
+            sink_kv=sink_kv, sink_q=sink_q, video=vb, lengths=lengths,
+            forced=forced_mask(n, sink_kv, sink_q),
+            spread_key=within_block_spread(k, size, vb),
+            spread_query=within_block_spread(q, size, vb),
+            kbounds=key_block_bounds(k, size),
+        )
 
     # ---------------------------------------------------------------- A
     cell["A_spread"] = {}
@@ -821,7 +757,7 @@ def run_capture(path, args, node, recipe, verbose=True):
     #   oracle    (in the B pass) the query's own exact mass per block: the
     #             floor any rule at this granularity could reach for that query
     for name, p in prepared.items():
-        qblk = p["pos"][sample] // p["size"]
+        qblk = sample // p["size"]
         sel = torch.unique(qblk)
         row_of = torch.full((p["n"],), -1, dtype=torch.long)
         row_of[sel] = torch.arange(sel.numel())
@@ -831,15 +767,14 @@ def run_capture(path, args, node, recipe, verbose=True):
         quest = torch.empty((nheads, sel.numel(), n), dtype=torch.bool)
         bmax = torch.empty_like(quest)
         big = torch.finfo(torch.float32).max
-        k_ord = k[0][:, p["index"], :]
-        pad = n * size - k_ord.shape[1]
+        pad = n * size - tokens
         valid = 0.0
         for head in range(nheads):
             bound = quest_rank(p["centroid"][head, sel], kmin[head], kmax[head]) * scale
             quest[head] = topk_mask_by_count(bound.masked_fill(p["forced"][sel], big), counts[head])
             rows = []
             for m0 in range(0, sel.numel(), 256):
-                s = (p["centroid"][head, sel[m0:m0 + 256]] @ k_ord[head].T) * scale
+                s = (p["centroid"][head, sel[m0:m0 + 256]] @ k[0, head].T) * scale
                 if pad:
                     s = F.pad(s, (0, pad), value=-big)
                 rows.append(s.view(s.shape[0], n, size).amax(-1))
@@ -849,7 +784,6 @@ def run_capture(path, args, node, recipe, verbose=True):
             valid += float((bound >= true_max - 1e-3).float().mean()) / nheads
             bmax[head] = topk_mask_by_count(true_max.masked_fill(p["forced"][sel], big), counts[head])
             del rows, true_max, bound
-        del k_ord
         p["quest_bound_dominates_true_max"] = round(valid, 6)
         p["quest"], p["blockmax"] = quest, bmax
         p["quest_row_of"] = row_of
@@ -874,7 +808,7 @@ def run_capture(path, args, node, recipe, verbose=True):
         del ps, cs
         for name, p in prepared.items():
             size, n = p["size"], p["n"]
-            qblk = p["pos"][qi] // size
+            qblk = qi // size
             routed = p["mask"][:, qblk, :]                           # [H, C, N]
             mass = torch.zeros(p_exact.shape[0], qi.numel(), n)
             mass.index_add_(2, p["keyblk"], p_exact)
@@ -895,16 +829,14 @@ def run_capture(path, args, node, recipe, verbose=True):
             acc[name]["missed_oracle"].append((mass * ~omask).sum(-1))
             del omask
             # concentration inside the POOLED blocks
-            p_ord = p_exact if name.startswith("raster") else p_exact[..., p["index"]]
-            pad = n * size - p_ord.shape[-1]
-            if pad:
-                p_ord = F.pad(p_ord, (0, pad))
-            blkp = p_ord.view(p_exact.shape[0], qi.numel(), n, size)
+            pad = n * size - p_exact.shape[-1]
+            p_pad = F.pad(p_exact, (0, pad)) if pad else p_exact
+            blkp = p_pad.view(p_exact.shape[0], qi.numel(), n, size)
             topm = torch.topk(blkp, top_m[name], dim=-1).values.sum(-1)
             pooled = ~routed
             acc[name]["pooled_mass"] += float((mass * pooled).sum())
             acc[name]["pooled_top"] += float((topm * pooled).sum())
-            del mass, routed, blkp, topm, p_ord
+            del mass, routed, blkp, topm, p_pad
         del p_exact, qc
         if verbose:
             print(f"  B {s0 + qi.numel()}/{sample.numel()} queries", end="\r", flush=True)
@@ -984,7 +916,7 @@ def measure_query_disagreement(q, k, p, scale, n_blocks, n_queries, seed, chunk)
         rows, owners = [], []
         for b in group.tolist():
             offs = torch.randperm(size, generator=gen)[:min(size, n_queries)].sort().values
-            rows.append(p["index"][b * size + offs])
+            rows.append(b * size + offs)
             owners.append(torch.full((offs.numel(),), b, dtype=torch.long))
         rows = torch.cat(rows)
         owners = torch.cat(owners)
@@ -1069,25 +1001,23 @@ def run_step_pairs(paths, args, node, recipe, verbose=True):
             a0, a1 = (int(x) for x in args.audio_span.split(","))
             if start + grid[0] * grid[1] * grid[2] != tokens:
                 raise SystemExit(f"{Path(path).name}: grid {grid} does not fit {tokens} rows from {start}")
-            layout = {"sol_h3_video_span": (start, tokens), "sol_h3_audio_span": (a0, a1)}
-            sink_kv64, sink_q64 = node._sink_blocks(layout, tokens, recipe["sink_conditioning"])
-            for ordering in ORDERINGS:
-                index = ordering_index(node, ordering, grid, start, tokens)
-                for size in BLOCK_SIZES:
-                    sc = NODE_BLOCK // size
-                    mask, _ = route_mask(q[:, :, index], k[:, :, index], TAU,
-                                         (sink_kv64[0] * sc, sink_kv64[1] * sc),
-                                         (sink_q64[0] * sc, sink_q64[1] * sc), size)
-                    masks[(step, cell_key(ordering, size))] = (
-                        mask, video_blocks(start, tokens, size),
-                        forced_mask(mask.shape[-1], (sink_kv64[0] * sc, sink_kv64[1] * sc),
-                                    (sink_q64[0] * sc, sink_q64[1] * sc)))
+            sink_kv64, sink_q64 = node.sink_ranges((start, tokens), (a0, a1), tokens,
+                                                   recipe["sink_conditioning"])
+            for size in BLOCK_SIZES:
+                sc = NODE_BLOCK // size
+                mask, _ = route_mask(q, k, TAU,
+                                     (sink_kv64[0] * sc, sink_kv64[1] * sc),
+                                     (sink_q64[0] * sc, sink_q64[1] * sc), size)
+                masks[(step, cell_key(size))] = (
+                    mask, video_blocks(start, tokens, size),
+                    forced_mask(mask.shape[-1], (sink_kv64[0] * sc, sink_kv64[1] * sc),
+                                (sink_q64[0] * sc, sink_q64[1] * sc)))
             del q, k
             if verbose:
                 print(f"  E {capset} block {blk} step {step}: masks built", flush=True)
         steps = sorted({s for s, _ in members})
         for s1, s2 in itertools.combinations(steps, 2):
-            for name in (cell_key(o, s) for o in ORDERINGS for s in BLOCK_SIZES):
+            for name in (cell_key(s) for s in BLOCK_SIZES):
                 m1, vb, forced = masks[(s1, name)]
                 m2, _, _ = masks[(s2, name)]
                 a = m1[:, vb, :]
@@ -1330,260 +1260,253 @@ def run_arms(path, args, node, recipe, verbose=True):
     d = q.shape[-1]
     scale = d ** -0.5
     log2s = scale * ase._LOG2E
-    layout = {"sol_h3_video_span": (start, tokens), "sol_h3_audio_span": (a0, a1)}
-    sink_kv, sink_q = node._sink_blocks(layout, tokens, recipe["sink_conditioning"])
+    sink_kv, sink_q = node.sink_ranges((start, tokens), (a0, a1), tokens, recipe["sink_conditioning"])
     sample = stratified_video_queries(grid, start, args.per_frame, args.seed)
     heads, n = q.shape[1], (tokens + size - 1) // size
     cell = {"tokens": int(tokens), "heads": heads, "sample_queries": int(sample.numel()),
             "token_group_query_blocks": args.tok_group, "token_budget": args.token_budget,
             "hisa_pool_blocks": args.hisa_pool, "key_submeans": KEY_SUBS}
-    for ordering in ORDERINGS:
-        index = ordering_index(node, ordering, grid, start, tokens)
-        pos = torch.argsort(index)
-        qs, ks, vs = (x[:, :, index] for x in (q, k, v))
-        # from here on every index is a POSITION in this ordering, never a raster
-        # token id: q, k and v are permuted, so a key column is a position and a
-        # key block is `position // size`.
-        keyblk = torch.arange(tokens) // size
-        qpos = pos[sample]
-        colmean, base, kcc, k_mean, lengths = route_scores(qs, ks, size, size)
-        forced = forced_for(n, n, size, size, sink_kv, sink_q)
-        sol_mask = (colmean > TAU * base.unsqueeze(-1)) | forced
-        qblk = qpos // size
-        target = _cost_of(sol_mask[:, qblk, :], lengths)
-        counts = sol_mask[:, qblk, :].sum(-1)
-        vc = torch.stack([F.pad(vs[0, hh], (0, 0, 0, n * size - tokens)).view(n, size, d).sum(1)
-                          for hh in range(heads)])                               # [H, N, D] summed values
-        if verbose:
-            print(f"  F {ordering:6s} Sol cost {target:.0f} exact key tokens per query row", flush=True)
+    qs, ks, vs = q, k, v
+    keyblk = torch.arange(tokens) // size
+    qpos = sample
+    colmean, base, kcc, k_mean, lengths = route_scores(qs, ks, size, size)
+    forced = forced_for(n, n, size, size, sink_kv, sink_q)
+    sol_mask = (colmean > TAU * base.unsqueeze(-1)) | forced
+    qblk = qpos // size
+    target = _cost_of(sol_mask[:, qblk, :], lengths)
+    counts = sol_mask[:, qblk, :].sum(-1)
+    vc = torch.stack([F.pad(vs[0, hh], (0, 0, 0, n * size - tokens)).view(n, size, d).sum(1)
+                      for hh in range(heads)])                               # [H, N, D] summed values
+    if verbose:
+        print(f"  F Sol cost {target:.0f} exact key tokens per query row", flush=True)
 
-        arms = {}
-        arms["sol"] = {"routed": sol_mask[:, qblk, :], "tail_logit": colmean[:, qblk, :],
-                       "setting": {"tau": TAU}}
-        for name, reduce in (("max4", "max"), ("lse4", "lse")):
-            sc = key_submean_scores(qs, ks, size, size, KEY_SUBS, reduce, k_mean)
+    arms = {}
+    arms["sol"] = {"routed": sol_mask[:, qblk, :], "tail_logit": colmean[:, qblk, :],
+                   "setting": {"tau": TAU}}
+    for name, reduce in (("max4", "max"), ("lse4", "lse")):
+        sc = key_submean_scores(qs, ks, size, size, KEY_SUBS, reduce, k_mean)
+        big = torch.finfo(torch.float32).max
+        routed = topk_mask_by_count(sc[:, qblk, :].masked_fill(forced[qblk].unsqueeze(0), big), counts)
+        arms[name] = {"routed": routed, "tail_logit": colmean[:, qblk, :],
+                      "setting": {"rule": f"{reduce} over {KEY_SUBS} key sub-means, Sol's own block count"}}
+        del sc
+    for name, sub in SUB_ROWS.items():
+        cm_s, base_s, _kcc, _km, _len = route_scores(qs, ks, size, sub)
+        f_s = forced_for(cm_s.shape[1], n, size, sub, sink_kv, sink_q)
+        rows_s = qpos // sub
+        tau_i, cost_i = bisect_tau(cm_s, base_s, f_s, rows_s, lengths, target)
+        routed_i = ((cm_s > tau_i * base_s.unsqueeze(-1)) | f_s)
+        uni = union_rows(routed_i, size, sub, n)
+        infl = _cost_of(uni[:, qblk, :], lengths) / max(cost_i, 1e-9)
+        # and again, tuned so the UNION -- what a CTA actually walks -- is Sol's cost
+        def union_cost(tau, cm_s=cm_s, base_s=base_s, f_s=f_s, sub=sub):
+            r = (cm_s > tau * base_s.unsqueeze(-1)) | f_s
+            return _cost_of(union_rows(r, size, sub, n)[:, qblk, :], lengths)
+        lo, hi = 0.02, 60.0
+        for _ in range(30):
+            mid = 0.5 * (lo + hi)
+            if union_cost(mid) > target:
+                lo = mid
+            else:
+                hi = mid
+        tau_u = 0.5 * (lo + hi)
+        routed_u = ((cm_s > tau_u * base_s.unsqueeze(-1)) | f_s)
+        arms[name] = {"routed": routed_i[:, rows_s, :], "tail_logit": cm_s[:, rows_s, :],
+                      "setting": {"tau_ideal_cost": round(tau_i, 4), "sub_rows": sub,
+                                  "union_inflation": round(float(infl), 4),
+                                  "walk_cost_over_sol": round(float(infl), 4),
+                                  "tau_union_cost": round(tau_u, 4)}}
+        arms[name + "_union"] = {"routed": routed_u[:, rows_s, :], "tail_logit": cm_s[:, rows_s, :],
+                                 "setting": {"tau": round(tau_u, 4), "sub_rows": sub,
+                                             "walk_cost_over_sol": 1.0,
+                                             "note": "tuned so the CTA's UNION walk costs what Sol costs; "
+                                                     "its own cost row is the MMA work, which is lower"}}
+        if name == "split4":
+            sc = key_submean_scores(qs, ks, size, sub, KEY_SUBS, "lse", k_mean)
+            cnt_s = routed_i[:, rows_s, :].sum(-1)
             big = torch.finfo(torch.float32).max
-            routed = topk_mask_by_count(sc[:, qblk, :].masked_fill(forced[qblk].unsqueeze(0), big), counts)
-            arms[name] = {"routed": routed, "tail_logit": colmean[:, qblk, :],
-                          "setting": {"rule": f"{reduce} over {KEY_SUBS} key sub-means, Sol's own block count"}}
+            r2 = topk_mask_by_count(sc[:, rows_s, :].masked_fill(f_s[rows_s].unsqueeze(0), big), cnt_s)
+            arms["split4_lse4"] = {"routed": r2, "tail_logit": cm_s[:, rows_s, :],
+                                   "setting": {"sub_rows": sub, "rule": "split4's count, lse4's ranking"}}
             del sc
-        for name, sub in SUB_ROWS.items():
-            cm_s, base_s, _kcc, _km, _len = route_scores(qs, ks, size, sub)
-            f_s = forced_for(cm_s.shape[1], n, size, sub, sink_kv, sink_q)
-            rows_s = qpos // sub
-            tau_i, cost_i = bisect_tau(cm_s, base_s, f_s, rows_s, lengths, target)
-            routed_i = ((cm_s > tau_i * base_s.unsqueeze(-1)) | f_s)
-            uni = union_rows(routed_i, size, sub, n)
-            infl = _cost_of(uni[:, qblk, :], lengths) / max(cost_i, 1e-9)
-            # and again, tuned so the UNION -- what a CTA actually walks -- is Sol's cost
-            def union_cost(tau, cm_s=cm_s, base_s=base_s, f_s=f_s, sub=sub):
-                r = (cm_s > tau * base_s.unsqueeze(-1)) | f_s
-                return _cost_of(union_rows(r, size, sub, n)[:, qblk, :], lengths)
-            lo, hi = 0.02, 60.0
+        del cm_s, base_s, f_s, routed_i, routed_u, uni
+    cell["arms_setting"] = {a: arms[a]["setting"] for a in arms}
+
+    # token_aug: the block stage is loosened until block cost plus the token
+    # budget lands on Sol's, so the tokens are paid for out of the blocks
+    tok = {}
+    for name, pool in (("token_aug", 0), ("token_aug_hisa", args.hisa_pool)):
+        def tcost(tau, pool=pool):
+            mask_b = (colmean > tau * base.unsqueeze(-1)) | forced
+            blk = _cost_of(mask_b[:, qblk, :], lengths)
+            return blk + args.token_budget, mask_b
+        lo, hi = TAU, 60.0
+        if tcost(lo)[0] > target:
             for _ in range(30):
                 mid = 0.5 * (lo + hi)
-                if union_cost(mid) > target:
+                if tcost(mid)[0] > target:
                     lo = mid
                 else:
                     hi = mid
-            tau_u = 0.5 * (lo + hi)
-            routed_u = ((cm_s > tau_u * base_s.unsqueeze(-1)) | f_s)
-            arms[name] = {"routed": routed_i[:, rows_s, :], "tail_logit": cm_s[:, rows_s, :],
-                          "setting": {"tau_ideal_cost": round(tau_i, 4), "sub_rows": sub,
-                                      "union_inflation": round(float(infl), 4),
-                                      "walk_cost_over_sol": round(float(infl), 4),
-                                      "tau_union_cost": round(tau_u, 4)}}
-            arms[name + "_union"] = {"routed": routed_u[:, rows_s, :], "tail_logit": cm_s[:, rows_s, :],
-                                     "setting": {"tau": round(tau_u, 4), "sub_rows": sub,
-                                                 "walk_cost_over_sol": 1.0,
-                                                 "note": "tuned so the CTA's UNION walk costs what Sol costs; "
-                                                         "its own cost row is the MMA work, which is lower"}}
-            if name == "split4":
-                sc = key_submean_scores(qs, ks, size, sub, KEY_SUBS, "lse", k_mean)
-                cnt_s = routed_i[:, rows_s, :].sum(-1)
-                big = torch.finfo(torch.float32).max
-                r2 = topk_mask_by_count(sc[:, rows_s, :].masked_fill(f_s[rows_s].unsqueeze(0), big), cnt_s)
-                arms["split4_lse4"] = {"routed": r2, "tail_logit": cm_s[:, rows_s, :],
-                                       "setting": {"sub_rows": sub, "rule": "split4's count, lse4's ranking"}}
-                del sc
-            del cm_s, base_s, f_s, routed_i, routed_u, uni
-        cell.setdefault("arms_setting", {})[ordering] = {a: arms[a]["setting"] for a in arms}
+        tau_b = 0.5 * (lo + hi)
+        mask_b = (colmean > tau_b * base.unsqueeze(-1)) | forced
+        tok[name] = {"tau_block": round(tau_b, 4), "mask": mask_b, "pool": pool,
+                     "setting": {"tau_block": round(tau_b, 4), "budget": args.token_budget,
+                                 "tok_group_query_blocks": args.tok_group,
+                                 "hisa_pool_blocks": pool or None}}
+        cell["arms_setting"][name] = tok[name]["setting"]
 
-        # token_aug: the block stage is loosened until block cost plus the token
-        # budget lands on Sol's, so the tokens are paid for out of the blocks
-        tok = {}
-        for name, pool in (("token_aug", 0), ("token_aug_hisa", args.hisa_pool)):
-            def tcost(tau, pool=pool):
-                mask_b = (colmean > tau * base.unsqueeze(-1)) | forced
-                blk = _cost_of(mask_b[:, qblk, :], lengths)
-                return blk + args.token_budget, mask_b
-            lo, hi = TAU, 60.0
-            if tcost(lo)[0] > target:
-                for _ in range(30):
-                    mid = 0.5 * (lo + hi)
-                    if tcost(mid)[0] > target:
-                        lo = mid
-                    else:
-                        hi = mid
-            tau_b = 0.5 * (lo + hi)
-            mask_b = (colmean > tau_b * base.unsqueeze(-1)) | forced
-            tok[name] = {"tau_block": round(tau_b, 4), "mask": mask_b, "pool": pool,
-                         "setting": {"tau_block": round(tau_b, 4), "budget": args.token_budget,
-                                     "tok_group_query_blocks": args.tok_group,
-                                     "hisa_pool_blocks": pool or None}}
-            cell["arms_setting"][ordering][name] = tok[name]["setting"]
+    # ---- one chunked pass: exact row, exact output, then every arm
+    acc = {a: {"missed": [], "cost": [], "err2": 0.0} for a in
+           list(arms) + list(tok) + ["oracle"]}
+    ref2 = 0.0
+    # Missed mass is a masked sum and costs nothing; the emulated OUTPUT is
+    # two S-wide matmuls per arm, so it runs on every `err_stride`-th
+    # sampled query. The subset is strided, not a prefix, so it still
+    # covers every latent frame.
+    recov = {"n50": [], "n90": [], "reached50": 0, "reached90": 0, "rows": 0, "admissible": [],
+             "o50": [], "o90": [], "oreached50": 0, "oreached90": 0}
+    for s0 in range(0, sample.numel(), args.chunk):
+        sl = slice(s0, s0 + args.chunk)
+        qi, qb = qpos[sl], qblk[sl]
+        qc = qs[0][:, qi, :]
+        s_raw = torch.einsum("hcd,hsd->hcs", qc, ks[0]) * scale
+        p_exact = torch.softmax(s_raw, dim=-1)
+        out_exact = p_exact @ vs[0]
+        ref2 += float(out_exact[:, torch.arange(s0, s0 + qi.numel()) % args.err_stride == 0, :]
+                      .pow(2).sum())
+        # centred log2 logits: the constant shift cancels in the softmax but
+        # must match the pooled logits, which are built from centred keys
+        s_log2 = (s_raw - torch.einsum("hcd,hd->hc", qc, k_mean[:, 0, :]).unsqueeze(-1) * scale) * ase._LOG2E
+        del s_raw, qc
 
-        # ---- one chunked pass: exact row, exact output, then every arm
-        acc = {a: {"missed": [], "cost": [], "err2": 0.0} for a in
-               list(arms) + list(tok) + ["oracle"]}
-        ref2 = 0.0
-        # Missed mass is a masked sum and costs nothing; the emulated OUTPUT is
-        # two S-wide matmuls per arm, so it runs on every `err_stride`-th
-        # sampled query. The subset is strided, not a prefix, so it still
-        # covers every latent frame.
-        recov = {"n50": [], "n90": [], "reached50": 0, "reached90": 0, "rows": 0, "admissible": [],
-                 "o50": [], "o90": [], "oreached50": 0, "oreached90": 0}
-        for s0 in range(0, sample.numel(), args.chunk):
-            sl = slice(s0, s0 + args.chunk)
-            qi, qb = qpos[sl], qblk[sl]
-            qc = qs[0][:, qi, :]
-            s_raw = torch.einsum("hcd,hsd->hcs", qc, ks[0]) * scale
-            p_exact = torch.softmax(s_raw, dim=-1)
-            out_exact = p_exact @ vs[0]
-            ref2 += float(out_exact[:, torch.arange(s0, s0 + qi.numel()) % args.err_stride == 0, :]
-                          .pow(2).sum())
-            # centred log2 logits: the constant shift cancels in the softmax but
-            # must match the pooled logits, which are built from centred keys
-            s_log2 = (s_raw - torch.einsum("hcd,hd->hc", qc, k_mean[:, 0, :]).unsqueeze(-1) * scale) * ase._LOG2E
-            del s_raw, qc
+        esub = torch.arange(s0, s0 + qi.numel()) % args.err_stride == 0
+        def score_arm(name, exact_tok, pooled_blk, tail_logit, extra=None):
+            missed = (p_exact * ~exact_tok).sum(-1)
+            acc[name]["missed"].append(missed)
+            acc[name]["cost"].append(exact_tok.float().sum(-1))
+            if not bool(esub.any()):
+                return
+            ex = (extra[0][:, esub, :], extra[1][:, esub, :]) if extra else (None, None)
+            out = sol_style_output(s_log2[:, esub, :], vs[0], vc, lengths, exact_tok[:, esub, :],
+                                   pooled_blk[:, esub, :], tail_logit[:, esub, :], *ex)
+            acc[name]["err2"] += float((out - out_exact[:, esub, :]).pow(2).sum())
+            del out
 
-            esub = torch.arange(s0, s0 + qi.numel()) % args.err_stride == 0
-            def score_arm(name, exact_tok, pooled_blk, tail_logit, extra=None):
-                missed = (p_exact * ~exact_tok).sum(-1)
-                acc[name]["missed"].append(missed)
-                acc[name]["cost"].append(exact_tok.float().sum(-1))
-                if not bool(esub.any()):
-                    return
-                ex = (extra[0][:, esub, :], extra[1][:, esub, :]) if extra else (None, None)
-                out = sol_style_output(s_log2[:, esub, :], vs[0], vc, lengths, exact_tok[:, esub, :],
-                                       pooled_blk[:, esub, :], tail_logit[:, esub, :], *ex)
-                acc[name]["err2"] += float((out - out_exact[:, esub, :]).pow(2).sum())
-                del out
+        missed_sol = None
+        for name, arm in arms.items():
+            routed = arm["routed"][:, sl, :]
+            et = routed.gather(2, keyblk.view(1, 1, -1).expand(heads, qi.numel(), tokens))
+            score_arm(name, et, ~routed, arm["tail_logit"][:, sl, :])
+            if name == "sol":
+                missed_sol = acc["sol"]["missed"][-1]
+            del et, routed
+        for name, ta in tok.items():
+            routed = ta["mask"][:, qb, :]
+            et = routed.gather(2, keyblk.view(1, 1, -1).expand(heads, qi.numel(), tokens))
+            cand = torch.zeros(heads, qi.numel(), n, dtype=torch.bool)
+            extra_l = torch.full((heads, qi.numel(), tokens), -1e30)
+            extra_m = torch.zeros(heads, qi.numel(), tokens, dtype=torch.bool)
+            for j, g in enumerate((qb // args.tok_group).tolist()):
+                hit = ta.setdefault("cache", {}).get(g)
+                if hit is None:
+                    hit = token_aug_group(g, qs, ks, colmean, k_mean, ta["mask"],
+                                          args.token_budget, size, args.tok_group, ta["pool"], n)
+                    ta["cache"] = {g: hit}     # one chunk's groups are contiguous
+                idx, keep, cnd, s_tok = hit
+                cand[:, j, :] = cnd
+                extra_l[:, j, :] = s_tok
+                extra_m[:, j, :] = cnd.gather(1, keyblk.view(1, -1).expand(heads, -1))
+                et[:, j, :] |= torch.zeros(heads, tokens, dtype=torch.bool).scatter_(1, idx, keep)
+            extra_m &= ~et                      # admitted tokens left the tail
+            score_arm(name, et, (~routed) & ~cand, colmean[:, qb, :], (extra_l, extra_m))
+            del et, routed, cand, extra_l, extra_m
+        mass = torch.zeros(heads, qi.numel(), n)
+        mass.index_add_(2, keyblk, p_exact)
+        om = topk_mask_by_count(mass.masked_fill(forced[qb].unsqueeze(0), 2.0), counts[:, sl])
+        et = om.gather(2, keyblk.view(1, 1, -1).expand(heads, qi.numel(), tokens))
+        score_arm("oracle", et, ~om, colmean[:, qb, :])
+        del mass, om, et
 
-            missed_sol = None
-            for name, arm in arms.items():
-                routed = arm["routed"][:, sl, :]
-                et = routed.gather(2, keyblk.view(1, 1, -1).expand(heads, qi.numel(), tokens))
-                score_arm(name, et, ~routed, arm["tail_logit"][:, sl, :])
-                if name == "sol":
-                    missed_sol = acc["sol"]["missed"][-1]
-                del et, routed
-            for name, ta in tok.items():
-                routed = ta["mask"][:, qb, :]
-                et = routed.gather(2, keyblk.view(1, 1, -1).expand(heads, qi.numel(), tokens))
-                cand = torch.zeros(heads, qi.numel(), n, dtype=torch.bool)
-                extra_l = torch.full((heads, qi.numel(), tokens), -1e30)
-                extra_m = torch.zeros(heads, qi.numel(), tokens, dtype=torch.bool)
-                for j, g in enumerate((qb // args.tok_group).tolist()):
-                    hit = ta.setdefault("cache", {}).get(g)
-                    if hit is None:
-                        hit = token_aug_group(g, qs, ks, colmean, k_mean, ta["mask"],
-                                              args.token_budget, size, args.tok_group, ta["pool"], n)
-                        ta["cache"] = {g: hit}     # one chunk's groups are contiguous
-                    idx, keep, cnd, s_tok = hit
-                    cand[:, j, :] = cnd
-                    extra_l[:, j, :] = s_tok
-                    extra_m[:, j, :] = cnd.gather(1, keyblk.view(1, -1).expand(heads, -1))
-                    et[:, j, :] |= torch.zeros(heads, tokens, dtype=torch.bool).scatter_(1, idx, keep)
-                extra_m &= ~et                      # admitted tokens left the tail
-                score_arm(name, et, (~routed) & ~cand, colmean[:, qb, :], (extra_l, extra_m))
-                del et, routed, cand, extra_l, extra_m
-            mass = torch.zeros(heads, qi.numel(), n)
-            mass.index_add_(2, keyblk, p_exact)
-            om = topk_mask_by_count(mass.masked_fill(forced[qb].unsqueeze(0), 2.0), counts[:, sl])
-            et = om.gather(2, keyblk.view(1, 1, -1).expand(heads, qi.numel(), tokens))
-            score_arm("oracle", et, ~om, colmean[:, qb, :])
-            del mass, om, et
+        # How many individual key tokens buy back Sol's missed mass, at Sol's
+        # OWN block routing. This is the added-cost question, not the
+        # equal-cost one: it prices the token stage rather than comparing it.
+        for row in esub.nonzero().squeeze(-1).tolist():
+            gg = int(qb[row]) // args.tok_group
+            idx, keep, cnd, _st = token_aug_group(gg, qs, ks, colmean, k_mean, sol_mask,
+                                                  args.recover_cap, size, args.tok_group, 0, n)
+            tgt = missed_sol[:, row].unsqueeze(-1)
+            recov["admissible"].append(keep.float().sum(-1))
 
-            # How many individual key tokens buy back Sol's missed mass, at Sol's
-            # OWN block routing. This is the added-cost question, not the
-            # equal-cost one: it prices the token stage rather than comparing it.
-            for row in esub.nonzero().squeeze(-1).tolist():
-                gg = int(qb[row]) // args.tok_group
-                idx, keep, cnd, _st = token_aug_group(gg, qs, ks, colmean, k_mean, sol_mask,
-                                                      args.recover_cap, size, args.tok_group, 0, n)
-                tgt = missed_sol[:, row].unsqueeze(-1)
-                recov["admissible"].append(keep.float().sum(-1))
+            def curve(order_mask, order_vals, store50, store90, reach):
+                got = torch.gather(p_exact[:, row, :], 1, order_vals) * order_mask
+                cum = got.cumsum(-1)
+                for frac, key, tag in ((0.5, store50, "50"), (0.9, store90, "90")):
+                    hit = cum >= frac * tgt
+                    any_hit = hit.any(-1)
+                    first = torch.where(any_hit, hit.float().argmax(-1) + 1,
+                                        torch.full_like(any_hit, args.recover_cap, dtype=torch.long))
+                    recov[key].append(first.float())
+                    recov[reach + tag] += int(any_hit.sum())
 
-                def curve(order_mask, order_vals, store50, store90, reach):
-                    got = torch.gather(p_exact[:, row, :], 1, order_vals) * order_mask
-                    cum = got.cumsum(-1)
-                    for frac, key, tag in ((0.5, store50, "50"), (0.9, store90, "90")):
-                        hit = cum >= frac * tgt
-                        any_hit = hit.any(-1)
-                        first = torch.where(any_hit, hit.float().argmax(-1) + 1,
-                                            torch.full_like(any_hit, args.recover_cap, dtype=torch.long))
-                        recov[key].append(first.float())
-                        recov[reach + tag] += int(any_hit.sum())
-
-                curve(keep, idx, "n50", "n90", "reached")
-                # the same candidate tokens ranked by the QUERY's own exact mass:
-                # the ceiling a per-query scorer could reach over the same scan,
-                # which separates the budget from the 128-row centroid
-                cand_tok = cnd.gather(1, keyblk.view(1, -1).expand(heads, -1))
-                oidx = torch.topk(p_exact[:, row, :].masked_fill(~cand_tok, -1.0),
-                                  idx.shape[1], dim=-1).indices
-                curve(torch.gather(cand_tok, 1, oidx), oidx, "o50", "o90", "oreached")
-                recov["rows"] += int(keep.shape[0])
-                del idx, keep, cnd, cand_tok, oidx
-            del p_exact, out_exact, s_log2
-            if verbose:
-                print(f"  F {ordering} {min(s0 + args.chunk, sample.numel())}/{sample.numel()}",
-                      end="\r", flush=True)
-
-        rows = {}
-        for name in acc:
-            miss = torch.cat(acc[name]["missed"], dim=1)
-            cost = torch.cat(acc[name]["cost"], dim=1)
-            rows[name] = {"missed_mass": dist(miss), "cost_mean": round(float(cost.mean()), 1),
-                          "cost_over_sol": round(float(cost.mean()) / target, 4),
-                          "rel_l2_vs_exact": round(math.sqrt(acc[name]["err2"] / max(ref2, 1e-30)), 6)}
-        if recov["n50"]:
-            n50 = torch.cat(recov["n50"]); n90 = torch.cat(recov["n90"])
-            o50 = torch.cat(recov["o50"]); o90 = torch.cat(recov["o90"])
-            rows["_token_recovery"] = {
-                "what": "individual key tokens from the blocks Sol left unrouted, needed to recover "
-                        "half and ninety percent of Sol's missed mass at Sol's own tau. `centroid` "
-                        "ranks them the way kitchen's token stage does, by the score of the centroid "
-                        "shared by TOK_GROUP query blocks; `per_query` ranks the SAME candidates by "
-                        "the query's own exact mass, which is the ceiling a finer scorer could reach "
-                        "over the same scan. The gap between them is the price of the shared centroid, "
-                        "not of the budget.",
-                "cap": args.recover_cap,
-                "centroid": {"tokens_for_half": dist(n50), "tokens_for_ninety": dist(n90),
-                             "share_reaching_half": round(recov["reached50"] / max(recov["rows"], 1), 4),
-                             "share_reaching_ninety": round(recov["reached90"] / max(recov["rows"], 1), 4)},
-                "per_query": {"tokens_for_half": dist(o50), "tokens_for_ninety": dist(o90),
-                              "share_reaching_half": round(recov["oreached50"] / max(recov["rows"], 1), 4),
-                              "share_reaching_ninety": round(recov["oreached90"] / max(recov["rows"], 1), 4)},
-                "admissible_tokens_in_window": dist(torch.cat(recov["admissible"])),
-                "token_budget_the_kernel_offers": list(TOKEN_BUDGETS)}
-        cell.setdefault("arms", {})[ordering] = rows
+            curve(keep, idx, "n50", "n90", "reached")
+            # the same candidate tokens ranked by the QUERY's own exact mass:
+            # the ceiling a per-query scorer could reach over the same scan,
+            # which separates the budget from the 128-row centroid
+            cand_tok = cnd.gather(1, keyblk.view(1, -1).expand(heads, -1))
+            oidx = torch.topk(p_exact[:, row, :].masked_fill(~cand_tok, -1.0),
+                              idx.shape[1], dim=-1).indices
+            curve(torch.gather(cand_tok, 1, oidx), oidx, "o50", "o90", "oreached")
+            recov["rows"] += int(keep.shape[0])
+            del idx, keep, cnd, cand_tok, oidx
+        del p_exact, out_exact, s_log2
         if verbose:
-            for name, r in rows.items():
-                if name.startswith("_"):
-                    print(f"  F {ordering:6s} token recovery, centroid rank: half at "
-                          f"{r['centroid']['tokens_for_half']['median']:.0f}, ninety at "
-                          f"{r['centroid']['tokens_for_ninety']['median']:.0f} "
-                          f"(share reaching ninety {r['centroid']['share_reaching_ninety']:.2f}); "
-                          f"per-query rank: half at {r['per_query']['tokens_for_half']['median']:.0f}, "
-                          f"ninety at {r['per_query']['tokens_for_ninety']['median']:.0f} "
-                          f"(share {r['per_query']['share_reaching_ninety']:.2f}); admissible "
-                          f"{r['admissible_tokens_in_window']['median']:.0f}", flush=True)
-                    continue
-                print(f"  F {ordering:6s} {name:16s} cost {r['cost_over_sol']:.3f}x  "
-                      f"missed {r['missed_mass']['mean']:.4f}  rel_l2 {r['rel_l2_vs_exact']:.4f}", flush=True)
-        del arms, tok, acc, qs, ks, vs, colmean, base, kcc, vc, sol_mask
+            print(f"  F {min(s0 + args.chunk, sample.numel())}/{sample.numel()}",
+                  end="\r", flush=True)
+
+    rows = {}
+    for name in acc:
+        miss = torch.cat(acc[name]["missed"], dim=1)
+        cost = torch.cat(acc[name]["cost"], dim=1)
+        rows[name] = {"missed_mass": dist(miss), "cost_mean": round(float(cost.mean()), 1),
+                      "cost_over_sol": round(float(cost.mean()) / target, 4),
+                      "rel_l2_vs_exact": round(math.sqrt(acc[name]["err2"] / max(ref2, 1e-30)), 6)}
+    if recov["n50"]:
+        n50 = torch.cat(recov["n50"]); n90 = torch.cat(recov["n90"])
+        o50 = torch.cat(recov["o50"]); o90 = torch.cat(recov["o90"])
+        rows["_token_recovery"] = {
+            "what": "individual key tokens from the blocks Sol left unrouted, needed to recover "
+                    "half and ninety percent of Sol's missed mass at Sol's own tau. `centroid` "
+                    "ranks them the way kitchen's token stage does, by the score of the centroid "
+                    "shared by TOK_GROUP query blocks; `per_query` ranks the SAME candidates by "
+                    "the query's own exact mass, which is the ceiling a finer scorer could reach "
+                    "over the same scan. The gap between them is the price of the shared centroid, "
+                    "not of the budget.",
+            "cap": args.recover_cap,
+            "centroid": {"tokens_for_half": dist(n50), "tokens_for_ninety": dist(n90),
+                         "share_reaching_half": round(recov["reached50"] / max(recov["rows"], 1), 4),
+                         "share_reaching_ninety": round(recov["reached90"] / max(recov["rows"], 1), 4)},
+            "per_query": {"tokens_for_half": dist(o50), "tokens_for_ninety": dist(o90),
+                          "share_reaching_half": round(recov["oreached50"] / max(recov["rows"], 1), 4),
+                          "share_reaching_ninety": round(recov["oreached90"] / max(recov["rows"], 1), 4)},
+            "admissible_tokens_in_window": dist(torch.cat(recov["admissible"])),
+            "token_budget_the_kernel_offers": list(TOKEN_BUDGETS)}
+    cell["arms"] = rows
+    if verbose:
+        for name, r in rows.items():
+            if name.startswith("_"):
+                print(f"  F token recovery, centroid rank: half at "
+                      f"{r['centroid']['tokens_for_half']['median']:.0f}, ninety at "
+                      f"{r['centroid']['tokens_for_ninety']['median']:.0f} "
+                      f"(share reaching ninety {r['centroid']['share_reaching_ninety']:.2f}); "
+                      f"per-query rank: half at {r['per_query']['tokens_for_half']['median']:.0f}, "
+                      f"ninety at {r['per_query']['tokens_for_ninety']['median']:.0f} "
+                      f"(share {r['per_query']['share_reaching_ninety']:.2f}); admissible "
+                      f"{r['admissible_tokens_in_window']['median']:.0f}", flush=True)
+                continue
+            print(f"  F {name:16s} cost {r['cost_over_sol']:.3f}x  "
+                  f"missed {r['missed_mass']['mean']:.4f}  rel_l2 {r['rel_l2_vs_exact']:.4f}", flush=True)
+    del arms, tok, acc, qs, ks, vs, colmean, base, kcc, vc, sol_mask
     cell["seconds"] = round(time.time() - t0, 1)
     return cell
 
@@ -1656,8 +1579,7 @@ def run_frames(path, args, node, recipe, verbose=True):
     if start + grid[0] * area != tokens:
         raise SystemExit(f"{Path(path).name}: grid {grid} does not fit {tokens} rows from {start}")
     scale = q.shape[-1] ** -0.5
-    layout = {"sol_h3_video_span": (start, tokens), "sol_h3_audio_span": (a0, a1)}
-    sink_kv, sink_q = node._sink_blocks(layout, tokens, recipe["sink_conditioning"])
+    sink_kv, sink_q = node.sink_ranges((start, tokens), (a0, a1), tokens, recipe["sink_conditioning"])
     mask, _cen = route_mask(q, k, TAU, sink_kv, sink_q, size)
     heads, n = q.shape[1], (tokens + size - 1) // size
     keyblk = torch.arange(tokens) // size
@@ -1685,7 +1607,7 @@ def run_frames(path, args, node, recipe, verbose=True):
     share_mass = (total / total.sum()).tolist()
     share_missed = (missed / missed.sum().clamp_min(1e-30)).tolist()
     labels = [f"residue_{j}" for j in range(5)] + ["conditioning"]
-    out = {"ordering": "raster", "tau": TAU, "sampled_queries": int(sample.numel()),
+    out = {"tau": TAU, "sampled_queries": int(sample.numel()),
            "heads": heads, "video_frames": grid[0], "frame_tokens": area,
            "missed_mass_share_of_total": round(float(missed.sum() / total.sum()), 6),
            "classes": {}}
@@ -1790,7 +1712,6 @@ def run_losa(paths, args, node, recipe, verbose=True):
     """
     size = NODE_BLOCK
     device = torch.device(args.device)
-    grid = tuple(int(x) for x in args.grid.split(","))
     groups = {}
     for path in paths:
         m = re.search(r"_b(\d+)_s(\d+)", Path(path).name)
@@ -1808,18 +1729,15 @@ def run_losa(paths, args, node, recipe, verbose=True):
             tokens = q.shape[2]
             start = args.video_start
             a0, a1 = (int(x) for x in args.audio_span.split(","))
-            layout = {"sol_h3_video_span": (start, tokens), "sol_h3_audio_span": (a0, a1)}
-            sink_kv, sink_q = node._sink_blocks(layout, tokens, recipe["sink_conditioning"])
+            sink_kv, sink_q = node.sink_ranges((start, tokens), (a0, a1), tokens, recipe["sink_conditioning"])
             n = (tokens + size - 1) // size
-            index = ordering_index(node, args.losa_ordering, grid, start, tokens)
-            qs, ks = q[:, :, index], k[:, :, index]
             vb = video_blocks(start, tokens, size)
             gen = torch.Generator().manual_seed(args.seed + 2)
             pick = vb[torch.randperm(vb.numel(), generator=gen)[:args.query_blocks].sort().values]
-            masses[step] = block_masses(qs, ks, pick, size, device, args.chunk).cpu()
-            routed[step] = route_mask(qs, ks, TAU, sink_kv, sink_q, size)[0][:, pick, :]
+            masses[step] = block_masses(q, k, pick, size, device, args.chunk).cpu()
+            routed[step] = route_mask(q, k, TAU, sink_kv, sink_q, size)[0][:, pick, :]
             meta = {"pick": pick, "n": n, "sink_kv": sink_kv}
-            del q, k, qs, ks
+            del q, k
             if verbose:
                 print(f"  G {capset} block {blk} step {step}: masses for {pick.numel()} "
                       f"query blocks", flush=True)
@@ -1840,7 +1758,7 @@ def run_losa(paths, args, node, recipe, verbose=True):
                 rows.append({
                     "capture_set": capset, "dit_block": blk, "build_step": t0, "step": t,
                     "frozen_kind": kind, "theta": args.theta if kind == "theta" else None,
-                    "ordering": args.losa_ordering, "sampled": True,
+                    "sampled": True,
                     "query_blocks_sampled": int(pick.numel()), "heads": int(card.shape[0]),
                     "cardinality_mean": round(float(card.float().mean()), 1),
                     "coverage_mean": round(float(card.float().mean()) / n, 5),
@@ -1892,45 +1810,39 @@ def write_figures(path, outdir, args, node, recipe, frames=(10, 40, 80), size=64
     q, k, v = (x[:, :args.heads].to(torch.float32).contiguous() for x in (q, k, v))
     tokens = q.shape[2]
     scale = q.shape[-1] ** -0.5
-    layout = {"sol_h3_video_span": (start, tokens), "sol_h3_audio_span": (a0, a1)}
-    sink_kv, sink_q = node._sink_blocks(layout, tokens, recipe["sink_conditioning"])
+    sink_kv, sink_q = node.sink_ranges((start, tokens), (a0, a1), tokens, recipe["sink_conditioning"])
 
     sample = stratified_video_queries(grid, start, args.per_frame, args.seed)
     written = []
-    panels = {}
-    for ordering in ORDERINGS:
-        index = ordering_index(node, ordering, grid, start, tokens)
-        pos = torch.argsort(index)
-        mask, _ = route_mask(q[:, :, index], k[:, :, index], TAU, sink_kv, sink_q, size)
-        vb = video_blocks(start, tokens, size)
-        spread = torch.full((mask.shape[-1],), float("nan"))
-        spread[vb] = within_block_spread(k[:, :, index], size, vb).mean(0)
-        routed = torch.full((mask.shape[-1],), float("nan"))
-        routed[vb] = mask[:, vb, :].sum(-1).float().mean(0)
-        missed = torch.zeros(sample.numel())
-        for s0 in range(0, sample.numel(), args.chunk):
-            qi = sample[s0:s0 + args.chunk]
-            p_exact = torch.softmax(torch.einsum("hcd,hsd->hcs", q[0][:, qi, :], k[0]) * scale, dim=-1)
-            m = torch.zeros(p_exact.shape[0], qi.numel(), mask.shape[-1])
-            m.index_add_(2, pos // size, p_exact)
-            r = mask[:, pos[qi] // size, :]
-            missed[s0:s0 + qi.numel()] = (m * ~r).sum(-1).mean(0)
-            del p_exact, m, r
-        panels[ordering] = dict(pos=pos, spread=spread, routed=routed, missed=missed)
+    mask, _ = route_mask(q, k, TAU, sink_kv, sink_q, size)
+    vb = video_blocks(start, tokens, size)
+    spread = torch.full((mask.shape[-1],), float("nan"))
+    spread[vb] = within_block_spread(k, size, vb).mean(0)
+    routed = torch.full((mask.shape[-1],), float("nan"))
+    routed[vb] = mask[:, vb, :].sum(-1).float().mean(0)
+    missed = torch.zeros(sample.numel())
+    keyblk = torch.arange(tokens) // size
+    for s0 in range(0, sample.numel(), args.chunk):
+        qi = sample[s0:s0 + args.chunk]
+        p_exact = torch.softmax(torch.einsum("hcd,hsd->hcs", q[0][:, qi, :], k[0]) * scale, dim=-1)
+        m = torch.zeros(p_exact.shape[0], qi.numel(), mask.shape[-1])
+        m.index_add_(2, keyblk, p_exact)
+        r = mask[:, qi // size, :]
+        missed[s0:s0 + qi.numel()] = (m * ~r).sum(-1).mean(0)
+        del p_exact, m, r
+    panel = dict(spread=spread, routed=routed)
 
     area = gh * gw
     tok_of = lambda t, y, x: start + t * area + y * gw + x            # noqa: E731
 
-    def paint(ordering, frame, kind):
-        pos = panels[ordering]["pos"]
+    def paint(frame, kind):
         ids = np.empty((gh, gw), dtype=np.int64)
         for y in range(gh):
             for x in range(gw):
-                ids[y, x] = int(pos[tok_of(frame, y, x)]) // size
+                ids[y, x] = tok_of(frame, y, x) // size
         if kind == "blocks":
             return ids, _palette(ids)
-        src = panels[ordering][kind].numpy()
-        return ids, src[ids]
+        return ids, panel[kind].numpy()[ids]
 
     def grid_axes(ax, title):
         ax.set_title(title, fontsize=9)
@@ -1939,81 +1851,49 @@ def write_figures(path, outdir, args, node, recipe, frames=(10, 40, 80), size=64
         ax.set_ylabel("latent h (24)", fontsize=7)
 
     for frame in frames:
-        # 1. block identity, both orderings, each alone and side by side
-        for ordering in ORDERINGS:
-            _ids, rgb = paint(ordering, frame, "blocks")
-            fig, ax = plt.subplots(figsize=(8, 5), dpi=200)
-            ax.imshow(rgb, interpolation="nearest", aspect="auto")
-            grid_axes(ax, f"block membership, {ordering} order, latent frame {frame}, block {size}")
-            fig.tight_layout(); name = f"blocks_{ordering}_frame{frame:02d}.png"
-            fig.savefig(outdir / name); plt.close(fig); written.append(name)
-        fig, axes = plt.subplots(1, 2, figsize=(16, 5), dpi=100)
-        for ax, ordering in zip(axes, ORDERINGS):
-            _ids, rgb = paint(ordering, frame, "blocks")
-            ax.imshow(rgb, interpolation="nearest", aspect="auto")
-            grid_axes(ax, f"{ordering}: one colour per 64-token block, latent frame {frame}")
-        fig.tight_layout(); name = f"blocks_compare_frame{frame:02d}.png"
+        # 1. block identity
+        _ids, rgb = paint(frame, "blocks")
+        fig, ax = plt.subplots(figsize=(8, 5), dpi=200)
+        ax.imshow(rgb, interpolation="nearest", aspect="auto")
+        grid_axes(ax, f"block membership, latent frame {frame}, block {size}")
+        fig.tight_layout(); name = f"blocks_frame{frame:02d}.png"
         fig.savefig(outdir / name); plt.close(fig); written.append(name)
 
-        # 2. within-block key spread, one colour scale for both orderings
-        lo = float(np.nanmin([panels[o]["spread"].numpy() for o in ORDERINGS]))
-        hi = float(np.nanmax([panels[o]["spread"].numpy() for o in ORDERINGS]))
-        for ordering in ORDERINGS:
-            _ids, val = paint(ordering, frame, "spread")
-            fig, ax = plt.subplots(figsize=(8, 5), dpi=200)
-            im = ax.imshow(val, interpolation="nearest", aspect="auto", cmap="magma", vmin=lo, vmax=hi)
-            fig.colorbar(im, ax=ax, shrink=0.8, label="key spread (0 alike, 1 unrelated)")
-            grid_axes(ax, f"within-block key spread, {ordering}, latent frame {frame}")
-            fig.tight_layout(); name = f"spread_{ordering}_frame{frame:02d}.png"
-            fig.savefig(outdir / name); plt.close(fig); written.append(name)
+        # 2. within-block key spread, one colour scale for every frame
+        _ids, val = paint(frame, "spread")
+        fig, ax = plt.subplots(figsize=(8, 5), dpi=200)
+        im = ax.imshow(val, interpolation="nearest", aspect="auto", cmap="magma",
+                       vmin=float(np.nanmin(spread.numpy())), vmax=float(np.nanmax(spread.numpy())))
+        fig.colorbar(im, ax=ax, shrink=0.8, label="key spread (0 alike, 1 unrelated)")
+        grid_axes(ax, f"within-block key spread, latent frame {frame}")
+        fig.tight_layout(); name = f"spread_frame{frame:02d}.png"
+        fig.savefig(outdir / name); plt.close(fig); written.append(name)
 
         # 3. how many key blocks each query block routed
-        rlo = float(np.nanmin([panels[o]["routed"].numpy() for o in ORDERINGS]))
-        rhi = float(np.nanmax([panels[o]["routed"].numpy() for o in ORDERINGS]))
-        for ordering in ORDERINGS:
-            _ids, val = paint(ordering, frame, "routed")
-            fig, ax = plt.subplots(figsize=(8, 5), dpi=200)
-            im = ax.imshow(val, interpolation="nearest", aspect="auto", cmap="viridis", vmin=rlo, vmax=rhi)
-            fig.colorbar(im, ax=ax, shrink=0.8, label="key blocks routed exactly")
-            grid_axes(ax, f"routed key blocks per query block, {ordering}, latent frame {frame}")
-            fig.tight_layout(); name = f"routed_{ordering}_frame{frame:02d}.png"
-            fig.savefig(outdir / name); plt.close(fig); written.append(name)
+        _ids, val = paint(frame, "routed")
+        fig, ax = plt.subplots(figsize=(8, 5), dpi=200)
+        im = ax.imshow(val, interpolation="nearest", aspect="auto", cmap="viridis",
+                       vmin=float(np.nanmin(routed.numpy())), vmax=float(np.nanmax(routed.numpy())))
+        fig.colorbar(im, ax=ax, shrink=0.8, label="key blocks routed exactly")
+        grid_axes(ax, f"routed key blocks per query block, latent frame {frame}")
+        fig.tight_layout(); name = f"routed_frame{frame:02d}.png"
+        fig.savefig(outdir / name); plt.close(fig); written.append(name)
 
         # 4. missed mass at the sampled queries of this frame
-        lo4 = float(min(panels[o]["missed"].min() for o in ORDERINGS))
-        hi4 = float(max(panels[o]["missed"].max() for o in ORDERINGS))
         in_frame = ((sample - start) // area == frame).nonzero().squeeze(-1)
         if in_frame.numel():
             rem = (sample[in_frame] - start) % area
             ys, xs = (rem // gw).numpy(), (rem % gw).numpy()
-            for ordering in ORDERINGS:
-                fig, ax = plt.subplots(figsize=(8, 5), dpi=200)
-                ax.set_facecolor("#f2f2f2")
-                sc = ax.scatter(xs, ys, c=panels[ordering]["missed"][in_frame].numpy(),
-                                cmap="inferno", vmin=lo4, vmax=hi4, s=110, edgecolors="k", linewidths=0.3)
-                fig.colorbar(sc, ax=ax, shrink=0.8, label="share of exact mass in pooled blocks")
-                ax.set_xlim(-0.5, gw - 0.5); ax.set_ylim(gh - 0.5, -0.5)
-                grid_axes(ax, f"missed mass at sampled queries, {ordering}, latent frame {frame}")
-                fig.tight_layout(); name = f"missed_{ordering}_frame{frame:02d}.png"
-                fig.savefig(outdir / name); plt.close(fig); written.append(name)
-
-    # the brick: which latent frames one `3d` block spans
-    centre = tok_of(40, gh // 2, gw // 2)
-    bid = int(panels["3d"]["pos"][centre]) // size
-    span = range(38, 44)
-    fig, axes = plt.subplots(1, len(span), figsize=(15, 3), dpi=140)
-    for ax, frame in zip(axes, span):
-        img = np.zeros((gh, gw))
-        for y in range(gh):
-            for x in range(gw):
-                img[y, x] = 1.0 if int(panels["3d"]["pos"][tok_of(frame, y, x)]) // size == bid else 0.0
-        ax.imshow(img, interpolation="nearest", aspect="auto", cmap="Greys", vmin=0, vmax=1)
-        ax.set_title(f"frame {frame}: {int(img.sum())} tokens", fontsize=8)
-        ax.set_xticks([]); ax.set_yticks([])
-    fig.suptitle(f"the single 3d block holding the centre token of frame 40 (block {bid}), across frames "
-                 f"{span.start} to {span.stop - 1}", fontsize=10)
-    fig.tight_layout(); name = "bricks_3d_centre.png"
-    fig.savefig(outdir / name); plt.close(fig); written.append(name)
+            fig, ax = plt.subplots(figsize=(8, 5), dpi=200)
+            ax.set_facecolor("#f2f2f2")
+            sc = ax.scatter(xs, ys, c=missed[in_frame].numpy(), cmap="inferno",
+                            vmin=float(missed.min()), vmax=float(missed.max()),
+                            s=110, edgecolors="k", linewidths=0.3)
+            fig.colorbar(sc, ax=ax, shrink=0.8, label="share of exact mass in pooled blocks")
+            ax.set_xlim(-0.5, gw - 0.5); ax.set_ylim(gh - 0.5, -0.5)
+            grid_axes(ax, f"missed mass at sampled queries, latent frame {frame}")
+            fig.tight_layout(); name = f"missed_frame{frame:02d}.png"
+            fig.savefig(outdir / name); plt.close(fig); written.append(name)
     return written
 
 
@@ -2029,7 +1909,7 @@ def summarize(path, live=None, fingerprint=None, unpinned=()):
     import orjson
     data = orjson.loads(Path(path).read_bytes())
     cond = data["conditions"]
-    names = [cell_key(o, s) for o in ORDERINGS for s in BLOCK_SIZES]
+    names = [cell_key(s) for s in BLOCK_SIZES]
     # the capture-set directory names are longer than the rest of a row put
     # together, so the tables carry a tag and the legend carries the name
     tags = {s: chr(ord("A") + i) for i, s in enumerate(cond["capture_sets"])}
@@ -2044,7 +1924,7 @@ def summarize(path, live=None, fingerprint=None, unpinned=()):
     w("Script: `bench/analyze_sol_block_grouping.py`, whose docstring is the method.")
     w(f"Data: `{Path(path).name}`. CPU only, fp32, tau {cond['tau']}, head prefix of")
     w(f"{cond['heads']} of 56, sink conditioning `{cond['sink_conditioning']}`, block")
-    w(f"sizes {cond['block_sizes']}, orderings {cond['orderings']}. Rows are tagged by")
+    w(f"sizes {cond['block_sizes']}, native token order. Rows are tagged by")
     w("capture set: " + ", ".join(f"**{tags[c]}** = `{c}`" for c in cond["capture_sets"]) + ".")
     if data.get("figures"):
         w("")
@@ -2097,26 +1977,11 @@ def summarize(path, live=None, fingerprint=None, unpinned=()):
     w("push less mass into the pooled branch and still land further from dense")
     w("attention. Output error on these same captures lives in")
     w("`2026-09-18_sol_block_size.md`.")
-    cc = (data.get("instrument") or {}).get("missed_mass_vs_rel_l2_ordering")
-    if cc:
-        for size, row in cc["by_block_size"].items():
-            w("")
-            w(f"At block {size}, missed mass and that record's output rel_l2 rank the two")
-            w(f"orderings the same way on {row['same_ordering']} of {row['cells']} cells, "
-              "compared at the density plain")
-            w("order routes at this tau.")
-            for bad in row["disagreements"]:
-                w(f"They disagree on `{bad['cell']}`: rel_l2 moves by "
-                  f"{bad['rel_l2_3d_over_raster']}x under `3d` while missed mass moves by "
-                  f"{bad['missed_3d_over_raster']}x.")
-        w("")
-        w("Those cells are where this record must not be read as a statement about")
-        w("error. Regenerate the comparison with `--cross-check`.")
     w("")
-    w("**Cells are at equal tau, not at equal cost.** The four (ordering, block size)")
-    w("cells route at four different densities, printed in every table. In this data")
-    w("they all land within a few percent of one another, so the confound is small,")
-    w("but that is an observation about these captures rather than a property of tau.")
+    w("**Cells are at equal tau, not at equal cost.** The two block sizes route at")
+    w("different densities, printed in every table. Read how far apart they land")
+    w("off those columns: a small gap is an observation about these captures")
+    w("rather than a property of tau.")
     w("`sweep_sol_block_size_on_capture.py` is the instrument that holds cost fixed by")
     w("construction. The rest of the instrument controls are in the JSON under")
     w("`instrument`.")
@@ -2269,16 +2134,15 @@ def summarize(path, live=None, fingerprint=None, unpinned=()):
         w("against exact attention on the same query rows. It is the number that")
         w("decides, and it is not missed mass: the two disagree on sign in this table.")
         w("")
-        for o in ORDERINGS:
-            w(f"### Output error under each route, {o} order")
-            w("")
-            w("| cell | " + " | ".join(shown) + " |")
-            w("|---|" + "---|" * len(shown))
-            for cid, c in arm_cells.items():
-                r = c["arms"][o]
-                w(f"| {short(cid)} | " + " | ".join(f"{r[a]['rel_l2_vs_exact']:.4f}" for a in shown) + " |")
-            w("")
-        w("### Missed mass under each route, plain order")
+        w("### Output error under each route")
+        w("")
+        w("| cell | " + " | ".join(shown) + " |")
+        w("|---|" + "---|" * len(shown))
+        for cid, c in arm_cells.items():
+            r = c["arms"]
+            w(f"| {short(cid)} | " + " | ".join(f"{r[a]['rel_l2_vs_exact']:.4f}" for a in shown) + " |")
+        w("")
+        w("### Missed mass under each route")
         w("")
         w("The same arms by the share of exact mass they route through the pooled")
         w("branch. Compare it with the table above: on several cells the arm with the")
@@ -2287,7 +2151,7 @@ def summarize(path, live=None, fingerprint=None, unpinned=()):
         w("| cell | " + " | ".join(shown) + " |")
         w("|---|" + "---|" * len(shown))
         for cid, c in arm_cells.items():
-            r = c["arms"]["raster"]
+            r = c["arms"]
             w(f"| {short(cid)} | " + " | ".join(f"{r[a]['missed_mass']['mean']:.4f}" for a in shown) + " |")
         w("")
         w("### Union inflation: what a query split really costs")
@@ -2296,12 +2160,12 @@ def summarize(path, live=None, fingerprint=None, unpinned=()):
         w("split that matches Sol's cost per sub-block makes the CTA load more tiles.")
         w("`inflation` is that union over the per-sub-block cost at the tuned tau.")
         w("")
-        w("| cell | split2 inflation (plain / 3d) | split4 inflation (plain / 3d) |")
+        w("| cell | split2 inflation | split4 inflation |")
         w("|---|---|---|")
         for cid, c in arm_cells.items():
-            s2 = [c["arms_setting"][o]["split2"]["union_inflation"] for o in ORDERINGS]
-            s4 = [c["arms_setting"][o]["split4"]["union_inflation"] for o in ORDERINGS]
-            w(f"| {short(cid)} | {s2[0]:.3f} / {s2[1]:.3f} | {s4[0]:.3f} / {s4[1]:.3f} |")
+            s2 = c["arms_setting"]["split2"]["union_inflation"]
+            s4 = c["arms_setting"]["split4"]["union_inflation"]
+            w(f"| {short(cid)} | {s2:.3f} | {s4:.3f} |")
         w("")
         w("### What the token stage can buy, and what limits it")
         w("")
@@ -2314,13 +2178,13 @@ def summarize(path, live=None, fingerprint=None, unpinned=()):
         w("| cell | centroid rank, tokens for half | per-query rank, tokens for half | share reaching ninety (centroid / per-query) |")
         w("|---|---|---|---|")
         for cid, c in arm_cells.items():
-            rc = c["arms"]["raster"]["_token_recovery"]
+            rc = c["arms"]["_token_recovery"]
             w(f"| {short(cid)} | {rc['centroid']['tokens_for_half']['median']:.0f} | "
               f"{rc['per_query']['tokens_for_half']['median']:.0f} | "
               f"{rc['centroid']['share_reaching_ninety']:.2f} / "
               f"{rc['per_query']['share_reaching_ninety']:.2f} |")
         w("")
-        w(f"Capped at {arm_cells[list(arm_cells)[0]]['arms']['raster']['_token_recovery']['cap']} tokens; "
+        w(f"Capped at {arm_cells[list(arm_cells)[0]]['arms']['_token_recovery']['cap']} tokens; "
           "a row at the cap did not get there.")
         w("")
 
@@ -2395,9 +2259,8 @@ def summarize(path, live=None, fingerprint=None, unpinned=()):
     w("every number is a ceiling on what a grouping change could buy and not a")
     w("forecast of a kernel. Routing COST, which grows with the square of the block")
     w("count, is in nothing here, so block 16's numbers do not carry their own price.")
-    w("**Missed mass is not output error**, and on the cells named above the two rank")
-    w("the orderings oppositely; the pooled term's own fidelity is measured nowhere")
-    w("here. These are properties of one attention call on captured inputs, not of a")
+    w("**Missed mass is not output error**, and the pooled term's own fidelity is")
+    w("measured nowhere here. These are properties of one attention call on captured inputs, not of a")
     w("rendered clip, and this pack has a standing example of error against exact")
     w("attention and a watched clip disagreeing.")
     return "\n".join(out) + "\n"
@@ -2431,7 +2294,6 @@ def main() -> int:
                     help="measurement H: Sol's missed mass by latent-frame residue, with the residue control")
     ap.add_argument("--losa", nargs="*", default=[], metavar="CAP.pt",
                     help="measurement G: LoSA's frozen-pattern recall, over steps of one DiT block")
-    ap.add_argument("--losa-ordering", default="raster", choices=list(ORDERINGS))
     ap.add_argument("--query-blocks", type=int, default=100,
                     help="measurement G: query blocks sampled per cell, fixed seed")
     ap.add_argument("--theta", type=float, default=0.99, help="measurement G: LoSA's mass target")
@@ -2443,9 +2305,6 @@ def main() -> int:
                     help="measurement F: largest token count the recovery curve looks at")
     ap.add_argument("--hisa-pool", type=int, default=64,
                     help="HISA cut: unrouted blocks the token pass may look inside")
-    ap.add_argument("--cross-check", nargs="+", metavar="PRIOR.json", default=[],
-                    help="sweep_sol_block_size_on_capture records on the same captures; missed mass is "
-                         "ranked against their output rel_l2 and the agreement is stored under `instrument`")
     ap.add_argument("--summarize", metavar="RESULT.json", help="print the dated record for a finished run")
     ap.add_argument("--out")
     args = ap.parse_args()
@@ -2523,8 +2382,8 @@ def main() -> int:
             "conditions": {"device": "cpu", "dtype": "float32", "heads": args.heads, "tau": TAU,
                            "layouts": layouts,
                            "sink_conditioning": recipe["sink_conditioning"],
-                           "pooled_tail": recipe["pooled_tail"],
-                           "block_sizes": list(BLOCK_SIZES), "orderings": list(ORDERINGS),
+                           "pooled_tail": bool(node._TAIL),
+                           "block_sizes": list(BLOCK_SIZES),
                            "queries_per_latent_frame": args.per_frame,
                            "c_blocks": args.c_blocks, "c_queries_per_block": args.c_queries,
                            "top_fraction_of_block": TOP_FRACTION, "mass_covered": COVER,
@@ -2609,13 +2468,6 @@ def main() -> int:
         for cap in args.losa:
             capture_sets.add(Path(cap).resolve().parent.name)
         flush()
-
-    if args.cross_check:
-        ctl["missed_mass_vs_rel_l2_ordering"] = cross_check_rel_l2(
-            {"cells": cells}, args.cross_check)
-        flush()
-        import orjson as _o
-        print(_o.dumps(ctl["missed_mass_vs_rel_l2_ordering"], option=_o.OPT_INDENT_2).decode())
 
     if args.figures:
         if not args.captures:

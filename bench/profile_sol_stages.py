@@ -112,7 +112,8 @@ def main() -> int:
     node, recipe = _node(), _recipe()
     sol = load_cuda_kernel()
     params = inspect.signature(sol).parameters
-    arms = {"shipped": {"qk_balance": bool(recipe["qk_balance"]), "rotate": bool(recipe["rotate"])}}
+    qk_balance, rotate = node.SOL_QUANTIZERS[recipe["quantizer"]]
+    arms = {"shipped": {"qk_balance": bool(qk_balance), "rotate": bool(rotate)}}
     arms["plain"] = {"qk_balance": False, "rotate": False}
     arms["balance+rotate"] = {"qk_balance": True, "rotate": True}
     arms[f"balance+rotate+token{args.token_aug}"] = {"qk_balance": True, "rotate": True, "token_aug": args.token_aug}
@@ -140,7 +141,7 @@ def main() -> int:
                 extra["blk_cnt"] = cnt
             return sol(qs, ks, vs, tau=float(recipe["tau"]), scale=None,
                        sink_blocks=list(sink_kv), sink_q=list(sink_q),
-                       topk_ratio=0.0, tail=bool(recipe["pooled_tail"]), **extra)
+                       topk_ratio=0.0, tail=node._TAIL, **extra)
 
         rows = {}
         for name, kw in arms.items():
@@ -196,7 +197,7 @@ def main() -> int:
                        "comfy_kitchen": importlib.metadata.version("comfy-kitchen"),
                        "heads": args.heads or "all", "iters": args.iters,
                        "tau": recipe["tau"], "sink_conditioning": recipe["sink_conditioning"],
-                       "pooled_tail": recipe["pooled_tail"],
+                       "quantizer": recipe["quantizer"],
                        "layout": {"audio_span": args.audio_span, "video_start": args.video_start},
                        "captures": [Path(c).name for c in args.captures]},
         "how_to_read": "stage_ms is device time per call from CUDA-device profiler events grouped by kernel name; "

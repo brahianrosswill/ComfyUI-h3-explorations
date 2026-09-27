@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
-"""How many blocks does Sol's router keep exact, and does the token ordering move it?
+"""How many blocks does Sol's router keep exact?
 
 `docs/open_experiments.md` #18. This is the missing denominator under every
-curve comparison in this repo: every Morton or Hilbert A/B ever run here held
-`tau` fixed and believed that held the operating point fixed. It does not. The
-routing threshold is
+curve comparison this repo ran: every Morton or Hilbert A/B held `tau` fixed
+and believed that held the operating point fixed. It does not. The routing
+threshold is
 
     thr = tau * sqrt(sum_d centroid_d^2 * kcvar_d * log2s^2)
 
-and `kcvar` is the variance **across the block centroids**, which the
-permutation defines (`sol_attn_preprocess.cu:107-123`, applied at `:199`). So
-reordering moves the threshold, and a fixed-`tau` arm compares two operating
-points rather than two orderings.
+and `kcvar` is the variance **across the block centroids**, which block
+membership defines (`sol_attn_preprocess.cu:107-123`, applied at `:199`). So
+anything that changes which tokens share a block moves the threshold, and a
+fixed-`tau` arm compares two operating points.
+
+The token-ordering axis (`--curves`: Morton `2d_frame` and `3d`, Hilbert) and
+the compensating tau that matched each ordering to raster were removed on
+2026-09-27 with Morton itself (docs/research/2026-09-27_sol_node_redesign.md).
+This measures the native (raster) order only.
 
 ## Two different numbers, and they answer different questions
 
@@ -20,9 +25,10 @@ script mislabelled its own output. Both are printed:
 
 **ordering-effect density** -- forced-exact pairs dropped from numerator *and*
 denominator. Diagonal and neighbour blocks are always exact, and every pair
-touching a conditioning block is exact under `exact_kv`, regardless of
-ordering. Including them dilutes exactly the quantity under test. **This is the
-number to compare orderings with.**
+touching a conditioning block is exact under `exact_kv`, whatever the scores
+say. Including them dilutes the router's own decision. **This is the number
+for what the threshold does.** The name is from when it compared orderings;
+`sol_observe` and `sweep_routing_density.py` records carry it.
 
 **kernel density** -- what the kernel actually routes, forced pairs included.
 Higher, and it is the number for anything about cost, and the only one that may
@@ -59,13 +65,10 @@ script exists to avoid. It does NOT need the `coderef/` source clone.
 from __future__ import annotations
 
 import argparse
-import importlib.util
-import sys
 from pathlib import Path
 
 import torch
 
-REPO = Path(__file__).resolve().parent.parent
 BLOCK = 64
 LOG2E = 1.4426950408889634
 
@@ -105,33 +108,38 @@ def load_eager():
     return _pool
 
 
-def load_capture_tools():
-    spec = importlib.util.spec_from_file_location(
-        "_ac", REPO / "bench" / "analyze_capture.py")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+def latent_t(length):
+    n = int(length)
+    return ((n - 5) // 17) * 5 + 2 if n > 5 else 2
 
 
-def orderings(grid, video_start, vendor, curves):
-    """{label: permutation of the video span}, including the identity."""
-    pad = (-int(video_start)) % BLOCK
-    out = {"raster": torch.arange(grid[0] * grid[1] * grid[2])}
-    for curve in curves:
-        if curve in ("3d", "2d_frame"):
-            perm, _ = vendor.morton_perm(grid, "cpu", curve)
-        elif curve == "hilbert":
-            sys.path.insert(0, str(REPO))
-            import sol_curves
-            perm, _ = sol_curves.hilbert_perm(grid, "cpu")
-        else:
-            raise SystemExit(f"unknown curve {curve!r}")
-        out[curve] = torch.roll(perm, pad) if pad else perm
-    return out
+def video_span(seq, canvas, length):
+    """(start, stop, grid). Video is the last segment of the packed sequence.
+
+    `PackedLayout` appends target audio then target video and they are always
+    the last two segments, so the video span can be found by subtraction
+    without plumbing the layout out of the model. If the arithmetic overshoots
+    the sequence, the canvas or length passed in is wrong and it says so rather
+    than analysing the wrong rows.
+
+    Moved here from `analyze_capture.py` on 2026-09-27, when that script left
+    with Morton.
+    """
+    w, h = canvas
+    grid = (latent_t(length), h // 32, w // 32)
+    n = grid[0] * grid[1] * grid[2]
+    if n > seq:
+        raise SystemExit(
+            f"video span {n:,} exceeds captured sequence {seq:,}. The --canvas "
+            f"or --length does not match the capture.")
+    return seq - n, seq, grid
 
 
 def block_stats(q, k, order, start, stop, head, pool):
-    """(query centroids, centred pooled keys, kcvar) for one head, one ordering.
+    """(query centroids, centred pooled keys, kcvar) for one head.
+
+    `order` maps video-span position -> original row: `torch.arange` is the
+    native order, and `run_controls` passes a shuffle to test block membership.
 
     **The population is the whole packed sequence**, conditioning rows included,
     because `kcvar` is a variance over every centroid the kernel pools. Blocking
@@ -170,8 +178,7 @@ def _thr_naive(centroid, kcc, kcvar, tau, scale):
 
     Deliberately a Python loop over query blocks rather than a batched matmul.
     If this disagrees with `exact_mask`, every number below describes a rule
-    nobody runs. Same failure mode `analyze_morton.py` guards with
-    `_independent_perm`.
+    nobody runs.
     """
     log2s = scale * LOG2E
     out = torch.zeros(centroid.shape[0], kcc.shape[0], dtype=torch.bool)
@@ -186,9 +193,9 @@ def _thr_naive(centroid, kcc, kcvar, tau, scale):
 def forced_masks(n, sink_kv_blocks, sink_q_blocks):
     """(always-exact pairs, pairs to drop from the ordering-effect density).
 
-    Forced-exact is ordering-invariant: the diagonal band is positional, and
-    conditioning rows are never permuted by any curve here. So dropping them
-    compares like with like.
+    Forced-exact pairs are exact whatever the scores say: the diagonal band is
+    positional and the conditioning sinks are fixed. Dropping them leaves the
+    router's own decisions.
     """
     idx = torch.arange(n)
     band = (idx.view(1, -1) - idx.view(-1, 1)).abs() <= 1
@@ -211,32 +218,14 @@ def densities(q, k, order, start, stop, tau, heads, pool, sink_kv, sink_q, scale
     return sum(eff) / len(eff), sum(ker) / len(ker)
 
 
-def compensating_tau(q, k, order, start, stop, target, heads, pool, sink_kv, sink_q):
-    """tau reproducing `target` ordering-effect density. Density falls with tau."""
-    lo, hi = 0.25, 6.0
-    for _ in range(20):
-        mid = (lo + hi) / 2
-        d, _ = densities(q, k, order, start, stop, mid, heads, pool, sink_kv, sink_q)
-        if d > target:
-            lo = mid
-        else:
-            hi = mid
-    return (lo + hi) / 2
-
-
-def run_controls(q, k, orders, start, stop, tau, heads, pool, sink_kv, sink_q):
+def run_controls(q, k, start, stop, tau, heads, pool, sink_kv, sink_q):
     """Every one of these has been shown to fail for the right reason.
 
     A control that has only ever been green is a control nobody has tested.
     """
     print("CONTROLS")
     ok = True
-
-    for label, order in orders.items():
-        if sorted(order.tolist()) != list(range(stop - start)):
-            print(f"  FAIL  {label} is not a permutation of the video span")
-            ok = False
-    print(f"  pass  all {len(orders)} orderings are permutations")
+    raster = torch.arange(stop - start)
 
     # An ordering that shuffles WITHIN each 64-token block cannot change block
     # membership, so every centroid, kcvar and threshold is unchanged and the
@@ -255,7 +244,7 @@ def run_controls(q, k, orders, start, stop, tau, heads, pool, sink_kv, sink_q):
     for b0 in range(head_off, (stop - start) - BLOCK + 1, BLOCK):
         within[b0:b0 + BLOCK] = within[b0:b0 + BLOCK][torch.randperm(BLOCK, generator=g)]
     a = densities(q, k, within, start, stop, tau, heads[:1], pool, sink_kv, sink_q)
-    b = densities(q, k, orders["raster"], start, stop, tau, heads[:1], pool, sink_kv, sink_q)
+    b = densities(q, k, raster, start, stop, tau, heads[:1], pool, sink_kv, sink_q)
     if a != b:
         print(f"  FAIL  a within-block shuffle changed the density ({a} vs {b}); "
               "block boundaries or the span are wrong")
@@ -264,17 +253,18 @@ def run_controls(q, k, orders, start, stop, tau, heads, pool, sink_kv, sink_q):
         print("  pass  a within-block shuffle leaves density unchanged (membership invariant)")
 
     # ...and the converse, so the pair cannot both pass by nothing happening.
-    moved = [l for l, o in orders.items() if l != "raster"
-             and densities(q, k, o, start, stop, tau, heads[:1], pool, sink_kv, sink_q) != b]
-    if not moved:
-        print("  FAIL  no curve changed the density at all; the ordering is not being applied")
+    # Until 2026-09-27 the Morton and Hilbert curves were the permutations that
+    # had to move it; a shuffle ACROSS blocks is the same test without them.
+    across = torch.randperm(stop - start, generator=g)
+    if densities(q, k, across, start, stop, tau, heads[:1], pool, sink_kv, sink_q) == b:
+        print("  FAIL  a cross-block shuffle did not change the density; the order is not being applied")
         ok = False
     else:
-        print(f"  pass  {len(moved)} of {len(orders) - 1} curves do move it ({', '.join(moved)})")
+        print("  pass  a cross-block shuffle does move it")
 
     head = heads[0]
     centroid, kcc, kcvar, n, D = block_stats(
-        q, k, orders["raster"], start, stop, head, pool)
+        q, k, raster, start, stop, head, pool)
 
     # `kcvar` must be the variance over EVERY block centroid the kernel pools,
     # conditioning rows included -- `open_experiments.md` #18 makes this a
@@ -301,9 +291,9 @@ def run_controls(q, k, orders, start, stop, tau, heads, pool, sink_kv, sink_q):
     else:
         print(f"  pass  batched threshold matches an independent naive transcription ({m}x{m})")
 
-    lo, _ = densities(q, k, orders["raster"], start, stop, tau * 0.9, heads[:1],
+    lo, _ = densities(q, k, raster, start, stop, tau * 0.9, heads[:1],
                       pool, sink_kv, sink_q)
-    hi, _ = densities(q, k, orders["raster"], start, stop, tau * 1.1, heads[:1],
+    hi, _ = densities(q, k, raster, start, stop, tau * 1.1, heads[:1],
                       pool, sink_kv, sink_q)
     if not lo > hi:
         print(f"  FAIL  density does not fall with tau ({lo:.4f} at 0.9x, {hi:.4f} at 1.1x); "
@@ -322,7 +312,6 @@ def main():
     ap.add_argument("--length", type=int, required=True)
     ap.add_argument("--tau", type=float, default=1.3)
     ap.add_argument("--heads", type=int, default=8)
-    ap.add_argument("--curves", default="2d_frame,3d,hilbert")
     ap.add_argument("--audio-start", type=int, default=None,
                     help="row where the target audio segment begins. Enables the "
                          "exact_kv_and_rows dense-query range; without it only "
@@ -330,14 +319,12 @@ def main():
     args = ap.parse_args()
 
     pool = load_eager()
-    ac = load_capture_tools()
-    vendor = ac.load_shipped_morton()
 
     d = torch.load(args.capture, map_location="cpu", weights_only=True)
     q, k = d["q"][0], d["k"][0]
     H, S, _ = k.shape
     w, h = (int(v) for v in args.canvas.lower().split("x"))
-    start, stop, grid = ac.video_span(S, (w, h), args.length)
+    start, stop, grid = video_span(S, (w, h), args.length)
     n_blocks = S // BLOCK
 
     sink_kv = (start + BLOCK - 1) // BLOCK
@@ -357,32 +344,18 @@ def main():
               f"at a different length.")
     print()
 
-    orders = orderings(grid, start, vendor, args.curves.split(","))
-    if not run_controls(q, k, orders, start, stop, args.tau, heads, pool, sink_kv, sink_q):
+    if not run_controls(q, k, start, stop, args.tau, heads, pool, sink_kv, sink_q):
         raise SystemExit("a control failed; the numbers below would not mean anything")
 
     print(f"ROUTED DENSITY at tau={args.tau}\n")
-    print(f"  {'ordering':<14}{'ordering-effect':>17}{'vs raster':>11}{'kernel':>10}")
-    base = None
-    results = {}
-    for label, order in orders.items():
-        eff, ker = densities(q, k, order, start, stop, args.tau, heads, pool,
-                             sink_kv, sink_q)
-        results[label] = eff
-        if base is None:
-            base = eff
-        print(f"  {label:<14}{eff:>16.2%}{eff / base:>10.3f}x{ker:>9.2%}")
+    print(f"  {'ordering-effect':>17}{'kernel':>10}")
+    eff, ker = densities(q, k, torch.arange(stop - start), start, stop, args.tau, heads, pool,
+                         sink_kv, sink_q)
+    print(f"  {eff:>16.2%}{ker:>9.2%}")
 
-    print(f"\nCOMPENSATING TAU -- reproduces raster's ordering-effect density\n")
-    print(f"  {'ordering':<14}{'tau':>8}")
-    for label, order in orders.items():
-        t = compensating_tau(q, k, order, start, stop, base, heads, pool, sink_kv, sink_q)
-        print(f"  {label:<14}{t:>8.3f}")
-
-    print("\nReading it. The ordering-effect column is the one to compare curves\n"
-          "with; the kernel column is the one to size routed_cap_percent against.\n"
-          "A compensating tau far from the base means a fixed-tau A/B of that\n"
-          "curve compared two operating points, not two orderings.")
+    print("\nReading it. The ordering-effect column is the router's own decision,\n"
+          "forced pairs removed; the kernel column is the one to size\n"
+          "routed_cap_percent against.")
 
 
 if __name__ == "__main__":

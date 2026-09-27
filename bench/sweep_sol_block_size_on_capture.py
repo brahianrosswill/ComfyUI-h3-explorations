@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Is 64 tokens per block the limit, or does ordering already buy the granularity? Float reference, on captures.
+"""Is 64 tokens per block the limit? Float reference, on captures.
 
     python bench/sweep_sol_block_size_on_capture.py <capture.pt> [...] --out bench/results/<date>_sol_block_size.json
 
@@ -12,13 +12,15 @@ tokens better (done), or make the block smaller (a kernel rewrite, `BLOCK = 64`
 is baked into the CUDA layout). This measures the second before anyone builds
 it.
 
-For each ordering (raster, `3d`) and each block size (64, 32, 16), sweep tau
-and record (routed density, error against exact attention). Density is cost.
-Read it the way `sweep_sol_orderings_on_capture.py` is read: a configuration is
-better only where its curve lies BELOW another's. If `3d` at 64 already sits on
-raster at 16, ordering has bought the granularity and smaller blocks are not
-worth a kernel; if 16 is far below everything at equal density, the ceiling is
-real.
+For each block size (64, 32, 16), sweep tau and record (routed density, error
+against exact attention), in the tokens' native (raster) order. Density is
+cost. A configuration is better only where its curve lies BELOW another's: if
+16 is far below 64 at equal density, the ceiling is real.
+
+The token-ordering axis (raster against Morton `3d`, which asked whether a
+reorder already buys the granularity) was removed on 2026-09-27 with Morton
+itself (docs/research/2026-09-27_sol_node_redesign.md). Records written before
+then key their curves `<ordering>_b<size>`; `--summarize` still reads them.
 
 The arithmetic is the algorithm in fp32, NOT the CUDA kernel: this pack's
 `analyze_sol_error.eager_sol_reference`, which is query-chunked so it runs at
@@ -43,8 +45,8 @@ blocks) is part of the algorithm at each size and counts toward density.
 
 Limits: captured blocks and steps only; a head prefix; routing cost, which
 grows with the square of the block count, is not in "density"; error against
-exact attention is not a verdict on a clip. Captures must have been taken with
-reordering OFF.
+exact attention is not a verdict on a clip. A capture taken before 2026-09-27
+must have been taken with reordering OFF.
 """
 
 from __future__ import annotations
@@ -65,8 +67,7 @@ import analyze_sol_error as ase  # noqa: E402
 from _live_sol import live_sol  # noqa: E402
 
 BLOCK_SIZES = (64, 32, 16)
-ORDERINGS = ("raster", "3d")
-NODE_BLOCK = 64                      # the unit `_sink_blocks` and `_perm_for` speak in
+NODE_BLOCK = 64                      # the unit `sink_ranges` speaks in
 
 
 def _kitchen_eager():
@@ -171,20 +172,23 @@ def error_at(curve, density):
 
 
 def summarize(path, tau=1.0):
-    """Every configuration's error at ONE density per cell: what raster at block 64 routes at `tau`.
+    """Every configuration's error at ONE density per cell: what block 64 routes at `tau`.
 
-    Curves are compared at equal cost, never at equal tau (a reorder and a
-    block size both move the threshold). Printed as error and as a ratio to
-    raster at block 64; a dash is a curve that does not reach that density.
+    Curves are compared at equal cost, never at equal tau (a block size moves
+    the threshold). Printed as error and as a ratio to block 64; a dash is a
+    curve that does not reach that density. A record from before 2026-09-27
+    keys its curves `<ordering>_b<size>` and is read against `raster_b64`,
+    with every ordering it holds as a column.
     """
     import orjson
     data = orjson.loads(Path(path).read_bytes())
-    names = [f"{o}_b{b}" for o in ORDERINGS for b in BLOCK_SIZES]
-    print(f"{path}: error at the density raster_b64 routes at tau {tau}, and its ratio to raster_b64")
+    names = list(next(iter(data["cells"].values())))
+    base_name = "b64" if "b64" in names else "raster_b64"
+    print(f"{path}: error at the density {base_name} routes at tau {tau}, and its ratio to {base_name}")
     print("| cell | density | " + " | ".join(names) + " |")
     print("|---|---|" + "---|" * len(names))
     for cell, rows in data["cells"].items():
-        base = next(c for c in rows["raster_b64"] if c["tau"] == tau)
+        base = next(c for c in rows[base_name] if c["tau"] == tau)
         cols = []
         for name in names:
             e = error_at(rows[name], base["density"])
@@ -271,47 +275,37 @@ def main() -> int:
         cell = f"b{m.group(1)}_s{m.group(2)}" if m else Path(cap).stem
         ref = ase.dense_reference(q, k, v)                   # [1, H, S, D] fp32, raster order
         ref_norm = float(ref.norm())
-        layout = {"sol_h3_video_span": (start, tokens), "sol_h3_audio_span": (a0, a1)}
-        sink_kv64, sink_q64 = node._sink_blocks(layout, tokens, recipe["sink_conditioning"])
+        sink_kv64, sink_q64 = node.sink_ranges((start, tokens), (a0, a1), tokens, recipe["sink_conditioning"])
         rows = {}
-        for name in ORDERINGS:
-            if name == "raster":
-                index = torch.arange(tokens)
-            else:
-                perm, _inv = node._perm_for(grid, name, "cpu", start)
-                index = torch.cat([torch.arange(start), start + perm.cpu()])
-            assert torch.equal(torch.sort(index).values, torch.arange(tokens)), f"{name}: not a bijection"
-            qs, ks, vs, ref_p = (x[:, :, index] for x in (q, k, v, ref))
-            for size in BLOCK_SIZES:
-                scale = NODE_BLOCK // size
-                sink_kv = (sink_kv64[0] * scale, sink_kv64[1] * scale)
-                sink_q = (sink_q64[0] * scale, sink_q64[1] * scale)
-                n = (tokens + size - 1) // size
-                curve = []
-                for tau in taus:
-                    with block_size(size):
-                        out = ase.eager_sol_reference(qs, ks, vs, tau=tau, sink_blocks=list(sink_kv),
-                                                      sink_q=list(sink_q),
-                                                      centroid_tail=bool(recipe["pooled_tail"]))
-                    err = float((out - ref_p).norm()) / ref_norm
-                    density = float(routed_counts(qs, ks, tau, sink_kv, sink_q, size, device).float().mean()) / n
-                    curve.append({"tau": tau, "density": round(density, 5), "rel_l2": round(err, 5)})
-                    del out
-                rows[f"{name}_b{size}"] = curve
-                print(f"{cell} {name:6s} block {size:2d} "
-                      + "  ".join(f"tau {c['tau']}: d {c['density']:.3f} e {c['rel_l2']:.4f}" for c in curve), flush=True)
-            del qs, ks, vs, ref_p
+        for size in BLOCK_SIZES:
+            scale = NODE_BLOCK // size
+            sink_kv = (sink_kv64[0] * scale, sink_kv64[1] * scale)
+            sink_q = (sink_q64[0] * scale, sink_q64[1] * scale)
+            n = (tokens + size - 1) // size
+            curve = []
+            for tau in taus:
+                with block_size(size):
+                    out = ase.eager_sol_reference(q, k, v, tau=tau, sink_blocks=list(sink_kv),
+                                                  sink_q=list(sink_q),
+                                                  centroid_tail=node._TAIL)
+                err = float((out - ref).norm()) / ref_norm
+                density = float(routed_counts(q, k, tau, sink_kv, sink_q, size, device).float().mean()) / n
+                curve.append({"tau": tau, "density": round(density, 5), "rel_l2": round(err, 5)})
+                del out
+            rows[f"b{size}"] = curve
+            print(f"{cell} block {size:2d} "
+                  + "  ".join(f"tau {c['tau']}: d {c['density']:.3f} e {c['rel_l2']:.4f}" for c in curve), flush=True)
         cells[cell] = rows
         del ref, q, k, v
         # written after every capture: a long sweep that dies keeps what it finished
         Path(args.out).write_bytes(orjson.dumps({
             "what": "Sol-Attn ALGORITHM in fp32 (no INT8 term): error against fp32 dense attention versus routed "
-                    "density, per token ordering and per block size, tau swept; only the video rows are permuted, "
-                    "by the node's own _perm_for; sinks rescaled so the same rows stay exact at every block size",
+                    "density, per block size, raster token order, tau swept; "
+                    "sinks rescaled so the same rows stay exact at every block size",
             "model": "MiniMax H3, int8 convrot checkpoint, base 16-step t2v captures",
             "conditions": {"device": torch.cuda.get_device_name(0) if device.type == "cuda" else "cpu",
                            "heads": args.heads, "grid_thw": grid, "video_start": start, "audio_span": [a0, a1],
-                           "sink_conditioning": recipe["sink_conditioning"], "pooled_tail": recipe["pooled_tail"],
+                           "sink_conditioning": recipe["sink_conditioning"], "pooled_tail": node._TAIL,
                            "captures": [Path(c).name for c in args.captures],
                            "capture_set": Path(args.captures[0]).resolve().parent.name},
             "instrument": {"chunked_reference_vs_oracle_worst_rel_l2": {str(s): calibration[s] for s in BLOCK_SIZES},

@@ -370,6 +370,9 @@ segment balance should not be assumed to stay above it. **1024x768 at 311
 frames is the cheapest combination that is aligned, comfortably above the
 floor, and 0.58x the attention of the default.**
 
+*2026-09-27: Morton is retired (`docs/roadmap.md`, "Closed lanes"); the Sol
+node has no reorder, and this section is history.*
+
 **Morton ships off.** `SOL_RECOMMENDED_CUDA` carries `morton=False`, so none of
 the ordering geometry on this page is running in any shipped graph today. It
 also carries `morton_curve="3d"` (`workflows/h3_config.py:392`), which decides

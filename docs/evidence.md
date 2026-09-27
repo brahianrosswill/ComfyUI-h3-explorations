@@ -321,7 +321,8 @@ for each, as it stood when it was written, is in `docs/rules_history.md`.
   the vendored `SolAttnMiniMax`. Since 2026-08-30 `vendor/sol_attn_minimax.py`
   is a read-only reference that is not loaded, and the node the graphs wire is
   `MiniMaxH3SolAttn` in `sol_attn_h3.py`; `bench/check_sol_node_equivalence.py`
-  is the guard that relates the two.
+  is the guard that relates the two. *2026-09-27: that node is replaced by
+  `MiniMaxH3Sol` (`docs/research/2026-09-27_sol_node_redesign.md`).*
 
 ---
 

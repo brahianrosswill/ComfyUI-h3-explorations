@@ -19,7 +19,7 @@ same `score.html`.
        {"name": "diner", "kind": "real",
         "a": {"label": "default", "clip": "Video/.../x_00001.mp4"},
         "b": {"label": "dense",   "clip": "Video/.../y_00001.mp4"},
-        "differ_only": ["MiniMaxH3SolAttn[0].", "ModelAttentionBackend[0]."]}]}
+        "differ_only": ["MiniMaxH3Sol[0].", "ModelAttentionBackend[0]."]}]}
 
 Clip paths are relative to the ComfyUI output root and name the SILENT file;
 each single is copied from its `-audio.mp4` sibling (`blind_batch.single_source`).

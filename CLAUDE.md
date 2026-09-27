@@ -39,7 +39,7 @@ prompt structure, PDD quality or reference sizing, read `docs/evidence.md`
 news at least once. Three facts every session acts on:
 
 - **Sol-Attn is on by default in every shipped video workflow**
-  (`MiniMaxH3SolAttn`, `sol_attn_h3.py`). The exempt set is
+  (`MiniMaxH3Sol`, `sol_attn_h3.py`). The exempt set is
   `bench/check_attention_defaults.py::SOL_EXEMPT_STEMS`; read the constant,
   never a sentence about it.
 - **The baseline is `workflows/bench/h3_text_to_video_dense_stamped_api.json`**:
