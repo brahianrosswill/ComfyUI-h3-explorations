@@ -299,6 +299,10 @@ DECLARED: dict[tuple[str, str], tuple] = {
     # LoraLoaderModelOnly.strength_model's row moved here in 0.154.0, when
     # every LoRA on int8 moved to the branch node and the stock loader was left
     # on one control graph at its default.
+    ("MiniMaxH3PDDLoRA", "backbone_apply"):
+        ("ARM", "'merge' on h3_probe_t2v_pdd8_merge alone, the control for the "
+                "0.154.0 default 'exact branch': PDD's backbone merged into the int8 "
+                "weight as every PDD graph did before. Only this input differs."),
     ("MiniMaxH3LoRABranch", "strength"):
         ("ARM", "1.0 on most graphs and h3_config.TURBO_OWNER_STRENGTH 0.75 "
                 "on the owner's turbo recipe graphs. Classified HOUSE first on "
