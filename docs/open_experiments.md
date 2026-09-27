@@ -2486,3 +2486,10 @@ sits with fp16's, the rebuild record says so and this closes.
 `bench/results/2026-09-27_vae_encoder_fp16acc_before_672.json`. *Until then
 this said the tag was the blocker: untagged main was not built by policy.*
 
+**Closed 2026-09-27: no change** (`../bench/results/2026-09-27_vae_encoder_fp16acc.md`).
+Before and after, the fp16-accumulate encode is identical to every printed
+digit, because core's H3 encoder always tiles at 256 px. Its 512-channel
+convs launch at 16x16 tiles, where #192's small-launch rule keeps fp32
+accumulation. It reopens if core encodes H3 untiled or with much larger
+tiles.
+
