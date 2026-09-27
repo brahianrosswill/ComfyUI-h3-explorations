@@ -63,6 +63,11 @@ is `2026-09-27_render_dataset/`.
    late-only FlashGen.** If the late blocks carry the finish and the early
    blocks carry the haze, this should lift PDD's highlights without adding
    FlashGen's haze. One render.
+
+   *Annotation 2026-09-27, later: tested, no gain.* The late-only finish
+   matches the full one, and neither adds haze over PDD8
+   (`2026-09-27_late_switch.md`). Technique 1, with full FlashGen as the
+   finisher, stands as the recipe.
 4. **PDD6.** Within 5-10% of PDD8's detail at three quarters of the steps
    (`2026-09-27_ladder.md`). A practical default candidate.
 5. **Weight map, then block transplant.**
