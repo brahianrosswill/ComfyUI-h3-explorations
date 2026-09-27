@@ -2682,6 +2682,16 @@ the clean test of whether the tail is PDD's problem.
     finish.
   - On measures it does not repair PDD8's dim highlights; the FlashGen finish
     does. The owner's eye is pending.
+- **The owner's eye, 2026-09-27** (the board's review, ow-vd-07 to 09, vd-v01).
+  The base finish is not inert, which the measures missed:
+  - on noodle_bar it matches both FlashGen finishes, and all three beat
+    PDD8 alone;
+  - on spec_unusual it partly fixes the sign text, better than PDD8 but
+    worse than FlashGen;
+  - on courtroom it morphs a face.
+
+  So PDD8's coarse tail is part of its weakness, but a FlashGen finish stays
+  the recipe for t2v. Closed.
   - By this entry's rule (the VAE session): a base finish that looks like
     PDD8 means the dim highlights are not the tail's. The reverse switch's
     lift is FlashGen's own.
