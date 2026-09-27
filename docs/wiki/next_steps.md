@@ -900,7 +900,10 @@ length every arm above rendered on this card without it.
 ## Now
 
 - **Distill weights and routes, from the 2026-09-26 overnight batch.** The
-  summary is fastdude's `../../bench/results/2026-09-27_followup_summary.md`.
+  summary is fastdude's `../../bench/results/2026-09-27_followup_summary.md`;
+  the ranked takeaways, and the untried next recipe (PDD8 finished by FlashGen
+  on blocks 34-49), are in
+  `../../bench/results/2026-09-27_evening_takeaways.md`.
   What stays open:
   - **FastH3: gates or backbone drift?** The conditioning swap is near-inert
     (`../../bench/results/2026-09-27_fasth3_swap.md`). The next split is fl2va
