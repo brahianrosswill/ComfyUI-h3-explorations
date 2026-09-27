@@ -206,5 +206,15 @@
   "status": "comparison (encoder session, 2026-09-27_encoder_int8_vs_bf16_conditioning.json)",
   "origin": "converted here",
   "added": "2026-09-27"
+ },
+ "minimax_h3_ref2va_pdd_8step_comfy": {
+  "family": "pdd",
+  "what": "alibaba-pai PDD 8-step (Ref2VA) for ComfyUI: backbone+refiner LoRA, adaln baked into ref2va's curve basis, 32-head output bank",
+  "hybrid_of": null,
+  "made_by": "bench/convert_pdd_lora.py (converter v3) from MiniMax-H3-Ref2VA-Acc-8Step",
+  "commit": "eb791f8",
+  "status": "shipped PDD sidecar (ref2va)",
+  "origin": "converted here",
+  "added": "2026-09-03"
  }
 }
