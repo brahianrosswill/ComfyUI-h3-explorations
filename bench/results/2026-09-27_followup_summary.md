@@ -51,6 +51,19 @@ people's records are cited, not restated.
   - Late handoffs cannot remove it.
   - The base clone control says whether it is PDD's choice or the seed and
     prompt's.
+- **PDD first, FlashGen finishing (the owner's idea) repairs PDD8's dim
+  highlights without changing the scene** (`2026-09-27_reverse_switch.md`,
+  the VAE session).
+  - Both handoffs keep PDD8's composition, motion and saturation.
+  - Highlights lift to FlashGen's and FastH3's level, and fine detail rises.
+  - The clone survives, as predicted before it rendered: it is born at step
+    1.
+  - So part of PDD8's dim-highlight signature is its coarse tail.
+  - A candidate route for PDD's lamp-lit interiors. The owner's call.
+- **Specificity ladder (the owner's O2)** (`2026-09-27_spec_ladder.md`):
+  - The measures do not show FlashGen degrading more on the unusual prompt.
+    "Weird" is semantic, so this one is the owner's eye.
+  - FastH3 varies most across the rungs, and PDD8 is the steadiest.
 - **FlashGen's weights** (`2026-09-26_flashgen_weights_predictions.md`,
   verdicts):
   - The effective rank is about 18 of 64.
@@ -63,8 +76,6 @@ people's records are cited, not restated.
 
 ## Still rendering or unread when this was written
 
-- The reverse step-switch and the specificity ladder: the VAE session's
-  reads.
 - The FastH3 conditioning swap, the base clone control and PDD strength: the
   VAE session's records.
 - The FlashGen block transplant (FT1): this session's read, added below.
