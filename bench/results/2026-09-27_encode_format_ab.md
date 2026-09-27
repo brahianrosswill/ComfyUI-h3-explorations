@@ -79,3 +79,20 @@ today's format.
     `encode_format_ab.py`'s `READ_BACK` documents that.
 - Every clip measure after the switch is on a different encode, so the
   CHANGELOG entry must say so.
+
+## The whole clip, and the pair for the owner (2026-09-27, later)
+
+The same comparison on all 345 frames of look_noir PDD8 (the clean rerun,
+render `2026-09-26_followup:look_noir__pdd8:2`), for today's format and the
+recommendation only. Raw numbers:
+`2026-09-27_encode_format_ab_fullclip.json`.
+
+| candidate | dark 8 px excess | dark error | bitrate |
+|---|---|---|---|
+| `h264_crf19_8bit` (today) | +0.048 | 0.71 | 2481 kbps |
+| `h265_crf22_10bit` | +0.003 | 0.71 | 1337 kbps |
+
+On the whole clip, H.265 10-bit removes nearly all the added dark blocking
+at the same dark error and 54% of the bitrate. Both encodes are silent
+copies in `Video/review_38/` on the output share, and are on the board's "For
+your eye" tab as `fmt38-look_noir_pdd8`.
