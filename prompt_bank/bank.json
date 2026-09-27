@@ -1057,6 +1057,14 @@
       "tests": "whether a distill keeps a non-photographic medium under low-key light or drifts it toward live-action, and whether its tone shift on a clay surface matches its shift on the anchor."
     },
     {
+      "id": "t2va_look_anime",
+      "mode": "t2va",
+      "frames": 345,
+      "donor": null,
+      "brief": "The look family, axis medium: 2D anime, hand-drawn cel animation with clean ink outlines and flat cel shading, under the anchor's exact night lighting sentences (the owner, 2026-09-26: 'maybe 2d animation or anime'). Content is held to t2va_look_anchor; only the style opener and the shot 2 face sentence (a drawn, cel-shaded face) differ.",
+      "tests": "whether a distill keeps a drawn medium with flat shading under low-key light or drifts it toward live-action or soft 3D shading, and whether its tone shift on flat cel colour matches its shift on the anchor."
+    },
+    {
       "id": "ref2va_stairwell_dialogue_backstage",
       "mode": "ref2va",
       "frames": 345,

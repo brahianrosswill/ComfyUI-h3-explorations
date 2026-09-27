@@ -4,6 +4,31 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.154.5
+
+### Added
+
+- **`t2va_look_anime`**, the look family's 2D anime variant (the owner,
+  2026-09-26: "maybe 2d animation or anime"). The anchor's text with only the
+  style opener and the face-light sentence changed.
+- **`bench/make_followup_manifest.py`** and `bench/followup_arms.json`: the
+  follow-up batch, 70 arms on the 0.154.0 code. The owner capped it at four
+  hours and dropped the base renders. In priority order:
+  - the look family's anchor and noir across PDD8, FlashGen and FastH3;
+  - the distill run's 11 scenes on the three distills;
+  - merged vs exact PDD8;
+  - PDD at 4 and 6 steps on the motion scenes;
+  - FastH3 with VSA off;
+  - FlashGen dense, strength and no-adaln;
+  - neon and anime.
+
+### Fixed
+
+- `bench/measure_clip_resolution.py`: its VSA-cube column is `block128`, not
+  `block64`. Core builds the VSA grid in tokens with a 4x4x4 cube, so a cube
+  is 128 pixels across. Found by the VAE session; no record used the old
+  column.
+
 ## 0.154.4
 
 ### Added

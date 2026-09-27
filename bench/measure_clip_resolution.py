@@ -25,10 +25,12 @@ the sRGB-coded values):
 - `eff_res`: the median over 64x64 tiles of the largest factor, from 1, 2, 4
   and 8, whose down-and-up loss stays under `EFF_TOL`. A tile at 4 carries
   about a quarter of its pixels' worth of detail.
-- `block16`, `block32`, `block64`: how much stronger the horizontal and
-  vertical gradients are on a 16-, 32- or 64-pixel grid than off it (1.0
+- `block16`, `block32`, `block128`: how much stronger the horizontal and
+  vertical gradients are on a 16-, 32- or 128-pixel grid than off it (1.0
   means no grid). 16 is H3's latent pixel, 32 a DiT token (2x2 latent patch),
-  64 a VSA cube's spatial side. Seams at exactly those spacings point at the
+  128 a VSA cube's spatial side: core builds the VSA grid in tokens with a
+  4x4x4 cube (`comfy_extras/nodes_sparse_attention.py`, `VSA_CUBE`). It read
+  64 until 2026-09-26, the VAE session's catch; no record used that column. Seams at exactly those spacings point at the
   model, not at the codec, whose blocks are 8 and 16.
 
 - `poster`: the share of 32x32 tiles with strong contrast (luma std above
@@ -186,7 +188,7 @@ def measure(path: Path, map_dir: Path | None) -> dict:
         "eff_res": float(np.median(eff)),
         "eff_res_share_ge4": round(float((eff >= 4).mean()), 3),
         "block16": round(blockiness(y, 16), 3), "block32": round(blockiness(y, 32), 3),
-        "block64": round(blockiness(y, 64), 3),
+        "block128": round(blockiness(y, 128), 3),
         "eff_map": eff.astype(int).tolist(),
     }
     if map_dir is not None:
@@ -217,7 +219,7 @@ def main() -> int:
     ap.add_argument("--map", type=Path, default=None)
     args = ap.parse_args()
     keys = ["loss4", "hf", "flat", "poster", "motion_sharp", "moved_share",
-            "block16", "block32", "block64"]
+            "block16", "block32", "block128"]
     print(f"{'clip':<52}" + "".join(f"{k:>18}" for k in keys))
     rows = []
     for clip in args.clips:
