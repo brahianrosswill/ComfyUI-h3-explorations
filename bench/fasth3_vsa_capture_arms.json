@@ -12,7 +12,8 @@
   "note": "held"
  },
  "server_env": "H3_CAPTURE must carry pre=1 or pre=only (core_sparse_capture writes qkvpre_ files only), cycle=8 (FastH3's contract runs 8 steps, as PDD8 does), and blocks including 0, 24 and 49 for #45 (an early and a late step, e.g. steps 1 or 2, and 6). With lookingdude's Sol test 2 spec (blocks 0:8:40:44:45:46:47:48:49, steps 2:6) this render writes blocks 0 and 49 only; add 24 if the session's spec allows.",
- "cost": "each qkvpre file holds the fused projection of every row in bf16 (about 3 GB at 345 frames on 1344x768); host RAM holds one at a time; the card holds one PRODUCER_CHUNK",
+ "cost": "per requested cell: one qkvpre file (the fused projection of every row in bf16, about 3 GB at 345 frames on 1344x768) and one gate file (the coarse-branch gate's output, about 1 GB); host RAM holds one projection at a time; the card holds one PRODUCER_CHUNK",
  "check": "the render's saved final latent should be torch.equal to an unarmed render of the same graph: the node changes no output (bench/check_core_sparse_capture.py proves it on stand-ins)",
- "run": "run_graph_arms.py --manifest bench/fasth3_vsa_capture_arms.json --runs 1 --seed 730451892 --hold-seed --no-alternate --out bench/results/2026-09-27_fasth3_vsa_capture.jsonl"
+ "run": "run_graph_arms.py --manifest bench/fasth3_vsa_capture_arms.json --runs 1 --seed 730451892 --hold-seed --no-alternate --out bench/results/2026-09-27_fasth3_vsa_capture.jsonl",
+ "files": "qkvpre_*.pt (fused qkv before norm and RoPE, rope table, q/k norm weights and eps as used, layout segments) and gate_*.pt (to_gate_compress(x) for the same call): together enough to rebuild VSA's fine and coarse terms without the checkpoint"
 }

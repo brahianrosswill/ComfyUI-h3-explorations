@@ -18,6 +18,8 @@ wrapper hands core's patch an `original_block` that swaps the block's
 - writes it through `h3_capture.maybe_capture_pre`, with the rope table and the
   q/k norm weights: everything a grader needs to rebuild the q and k that VSA
   selection sees;
+- on a model with VSA gates, also writes the coarse-branch gate's output for
+  the same call (`gate_*.pt`), which the qkvpre file cannot rebuild;
 - counts the call (`h3_capture.count_call`), since no `maybe_capture` runs on
   this path to advance the step counter;
 - calls the attention core chose, unchanged.
@@ -55,8 +57,8 @@ logger = logging.getLogger(__name__)
 TAG = "[h3 core sparse capture]"
 
 
-def _host_projection(attn, h):
-    """The fused qkv projection of `h`, built on the host in core's producer chunks."""
+def _host_chunks(linear, h):
+    """`linear(h)` built on the host in core's producer chunk size."""
     try:
         from comfy_extras.nodes_sparse_attention import PRODUCER_CHUNK
         chunk = int(PRODUCER_CHUNK)
@@ -65,14 +67,45 @@ def _host_projection(attn, h):
     parts = []
     with torch.no_grad():
         for i in range(0, h.shape[0], chunk):
-            parts.append(attn.qkv_proj(h[i:i + chunk]).cpu())
+            parts.append(linear(h[i:i + chunk]).cpu())
     return torch.cat(parts)
+
+
+def _host_projection(attn, h):
+    """The fused qkv projection of `h`, built on the host in core's producer chunks."""
+    return _host_chunks(attn.qkv_proj, h)
+
+
+def _write_gate(attn, h):
+    """Save the VSA coarse-branch gate's output for this call, beside its qkvpre file.
+
+    VSA's attention output is fine + coarse * gate(x) (core's producer, from
+    `attn.to_gate_compress`, no activation). The qkvpre file rebuilds q, k and
+    v but not the gate, whose weights are int8 in the checkpoint. The model's
+    own gate, applied to this call's input, is what core used. Same (block,
+    step, render) indices as the qkvpre file, read without advancing."""
+    gate = getattr(attn, "to_gate_compress", None)
+    if gate is None:
+        return
+    import os
+    with _capture._lock:
+        block, step = _capture._block_step(attn, advance=False)
+        render = _capture._render
+    g = _host_chunks(gate, h)
+    suffix = f"_r{render}" if render else ""
+    name = f"gate_L{int(h.shape[0])}_S{int(h.shape[0])}_b{block}_s{step}{suffix}.pt"
+    torch.save({"kind": "coarse_gate", "gate": g, "block": int(block), "step": int(step),
+                "render": int(render), "seq_len": int(h.shape[0]),
+                "source": "the model's to_gate_compress on this call's attention input, core's chunk size"},
+               os.path.join(_capture._config["dir"], name))
+    print(f"[h3_capture] wrote {name}  gate{tuple(g.shape)} {g.dtype}", flush=True)
 
 
 def _capturing(attn, inner):
     def attention(h, rope_freqs=None, transformer_options={}):
         # Both calls re-read H3_CAPTURE and return at once when it is unset.
         if _capture.wants_pre(attn):
+            _write_gate(attn, h)
             qkv = _host_projection(attn, h)
             _capture.maybe_capture_pre(attn, qkv, h, rope_freqs, transformer_options,
                                        length_hint=int(h.shape[0]))

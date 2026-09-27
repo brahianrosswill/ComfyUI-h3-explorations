@@ -4,6 +4,17 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.164.1
+
+### Added
+
+- **`MiniMaxH3CoreSparseCapture` also saves the VSA coarse gate.** On a model
+  with `to_gate_compress`, each requested call writes `gate_*.pt` beside its
+  `qkvpre_` file: the model's own gate applied to the call's input, in core's
+  chunk size. VSA's output is fine + coarse * gate(x), and the gate's int8
+  weights cannot be rebuilt from the qkvpre file. `check_core_sparse_capture.py`
+  gains the case.
+
 ## 0.164.0
 
 ### Added
