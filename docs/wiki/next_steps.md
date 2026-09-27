@@ -27,22 +27,89 @@ stays the shipped default.
 - The distill version (`../open_experiments.md` #47) closes unbuilt. Any
   numerical A/B read at an int8 DiT's output needs a tiny-noise arm beside it.
 
-**The Sol node redesign (owner, 2026-09-27):** tests 0 to 3 of
-[`../research/2026-09-27_sol_node_redesign.md`](../research/2026-09-27_sol_node_redesign.md),
-then the new node. They start when fastdude frees the card.
+**Open after the 2026-09-27 night**, from the handoffs of the four sessions
+(lookingdude, fastdude, vaedude, encoderdude). The board
+(the owner's H3 Distill Board artifact) carries the same items as directions.
 
-**Next, from the 2026-09-26 night** (`../../bench/results/2026-09-27_takeaways.md`),
-each small, in order of return:
-1. **The save setting.** The blocky darks are the 8-bit h264 encode
-   (`../../bench/results/2026-09-27_o1_lossless.md`). A lower CRF or a 10-bit
-   format in the generator's `VHS_VideoCombine` is the owner's call.
-2. **PDD first, finished by late-only FlashGen:** the reverse switch with
-   `blocks="34-49"` on the FlashGen pass. One render. Does it lift PDD's
-   highlights without adding FlashGen's haze?
-3. **Late-only FlashGen on the adherence scenes,** by the owner's eye.
-4. **The reverse switch on the lamp-lit interiors** (noodle_bar, radio_drama,
-   courtroom), where PDD8 trails most.
-5. **PDD6 as a default candidate** (`../../bench/results/2026-09-27_ladder.md`).
+- **Decided 2026-09-27, owner** (each with its record):
+  - Sol's default quantizer is `rotated`: 0.166.0,
+    `../../bench/results/2026-09-27_sol_redesign_test2.md`.
+  - The save format stays H.264 8-bit crf 19 (#38,
+    `../../bench/results/2026-09-27_encode_format_ab.md`). O1's splotchy
+    blacks are still open: the measured dark-blocking excess (+0.05) is below
+    the owner's eye (vd-m12) and is not the codec's 8 px blocking. The test is
+    a lossless decode of a clip the owner names.
+  - PDD8 then full FlashGen from sigma 0.8 is the owner's t2v pick, added as
+    `workflows/h3_text_to_video_pdd8_flashgen_finish_api.json` (vaedude).
+    Whether it replaces the default t2v PDD graph is still the owner's call.
+    On fresh runs, where both passes sampled, it samples in the same time as
+    PDD8 alone at the same length, and the FlashGen LoRA node adds 0.1-3 s
+    (vaedude, fastdude; `../../bench/results/2026-09-27_finisher_grid.md`).
+    i2v stays PDD8 alone.
+  - PDD6 is a low-motion and close-up option, not the default
+    (`../h3_distills.md`, "Rules of thumb, provisional").
+  - The base finish (#37) and late-only FlashGen as a finisher (#34) close
+    with no change. The base finish is not inert: it partly fixed
+    spec_unusual's sign text and matched on noodle_bar, so PDD8's tail is part
+    of its weakness (vd-v01).
+  - Late-only FlashGen alone (#46) trades coherence for naturalness, so no
+    stripped file is built.
+  - The research model files are deleted, and so is the unpruned FastH3 V2
+    download (`../../bench/results/2026-09-27_research_files_deleted.md`).
+    Kept for #35's routes 2 and 3: the bf16 pruned FastH3 and fl2va, and
+    `internal/pdd_shims/shim_{fasth3,fl2va}_temb`. `h3_research/` now holds
+    only #35's two new checkpoints.
+- **The Sol node redesign**
+  (`../research/2026-09-27_sol_node_redesign.md`, lookingdude):
+  - Tests 0 to 2 are done: output-neutral, `qk_balance` not inert, and
+    `rotated` best while kitchen int8 wins the dense tail.
+  - Next: Sol against dense on blocks 45, 48 and 49 on PDD8 (the grade on
+    the captured cells is `2026-09-27_sol_quantizer_grade_pdd8_tail.json`).
+    Then test 3, the token-routing re-grade on the fixed kernel, including
+    whether "all blocks" still needs the balance. Both run on the test 2
+    captures (keep until 2026-10-31), with no render.
+  - Parked by the owner: our sage attention in place of kitchen int8 as
+    Sol's dense fallback. On the dense tail, kitchen is the more accurate
+    of the two, so a sage case would rest on speed or the early steps.
+- **Approved and queued** (owner, 2026-09-27 night, relayed by fastdude:
+  "ok to 4 and 5"):
+  - #40, a second seed on the finalists: the t2v finish
+    (`h3_text_to_video_pdd8_flashgen_finish`) and PDD8 alone on i2v. It gates
+    every one-seed recommendation (vaedude, fastdude). Both arms render fresh
+    on the same code, so no quantizer pin.
+  - #43's scene pass (fastdude): the x0 twins of PDD8 and base Euler 32 on
+    slapstick and samurai (high delta) and courtroom and radio (low delta).
+    The pilot found that on subway, base Euler 32 settles its high-change
+    frames late and PDD8 does not
+    (`../../bench/results/2026-09-27_settle_pilot.md`). If that holds on the
+    four scenes, the next step is the causal test: a finer PDD tail on one
+    action scene. It renders its own baselines, so no pin.
+  - #44, timestamps inside a shot (fastdude): first the timed and untimed
+    bank pair and their checklist (`../open_experiments.md` #44), then the
+    renders. It compares within itself, so no pin.
+- **Queued, waiting on the owner's go:**
+  - #35, FastH3's gates against backbone drift: built, with 7 renders, and
+    its predictions committed before rendering (0a23dcae). Its graph has no
+    Sol, so 0.166.0 does not affect it (vaedude).
+  - #36, the gate dial, only if #35 says the gates carry the look.
+- **Comparing across 0.166.0:** anything compared against a render made
+  before it pins `quantizer=balanced` or re-renders its baseline. FastH3's
+  contract graphs use core's attention and are unaffected.
+- **Owner's calls with no render:**
+  - #45's reference node: kitchen's VSA selection matches FastVideo's on
+    blocks 0 and 24. Block 49's gap is int8 on text rows
+    (`../../bench/results/2026-09-27_vsa_selection_grade.md`). Build the node
+    only to see whether that is visible; otherwise close #45.
+  - `check_vsa_core_patch.py`'s logic fix, so that "nothing patches core"
+    has a working check again.
+  - The working rules the sessions proposed (the board's
+    cross-session-patterns).
+- **Hygiene, no card** (vaedude):
+  - waiter-locks: the substring-matching queue waiter has bitten twice.
+  - The dataset builder should raise on an output claimed by two renders.
+  - always-red-checks, down to two: `check_doc_links` on
+    `../h3_audio_freeze.md`'s sister-repo citations, and
+    `check_audio_freeze`'s ImportError.
 
 **Idea saved for later, 2026-09-26: fix PDD's weakness with the other
 distills' strengths.** The owner: "i wonder if you could make pdd better by
@@ -920,44 +987,10 @@ length every arm above rendered on this card without it.
 
 - **Distill weights and routes, from the 2026-09-26 overnight batch.** The
   summary is fastdude's `../../bench/results/2026-09-27_followup_summary.md`;
-  the ranked takeaways, and the untried next recipe (PDD8 finished by FlashGen
-  on blocks 34-49), are in
-  `../../bench/results/2026-09-27_evening_takeaways.md`.
-  What stays open:
-  - **The VAE session's held-back list, 2026-09-27: `../open_experiments.md`
-    #34 to #42.** Each entry has its models, workflows, bench code (existing
-    or to build), measures and the decision it changes. In the VAE session's
-    order of value:
-    - #34 PDD8 finished by late-block FlashGen;
-    - #38 the save format measured (no render);
-    - #36 a strength dial on FastH3's gates;
-    - #35 gates against backbone;
-    - #37 PDD8 finished by the base;
-    - #39 telemetry on a mixed batch;
-    - #40 a second seed;
-    - #41 blind pairs;
-    - #42 PDD fusion cost.
-  - **FastH3: gates or backbone drift?** (#35) The conditioning swap is near-inert
-    (`../../bench/results/2026-09-27_fasth3_swap.md`). The next split is fl2va
-    plus FastH3's 50 gates, against FastH3 without them. Both are CPU builds;
-    rendering them is the owner's go.
-  - **FlashGen on blocks 34-49** keeps the 4-step finish with half the haze
-    (fastdude's FT1). It is a shippable `blocks` setting, pending the owner's
-    eye.
-  - **The reverse switch as PDD8's highlight fix**
-    (`../../bench/results/2026-09-27_reverse_switch.md`). One scene so far;
-    the lamp-lit interiors where PDD8 is flattest are next.
-  - **PDD6 as the faster PDD** (`../../bench/results/2026-09-27_ladder.md`).
-  - **O1's splotchy blacks come from the encoder, not the distills.** The
-    save node's 8-bit h264 at crf 19
-    (`../../bench/results/2026-09-27_o1_lossless.md`). A lower crf or a
-    10-bit format is the owner's call.
-  - **Deprioritised builds on disk, for the owner to keep or delete.** They
-    rest on the retracted time-embedder inference. They are now in
-    `models/diffusion_models/h3_research/` (the two dial checkpoints and
-    the two conditioning-swap checkpoints) and `models/loras/h3/research/`
-    (the PDD-on-FastH3-time-embedder sidecar), each folder with a README.
-    The rename map is in `../../bench/results/2026-09-27_inventory.md`.
+  the ranked takeaways are in
+  `../../bench/results/2026-09-27_evening_takeaways.md`. What those left open
+  (#34 to #46) was run, reviewed by the owner or decided on 2026-09-27. What
+  remains is in "Open after the 2026-09-27 night" at the top of this page.
 
 *2026-09-19, two corrections to the paragraph below.* (1) The "sage's audio more natural" lead is WITHDRAWN as a lead
 about chains: the pair the owner heard was sage against sage (the 2026-09-15 kitchen-scene "default" clip predates the chain
