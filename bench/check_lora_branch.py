@@ -46,6 +46,7 @@ import comfy.cli_args  # noqa: E402
 comfy.cli_args.args.cpu = True
 import comfy.model_patcher  # noqa: E402
 import comfy.ops  # noqa: E402
+import comfy.utils  # noqa: E402
 import comfy.ldm.minimax.model as mm_h3  # noqa: E402
 import lora_branch as lb  # noqa: E402
 
@@ -280,6 +281,31 @@ def main() -> int:
         check("a forward another node patches is refused", False)
     except ValueError:
         check("a forward another node patches is refused", True)
+
+    # A second model must not wrap the first's applied patches. 2026-09-26:
+    # Turbo, then PDD, then FlashGen, each a clone of one loaded checkpoint,
+    # rendered in one process. Each node read the module's CURRENT forward,
+    # which was the previous model's still-applied branch, so FlashGen ran
+    # base + Turbo + PDD + FlashGen. `patch_model` is emulated: set each object
+    # patch on the model and record the original in the backup the clones share.
+    patcher = comfy.model_patcher.ModelPatcher(_Base(dm), load_device=torch.device("cpu"),
+                                               offload_device=torch.device("cpu"))
+    other = {k: (v * 3 if k.endswith("lora_B.weight") else v) for k, v in sd.items()}
+    first = lb.attach(patcher, lb.parse_lora(other, STRENGTH))
+    for k, fn in first.object_patches.items():
+        old = comfy.utils.set_attr(patcher.model, k, fn)
+        first.object_patches_backup.setdefault(k, old)
+    try:
+        second = lb.attach(patcher, lb.parse_lora(sd, STRENGTH))
+        for k, fn in second.object_patches.items():
+            comfy.utils.set_attr(patcher.model, k, fn)
+        stacked = run(dm)
+    finally:
+        for k, old in first.object_patches_backup.items():
+            comfy.utils.set_attr(patcher.model, k, old)
+        first.object_patches_backup.clear()
+    check("a second model does not wrap the first's applied patches",
+          rel(stacked, ref) < 1e-5, f"{rel(stacked, ref):.3g} from its own merge")
 
     if fails:
         print(f"\n  FAIL  {len(fails)}: {fails}")

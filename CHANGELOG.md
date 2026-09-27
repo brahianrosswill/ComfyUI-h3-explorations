@@ -4,6 +4,25 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.154.8
+
+### Fixed
+
+- **`lora_branch.install` wrapped whichever forward was applied, not the
+  original.** It read `module.forward`, which is the previous model's branch
+  while that model is still loaded. Tonight was the first night several
+  branch-patched models (Turbo, PDD on the exact branch, FlashGen), all clones
+  of one checkpoint, rendered in one process. So PDD ran as base + Turbo + PDD,
+  and FlashGen as base + Turbo + PDD + FlashGen. The owner saw FlashGen "blocky
+  as hell". It now reads the original through `get_model_object` on the
+  `.forward` key, which returns the backup the clones share. Before 0.154.0
+  only FlashGen used the branch, so no earlier render stacked.
+  - `bench/check_lora_branch.py` gains the case: one model's branch applied,
+    a second attached from the same checkpoint. It failed at 0.994 from its
+    own merge before the fix and passes at 3e-7 after.
+  - Contaminated rows are listed in
+    `bench/results/2026-09-26_followup_contamination.md`.
+
 ## 0.154.7
 
 ### Changed

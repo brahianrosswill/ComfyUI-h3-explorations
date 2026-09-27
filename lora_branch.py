@@ -273,12 +273,18 @@ def install(m, branches):
         if getattr(getattr(mod, "weight", None), "ndim", 0) != 2:
             raise ValueError(f"{path} is a {type(mod).__name__} with no 2-D weight; this "
                              f"node only branches linear modules and MLP.fc2")
-        patches[f"{PREFIX}{path}.forward"] = _linear_forward(mod.forward, branch)
+        # The ORIGINAL forward, through `get_model_object` on the `.forward` key,
+        # which reads the backup the clones of one checkpoint share. `mod.forward`
+        # is whatever is applied right now: another model's branch, if it is
+        # still loaded, which this one would then wrap (2026-09-26: FlashGen ran
+        # base + Turbo + PDD + FlashGen; `check_lora_branch.py` reproduces it).
+        key = f"{PREFIX}{path}.forward"
+        patches[key] = _linear_forward(m.get_model_object(key), branch)
     for path in fc2:
         parent = path[:-len(".fc2")]
         mlp = m.get_model_object(PREFIX + parent)
         fc1_key = f"{PREFIX}{parent}.fc1.forward"
-        fc1_forward = patches.get(fc1_key, mlp.fc1.forward)
+        fc1_forward = patches.get(fc1_key, m.get_model_object(fc1_key))
         patches[f"{PREFIX}{parent}.forward"] = _mlp_forward(mlp, fc1_forward, branches[path])
     for key in patches:
         if key in m.object_patches:

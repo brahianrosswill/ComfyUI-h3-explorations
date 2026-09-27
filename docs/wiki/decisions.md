@@ -17,6 +17,13 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-26
 
+- **Bug, fixed in 0.154.8: the exact branch stacked on another model's
+  branch.** When one server process rendered Turbo, then PDD, then FlashGen,
+  each wrapped the previous model's still-applied forward. The owner caught it
+  by eye ("flashgen looks awful blocky"; "it's the code"). My first explanation,
+  a regression between 13:05 and 16:07 read off a 16-pixel grid metric, was
+  wrong: the owner named a clip it rated blocky as fine. The contaminated
+  renders are listed in `bench/results/2026-09-26_followup_contamination.md`.
 - **Owner: every LoRA on an int8 checkpoint goes through our exact branch**
   (0.154.0). This covers PDD's backbone and refiner (`MiniMaxH3PDDLoRA`
   `backbone_apply`), and the generator's `lora_branch` now defaults on.
