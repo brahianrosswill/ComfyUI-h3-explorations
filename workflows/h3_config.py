@@ -73,7 +73,8 @@ MODELS = dict(
     # The filenames end `-int8`, not `_int8_convrot`; `substrate.py` tags them.
     # FastVideo's FastH3 8-step V2 (HF FastVideo/FastVideo-FastH3-Comfy): a full
     # distilled T2VA DiT (data-free DMD2, trained WITH VSA-H3), pruned int8
-    # convrot on the fl2va curve basis, plus a `to_gate_compress` per main block
+    # convrot with its OWN curve basis and time table (not fl2va's; measured
+    # 2026-09-26, bench/results/2026-09-26_fasth3_weights.md), plus a `to_gate_compress` per main block
     # that core's model detection now reads from the keys
     # (`comfy/model_detection.py`, `gate_compress`). It also quantizes the token
     # refiner, which ours keeps bf16. T2VA only: FL2VA and Ref2VA were not

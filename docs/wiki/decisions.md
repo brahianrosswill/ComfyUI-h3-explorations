@@ -17,6 +17,12 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-26
 
+- **FastH3's pruned file does not share fl2va's curve basis** (measured,
+  `bench/results/2026-09-26_fasth3_weights.md`). Its `adaln_t_table` and
+  every `adaln_proj` differ from fl2va's by several times their own norm, so
+  the conditioning moves between checkpoints only as a whole set
+  (`bench/build_adaln_swap.py`). `h3_config.MODELS["unet_fasth3_v2"]`'s
+  comment said it was "pruned int8 convrot on the fl2va curve basis".
 - **The lightx2v turbo and Turbo-SLA LoRAs are retired, and turbo LoRAs are
   a closed lane** (owner: "lightx and turbo stuff irrelevant"; on SLA, "i
   thought we stopped that ages ago"). The distill lanes are FastH3, PDD and,
