@@ -22,6 +22,15 @@ runs the tool each prediction names
 - `reverse`: the reverse step switch on `subway_chase`
   (`bench/followup_reverse_switch_arms.json`). Both handoffs and FlashGen
   alone are read against PDD8 (exact) as the reference.
+- `swap`: FastH3's conditioning swap (`bench/fasth3_swap_arms.json`, its own
+  rows file). Per scene, FastH3, base weights with FastH3's conditioning,
+  FastH3 with the base's, and the base on FastH3's harness:
+  `measure_clip_tone.py` and `measure_clip_temporal.py` on the clips, and
+  `latent_path_distance.py` with FastH3 as the reference.
+- `transplant`: FlashGen on block ranges (`bench/flashgen_transplant_arms.json`,
+  fastdude's, its own rows file). Per scene, full FlashGen from the rerun and
+  the 0-49, 0-33 and 34-49 arms: tone and temporal on the clips, and
+  latent distance with full FlashGen as the reference.
 
 Scenes whose prompts ask for frame-to-frame brightness change are left out of
 temporal reads, per the manifest's `analysis_notes`. An arm that has not
@@ -52,9 +61,11 @@ PY = sys.executable
 TEMPORAL_EXCLUDE = ("kpop_dance_studio", "silent_film", "subway_chase_short")
 
 
-def rows() -> dict:
+def rows(path: Path = ROWS) -> dict:
     out = {}
-    for line in ROWS.read_text().splitlines():
+    if not path.exists():
+        return out
+    for line in path.read_text().splitlines():
         if line.strip():
             r = json.loads(line)
             if not r.get("warmup") and not r.get("error"):
@@ -85,9 +96,10 @@ def run(tool: str, args: list, json_out: Path):
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--group", action="append", choices=("looks", "ladder", "vsa", "spec", "reverse"))
+    ap.add_argument("--group", action="append",
+                    choices=("looks", "ladder", "vsa", "spec", "reverse", "swap", "transplant"))
     args = ap.parse_args()
-    groups = args.group or ["looks", "ladder", "vsa", "spec", "reverse"]
+    groups = args.group or ["looks", "ladder", "vsa", "spec", "reverse", "swap", "transplant"]
     out_root = comfy_output()
     if not ROWS.exists():
         print(f"no rows yet: {ROWS.relative_to(REPO)} does not exist")
@@ -159,6 +171,34 @@ def main() -> int:
                 OUT / "2026-09-26_followup_reverse_switch.json")
         else:
             missing.append("reverse switch latents")
+
+    for group, rows_file, ref_arm, arms in (
+            ("swap", "2026-09-26_fasth3_swap.jsonl", "fasth3",
+             ("swap_fasth3adaln", "swap_baseadaln", "fl2va_contract")),
+            ("transplant", "2026-09-26_flashgen_transplant.jsonl", "flashgen",
+             ("flashgen_blk0_49", "flashgen_blk0_33", "flashgen_blk34_49"))):
+        if group not in groups:
+            continue
+        landed = rows(OUT / rows_file)
+        scenes = sorted({l.split("__")[0] for l in landed})
+        for scene in scenes:
+            labs = [f"{scene}__{a}" for a in (ref_arm, *arms)]
+            clips = [clip(l, out_root) for l in labs]
+            lats = [latent(l, out_root) for l in labs]
+            missing += [l for l, c in zip(labs, clips) if not c]
+            got = [c for c in clips if c]
+            if len(got) < 2:
+                continue
+            print(f"== {group}: {scene} tone")
+            run("measure_clip_tone.py", got, OUT / f"2026-09-26_{group}_{scene}_tone.json")
+            if scene not in TEMPORAL_EXCLUDE:
+                print(f"== {group}: {scene} temporal")
+                run("measure_clip_temporal.py", [*got, "--stride", "4"],
+                    OUT / f"2026-09-26_{group}_{scene}_temporal.json")
+            if lats[0] and any(lats[1:]):
+                print(f"== {group}: {scene} latent distance from {ref_arm}")
+                run("latent_path_distance.py", [lats[0], *[x for x in lats[1:] if x]],
+                    OUT / f"2026-09-26_{group}_{scene}_latent.json")
 
     if missing:
         print("not landed or not found:", ", ".join(missing))
