@@ -42,7 +42,7 @@ sys.path.insert(0, str(REPO / "workflows"))
 from prompts import identify as prompt_id_of, sha256 as prompt_sha  # noqa: E402
 
 RESULTS = REPO / "bench" / "results"
-ROW_GLOB = "2026-09-26_*.jsonl"
+ROW_GLOB = "2026-09-2[67]_*.jsonl"
 MEASURE_GLOB = "2026-09-2[67]_*.json"
 FINDING_FIELDS = ["finding_id", "author", "date", "kind", "text", "render_ids", "scope", "model_family",
                   "prediction_id", "verdict", "record", "supersedes", "basis", "tags"]
