@@ -64,10 +64,10 @@ stays the shipped default.
   (`../research/2026-09-27_sol_node_redesign.md`, lookingdude):
   - Tests 0 to 2 are done: output-neutral, `qk_balance` not inert, and
     `rotated` best while kitchen int8 wins the dense tail.
-  - Next: Sol against dense on blocks 45, 48 and 49 on PDD8 (the grade on
-    the captured cells is `2026-09-27_sol_quantizer_grade_pdd8_tail.json`).
-    Then test 3, the token-routing re-grade on the fixed kernel, including
-    whether "all blocks" still needs the balance. Both run on the test 2
+  - The dense tail still beats Sol on blocks 45, 48 and 49 on PDD8, so
+    `dense_blocks` stays (the same record).
+  - Next: test 3, the token-routing re-grade on the fixed kernel, including
+    whether "all blocks" still needs the balance. It runs on the test 2
     captures (keep until 2026-10-31), with no render.
   - Parked by the owner: our sage attention in place of kitchen int8 as
     Sol's dense fallback. On the dense tail, kitchen is the more accurate
