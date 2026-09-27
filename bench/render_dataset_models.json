@@ -39,7 +39,7 @@
   ],
   "made_by": "bench/build_adaln_swap.py",
   "commit": "91db4fc2",
-  "status": "research; question answered; deletable",
+  "status": "research; swap rendered on 3 scenes: lands on the base, so the conditioning is near-inert (2026-09-27_fasth3_swap.md S2); deletable",
   "renamed_to": "h3_research/hybrid__fl2va-weights__fasth3-timecond__int8.safetensors",
   "origin": "built here",
   "added": "2026-09-26"
@@ -53,7 +53,7 @@
   ],
   "made_by": "bench/build_adaln_swap.py",
   "commit": "91db4fc2",
-  "status": "research; question answered; deletable",
+  "status": "research; swap rendered on 3 scenes: still FastH3, look and over-polish included, so they live in the weights and gates (2026-09-27_fasth3_swap.md S3, S4); deletable",
   "renamed_to": "h3_research/hybrid__fasth3v2-weights-and-gates__fl2va-timecond__int8.safetensors",
   "origin": "built here",
   "added": "2026-09-26"
