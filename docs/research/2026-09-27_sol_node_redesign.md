@@ -234,6 +234,13 @@ restarted on the new kitchen before anything runs.
      sage on matched cells, which has never been graded (audit §9b).
    - Captures, not renders, because these are numerical questions
      (`CLAUDE.md`: a rendered clip cannot A/B a numerical change).
+   - Grade each attention call on its own captured inputs, as
+     `bench/grade_sol_quantizer_on_capture.py` does. A comparison taken at
+     the DiT's output instead sits on a floor that the int8 blocks add
+     downstream. There, noise across a 100x range of doses reads the same
+     (encoderdude, 2026-09-27: `../../bench/results/2026-09-27_encoder_quant_dit.json`
+     and `..._encoder_quant_refiner.json`). An at-the-output number needs a
+     tiny-noise arm beside it.
 3. **The kernel fix, then a re-grade of token routing** per quantizer on the
    same captures. This decides the token-routing gate and whether routing
    becomes a default anywhere.
