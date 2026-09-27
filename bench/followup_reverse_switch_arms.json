@@ -1,0 +1,19 @@
+{
+ "what": "The owner's PDD-first, FlashGen-finishing idea (docs/wiki/next_steps.md, 2026-09-26) on t2va_subway_chase at seed 730451892, both handoffs: 0.632 (knot 28) and 0.8 (knot 24). Graphs by the VAE session, 0.155.0.",
+ "why": "Does FlashGen's committing last step remove the clone PDD8 makes at 1 s? The x0 capture (subway_chase__pdd8 in the follow-up rerun) says which handoff precedes the clone's first step.",
+ "arms": {
+  "subway_chase__rev_h063": "workflows/h3_probe_t2v_step_switch_pdd8_flashgen_h063_savelat_api.json",
+  "subway_chase__rev_h080": "workflows/h3_probe_t2v_step_switch_pdd8_flashgen_h080_savelat_api.json"
+ },
+ "patches": [
+  "subway_chase__rev_h063:MiniMaxH3Conditioning.prompt=@bank:t2va_subway_chase",
+  "subway_chase__rev_h063:MiniMaxH3Resolution.length=345",
+  "subway_chase__rev_h080:MiniMaxH3Conditioning.prompt=@bank:t2va_subway_chase",
+  "subway_chase__rev_h080:MiniMaxH3Resolution.length=345"
+ ],
+ "seeds": {
+  "first": 730451892,
+  "note": "held"
+ },
+ "run": "run_graph_arms.py --manifest bench/followup_reverse_switch_arms.json --runs 1 --seed 730451892 --hold-seed --no-alternate --out bench/results/2026-09-26_followup.jsonl"
+}
