@@ -44,6 +44,15 @@ distribution: its prompt set, one length, one canvas. As testable statements:
   (`subway_chase_short`) than at 14.4 s.
 - Fails if FlashGen's seeds vary as much as PDD8's.
 
+*2026-09-26, the owner, before any result: seed spread is a poor test ("the
+initial noise could still have a heavy influence on what it turns into"). The
+signature is prompt specificity: "prompting something that fits within its
+guided path will look great on flashgen. going outside that path and weird
+shit happens". The seed arms were cancelled unrendered. The test is the
+specificity ladder instead (`t2va_spec_typical`, `_specific`, `_unusual`, at
+the trained 5 s): FlashGen's quality holds on the typical rung and falls on
+the unusual one, more than PDD8's or FastH3's does.*
+
 ## Claude (this session)
 
 ### Tonight's run

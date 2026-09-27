@@ -130,6 +130,30 @@
       "tests": "whether a 4-step distill trained on 5-second clips follows the chase's roles and direction at its trained length, against the 14-second parent"
     },
     {
+      "id": "t2va_spec_typical",
+      "mode": "t2va",
+      "frames": 124,
+      "donor": null,
+      "brief": "The specificity ladder, rung 1: a woman walking a beach at sunset, generic, one shot, no dialogue, at FlashGen's trained 5 s.",
+      "tests": "The owner's O2 (2026-09-26): a distill overfit to a narrow path looks great on a prompt inside it; this rung is inside it."
+    },
+    {
+      "id": "t2va_spec_specific",
+      "mode": "t2va",
+      "frames": 124,
+      "donor": null,
+      "brief": "The specificity ladder, rung 2: rung 1's scene with ordinary specifics: wardrobe, a prop, direction, light, three gulls, one stop; the same camera move.",
+      "tests": "Whether specificity alone costs quality or adherence on a distill, against rung 1."
+    },
+    {
+      "id": "t2va_spec_unusual",
+      "mode": "t2va",
+      "frames": 124,
+      "donor": null,
+      "brief": "The specificity ladder, rung 3: rung 2's detail level with unusual specifics: she walks backwards facing camera, carries a brass birdcage with a parrot, a stencilled sign, the gulls lift off as she passes.",
+      "tests": "Whether leaving the typical path at equal specificity costs quality or adherence (the owner: 'going outside that path and weird shit happens'), against rung 2."
+    },
+    {
       "id": "t2va_frontier_standoff",
       "mode": "t2va",
       "frames": 345,

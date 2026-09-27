@@ -1,0 +1,5 @@
+integrated_multimodal_description: [Shot 1] Live-action, cinematic, a medium shot frames a woman walking along a beach at sunset across the five-second take. She is in her thirties, in a loose white linen shirt and rolled khaki trousers, barefoot, and carries a brass birdcage with a small green parrot inside in her left hand. She walks backwards along the wet sand at the waterline from the right of frame toward the left, facing the camera, the low orange sun behind her at the upper right casting long shadows across the sand, and a wooden signpost at the left of frame reads "NO SWIMMING AFTER DARK" in black stencil letters. Three seagulls stand at the water's edge and lift off together as she passes them. She is the only person on the beach. The camera trucks left with small amplitude at slow speed, keeping her in frame. She produces no vocal sound.
+
+overall_soundscape: Gentle waves wash onto the sand and draw back under a soft sea breeze, with the distant cry of gulls.
+
+non_diegetic_music: N/A

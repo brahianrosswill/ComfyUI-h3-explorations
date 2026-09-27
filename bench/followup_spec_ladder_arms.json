@@ -1,0 +1,40 @@
+{
+ "what": "The specificity ladder for the owner's O2 on FlashGen, PDD8 and FastH3 at 124 frames, seed 730451892.",
+ "why": "The owner: specific or unusual prompts push FlashGen off its guided path; the seed-collapse arms were cancelled as a poor test.",
+ "arms": {
+  "spec_typical__flashgen": "workflows/h3_text_to_video_flashgen_savelat_api.json",
+  "spec_specific__flashgen": "workflows/h3_text_to_video_flashgen_savelat_api.json",
+  "spec_unusual__flashgen": "workflows/h3_text_to_video_flashgen_savelat_api.json",
+  "spec_typical__pdd8": "workflows/h3_text_to_video_pdd_savelat_api.json",
+  "spec_specific__pdd8": "workflows/h3_text_to_video_pdd_savelat_api.json",
+  "spec_unusual__pdd8": "workflows/h3_text_to_video_pdd_savelat_api.json",
+  "spec_typical__fasth3": "workflows/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
+  "spec_specific__fasth3": "workflows/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
+  "spec_unusual__fasth3": "workflows/h3_probe_t2v_fasth3_8step_contract_savelat_api.json"
+ },
+ "patches": [
+  "spec_typical__flashgen:MiniMaxH3Conditioning.prompt=@bank:t2va_spec_typical",
+  "spec_typical__flashgen:MiniMaxH3Resolution.length=124",
+  "spec_specific__flashgen:MiniMaxH3Conditioning.prompt=@bank:t2va_spec_specific",
+  "spec_specific__flashgen:MiniMaxH3Resolution.length=124",
+  "spec_unusual__flashgen:MiniMaxH3Conditioning.prompt=@bank:t2va_spec_unusual",
+  "spec_unusual__flashgen:MiniMaxH3Resolution.length=124",
+  "spec_typical__pdd8:MiniMaxH3Conditioning.prompt=@bank:t2va_spec_typical",
+  "spec_typical__pdd8:MiniMaxH3Resolution.length=124",
+  "spec_specific__pdd8:MiniMaxH3Conditioning.prompt=@bank:t2va_spec_specific",
+  "spec_specific__pdd8:MiniMaxH3Resolution.length=124",
+  "spec_unusual__pdd8:MiniMaxH3Conditioning.prompt=@bank:t2va_spec_unusual",
+  "spec_unusual__pdd8:MiniMaxH3Resolution.length=124",
+  "spec_typical__fasth3:MiniMaxH3Conditioning.prompt=@bank:t2va_spec_typical",
+  "spec_typical__fasth3:MiniMaxH3Resolution.length=124",
+  "spec_specific__fasth3:MiniMaxH3Conditioning.prompt=@bank:t2va_spec_specific",
+  "spec_specific__fasth3:MiniMaxH3Resolution.length=124",
+  "spec_unusual__fasth3:MiniMaxH3Conditioning.prompt=@bank:t2va_spec_unusual",
+  "spec_unusual__fasth3:MiniMaxH3Resolution.length=124"
+ ],
+ "seeds": {
+  "first": 730451892,
+  "note": "held"
+ },
+ "run": "run_graph_arms.py --manifest bench/followup_spec_ladder_arms.json --runs 1 --seed 730451892 --hold-seed --no-alternate --out bench/results/2026-09-26_followup.jsonl"
+}
