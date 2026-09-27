@@ -351,6 +351,8 @@ _LOAD_PATTERNS = [
     ("aimdo_free", re.compile(r"AIMDO free(.*)")),
     ("vae_device", re.compile(r"VAE load device: (\S+), offload device: (\S+), dtype: (\S+)")),
     ("oom_fallback", re.compile(r"(out of memory.*|retrying with tiled.*)", re.I)),
+    ("mask_probe", re.compile(r"\[h3 mask probe\] (.*)")),
+    ("pdd_block", re.compile(r"\[h3-pdd\] (.*)")),
 ]
 
 

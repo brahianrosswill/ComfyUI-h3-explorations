@@ -135,6 +135,15 @@
       "Output"
     ]
   },
+  "MiniMaxH3DenoiseMaskProbe": {
+    "inputs": [
+      "model"
+    ],
+    "node_id": "MiniMaxH3DenoiseMaskProbe",
+    "outputs": [
+      "model"
+    ]
+  },
   "MiniMaxH3EncodeTrack": {
     "inputs": [
       "audio_vae",
@@ -254,7 +263,11 @@
     "inputs": [
       "model",
       "lora_name",
-      "strength"
+      "strength",
+      "modules",
+      "blocks",
+      "start_percent",
+      "end_percent"
     ],
     "node_id": "MiniMaxH3LoRABranch",
     "outputs": [

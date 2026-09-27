@@ -4,6 +4,49 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.153.0
+
+### Added
+
+- **Graphs for the 2026-09-26 distill run.**
+  - Seven `_savelat` probe twins save the latent their decoders read (video
+    and audio halves under `latents/`), so later routing experiments can reuse
+    them without re-rendering: `h3_text_to_video`, `_pdd`, `_flashgen`,
+    `h3_probe_t2v_fasth3_8step_contract`,
+    `h3_probe_t2v_flashgen_r64_4step_branch_dense` and the two audio-refine
+    probes. They are built from their source entries, and no shipped graph
+    saves latents. The switch is `build_api(save_latents=True)`.
+  - `h3_probe_t2v_step_switch_flashgen_pdd8` (with a `_savelat` twin) is
+    route 3 of `docs/research/2026-09-26_distill_routing.md`. FlashGen's first
+    two steps run through `MiniMaxH3LoRABranch`, then PDD8's finish from
+    0.888889 on the PDD graph's own chain, with `DisableNoise` on pass 2
+    (`h3_config.STEP_SWITCH_PASS1/2_SIGMAS`; `build_api(step_switch=True)`).
+- **The frozen-row test.** The two refine twins carry
+  `MiniMaxH3DenoiseMaskProbe` on the refine pass, and save pass 1's latent
+  and the refine pass's denoised output beside the final one, all in one
+  execution (`build_api(probe_frozen_rows=True)`).
+- **`MiniMaxH3DenoiseMaskProbe`** (`denoise_mask_probe.py`, appended to the
+  node list). It installs a `denoise_mask_function` through the patcher's own
+  setter, logs each masked step's per-stream mask statistics, and returns the
+  mask unchanged. `bench/check_denoise_mask_probe.py` covers it (5 of 5).
+  Pipeline telemetry parses its line, and PDD's tracker lines, as events.
+
+### Changed
+
+- **Checks.**
+  - `check_attention_defaults.py` gives a `_savelat` twin its source's
+    declarations.
+  - `check_distill_settings.py` and `check_distill_grid.py` grade the step
+    switch on its own terms: exactly its two sigma lists, and a PDD tail on
+    knots 24, 28 and 32.
+  - `build_workflows.py`'s validator recognises a step-switch second pass by
+    its structure (`DisableNoise`, `ManualSigmas`, fed by another sampler).
+  - `bench/node_id_manifest.json` is rewritten for this node and for 0.152.0's
+    appended `MiniMaxH3LoRABranch` inputs.
+- **Not yet validated against a live server.** The two refine twins name a
+  node the running server has not loaded. The rest validated against the live
+  schema; validate all of them after the next restart, before rendering.
+
 ## 0.152.0
 
 ### Added

@@ -443,6 +443,10 @@ def main() -> int:
             no_dit.append(stem)
             continue
         in_image = p.parent.name in img_dirs
+        # A `_savelat` twin (build_workflows.py, the 2026-09-26 distill run) is
+        # its source graph plus latent saving, so it inherits the source's
+        # declarations. Derived, not listed; the source's `seen` flag is set.
+        stem = stem.removesuffix("_savelat")
         exempt_reason = SOL_EXEMPT_STEMS.get(stem)
         pdd_reference = loads_pdd(g) and not wires_dense_kernel(g)
         if exempt_reason is None and pdd_reference:

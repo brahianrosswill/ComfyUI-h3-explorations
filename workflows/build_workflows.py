@@ -89,7 +89,7 @@ _OUR_NODES = {
 # 2026-09-03 (owner): one source of truth for prompt text.
 from prompts import text as _bank_prompt  # noqa: E402
 from h3_config import (  # noqa: E402
-    CORE_LOADED_ENCODERS, IMAGE_VAE, DRAFT_VAE, CANVAS, FPS, LENGTH, LONG_LENGTH, MODELS,
+    CORE_LOADED_ENCODERS, IMAGE_VAE, DRAFT_VAE, STEP_SWITCH_PASS1_SIGMAS, STEP_SWITCH_PASS2_SIGMAS, CANVAS, FPS, LENGTH, LONG_LENGTH, MODELS,
     SAMPLING, SAGE_NODE, DENSE_BACKEND_NODE, DENSE_CHAINS, DEFAULT_DENSE_CHAIN, SEED, SIGMA_SHIFT, SOL_CORE_NODE, SOL_CORE_DEFAULTS,
     VSA_KEEP_PERCENT, REF_VIDEO_LOADER,
     CACHE_NODE, CACHE_NODE_CLASS,
@@ -1504,6 +1504,23 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
               # Audio decodes on the real audio VAE either way. Nodes 100-103
               # (90-97 are the prompt lists).
               draft_decode: bool = False,
+              # Save the latent the decoders read, in two halves (video,
+              # audio), without changing the decode: the `_savelat` probe twins
+              # of the 2026-09-26 distill run. Never on a shipped graph (every
+              # render would write ~40 MB). Nodes 101-103.
+              save_latents: bool = False,
+              # The frozen-row test (docs/research/2026-09-26_distill_routing.md,
+              # "The frozen-row test"): on an audio_refine graph, observe the
+              # denoise mask the refine pass uses (MiniMaxH3DenoiseMaskProbe)
+              # and save pass 1's latent and the refine pass's denoised output
+              # beside the final one, all in one execution. Nodes 106-112.
+              probe_frozen_rows: bool = False,
+              # Route 3 of the distill-routing idea: FlashGen's first two steps
+              # through MiniMaxH3LoRABranch, then PDD8's finish from FlashGen's
+              # own endpoint, DisableNoise on pass 2, one shift on both
+              # (h3_config.STEP_SWITCH_*). Nodes 120-123 and the PDD chain at
+              # +200. Pass 1 is this call's own graph; set its FlashGen knobs.
+              step_switch: bool = False,
               out_prefix: str | None = None, **canvas) -> dict:
     """API-format graph, submittable as {"prompt": <this>} to POST /prompt.
 
@@ -2336,6 +2353,66 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
         g["11"]["inputs"]["samples"] = ["87", 0]
         g["12"]["inputs"]["samples"] = ["87", 0]
 
+    if step_switch:
+        if lora is None or pdd or audio_refine or split_at or freeze_audio or freeze_windows or single_frame:
+            raise SystemExit("step_switch is FlashGen pass 1 on this graph's own chain, then PDD; "
+                             "it needs a lora and composes with none of pdd, audio_refine, "
+                             "split_at, freeze_*, single_frame")
+        # Pass 2's model chain is the PDD8 graph's own, built by this function
+        # and copied in at +200, so it carries exactly what a shipped PDD graph
+        # carries (the PDD node, its shift, the dense backend, Sol at the PDD
+        # recipe). The UNET loader is shared, and asserted identical.
+        g2 = build_api(task, sage=sage, prompt=prompt, length=length, seed=seed,
+                       sol=(sol_for_graph(True, PDD_STEPS) if sol is not None else None),
+                       sol_impl=sol_impl, dense_backend=dense_backend,
+                       pdd=True, lora=(PDD_FL2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS,
+                       sampler_name="euler", manual_sigmas=STEP_SWITCH_PASS2_SIGMAS,
+                       unet=unet, clip=clip, **canvas)
+        if g2["1"] != g["1"]:
+            raise SystemExit("step_switch: pass 1 and pass 2 load different UNETs")
+        chain, ref = {}, g2["9"]["inputs"]["model"]
+        while ref[0] != "1":
+            node = g2[ref[0]]
+            chain[ref[0]] = node
+            ref = next(v for k, v in node["inputs"].items()
+                       if isinstance(v, list) and len(v) == 2 and k == "model")
+
+        def _moved(v):
+            return ([str(int(v[0]) + 200), v[1]] if isinstance(v, list) and len(v) == 2
+                    and isinstance(v[0], str) and v[0] in chain else v)
+        for nid, node in chain.items():
+            g[str(int(nid) + 200)] = {"class_type": node["class_type"],
+                                      "inputs": {k: _moved(v) for k, v in node["inputs"].items()}}
+        g["120"] = {"class_type": "ManualSigmas", "inputs": {"sigmas": STEP_SWITCH_PASS2_SIGMAS}}
+        g["121"] = {"class_type": "DisableNoise", "inputs": {}}
+        g["122"] = {"class_type": "BasicGuider",
+                    "inputs": {"model": _moved(g2["9"]["inputs"]["model"]), "conditioning": ["26", 0]}}
+        g["123"] = {"class_type": "SamplerCustomAdvanced",
+                    "inputs": {"noise": ["121", 0], "guider": ["122", 0], "sampler": ["7", 0],
+                               "sigmas": ["120", 0], "latent_image": ["10", 0]}}
+        g["11"]["inputs"]["samples"] = ["123", 0]
+        g["12"]["inputs"]["samples"] = ["123", 0]
+
+    def _save_av(src, tag, ids):
+        split, vid, aud = ids
+        prefix = g["13"]["inputs"]["filename_prefix"].removeprefix("Video/")
+        g[split] = {"class_type": "LTXVSeparateAVLatent", "inputs": {"av_latent": src}}
+        g[vid] = {"class_type": "SaveLatent",
+                  "inputs": {"samples": [split, 0], "filename_prefix": f"latents/{prefix}{tag}_video"}}
+        g[aud] = {"class_type": "SaveLatent",
+                  "inputs": {"samples": [split, 1], "filename_prefix": f"latents/{prefix}{tag}_audio"}}
+
+    if probe_frozen_rows:
+        if not audio_refine:
+            raise SystemExit("probe_frozen_rows needs audio_refine: it observes the refine pass")
+        g["106"] = {"class_type": "MiniMaxH3DenoiseMaskProbe",
+                    "inputs": {"model": g["86"]["inputs"]["model"]}}
+        g["86"]["inputs"]["model"] = ["106", 0]
+        _save_av(["10", 0], "_pass1", ("107", "108", "109"))
+        _save_av(["87", 1], "_refine_denoised", ("110", "111", "112"))
+    if step_switch and save_latents:
+        _save_av(["10", 0], "_pass1", ("107", "108", "109"))
+
     if draft_decode:
         # Last, so it saves whatever latent the decoders read after every
         # other option has rewired them (the refine pass moves them to 87).
@@ -2344,15 +2421,12 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
         # prefixes share the clip's, so a draft's latents sort beside it.
         if single_frame or "12" not in g:
             raise SystemExit("draft_decode needs a clip with both decoders (nodes 11 and 12)")
-        prefix = g["13"]["inputs"]["filename_prefix"].removeprefix("Video/")
         g["100"] = {"class_type": "VAELoader", "inputs": {"vae_name": DRAFT_VAE}}
         g["11"]["inputs"]["vae"] = ["100", 0]
-        g["101"] = {"class_type": "LTXVSeparateAVLatent",
-                   "inputs": {"av_latent": g["11"]["inputs"]["samples"]}}
-        g["102"] = {"class_type": "SaveLatent",
-                   "inputs": {"samples": ["101", 0], "filename_prefix": f"latents/{prefix}_video"}}
-        g["103"] = {"class_type": "SaveLatent",
-                   "inputs": {"samples": ["101", 1], "filename_prefix": f"latents/{prefix}_audio"}}
+    if draft_decode or save_latents:
+        if single_frame or "12" not in g:
+            raise SystemExit("save_latents needs a clip with both decoders (nodes 11 and 12)")
+        _save_av(g["11"]["inputs"]["samples"], "", ("101", "102", "103"))
 
     return g
 
@@ -3892,6 +3966,20 @@ def validate_api(graph: dict, oi: dict, label: str) -> list[str]:
                 e(f"refine pass: scheduler {sid} and guider {gid} read MODEL from "
                   f"different sources {pair}")
             refine_ids.add(gid)
+    # A step-switch second pass (build_api(step_switch=True), route 3 of
+    # docs/research/2026-09-26_distill_routing.md) is also a second sampler on
+    # its own model by design. Recognised by structure, not by name, so the
+    # exemption stays narrow: no added noise (DisableNoise), its own
+    # ManualSigmas, and its latent is another sampler's output.
+    for n in graph.values():
+        if n["class_type"] != "SamplerCustomAdvanced":
+            continue
+        noise, li, sig, gd = (n["inputs"].get(k) for k in ("noise", "latent_image", "sigmas", "guider"))
+        if (all(isinstance(x, list) for x in (noise, li, sig, gd))
+                and graph[str(noise[0])]["class_type"] == "DisableNoise"
+                and graph[str(li[0])]["class_type"] == "SamplerCustomAdvanced"
+                and graph[str(sig[0])]["class_type"] == "ManualSigmas"):
+            refine_ids.add(str(gd[0]))
     consumers = [(nid, n) for nid, n in graph.items()
                  if n["class_type"] in ("BasicScheduler", "BasicGuider")
                  and nid not in refine_ids]
@@ -5466,6 +5554,36 @@ def main():
          dict(head_chunks=4, dense_attn="sage_sol", out_prefix="Video/h3_probe_chunk4"),
          "the same render with the heads in 4 groups"),
     )
+
+    # The 2026-09-26 distill run (owner): `_savelat` probe twins of exactly the
+    # graphs the run renders, each saving the latent its decoders read, so
+    # later routing experiments reuse these latents without re-rendering. Built
+    # from the source entry, so a twin cannot drift from it. The two refine
+    # twins also carry the frozen-row test, and the route 3 step-switch arm
+    # comes with its own twin.
+    _SAVELAT_OF = ("h3_text_to_video", "h3_text_to_video_pdd", "h3_text_to_video_flashgen",
+                   "h3_probe_t2v_fasth3_8step_contract",
+                   "h3_probe_t2v_flashgen_r64_4step_branch_dense",
+                   "h3_probe_t2v_pdd8_audio_refine", "h3_probe_t2v_flashgen_4step_audio_refine")
+    _by_name = {e[0]: e for e in GRAPHS}
+    _step_switch = (
+        "h3_probe_t2v_step_switch_flashgen_pdd8.json", "t2v-step-switch-flashgen-pdd8", "t2v",
+        LONG_T2V_PROMPT,
+        dict(lora=(FLASHGEN_R64_LORA, FLASHGEN_STRENGTH), lora_branch=True,
+             steps=FLASHGEN_STEPS, sampler_name=FLASHGEN_SAMPLER,
+             manual_sigmas=STEP_SWITCH_PASS1_SIGMAS, step_switch=True,
+             out_prefix="Video/h3_probe_t2v_step_switch_flashgen_pdd8"),
+        "route 3: FlashGen's first two steps, then PDD8's finish from 0.888889 (h3_config.STEP_SWITCH_*)")
+    _twins = []
+    for fname, label, task, prompt, extra, note in [_by_name[f + ".json"] for f in _SAVELAT_OF] + [_step_switch]:
+        stem = fname.removesuffix(".json")
+        twin_extra = dict(extra, save_latents=True,
+                          out_prefix=extra.get("out_prefix", f"Video/{stem}") + "_savelat")
+        if extra.get("audio_refine"):
+            twin_extra["probe_frozen_rows"] = True
+        _twins.append((f"{stem}_savelat.json", f"{label}-savelat", task, prompt, twin_extra,
+                       f"{note}; saves its latents (the 2026-09-26 distill run)"))
+    GRAPHS = GRAPHS + (_step_switch,) + tuple(_twins)
 
     if args.list_scenes:
         for name, text in T2V_SCENES.items():
