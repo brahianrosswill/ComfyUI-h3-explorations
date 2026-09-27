@@ -33,6 +33,17 @@ variants. By the owner's reading, FastH3 is worst, and parts of PDD show it.
 Fails if the base's shadows are as blocky as the distills' on the same look
 variants.
 
+**O2, the owner, 2026-09-26:** "its probably way overfit on too little data.
+thats why prompt adherence sucks and going OOD is easy". FlashGen's card says it
+was trained data-free (VSD against the teacher's own samples) at 1344x768 and
+5.2 s only, so "too little data" reads here as too narrow a training
+distribution: its prompt set, one length, one canvas. As testable statements:
+- **Seed collapse:** across three seeds of one prompt, FlashGen's clips vary
+  less than PDD8's (latent distance between seeds, and the layout by eye).
+- **Length:** FlashGen follows the subway roles better at its trained 5 s
+  (`subway_chase_short`) than at 14.4 s.
+- Fails if FlashGen's seeds vary as much as PDD8's.
+
 ## Claude (this session)
 
 ### Tonight's run
