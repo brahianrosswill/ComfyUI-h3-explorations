@@ -66,3 +66,36 @@ read apart from the anchor's.
   through the branch's per-module controls. Over-strength shows as clones
   fading while detail holds.
 
+
+## All four looks, added 2026-09-27 (this session)
+
+Neon and anime landed after the section above was written. The records were
+re-run over all four looks, and the numbers are in the same two JSONs. One
+seed, no base, so still preliminary.
+
+- **FlashGen lifts the blacks on every look.** It has the lowest shadow share
+  (luma under 0.10) on all four, about half the crushed-black share of the
+  others, and the highest midtones: anchor 0.33 against 0.44 to 0.49, noir
+  0.31 against 0.45 to 0.47, neon 0.22 against 0.34 to 0.39, anime 0.21
+  against 0.27 to 0.29. Haze is highest on anchor, noir and neon. This is the
+  "lifted, hazy" signature of `2026-09-26_distill_signatures.md`, and it holds
+  whatever look the prompt asks for.
+- **Colour is not PDD8's weak point when the prompt asks for it.** On neon,
+  PDD8 has the most chroma (p95 0.616, against 0.475 FastH3 and 0.427
+  FlashGen) and near-top saturation. That fits the owner's answer that PDD8's
+  usual grade reads flat and dim, not colourless.
+- **FastH3 pulls toward warm and orange.** It is the warmest on anchor,
+  noir, neon and anime, with an orange share of 0.68 on anime (against
+  0.49 to 0.56), and it has the most fine detail on all four (the owner's
+  "over-polish"). With noir's colour leak (above), FastH3 is the distill that
+  bends a requested look toward its own palette, which is F7's pull for
+  FastH3.
+- **FlashGen bends the look the other way, toward haze, not toward colour.**
+  Its noir leaks the least colour. F7's "toward a typical look" does not
+  describe it: its shift is a lifted black level applied to every look.
+- **Temporal (the temporal JSON):**
+  - PDD8 boils least on the anchor and anime and most on neon (0.69), whose
+    strobing practicals may drive it.
+  - Dark-over-bright 8-pixel blocking is largest for PDD8 on neon (1.19) and
+    anime (1.10). That is still unattributable between the model and the
+    H.264 encode, as above.
