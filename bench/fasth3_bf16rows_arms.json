@@ -1,0 +1,21 @@
+{
+ "what": "FastH3 contract with the dense-row backend on bf16 ('pytorch attention') instead of kitchen int8, on look_anchor and slapstick at 730451892.",
+ "why": "The owner, 2026-09-27: does FastH3's look come from the attention kernel? Only the rows VSA computes exactly go through this backend; the fused VSA kernel stays int8. The comparison rows are the follow-up's <scene>__fasth3.",
+ "arms": {
+  "look_anchor__fasth3_bf16rows": "workflows/h3_probe_t2v_fasth3_8step_contract_savelat_api.json",
+  "slapstick_moving_piano__fasth3_bf16rows": "workflows/h3_probe_t2v_fasth3_8step_contract_savelat_api.json"
+ },
+ "patches": [
+  "look_anchor__fasth3_bf16rows:MiniMaxH3Conditioning.prompt=@bank:t2va_look_anchor",
+  "look_anchor__fasth3_bf16rows:MiniMaxH3Resolution.length=345",
+  "look_anchor__fasth3_bf16rows:ModelAttentionBackend.attention=\"pytorch attention\"",
+  "slapstick_moving_piano__fasth3_bf16rows:MiniMaxH3Conditioning.prompt=@bank:t2va_slapstick_moving_piano",
+  "slapstick_moving_piano__fasth3_bf16rows:MiniMaxH3Resolution.length=345",
+  "slapstick_moving_piano__fasth3_bf16rows:ModelAttentionBackend.attention=\"pytorch attention\""
+ ],
+ "seeds": {
+  "first": 730451892,
+  "note": "held"
+ },
+ "run": "run_graph_arms.py --manifest bench/fasth3_bf16rows_arms.json --runs 1 --seed 730451892 --hold-seed --no-alternate --out bench/results/2026-09-27_fasth3_bf16rows.jsonl"
+}
