@@ -28,13 +28,19 @@ the kitchen chain at 0.141.0.
   (same nodes, same inputs, run back to back). `per_node_s` shows only the
   refine sampler, node 87, so the row's `sampler_s` is the refine pass alone.
   The output is unaffected: the first pass is identical by construction.
+  *Wrong, found 2026-09-26: the refine arm re-rendered its first pass, and it
+  differed. A one-execution probe showed the refine pass keeps frozen video
+  exact (`2026-09-26_frozen_row_probe.md`), so the difference below is two
+  pass-1 renders that did not reproduce, not the refine pass.*
 - **The warmups ran at seed 730451891** (the runner offsets the warmup seed so
   the real row is not a cache hit). They are not a same-seed repeat of
   anything.
 
 ## Checks that need no judgement
 
-**Is the refine arm's video the base arm's video?** Not bit for bit. The
+**Is the refine arm's video the base arm's video?** *(2026-09-26: the cause
+is now known to be pass 1 re-rendering and differing, not the refine pass;
+`2026-09-26_frozen_row_probe.md`.)* Not bit for bit. The
 decoded frames differ on all four pairs. On diner PDD8 against PDD8 plus
 refine, the PSNR averages about 46 dB (ffmpeg `psnr`: minimum 43, maximum 51).
 That is visually indistinguishable, so the pairs still judge audio. This run

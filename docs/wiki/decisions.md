@@ -17,6 +17,14 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-26
 
+- **Corrected: the audio-refine pass does keep frozen video exact.** A
+  one-execution probe measured it
+  (`bench/results/2026-09-26_frozen_row_probe.md`). The 2026-09-25 record
+  said its refine arms reused pass 1 from cache, and the 46 dB gap was read
+  against that; in fact pass 1 re-rendered and differed. Dated notes are in
+  that record and in `docs/research/2026-09-26_distill_routing.md`. The open
+  question is PDD8's run-to-run reproducibility. FlashGen reproduces bit for
+  bit across servers.
 - **Draft decodes for scouting are declined** (owner: "i dont think its worth
   it no matter what. thats probably why its always used as a preview node
   only"). `docs/open_experiments.md` #31 is closed as declined, and the draft

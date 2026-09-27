@@ -27,16 +27,14 @@ Three facts, read from core, make routes 4 to 6 possible:
    the model as `0.999 * clean + 0.001 * noise`, the conditioning timestep
    (`comfy/model_base.py::MiniMaxH3.scale_latent_inpaint`), and each step's
    prediction for it is replaced by the clean latent (`comfy/samplers.py`,
-   `KSamplerX0Inpaint`). By the code, a frozen row comes back clean up to
-   floating-point rounding. **The one measurement disagrees**: the audio
-   refine arm's video, frozen at mask 0, decoded about 46 dB from the base
-   arm's (`../../bench/results/2026-09-25_distill_audio_s1.md`, "Is the refine
-   arm's video the base arm's video?"). The VAE decode is not the cause: one
-   latent decoded in two separate runs was pixel-identical on 2026-09-26
-   (`../../bench/results/2026-09-26_draft_keeper_vs_ship_pixels.json`). So the
-   difference is in the latent, and nothing here explains it yet
-   (`comfy/ldm/minimax/model.py`, `_forward` and `mask_row_values`). The
-   pack's audio-refine pass is built on this (`audio_refine.py`).
+   `KSamplerX0Inpaint`). **Measured 2026-09-26: a frozen row comes back
+   exact.** In one execution, the refine pass's prediction for the video was
+   bit-identical to pass 1's latent, the final latent differed from it only at
+   float rounding (relative L2 2e-8), and the mask was exactly 0 on every step
+   (`../../bench/results/2026-09-26_frozen_row_probe.md`). The 46 dB of
+   2026-09-25 came from pass 1 itself: the refine arm re-rendered it and it
+   differed, so that record's cache-hit reading was wrong. The pack's
+   audio-refine pass is built on this (`audio_refine.py`).
 2. **Two streams with separate masks.** Video and audio are one packed
    sequence, but each takes its own denoise mask (`denoise_mask`,
    `audio_denoise_mask`), and audio runs on its own shift, derived from the
@@ -120,10 +118,8 @@ without constraints 1 and 3.
 second pass on PDD that reopens only the rows that should be PDD's, at a
 partial sigma, with every other row frozen at mask 0. Each forward runs one
 adapter on one schedule. What differs between rows is their noise level,
-which H3 supports natively (fact 1 above). Frozen rows are conditioning,
-returned clean by the code but not bit-identical in the one measurement (fact
-1), so the first render must compare a frozen region's latent against pass
-1's, not only its pixels. This is the audio-refine pass with a
+which H3 supports natively (fact 1 above). Frozen rows are conditioning and
+come back exact, measured (fact 1). This is the audio-refine pass with a
 per-frame or per-region video mask in place of a per-stream constant.
 
 **What decides the mask, H3-specifically.** The owner's observation is that
@@ -211,7 +207,7 @@ little about what the heads add.
 |---|---|---|---|
 | 5 stream | graphs exist | blind, loudness-matched listen: refine against no refine | yes |
 | 3 step | new arm | one render under `H3_TELEMETRY` | yes, apart from the handoff |
-| 4 noise per row | new mask node + arm | first, the frozen-row test below; then one render at 0.632 and one at 0.8 | yes; frozen rows unverified at the output |
+| 4 noise per row | new mask node + arm | one render at 0.632 and one at 0.8 (the frozen-row test passed) | yes; frozen rows exact, measured |
 | 1 per shot | new per-window chain | two windows at a hard cut | yes; the seam is the risk |
 | 6 component | new arm | judge the existing heads-off clips first (no card) | no |
 | 2 masked adapter | new branch mask | not recommended | no |
@@ -233,8 +229,8 @@ says so, **reasoned** means neither, and **wrong** means corrected.
 | A mask value m puts a video row at `m * sigma`, per 2x2 patch per latent frame | code | `comfy/ldm/minimax/model.py`, `_forward`, `mask_row_values` |
 | A mask-0 row is fed at `0.999 * clean + 0.001 * noise` | code | `comfy/model_base.py::MiniMaxH3.scale_latent_inpaint` |
 | Each step's prediction for a masked row is replaced by the clean latent | code | `comfy/samplers.py::KSamplerX0Inpaint` |
-| Frozen rows come back bit-identical at the output | **wrong** | about 46 dB at the decode, `2026-09-25_distill_audio_s1.md` |
-| That gap is not the VAE decode | record | one latent decoded twice was pixel-identical, `2026-09-26_draft_keeper_vs_ship_pixels.json` |
+| Frozen rows come back exact | record | bit-identical prediction, float rounding at the output, mask exactly 0: `2026-09-26_frozen_row_probe.md` |
+| The 2026-09-25 46 dB gap was the refine pass | **wrong** | it was pass 1 re-rendering and differing; the refine pass is exact |
 | Audio's sigma follows video's through the same base time | code | `time_shift_sigma` in `_forward` |
 | PDD's final layer fuses the heads each step spans, for the whole call | code | `FinalLayer.forward`, `_pdd_head` |
 | A PDD pass starting at 0.8889 fuses heads 19 to 23 | code | `pdd_math.schedule_knots`, core's `round((1 - base_t) * n)` |
@@ -251,7 +247,7 @@ says so, **reasoned** means neither, and **wrong** means corrected.
 | The owner has not compared refine against no refine | **wrong** | the owner's first listen, `2026-09-25_distill_audio_s1.md` |
 | The heads-off question in next_steps is about the heads' value | **wrong** | it is about which code swaps them; corrected in route 6 |
 | Heads-off PDD clips exist and are unjudged | record | `pdd/queued_arms.md`, `C_pdd4_headfree_*`; one matched pair on the share (seed 730451893) |
-| The refine arm's pass 1 was a cache hit on the base arm's | record, weak | inferred from a missing `per_node_s` entry; the frozen-row test removes the doubt |
+| The refine arm's pass 1 was a cache hit on the base arm's | **wrong** | it re-rendered; `2026-09-26_frozen_row_probe.md` |
 | The video latent-format round trip is the identity | code (fastdude) | `comfy/latent_formats.py`, `MiniMaxH3.process_latent_in/out` |
 | Heads and backbone perturb by the same order | record | `../h3_pdd.md`, the magnitudes table |
 
@@ -280,6 +276,11 @@ nondeterminism alone could explain 46 dB.
   `scale_factor` is 1.0 and `MiniMaxH3.process_latent_in` and `_out` touch
   only the audio slice (fastdude, from `comfy/latent_formats.py` and
   `comfy/model_base.py`).
+
+**Result, 2026-09-26.** Run first in the distill run, and decisive: the
+refine pass preserves frozen video exactly, and the mask arrives as exactly 0.
+The open question moves to pass 1's run-to-run reproducibility
+(`../../bench/results/2026-09-26_frozen_row_probe.md`).
 
 **What the checks moved.** Route 5 stays first, but its step is now a blind,
 loudness-matched listen. Route 4 gains a step before it: compare frozen-row
