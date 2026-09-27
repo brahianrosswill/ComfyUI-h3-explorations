@@ -48,7 +48,8 @@ from comfy_extras.nodes_minimax_h3 import (
 )
 
 from .h3_rules import (REF_QWEN_SHORT_EDGE, aspect_in_range,
-                       describe_aspect_range)
+                       describe_aspect_range,
+                       normalize_prompt)
 from .reference_order import AudioRef, ImageRef, VideoRef, assign_labels
 from .reference_geometry import (
     IMAGE_POLICIES,
@@ -1103,7 +1104,7 @@ class MiniMaxH3ReferenceConditioning(io.ComfyNode):
             records, vae, audio_vae, width, height, frame_count,
             video_policy=video_policy, image_policy=image_policy,
         )
-        tokens = clip.tokenize(prompt, minimax_ref_items=ref_items)
+        tokens = clip.tokenize(normalize_prompt(prompt), minimax_ref_items=ref_items)
         conditioning = clip.encode_from_tokens_scheduled(tokens)
         if ref_blocks:
             # Absent, not []: `model_base` builds the text-only layout for a

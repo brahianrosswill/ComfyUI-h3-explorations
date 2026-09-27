@@ -203,3 +203,21 @@ def describe_length(length):
         return f"{length} frames ({duration_of(snapped):.3f}s at {FPS}fps)"
     return (f"{length} -> {snapped} frames "
             f"({duration_of(snapped):.3f}s at {FPS}fps)")
+
+
+def normalize_prompt(prompt: str) -> str:
+    """The prompt text our conditioning nodes tokenize: stripped at both ends.
+
+    Core's tokenizer keeps edge whitespace, and a trailing newline is one more
+    token (`\\n` is id 198, `\\n\\n` id 271): the encoder is causal, so every
+    earlier token's conditioning is unchanged, but the DiT still sees a
+    different input and a same-seed render is a different sample (a one-token
+    append moves the prediction at least as much as the int8 encoder does,
+    `bench/results/2026-09-27_encoder_quant_dit.json`, the scale rows). The
+    generator already strips every bank prompt (`workflows/prompts.py`), so
+    stripping here makes a prompt pasted into the UI tokenize the same as the
+    graph that ships it. Interior newlines are kept: they carry the prompt's
+    structure. Core's own H3 nodes do not strip, so they can differ from ours
+    on a prompt with edge whitespace.
+    """
+    return prompt.strip()

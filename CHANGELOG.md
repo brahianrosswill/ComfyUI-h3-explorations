@@ -4,6 +4,32 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.160.0
+
+### Changed
+
+- **Our conditioning nodes strip the prompt at both ends** (owner,
+  2026-09-27: "strip leading and trailing whitespace in our conditioning nodes
+  and \n at the end (not in the middle - \n has value in the middle)").
+  `h3_rules.normalize_prompt` is the one rule; `MiniMaxH3Conditioning`,
+  `MiniMaxH3ReferenceConditioning` and `MiniMaxH3ReferenceReport`'s token
+  count all go through it. Core's tokenizer keeps edge whitespace, and a
+  trailing newline is one more token. The generator already strips bank
+  prompts, so shipped graphs tokenize exactly as before. A prompt pasted into
+  the UI with a trailing newline now tokenizes like the shipped graph, where
+  before it was a different sample at the same seed. Core's own H3 nodes
+  still do not strip.
+- **No bank prompt starts or ends with whitespace.** The 129 files that ended
+  in a newline are stripped, and `bench/build_prompt_bank.py --check` now
+  fails on edge whitespace (shown red on a planted newline first).
+
+### Added
+
+- `docs/open_experiments.md` #47: the int8 encoder question on PDD6 and
+  FastH3, with fastdude's list of what a per-step harness gets wrong on the
+  distills. It is gated on a floor arm first. It is also a direction on the
+  distill board.
+
 ## 0.159.4
 
 ### Added

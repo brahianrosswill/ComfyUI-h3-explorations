@@ -2967,3 +2967,65 @@ eye.
   - If not, FT1 stays a tone result and O2 is a property of the whole
     adapter.
 - **Blocker:** the owner's go (4 renders); then the owner's scoring.
+
+## 47. Does the int8 encoder's conditioning error reach the distills' output
+
+Added 2026-09-27 (encoderdude). On the base DiT at 16 steps, int8 moved the
+prediction no more than a norm-matched random perturbation or a one-token
+prompt edit (`../bench/results/2026-09-27_encoder_quant_dit.json`; only its
+step-0 rows are on a real trajectory). This asks the same question of the
+models the owner renders with: does int8-against-bf16 conditioning matter to
+PDD6 and FastH3? Three things it would tell apart:
+
+- whether a few-step distill, where each step does more of the work and PDD
+  adds its own LoRA heads, is more sensitive to conditioning error;
+- whether content-dependent sparse attention (Sol on PDD6, VSA on FastH3)
+  amplifies a small conditioning change through its selections;
+- where in the schedule it bites: the first step (composition) or the last
+  (detail).
+
+The expected answer is "the same as the base DiT": all these DiTs are
+int8_convrot W8A8, so the suspected floor applies to them too. Run the floor
+arm on the base DiT first (noise far below int8's error): if it moves the
+prediction as much as int8, no per-step DiT test can resolve encoder
+precision, and this entry closes without being built.
+
+- **Workflows:** `h3_text_to_video_pdd_manual_sigmas` (PDD6: UNET 1 ->
+  `MiniMaxH3PDDLoRA` 18 -> `ModelAttentionBackend` 58 -> Sol 21, `ManualSigmas`
+  60 = `h3_config.PDD_MANUAL_SIGMAS`) and
+  `distill_experiments/h3_probe_t2v_fasth3_8step_contract` (FastH3: UNET 1 ->
+  `MiniMaxH3SigmaShift` 19 -> 58 -> `BlockSparseAttention` 21, vsa). Both run
+  euler through `BasicGuider` 9. The Sol redesign regenerates these graphs, so
+  re-read the chains before building.
+- **What the simple harness gets wrong, and this needs** (fastdude, from the
+  graphs and code, 2026-09-27):
+  - **PDD picks its heads from the whole schedule.** A single forward must
+    carry the full sigma list (`transformer_options["sample_sigmas"]`), or
+    PDD6 silently falls back to 8-step heads (`pdd_lora.py`, the forward
+    wrapper).
+  - **FastH3's VSA attention carries state between calls**
+    (`comfy_extras/nodes_sparse_attention.py`, reset only on cleanup). Each arm
+    needs a reset, and the arms should alternate order, or the second arm
+    inherits the first one's statistics. A lone call is a "first step" call;
+    step 0 is also one, which gives a free control.
+  - **Sol turns on by the current sigma** (`start_percent` 0.2), so every
+    forward has to carry it and go through the fully patched model (node 21),
+    never the bare DiT.
+  - **Real latents at later steps** come from a full run's per-step
+    predictions (the `probe_step_x0` twin, `build_api(probe_step_x0=True)`),
+    which rebuilds the exact trajectory: euler with no injected noise,
+    `x_{k+1} = x_k + (s_{k+1} - s_k)(x_k - x0_k)/s_k`. The manual-sigmas graph
+    has no x0 twin yet.
+  - **Steps to probe:** the first (composition is fixed by step 1), the
+    middle, and the last (PDD's detail lives there).
+- **Design:** a bench-only node in `bench/comfy_capture_nodes/` that runs one
+  forward inside the server on the graph's own node-21 MODEL and node-60
+  SIGMAS, fed the conditioning `bench/measure_encoder_quant_dit.py capture`
+  saves. Arms as in that tool: bf16, int8, the norm-matched control, and the
+  floor arm.
+- **Scenes:** violin t2v and i2v for PDD6; violin t2v only for FastH3 (trained
+  for t2v alone).
+- **Cost:** about a day of tool work, then about 24 forwards.
+- **Decision it changes:** only whether the image-conditioned distill graphs
+  keep `ENCODER_INT8`. That is unlikely to move given the base-DiT result.
+- **Blocker:** the floor arm's result, then the owner's go.
