@@ -993,6 +993,70 @@
       "tests": "a single-shot close-up window chained after the floor window; head snaps on the downbeats, lips closed, face sharp"
     },
     {
+      "id": "t2va_look_anchor",
+      "mode": "t2va",
+      "frames": 345,
+      "donor": null,
+      "brief": "The look family's anchor: a violin maker crosses one hard warm tungsten beam through sawdust haze in her workshop at night, then a close shot of her lifting a violin top into it and one murmured line; low-key chiaroscuro. Every t2va_look_* sibling keeps this subject, blocking, action, camera (truck left, push in), two-shot structure, line, soundscape and score byte-identical and changes only the style opener, the time phrase, the shot 1 light sentences and the shot 2 face-light sentence.",
+      "tests": "the reference tone for the family: deep true blacks with the brick and hanging violins still readable, a warm practical with specular highlights on brass and glass, smooth haze gradients in the beam (banding), skin half in shadow. Compare each distill's shift here with its shift on the siblings: the same shift everywhere is a fixed bias, a shift that follows the prompt is not."
+    },
+    {
+      "id": "t2va_look_midday",
+      "mode": "t2va",
+      "frames": 345,
+      "donor": null,
+      "brief": "The look family, axis time of day and key: bright high-key midday. Content is held to t2va_look_anchor; the look forces the source to change, so the lamp is switched off and the beam is the sun through the same tall window, from the same upper left onto the same bench, with bounce light filling the room.",
+      "tests": "whether a distill lifts or crushes an already bright, open frame the way it does the night anchor; highlight clipping on the sunlit beam, brass and brick; natural skin tones under daylight."
+    },
+    {
+      "id": "t2va_look_golden_hour",
+      "mode": "t2va",
+      "frames": 345,
+      "donor": null,
+      "brief": "The look family, axis time of day and colour temperature: warm low sun in the last hour before sunset. Content is held to t2va_look_anchor; as in the midday variant the lamp is off and the beam is the sun through the same window, here slanting low, with long shadows and an amber room.",
+      "tests": "a strongly warm requested palette against the anchor's warm-but-dark one: whether a distill pushes warmth or saturation further, or neutralises it, and whether the amber shadows keep detail."
+    },
+    {
+      "id": "t2va_look_neon",
+      "mode": "t2va",
+      "frames": 345,
+      "donor": null,
+      "brief": "The look family, axis light colour: saturated magenta and cyan at night. Content is held to t2va_look_anchor; the lamp carries a cyan bulb and a magenta neon tube outside the window (no lettering, so no on-screen text) adds the second practical.",
+      "tests": "saturated two-colour light over deep black: whether a distill clips or desaturates the neon, holds the black between the two colours, and bands in the cyan haze gradient."
+    },
+    {
+      "id": "t2va_look_muted",
+      "mode": "t2va",
+      "frames": 345,
+      "donor": null,
+      "brief": "The look family, axis palette only: the anchor's night lighting and black level held, colour drained to a muted teal-grey close to monochrome with a faint trace left in skin, wood and brass. Content is held to t2va_look_anchor; the lamp's beam is described as pale instead of warm.",
+      "tests": "whether a distribution-matching distill re-saturates a deliberately muted palette back toward typical colour, while the black level stays where the anchor put it."
+    },
+    {
+      "id": "t2va_look_noir",
+      "mode": "t2va",
+      "frames": 345,
+      "donor": null,
+      "brief": "The look family, axis medium: black-and-white 35mm film noir with hard light and fine silver grain, the anchor's night lighting held. Content is held to t2va_look_anchor; the lamp's beam is described as white instead of warm.",
+      "tests": "whether a distill leaks colour into a requested black-and-white frame, and how it treats a monochrome black level and grain against the colour anchor."
+    },
+    {
+      "id": "t2va_look_faded_16mm",
+      "mode": "t2va",
+      "frames": 345,
+      "donor": null,
+      "brief": "The look family, axis medium and black level: 1970s 16mm colour stock with heavy grain, lifted milky blacks and faded, yellowed colour, the anchor's night lamp held. Content is held to t2va_look_anchor; its sentences ask for dark grey where the anchor asks for true black and soft blooming highlights where it asks for hard ones.",
+      "tests": "whether a distill crushes a requested lifted black back to true black, re-saturates faded colour, or cleans off the grain: the sharpest single probe of a pull toward a typical look."
+    },
+    {
+      "id": "t2va_look_clay",
+      "mode": "t2va",
+      "frames": 345,
+      "donor": null,
+      "brief": "The look family, axis medium: claymation stop-motion with visible thumbprints, every figure and surface sculpted from clay, under the anchor's exact night lighting sentences. Content is held to t2va_look_anchor; only the style opener and the shot 2 face sentence (a sculpted clay face) differ.",
+      "tests": "whether a distill keeps a non-photographic medium under low-key light or drifts it toward live-action, and whether its tone shift on a clay surface matches its shift on the anchor."
+    },
+    {
       "id": "ref2va_stairwell_dialogue_backstage",
       "mode": "ref2va",
       "frames": 345,

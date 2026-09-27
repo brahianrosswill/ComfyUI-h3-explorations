@@ -8,7 +8,7 @@ Scenes are ordered by how many graphs carry them, so the defaults that reach the
 
 | scene | bank id | graphs | words | shots | speakers | markers |
 |---|---|---|---|---|---|---|
-| [`LONG_T2V_PROMPT`](#long-t2v-prompt) | `t2va_covered_market` | 61 | 290 | 3 | 2 | `<d>` |
+| [`LONG_T2V_PROMPT`](#long-t2v-prompt) | `t2va_covered_market` | 76 | 290 | 3 | 2 | `<d>` |
 | [`ref2va_role_character_garment_environment`](#ref2va-role-character-garment-environment) | `ref2va_role_character_garment_environment` | 13 | 173 | 1 | 0 | — |
 | [`ref2va_role_character_environment`](#ref2va-role-character-environment) | `ref2va_role_character_environment` | 12 | 135 | 1 | 0 | — |
 | [`ref2va_image_video_audio_music`](#ref2va-image-video-audio-music) | `ref2va_image_video_audio_music` | 5 | 264 | 1 | 0 | — |
@@ -48,7 +48,7 @@ Scenes are ordered by how many graphs carry them, so the defaults that reach the
 
 ## LONG_T2V_PROMPT
 
-Carried by **61** graph(s). Sections: `integrated_multimodal_description`, `overall_soundscape`, `non_diegetic_music`.
+Carried by **76** graph(s). Sections: `integrated_multimodal_description`, `overall_soundscape`, `non_diegetic_music`.
 
 <details><summary>graphs</summary>
 
@@ -65,12 +65,19 @@ Carried by **61** graph(s). Sections: `integrated_multimodal_description`, `over
 - `h3_probe_split_base_first_api`
 - `h3_probe_split_base_last_api`
 - `h3_probe_square_canvas_api`
+- `h3_probe_t2v_base_euler16_api`
+- `h3_probe_t2v_base_euler16_savelat_api`
+- `h3_probe_t2v_base_euler32_api`
+- `h3_probe_t2v_base_euler32_savelat_api`
+- `h3_probe_t2v_base_euler32_x0_api`
 - `h3_probe_t2v_ck_api`
 - `h3_probe_t2v_dense_api`
 - `h3_probe_t2v_exact_tail_api`
 - `h3_probe_t2v_fasth3_8step_api`
 - `h3_probe_t2v_fasth3_8step_contract_api`
 - `h3_probe_t2v_fasth3_8step_contract_attn_api`
+- `h3_probe_t2v_fasth3_8step_contract_novsa_api`
+- `h3_probe_t2v_fasth3_8step_contract_novsa_savelat_api`
 - `h3_probe_t2v_fasth3_8step_contract_sampling_api`
 - `h3_probe_t2v_fasth3_8step_contract_savelat_api`
 - `h3_probe_t2v_flashgen_4step_api`
@@ -82,10 +89,15 @@ Carried by **61** graph(s). Sections: `integrated_multimodal_description`, `over
 - `h3_probe_t2v_flashgen_r64_4step_branch_dense_savelat_api`
 - `h3_probe_t2v_levers_api`
 - `h3_probe_t2v_no_dense_tail_api`
+- `h3_probe_t2v_pdd16_api`
+- `h3_probe_t2v_pdd16_savelat_api`
+- `h3_probe_t2v_pdd32_api`
+- `h3_probe_t2v_pdd32_savelat_api`
 - `h3_probe_t2v_pdd8_audio_refine_api`
 - `h3_probe_t2v_pdd8_audio_refine_savelat_api`
 - `h3_probe_t2v_pdd8_baked_sage_api`
 - `h3_probe_t2v_pdd8_dense_api`
+- `h3_probe_t2v_pdd8_merge_api`
 - `h3_probe_t2v_pdd8_sage_api`
 - `h3_probe_t2v_policy_api`
 - `h3_probe_t2v_rotate_api`
@@ -108,9 +120,12 @@ Carried by **61** graph(s). Sections: `integrated_multimodal_description`, `over
 - `h3_text_to_video_flashgen_api`
 - `h3_text_to_video_flashgen_savelat_api`
 - `h3_text_to_video_pdd_4step_api`
+- `h3_text_to_video_pdd_4step_savelat_api`
 - `h3_text_to_video_pdd_api`
 - `h3_text_to_video_pdd_manual_sigmas_api`
+- `h3_text_to_video_pdd_manual_sigmas_savelat_api`
 - `h3_text_to_video_pdd_savelat_api`
+- `h3_text_to_video_pdd_x0_api`
 - `h3_text_to_video_savelat_api`
 - `h3_text_to_video_turbo_api`
 

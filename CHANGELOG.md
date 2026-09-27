@@ -4,6 +4,24 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.154.3
+
+### Added
+
+- **The look family: `t2va_look_*` in the prompt bank.** One scene, eight
+  looks, at 345 frames. A violin maker crosses a hard light beam through
+  sawdust haze to her bench, then lifts a violin top into the light. The
+  owner, 2026-09-26: "the same scene but done a ton of different diverse ways
+  is a good way to both run a control and see nuances you may not have
+  otherwise".
+  - The subjects, blocking, camera, dialogue and audio text are
+    byte-identical across the eight. Only the style, time, light and face-light
+    slots change.
+  - The variants: anchor (low-key night), midday, golden_hour, neon, muted,
+    noir, faded_16mm, clay. Each bank entry's `brief` records any content
+    change its look forced.
+  - `docs/prompt_bank.md` and `docs/prompt_catalogue.md` rebuilt.
+
 ## 0.154.2
 
 ### Added
