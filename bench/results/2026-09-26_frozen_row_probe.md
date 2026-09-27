@@ -37,10 +37,18 @@ wrong, and it carries a dated note.
   2026-09-26 the shipped FlashGen graph (graph sha `f11c8f64`, LoRA through
   the branch, no merged weight patches) re-rendered bit for bit on two server
   processes at two seeds, video and audio
-  (`2026-09-26_flashgen_rerender_repro_seed891.json`, `_seed892.json`). The
+  (`2026-09-26_flashgen_rerender_repro_seed891.json`, `_seed892.json`). It
+  also reproduced within one process: `text_to_video_flashgen_ship_diner_00001`
+  against `h3_probe_t2v_flashgen_r64_4step_branch_r64_branch_00001`, a real
+  re-render (sampler 141.4 s, not a cache hit), per the fastdude session. The
   2026-09-25 pair was PDD8, with 308 merged weight patches, at 0.141.0.
   Whether PDD8 reproduces today is unmeasured. The merged patches' stochastic
   requantization is seeded per module (`comfy/ops.py`,
   `comfy.utils.string_to_seed(s.seed_key)`), so it is not by itself a source
   of run-to-run change. The decisive test: render the probe graph once more
   on a fresh server and compare the two pass-1 latents.
+
+**Scheduled:** the fastdude session re-renders this probe graph at the same
+seed on a fresh server at the end of the distill run. Comparing its `_pass1`
+latent with this one decides whether PDD8 reproduces on today's stack.
+
