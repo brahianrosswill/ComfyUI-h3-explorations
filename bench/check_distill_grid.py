@@ -709,6 +709,23 @@ def main() -> int:
                         f"from the boundaries its heads were fused at "
                         f"(partition {widths}, shift {sv})")
                 continue
+            # A graph that samples the node's own SIGMAS output at a count
+            # `simple` cannot reach exactly (1000 % steps != 0, i.e. 16 and 32;
+            # `check_pdd_sigmas.EXACT_STEPS`) samples the node's emitted grid,
+            # not `simple`'s. Grade what it samples: the node's vector, on
+            # video. Audio's sigma follows the same base time inside the model.
+            sig = doc.get("10", {}).get("inputs", {}).get("sigmas")
+            node_sourced = (isinstance(sig, list) and doc.get(str(sig[0]), {}).get("class_type")
+                            == "MiniMaxH3PDDLoRA")
+            if node_sourced and 1000 % found.steps != 0:
+                from pdd_lora import emit_sigmas
+                got = [float(x) for x in emit_sigmas(sv, grid, grid // nfe)]
+                want = [1.0 - float(t) for t in block_bounds(sv, grid, grid // nfe).tolist()]
+                dev = deviation(got, want)
+                if dev > 1e-6:
+                    bad.append(f"{rel}: the node's emitted sigmas deviate {dev:.5f} "
+                               f"from its fused boundaries at {found.steps} steps")
+                continue
             video, audio = comfy_grid(sv, sa, found.scheduler, found.steps)
             for label, got, shift in (("video", video, sv), ("audio", audio, sa)):
                 bounds = (partition_bounds(shift, grid, widths) if widths

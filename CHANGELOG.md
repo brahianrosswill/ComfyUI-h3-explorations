@@ -4,6 +4,31 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.154.1
+
+### Added
+
+- **Graphs for the PDD schedule tests** (`docs/h3_distills.md`, "Tests that
+  would move this section"). They were built against live `/object_info` plus
+  the not-yet-loaded `MiniMaxH3StepX0Observer` and
+  `MiniMaxH3PDDLoRA.backbone_apply`, generated from the node classes.
+  - `h3_probe_t2v_pdd16` and `h3_probe_t2v_pdd32`: PDD at widths 2 and 1, on the
+    node's own emitted grid.
+  - `h3_probe_t2v_base_euler32`: the base on Euler over PDD's 32-point grid,
+    sharing the distills' starting noise. Paired with PDD at width 1, it
+    separates fusion error from path-following.
+  - `_savelat` twins for PDD at 4 and 6 (`manual_sigmas`) steps, 16, 32 and
+    base-Euler-32.
+  - `_x0` twins of `h3_text_to_video_pdd` and base-Euler-32, which save every
+    step's x0 (`build_api(probe_step_x0=True)`, node 113).
+
+### Changed
+
+- `check_pdd_sigmas.py` and `check_distill_grid.py` grade a PDD graph at 16
+  or 32 steps on the node's own emitted grid. `simple` cannot land on that
+  grid there (1000 % steps != 0, `EXACT_STEPS`), so the "emitted equals
+  simple" identity holds only at 2, 4 and 8.
+
 ## 0.154.0
 
 ### Changed

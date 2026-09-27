@@ -504,11 +504,17 @@ def case_graph_shift_matches_file():
                 f"would step one curve while the model integrates another")
             continue
         got = emitted(gshift, steps)
-        want = comfy_simple(gshift, steps)
-        if not (got.shape == want.shape and torch.equal(got, want)):
-            problems.append(
-                f"{path.name}: emitted sigmas at shift {gshift}, {steps} steps "
-                f"are not `simple`'s")
+        if steps in EXACT_STEPS:
+            want = comfy_simple(gshift, steps)
+            if not (got.shape == want.shape and torch.equal(got, want)):
+                problems.append(
+                    f"{path.name}: emitted sigmas at shift {gshift}, {steps} steps "
+                    f"are not `simple`'s")
+        # Outside EXACT_STEPS (16, 32: 1000 % steps != 0) `simple` cannot land on
+        # the grid, so the node's emitted grid is the correct vector and there is
+        # no `simple` to be inert against; the probes that run there
+        # (h3_probe_t2v_pdd16/32, 2026-09-26) sample the node's own output, and
+        # check_distill_grid.py grades that vector against the fused boundaries.
         graded.append(path.name)
     assert not problems, "; ".join(problems[:4])
     # NOT `assert graded`. This module's contract says it needs "no checkpoint

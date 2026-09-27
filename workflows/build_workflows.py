@@ -1526,6 +1526,11 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
               # (h3_config.STEP_SWITCH_*). Nodes 120-123 and the PDD chain at
               # +200. Pass 1 is this call's own graph; set its FlashGen knobs.
               step_switch: bool = False,
+              # Save every step's x0 prediction (MiniMaxH3StepX0Observer, node
+              # 113) on the main pass's model, for finding the step where a
+              # moving person first appears twice (docs/h3_distills.md). About
+              # 40 MB a step: probe twins only.
+              probe_step_x0: bool = False,
               out_prefix: str | None = None, **canvas) -> dict:
     """API-format graph, submittable as {"prompt": <this>} to POST /prompt.
 
@@ -2411,6 +2416,16 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
                   "inputs": {"samples": [split, 0], "filename_prefix": f"latents/{prefix}{tag}_video"}}
         g[aud] = {"class_type": "SaveLatent",
                   "inputs": {"samples": [split, 1], "filename_prefix": f"latents/{prefix}{tag}_audio"}}
+
+    if probe_step_x0:
+        src = g["9"]["inputs"]["model"]
+        prefix = g["13"]["inputs"]["filename_prefix"].removeprefix("Video/")
+        g["113"] = {"class_type": "MiniMaxH3StepX0Observer",
+                    "inputs": {"model": src, "filename_prefix": f"latents/{prefix}_x0",
+                               "save_audio": False}}
+        g["9"]["inputs"]["model"] = ["113", 0]
+        if "8" in g and g["8"]["inputs"].get("model") == src:
+            g["8"]["inputs"]["model"] = ["113", 0]
 
     if probe_frozen_rows:
         if not audio_refine:
@@ -5588,8 +5603,24 @@ def main():
              manual_sigmas=STEP_SWITCH_PASS1_SIGMAS, step_switch=True,
              out_prefix="Video/h3_probe_t2v_step_switch_flashgen_pdd8"),
         "route 3: FlashGen's first two steps, then PDD8's finish from 0.888889 (h3_config.STEP_SWITCH_*)")
+    # The PDD schedule tests (docs/h3_distills.md, "Tests that would move this
+    # section", 2026-09-26): PDD at widths 2 and 1 beside the shipped 8, 6 and
+    # 4, and the base on Euler over PDD's own 32-point grid, the path its heads
+    # were distilled from. PDD at width 1 is the student's own per-interval
+    # path, so the two 32-step graphs isolate fusion error from following.
+    _pdd_tests = tuple(
+        (f"h3_probe_t2v_pdd{n}.json", f"t2v-pdd{n}", "t2v", LONG_T2V_PROMPT,
+         dict(pdd=True, sampler_name="euler", lora=(PDD_FL2VA_LORA, PDD_STRENGTH), steps=n,
+              out_prefix=f"Video/h3_probe_t2v_pdd{n}"),
+         f"PDD at {n} steps (width {32 // n}) on its own grid, for the schedule tests")
+        for n in (16, 32)) + (
+        ("h3_probe_t2v_base_euler32.json", "t2v-base-euler32", "t2v", LONG_T2V_PROMPT,
+         dict(sampler_name="euler", steps=32, out_prefix="Video/h3_probe_t2v_base_euler32"),
+         "the base on Euler at 32 steps: PDD's teacher path, sharing the distills' starting noise"),)
+    _savelat_more = ("h3_text_to_video_pdd_4step", "h3_text_to_video_pdd_manual_sigmas")
     _twins = []
-    for fname, label, task, prompt, extra, note in [_by_name[f + ".json"] for f in _SAVELAT_OF] + [_step_switch]:
+    for fname, label, task, prompt, extra, note in (
+            [_by_name[f + ".json"] for f in _SAVELAT_OF + _savelat_more] + [_step_switch] + list(_pdd_tests)):
         stem = fname.removesuffix(".json")
         twin_extra = dict(extra, save_latents=True,
                           out_prefix=extra.get("out_prefix", f"Video/{stem}") + "_savelat")
@@ -5597,7 +5628,13 @@ def main():
             twin_extra["probe_frozen_rows"] = True
         _twins.append((f"{stem}_savelat.json", f"{label}-savelat", task, prompt, twin_extra,
                        f"{note}; saves its latents (the 2026-09-26 distill run)"))
-    GRAPHS = GRAPHS + (_step_switch,) + tuple(_twins)
+    for fname, label, task, prompt, extra, note in [_by_name["h3_text_to_video_pdd.json"], _pdd_tests[2]]:
+        stem = fname.removesuffix(".json")
+        _twins.append((f"{stem}_x0.json", f"{label}-x0", task, prompt,
+                       dict(extra, save_latents=True, probe_step_x0=True,
+                            out_prefix=extra.get("out_prefix", f"Video/{stem}") + "_x0"),
+                       f"{note}; saves every step's x0 and the final latent (one or two renders only)"))
+    GRAPHS = GRAPHS + (_step_switch,) + _pdd_tests + tuple(_twins)
 
     if args.list_scenes:
         for name, text in T2V_SCENES.items():
