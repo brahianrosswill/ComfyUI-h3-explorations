@@ -124,6 +124,16 @@ the unusual one, more than PDD8's or FastH3's does.*
 - **F6. FastH3 with VSA off shows less temporal texture instability and the
   same grade.** Sparsity would explain the texture, and the weights the
   grade.
+
+  *Note, 2026-09-26, the VAE session, before any result: the VSA-off arm
+  departs from FastH3's contract twice.*
+  - *It runs dense attention where FastH3 was trained sparse.*
+  - *Core's dense forward ignores `to_gate_compress`
+    (`comfy/ldm/minimax/model.py`, "unused by the dense forward"), which
+    FastVideo trains always on. So the learned coarse branch goes too.*
+
+  *A texture or grade change in that arm cannot be charged to sparsity
+  alone.*
 - **F7. The look family (`t2va_look_*`).**
   - The base follows each requested look.
   - The distills do not shift tone by a constant offset. They pull the
