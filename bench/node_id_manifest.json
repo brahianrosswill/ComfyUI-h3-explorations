@@ -295,7 +295,8 @@
       "head_strength",
       "unmerged_blocks",
       "unmerged_strength",
-      "unmerged_window"
+      "unmerged_window",
+      "backbone_apply"
     ],
     "node_id": "MiniMaxH3PDDLoRA",
     "outputs": [
@@ -474,6 +475,17 @@
     "node_id": "MiniMaxH3SolChunked",
     "outputs": [
       "Output"
+    ]
+  },
+  "MiniMaxH3StepX0Observer": {
+    "inputs": [
+      "model",
+      "filename_prefix",
+      "save_audio"
+    ],
+    "node_id": "MiniMaxH3StepX0Observer",
+    "outputs": [
+      "model"
     ]
   },
   "MiniMaxH3TaoMateStreamSampler": {

@@ -296,10 +296,13 @@ DECLARED: dict[tuple[str, str], tuple] = {
                 "nothing, which is why generated graphs leave it. The probes "
                 "are the arms that vary it. (The third value, 'encoder', left "
                 "with the AWQ lane on 2026-09-13.)"),
-    ("LoraLoaderModelOnly", "strength_model"):
-        ("ARM", "1.0 on eight graphs and h3_config.TURBO_OWNER_STRENGTH 0.75 "
-                "on five -- the owner's turbo recipe. Classified HOUSE first; "
-                "the pinned-value rule caught the second value."),
+    # LoraLoaderModelOnly.strength_model's row moved here in 0.154.0, when
+    # every LoRA on int8 moved to the branch node and the stock loader was left
+    # on one control graph at its default.
+    ("MiniMaxH3LoRABranch", "strength"):
+        ("ARM", "1.0 on most graphs and h3_config.TURBO_OWNER_STRENGTH 0.75 "
+                "on the owner's turbo recipe graphs. Classified HOUSE first on "
+                "the stock loader; the pinned-value rule caught the second value."),
     ("EasyCache", "verbose"):
         ("HOUSE", "h3_config.CACHE_NODE['verbose'] -- the cache logs what it "
                   "skipped, which is the only way to see it worked", True),

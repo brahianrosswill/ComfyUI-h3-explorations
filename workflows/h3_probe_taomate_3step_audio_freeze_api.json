@@ -147,14 +147,18 @@
     }
   },
   "18": {
-    "class_type": "LoraLoaderModelOnly",
+    "class_type": "MiniMaxH3LoRABranch",
     "inputs": {
       "model": [
         "1",
         0
       ],
       "lora_name": "h3/minimax_h3_taomate_3step_rank128_comfy_bf16.safetensors",
-      "strength_model": 1.0
+      "strength": 1.0,
+      "modules": "all",
+      "blocks": "all",
+      "start_percent": 0.0,
+      "end_percent": 1.0
     }
   },
   "19": {

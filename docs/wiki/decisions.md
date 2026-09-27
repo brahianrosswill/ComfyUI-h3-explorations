@@ -17,6 +17,14 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-26
 
+- **Owner: every LoRA on an int8 checkpoint goes through our exact branch**
+  (0.154.0). This covers PDD's backbone and refiner (`MiniMaxH3PDDLoRA`
+  `backbone_apply`), and the generator's `lora_branch` now defaults on.
+  Before this, the branch was FlashGen's alone, PDD merged everything, and
+  `unmerged_blocks` was an off-by-default knob that could not reach
+  `mlp.fc2`. The measurement behind it:
+  `bench/results/2026-09-26_int8_lora_requant.json`. Merges survive only on
+  the two control probes. The policy lives in `docs/h3_quant_policy.md`.
 - **Corrected: the audio-refine pass does keep frozen video exact.** A
   one-execution probe measured it
   (`bench/results/2026-09-26_frozen_row_probe.md`). The 2026-09-25 record

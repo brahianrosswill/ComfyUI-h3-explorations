@@ -13,6 +13,36 @@ pointer goes; this list is stale the moment the roadmap disagrees with it.
 Items from the `mrpink` helper lane first; `evalman`'s render lane appends its
 own below the rule.
 
+**Idea saved for later, 2026-09-26: fit the schedule to how much of the frame
+changes.** The owner, on PDD's coarse last steps: "our sigma schedule needs to
+adjust based on a ton of pixels all needing to change at the same time
+(action scene) vs. just regions (dialogue scene) except during hardcoded
+prompted cuts". The owner also hypothesised that the same wholesale change is
+why cuts, and changes inside a shot, have to be prompted: a cut is "like a
+pixel wipe".
+- **What supports it.** PDD quality follows the coarseness of the schedule's
+  tail (`../evidence.md`, "Settled about H3"). The working model in
+  [`../h3_distills.md`](../h3_distills.md) puts the clones in the coarse late
+  steps: the heads predict a block's mean velocity from its start state, and
+  hedge when that state does not yet decide where a moving thing goes.
+- **What exists to build it from.**
+  - Schedules are per render and global: one sigma for every token.
+  - PDD can take any partition of its 32-point grid inside the trained
+    envelope (`pdd_lora.envelope_partition`), so a scene can buy a finer tail
+    where it moves.
+  - The DiT already takes a timestep per token row, which is how frozen rows
+    run at a different t. A per-region schedule is expressible in principle,
+    but PDD fuses one head per step for every token.
+- **Cheapest first version.** Pick the PDD partition per scene from its
+  motion, read from the prompt's metadata or from an early x0's inter-frame
+  delta, with cut frames masked out (`../../bench/measure_clip_delta.py`
+  already finds cuts). The PDD 4/6/8/16 test in `h3_distills.md` says first
+  whether the tail is the lever.
+- **About prompting cuts: inference, not tested.** A cut has to be prompted on
+  the undistilled base too, which runs a stochastic 16-step sampler. So that
+  part is more likely what the model learned from captioned cuts than a
+  sampler effect.
+
 **Idea saved for later, 2026-09-26: pick the distill by what the shot does.**
 From the owner's unblinded looks at one seed:
 - **PDD8** "looks great when its closeups or medium shots - lots of detail and

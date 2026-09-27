@@ -1390,8 +1390,10 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
               stamp: bool = False, unet: str | None = None,
               lora: tuple[str, float] | None = None,
               # Apply `lora` at the call (lora_branch.py) instead of merging
-              # it into the int8 weight, where a sub-step delta is lost.
-              lora_branch: bool = False,
+              # it into the int8 weight, where a sub-step delta is lost. On by
+              # default since 0.154.0 (owner, 2026-09-26: every small LoRA on
+              # int8 goes through our branch); False only on a merge control.
+              lora_branch: bool = True,
               steps: int | None = None, shift: dict | None = None,
               sampler_name: str | None = None, scheduler_name: str | None = None,
               head_chunks: int | None = None,
@@ -1436,6 +1438,9 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
               # FORCES uniform blocks and ignores the schedule, which is an
               # off-schedule experiment, not a step-count setting.
               pdd_nfe: int = 0,
+              # MiniMaxH3PDDLoRA's `backbone_apply`: the exact branch by
+              # default, "merge" only on the control arm (0.154.0).
+              pdd_backbone_apply: str = "exact branch",
               ref_audio: bool = False,
               split_at: int | None = None,
               split_base_last: bool = True,
@@ -1529,7 +1534,8 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
 
     `unet` overrides the checkpoint the task would otherwise pick, for the
     probes that need a model source no task name describes. `lora` is
-    (name, strength) and inserts a LoraLoaderModelOnly.
+    (name, strength) and inserts `MiniMaxH3LoRABranch`, or LoraLoaderModelOnly
+    on a merge control (`lora_branch=False`).
     """
     if task not in ("t2v", "i2v", "r2v"):
         raise ValueError(task)
@@ -1908,7 +1914,8 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
                                   # tail-weighted partition runs 5 or 6
                                   # evaluations and neither divides the grid.
                                   "steps": (0 if (split_at or manual_sigmas)
-                                            else ["61", 0])}}
+                                            else ["61", 0]),
+                                  "backbone_apply": pdd_backbone_apply}}
             if not split_at and not manual_sigmas:
                 g["61"] = {"class_type": "PrimitiveInt",
                            "inputs": {"value": _resolved_steps}}
@@ -4339,7 +4346,8 @@ def main():
         # The `_branch` probe that was the other half is gone since 0.147.1:
         # it was the shipped graph under another name.
         ("h3_probe_t2v_flashgen_r64_4step.json", "t2v-flashgen-r64-4step", "t2v", LONG_T2V_PROMPT,
-         dict(lora=(FLASHGEN_R64_LORA, FLASHGEN_STRENGTH), steps=FLASHGEN_STEPS,
+         dict(lora=(FLASHGEN_R64_LORA, FLASHGEN_STRENGTH), lora_branch=False,
+              steps=FLASHGEN_STEPS,
               sampler_name=FLASHGEN_SAMPLER, manual_sigmas=FLASHGEN_MANUAL_SIGMAS,
               out_prefix="Video/h3_probe_t2v_flashgen_r64_4step"),
          "FlashGen at full rank 64, merged by LoraLoaderModelOnly"),
@@ -5002,6 +5010,15 @@ def main():
               lora=(PDD_FL2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS,
               out_prefix="Video/text_to_video_pdd"),
          "text -> video + audio at 8 steps via PDD, kitchen dense + Sol"),
+        # The control for the shipped graph above since 0.154.0: PDD's backbone
+        # merged into the int8 weight by ComfyUI's requantising merge, as every
+        # PDD graph did before. Only `backbone_apply` differs.
+        ("h3_probe_t2v_pdd8_merge.json", "t2v-pdd8-merge", "t2v", LONG_T2V_PROMPT,
+         dict(pdd=True, sampler_name="euler",
+              lora=(PDD_FL2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS,
+              pdd_backbone_apply="merge",
+              out_prefix="Video/h3_probe_t2v_pdd8_merge"),
+         "PDD8 with its backbone merged into int8 (the pre-0.154.0 path), the branch's control"),
 
         # **The PDD ladder's own rungs, added 2026-09-04.** The 2026-09-03
         # speedup ladder rendered PDD8 only as the shipped graph (sage plus

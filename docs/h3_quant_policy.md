@@ -44,6 +44,16 @@ per layer: `../bench/results/2026-09-26_int8_lora_requant.json`, from
 `bench/probe_int8_lora_requant.py`. `MiniMaxH3LoRABranch` (`lora_branch.py`)
 applies a LoRA at the call instead and leaves the int8 weight as shipped.
 
+**The policy since 0.154.0 (owner, 2026-09-26): every LoRA on an int8
+checkpoint goes through the branch.**
+- The generator's `lora_branch` defaults on.
+- `MiniMaxH3PDDLoRA` applies PDD's backbone and refiner the same way
+  (`backbone_apply`).
+- A merge survives only on a named control arm. Which graphs still merge is
+  a walk of `graph_paths` for `LoraLoaderModelOnly` and for
+  `backbone_apply: "merge"`.
+- PDD's adaln update stays merged: it lands on an fp16 weight, not int8.
+
 ## The plan, in tiers
 
 Each tier is usable on its own; each later tier removes a cost of the one

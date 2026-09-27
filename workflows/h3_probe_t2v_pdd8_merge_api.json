@@ -66,8 +66,8 @@
         0
       ],
       "sigmas": [
-        "60",
-        0
+        "18",
+        1
       ],
       "latent_image": [
         "26",
@@ -114,7 +114,7 @@
       ],
       "frame_rate": 24.0,
       "loop_count": 0,
-      "filename_prefix": "Video/h3_probe_t2v_flashgen_4step",
+      "filename_prefix": "Video/h3_probe_t2v_pdd8_merge",
       "format": "video/h264-mp4",
       "pix_fmt": "yuv420p",
       "crf": 19,
@@ -160,36 +160,35 @@
     }
   },
   "18": {
-    "class_type": "MiniMaxH3LoRABranch",
+    "class_type": "MiniMaxH3PDDLoRA",
     "inputs": {
       "model": [
         "1",
         0
       ],
-      "lora_name": "h3/minimax_h3_4step_lora_flashgen_v1.0_768p_fl2va_pruned_avg_rank_13_bf16.safetensors",
+      "lora_name": "h3/minimax_h3_fl2va_pdd_8step_comfy.safetensors",
       "strength": 1.0,
-      "modules": "all",
-      "blocks": "all",
-      "start_percent": 0.0,
-      "end_percent": 1.0
-    }
-  },
-  "19": {
-    "class_type": "MiniMaxH3SigmaShift",
-    "inputs": {
-      "model": [
-        "18",
+      "head_strength": -1.0,
+      "patch_heads": true,
+      "nfe": 0,
+      "steps": [
+        "61",
         0
       ],
-      "shift_video": 12.0,
-      "shift_audio": 3.0
+      "backbone_apply": "merge"
+    }
+  },
+  "61": {
+    "class_type": "PrimitiveInt",
+    "inputs": {
+      "value": 8
     }
   },
   "58": {
     "class_type": "ModelAttentionBackend",
     "inputs": {
       "model": [
-        "19",
+        "18",
         0
       ],
       "attention": "comfy kitchen attention"
@@ -230,12 +229,6 @@
         "5",
         1
       ]
-    }
-  },
-  "60": {
-    "class_type": "ManualSigmas",
-    "inputs": {
-      "sigmas": "1.0, 0.965517, 0.888889, 0.679245, 0.0"
     }
   }
 }

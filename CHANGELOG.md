@@ -4,6 +4,35 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.154.0
+
+### Changed
+
+- **Every LoRA on an int8 checkpoint is applied at the call, not merged**
+  (owner, 2026-09-26). ComfyUI's merge requantises each int8 weight with
+  stochastic rounding, and the measured deltas sit below one int8 step, so
+  most of each is lost to rounding noise
+  (`bench/results/2026-09-26_int8_lora_requant.json`): Turbo and FlashGen
+  almost entirely, PDD and TaoMate in part.
+  - **`MiniMaxH3PDDLoRA` gains `backbone_apply`** (appended), defaulting to
+    "exact branch": PDD's backbone and refiner go through `lora_branch`,
+    `mlp.fc2` included. "merge" is the old path.
+    - `unmerged_blocks` works only under "merge" and is refused otherwise.
+    - The adaln update stays a weight patch: it lands on an fp16 weight,
+      where the merge keeps it.
+    - A graph saved before this input existed takes the new default.
+  - **`lora_branch.install`** installs branches on a ModelPatcher in place.
+    `attach` is now a clone plus `install`.
+  - **The generator's `lora_branch` defaults on**, so every Turbo, TaoMate
+    and FlashGen graph uses `MiniMaxH3LoRABranch`. Graphs rebuilt.
+- **The two merge controls:**
+  - `h3_probe_t2v_flashgen_r64_4step`, as before;
+  - `h3_probe_t2v_pdd8_merge` (new): PDD8 with `backbone_apply="merge"`, the
+    control for the shipped PDD graph.
+- Not yet rendered: a GPU smoke of the PDD branch path is queued for after the
+  2026-09-26 run. No CPU check drives `MiniMaxH3PDDLoRA.execute` on a real
+  model.
+
 ## 0.153.2
 
 ### Added

@@ -1488,7 +1488,8 @@ FASTH3_CONTRACT_VSA = dict(FASTH3_CORE_VSA, **{"selection.keep_percent": 20.0,
 #: sv_fro 0.95 from rank 64, lossy by construction, with the adaln update
 #: projected onto the pruned checkpoint's curve basis. So it loads on
 #: `MODELS["unet_fl2va"]` and on nothing else. A plain weight LoRA with per-module
-#: alphas; `LoraLoaderModelOnly` carries it.
+#: alphas. Graphs apply it through `MiniMaxH3LoRABranch`, as every LoRA on
+#: int8 since 0.154.0 (`docs/h3_quant_policy.md`).
 FLASHGEN_LORA = "h3/minimax_h3_4step_lora_flashgen_v1.0_768p_fl2va_pruned_avg_rank_13_bf16.safetensors"
 #: The publisher's LoRA at its full rank 64, converted here by
 #: `bench/convert_flashgen_lora.py` (`bench/results/2026-09-25_flashgen_lora_conversion.json`):
@@ -1535,7 +1536,8 @@ FLASHGEN_SAMPLER = "euler"
 #: `bench/results/2026-09-15_taomate_lora_conversion.json`. It loads on
 #: `MODELS["unet_fl2va"]`, the pruned int8 build of that same partition, and
 #: NOT on `MODELS["unet_fl2va_pdd8_baked"]`, whose backbone already carries
-#: PDD's delta. A plain weight LoRA, so `LoraLoaderModelOnly` carries it.
+#: PDD's delta. A plain weight LoRA; graphs apply it through
+#: `MiniMaxH3LoRABranch`, as every LoRA on int8 since 0.154.0.
 #: Its authors run it in causal chunks with a clean K/V cache; a ComfyUI graph
 #: runs it over the whole clip at once, which is outside what they run
 #: (`docs/h3_taomate.md`).

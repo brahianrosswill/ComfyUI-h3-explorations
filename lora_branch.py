@@ -252,6 +252,15 @@ def _window_wrapper(window):
 def attach(model, branches):
     """Clone `model` with every branch installed as an object patch."""
     m = model.clone()
+    install(m, branches)
+    return m
+
+
+def install(m, branches):
+    """Install every branch on the ModelPatcher `m` itself, as object patches.
+
+    `attach` is this on a clone. `MiniMaxH3PDDLoRA` calls it directly, on the
+    clone it already holds, to apply its backbone at the call."""
     taken = []
     patches = {}
     fc2 = {p for p in branches if p.endswith("mlp.fc2")}

@@ -979,6 +979,16 @@ HEAD_PATCH_KEYS = ("diffusion_model.final_layer.forward",
 #: silent loss.
 UNMERGED_KINDS = ("attn.qkv_proj", "attn.out_proj", "mlp.fc1")
 
+#: `backbone_apply` choices: where the backbone and refiner LoRA lands.
+#: **Measured** (`bench/results/2026-09-26_int8_lora_requant.json`): merged
+#: into an int8 weight, ComfyUI requantises it with stochastic rounding, and
+#: PDD's delta, about a tenth of an int8 step, keeps little of its direction.
+#: The branch (`lora_branch.py`) applies it at the call and reaches every
+#: module, `mlp.fc2` and the refiner included. The owner, 2026-09-26: every
+#: small LoRA on int8 goes through our branch. 'merge' stays as the control.
+BACKBONE_APPLY = ("exact branch", "merge")
+BACKBONE_APPLY_DEFAULT = "exact branch"
+
 
 def unmerged_patch_key(index: int, kind: str) -> str:
     """The object-patch key one un-merged backbone module takes.
@@ -1903,6 +1913,28 @@ class MiniMaxH3PDDLoRA(io.ComfyNode):
                         "means on Sol's `start_percent`."
                     ),
                 ),
+                # APPENDED 2026-09-26. See the note on patch_heads.
+                io.Combo.Input(
+                    "backbone_apply", options=list(BACKBONE_APPLY),
+                    default=BACKBONE_APPLY_DEFAULT, optional=True,
+                    tooltip=(
+                        "Leave on 'exact branch'. Where the backbone and "
+                        "refiner LoRA lands.\n\n"
+                        "'exact branch' applies it at the call, y = W x + "
+                        "B (A x), through lora_branch.py, on every module "
+                        "including mlp.fc2, which `unmerged_blocks` cannot "
+                        "reach. The int8 weight is left alone, so none of the "
+                        "delta is lost to requantisation.\n\n"
+                        "'merge' is the old path, kept as the control arm: "
+                        "ComfyUI dequantises, adds and requantises each int8 "
+                        "weight with stochastic rounding "
+                        "(bench/results/2026-09-26_int8_lora_requant.json). "
+                        "`unmerged_blocks` and its two knobs work only under "
+                        "'merge'.\n\n"
+                        "The adaln update stays a weight patch either way: "
+                        "it lands on an fp16 weight, where the merge keeps it."
+                    ),
+                ),
             ],
             outputs=[io.Model.Output(), io.Sigmas.Output()],
         )
@@ -1911,7 +1943,13 @@ class MiniMaxH3PDDLoRA(io.ComfyNode):
     def execute(cls, model, lora_name, strength=1.0, head_strength=-1.0,
                 patch_heads=True, nfe=0, steps=8,
                 unmerged_blocks="", unmerged_strength=-1.0,
-                unmerged_window="") -> io.NodeOutput:
+                unmerged_window="",
+                backbone_apply=BACKBONE_APPLY_DEFAULT) -> io.NodeOutput:
+        backbone_apply = str(backbone_apply or BACKBONE_APPLY_DEFAULT)
+        if backbone_apply not in BACKBONE_APPLY:
+            raise RuntimeError(
+                f"backbone_apply={backbone_apply!r}; expected one of "
+                f"{list(BACKBONE_APPLY)}.")
         import comfy.lora
         import comfy.utils
         import folder_paths
@@ -2257,6 +2295,28 @@ class MiniMaxH3PDDLoRA(io.ComfyNode):
         # checkpoint's own `operations.Linear`. Same argument the head gate
         # makes one screen below, and for the same reason -- "exactly the base
         # model" has to mean the base model's own code.
+        # `backbone_apply`: under 'exact branch' every backbone and refiner
+        # module leaves the weight patch and is applied at the call by
+        # `lora_branch`, which reaches `mlp.fc2` where `unmerged_blocks`
+        # cannot. The file's `diffusion_model.*` keys are exactly those
+        # modules; the adaln entries added above stay weight patches. At
+        # strength 0.0 nothing is lifted, for the reason given below.
+        branches = {}
+        if backbone_apply == "exact branch" and strength != 0.0:
+            if str(unmerged_blocks).strip():
+                raise RuntimeError(
+                    f"unmerged_blocks={str(unmerged_blocks).strip()!r} works "
+                    f"only under backbone_apply='merge'. Under 'exact branch' "
+                    f"every backbone module is already applied at the call.")
+            try:
+                from . import lora_branch
+            except ImportError:                   # imported flat, by the bench checks
+                import lora_branch
+            branch_sd = {k: v for k, v in sd.items()
+                         if k.startswith("diffusion_model.")}
+            branches = lora_branch.parse_lora(branch_sd, strength)
+            backbone = {k: v for k, v in backbone.items() if k not in branch_sd}
+
         unmerged = frozenset()
         if str(unmerged_blocks).strip() and strength != 0.0:
             unmerged = parse_blocks(unmerged_blocks, len(dm.blocks))
@@ -2266,7 +2326,7 @@ class MiniMaxH3PDDLoRA(io.ComfyNode):
 
         key_map = comfy.lora.model_lora_keys_unet(model.model, {})
         loaded = comfy.lora.load_lora(backbone, key_map, log_missing=True)
-        if not loaded:
+        if not loaded and not branches:
             raise RuntimeError(
                 f"{lora_name} matched no module on this model. Expected "
                 f"ComfyUI generic-LoRA keys under `diffusion_model.`; the "
@@ -2274,7 +2334,9 @@ class MiniMaxH3PDDLoRA(io.ComfyNode):
         # That guard cannot see a stripped sidecar -- the refiner and adaln
         # entries keep `loaded` non-empty on every base -- so the stripped
         # case asserts its own shape: refiner matched, no backbone did.
-        check_stripped_targets(backbone_kind, loaded.keys(),
+        check_stripped_targets(backbone_kind,
+                               list(loaded.keys()) + [f"diffusion_model.{p}.weight"
+                                                      for p in branches],
                                expected_population()["refiner_modules"],
                                lora_name)
 
@@ -2297,6 +2359,11 @@ class MiniMaxH3PDDLoRA(io.ComfyNode):
                 f"keys on this model. A partial match renders and looks "
                 f"entirely normal, with whichever modules did not match left "
                 f"at their base weights. First unmatched: {missing[:3]}.")
+        if branches:
+            # Raises on a module this model does not have, and on a forward
+            # another node already patches, so a partial or clashing branch
+            # cannot render quietly.
+            lora_branch.install(m, branches)
 
         # --- the runtime surfaces -------------------------------------------
         # The step tracker needs a table in whatever space `t_emb` lives in,
@@ -2601,7 +2668,9 @@ class MiniMaxH3PDDLoRA(io.ComfyNode):
         # default, because it changes where the backbone update lands and this
         # line is the only runtime evidence of which arm ran. A knob that is
         # silent when off and silent when on cannot be read back off a log.
-        _um = ("all merged" if not lifted else
+        _um = ("%d backbone/refiner module(s) at the call (exact branch)"
+               % len(branches) if branches else
+               "all merged" if not lifted else
                "%d module(s) un-merged at blocks %s"
                % (len(lifted), ",".join(str(i) for i in sorted(unmerged))))
         logger.info(

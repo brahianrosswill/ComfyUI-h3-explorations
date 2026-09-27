@@ -171,7 +171,8 @@
       "head_strength": -1.0,
       "patch_heads": true,
       "nfe": 0,
-      "steps": 0
+      "steps": 0,
+      "backbone_apply": "exact branch"
     }
   },
   "58": {
