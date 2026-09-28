@@ -12,9 +12,9 @@ ComfyUI's LoRA loader merges a LoRA into the int8 checkpoint by
 requantizing it, which rounds away most of these adapters; the node applies
 them at the call instead.
 
-1. Install this node: in ComfyUI-Manager, "Install via Git URL" with
-   `https://github.com/fblissjr/h3-mutant-distill`, or clone this repo into
-   `custom_nodes/`.
+1. Install this node: in `ComfyUI/custom_nodes/`, run
+   `git clone https://github.com/fblissjr/h3-mutant-distill`, then restart
+   ComfyUI.
 2. Get the adapters from
    [fbjr/h3-mutant-distill](https://huggingface.co/fbjr/h3-mutant-distill) on
    Hugging Face and put them in your ComfyUI `models/loras/` folder.
