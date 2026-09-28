@@ -18,30 +18,51 @@ a ComfyUI node pack.
 
 ## Files
 
-[Beidouqixing/minimax-h3-4step-lora-flashgen](https://huggingface.co/Beidouqixing/minimax-h3-4step-lora-flashgen)
-(published under Apache-2.0), converted for ComfyUI and the pruned int8
-checkpoints of [Comfy-Org/MiniMax-H3](https://huggingface.co/Comfy-Org/MiniMax-H3).
-Nothing was trained.
+Both are [Beidouqixing/minimax-h3-4step-lora-flashgen](https://huggingface.co/Beidouqixing/minimax-h3-4step-lora-flashgen)
+(published under Apache-2.0), converted for ComfyUI. Nothing was trained.
+Load them with the pack's `H3 Exact LoRA` node, not `LoraLoaderModelOnly`:
+merging into int8 weights rounds away most of the LoRA.
 
-| file | for |
-|---|---|
-| `minimax_h3_flashgen_4step_v1.0_768p_fl2va_pruned_rank64_comfy.safetensors` | the fl2va checkpoint: text to video, what FlashGen was trained for |
-| `minimax_h3_flashgen_4step_v1.0_768p_ref2va_pruned_rank64_comfy.safetensors` | the ref2va checkpoint: reference to video, an untested transfer |
+### FlashGen for fl2va (text to video)
 
-The conversion, the same for both but for the time basis:
+`minimax_h3_flashgen_4step_v1.0_768p_fl2va_pruned_rank64_comfy.safetensors`
+
+- **Loads on:** `minimax_h3_fl2va_pruned_int8_convrot`.
+- **Taken from FlashGen:** every module of the LoRA (attention q/k/v and
+  output, MLP fc1 and fc2, each block's and the final layer's modulation,
+  the token refiner) at its full rank 64. Nothing is dropped or resized.
+- **Taken from the checkpoint:** its 8-column time basis (`adaln_t_table`),
+  which the modulation part is refit onto.
+- **The gist:** FlashGen is a 4-step distill of H3 for text to video, trained
+  by distribution matching (VSD, data-free). It renders in 4 steps alone. In
+  the recipes it also finishes PDD8's last two steps, where it fixed sign
+  text PDD8 garbled.
+
+### FlashGen for ref2va (reference to video)
+
+`minimax_h3_flashgen_4step_v1.0_768p_ref2va_pruned_rank64_comfy.safetensors`
+
+- **Loads on:** `minimax_h3_ref2va_pruned_int8_convrot`.
+- **Taken from FlashGen:** the same modules, at the same full rank.
+- **Taken from the checkpoint:** ref2va's own time basis. fl2va's and
+  ref2va's differ, so the two files are not interchangeable.
+- **The gist:** an untested transfer. FlashGen was trained only for text to
+  video on fl2va. One render held both references and the likeness by eye;
+  it has not been compared against PDD8.
+
+### How both were converted
 
 - keys renamed from PEFT to ComfyUI's, with an alpha tensor per module so
   strength 1.0 is the publisher's merge scale;
 - q/k/v `lora_B` rows reordered from per-head interleaved to ComfyUI's bands;
-- the modulation `lora_A` re-expressed in that checkpoint's pruned 8-column
-  time basis, its mean moved into `diff_b`;
-- full rank 64 kept.
+- the modulation `lora_A` re-expressed in the checkpoint's 8-column time
+  basis, its mean moved into `diff_b`.
 
-Each file's metadata records the source and the conversion. Load them with
-the pack's `H3 Exact LoRA` node, not `LoraLoaderModelOnly`: merging into the
-int8 weights rounds away most of the LoRA.
+Each file's metadata records its source and conversion.
 
-The PDD8 files the recipes also use are on
+### PDD8
+
+The PDD8 sidecars the recipes also use are on
 [fbjr/MiniMax-H3-Acc-LoRAs-sidecar](https://huggingface.co/fbjr/MiniMax-H3-Acc-LoRAs-sidecar).
 
 ## License
