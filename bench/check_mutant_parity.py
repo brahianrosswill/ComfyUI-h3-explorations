@@ -58,11 +58,21 @@ RECIPES = {
     "pdd8_flashgen_finish": "workflows/h3_text_to_video_pdd8_flashgen_finish_api.json",
     "pdd6": "workflows/h3_text_to_video_pdd_manual_sigmas_api.json",
     "flashgen_late_blocks": "workflows/distill_experiments/h3_text_to_video_flashgen_late_blocks_api.json",
+    "i2v_pdd8": "workflows/distill_experiments/h3_first_frame_to_video_pdd_savelat_api.json",
+    "r2v_pdd8": "workflows/h3_image_ref_plus_text_to_video_pdd_api.json",
+    "r2v_flashgen": "workflows/distill_experiments/h3_probe_r2v_flashgen_4step_api.json",
+}
+
+#: The files `static` compares, per checkpoint partition: (PDD sidecar,
+#: FlashGen conversion, checkpoint).
+PARTITIONS = {
+    "fl2va": (C.PDD_FL2VA_LORA, C.FLASHGEN_R64_LORA, C.MODELS["unet_fl2va"]),
+    "ref2va": (C.PDD_REF2VA_LORA, C.FLASHGEN_R64_REF2VA_LORA, C.MODELS["unet_ref2va"]),
 }
 
 #: The sigma schedules whose PDD head blocks `static` compares.
 SCHEDULES = {
-    "pdd8": "1.0, 0.988235, 0.972973, 0.952381, 0.923077, 0.878049, 0.8, 0.631579, 0.0",
+    "pdd8": C.PDD8_SIGMAS,
     "pdd8_to_0.8 (the finish's first pass)": "1.0, 0.988235, 0.972973, 0.952381, 0.923077, 0.878049, 0.8",
     "pdd6 (PDD_MANUAL_SIGMAS)": C.PDD_MANUAL_SIGMAS,
 }
@@ -102,51 +112,79 @@ def static() -> int:
         if problem:
             fails.append(name)
 
-    fg_sd, _ = _load(LORAS / C.FLASHGEN_R64_LORA)
-    pdd_sd, pdd_meta = _load(LORAS / C.PDD_FL2VA_LORA)
-
-    for label, blocks in (("all", "all"), ("34-49", "34-49")):
-        ours = X.select(X.parse_lora(fg_sd, C.FLASHGEN_STRENGTH), X.parse_blocks(blocks))
-        pack = lb.select(lb.parse_lora(fg_sd, C.FLASHGEN_STRENGTH), "all", lb.parse_blocks(blocks))
-        check(f"FlashGen branches, blocks {label}", _branches_equal(ours, pack))
-
-    dm_sd = {k: v for k, v in pdd_sd.items() if k.startswith("diffusion_model.")}
-    check("PDD backbone branches",
-          _branches_equal(X.parse_lora(dm_sd, 1.0), lb.parse_lora(dm_sd, 1.0)))
-
-    shift_v, shift_a = float(pdd_meta["pdd_shift_video"]), float(pdd_meta["pdd_shift_audio"])
-    num_steps = int(pdd_meta["pdd_num_steps"])
     from safetensors import safe_open
-    with safe_open(str(UNETS / C.MODELS["unet_fl2va"]), "pt") as f:
-        base = {s: (f.get_tensor(f"final_layer.{s}_out.weight").float(),
-                    f.get_tensor(f"final_layer.{s}_out.bias").float()) for s in ("video", "audio")}
-    bank = P._HeadBank({s: (pdd_sd[f"h3_pdd.bank.{s}.weight"].float(),
-                            pdd_sd[f"h3_pdd.bank.{s}.bias"].float(), *base[s])
-                        for s in ("video", "audio")})
+    for part, (pdd_file, fg_file, unet) in PARTITIONS.items():
+        fg_sd, _ = _load(LORAS / fg_file)
+        pdd_sd, pdd_meta = _load(LORAS / pdd_file)
 
-    for label, text in SCHEDULES.items():
-        sched = torch.tensor([float(x) for x in text.split(",")], dtype=torch.float32)
-        knots = M.schedule_knots(sched, shift_v, num_steps)
-        want = list(zip(knots, knots[1:]))
-        s = X._Schedule(shift_v, num_steps)
-        got = []
-        for i in range(len(sched) - 1):
-            s.update({"sample_sigmas": sched, "sigmas": sched[i:i + 1]})
-            got.append(s.block)
-        check(f"head blocks, {label}", None if got == want else f"{got} against {want}")
-        for stream, shift in (("video", shift_v), ("audio", shift_a)):
-            pack_h = P._FusedHeads(bank, stream, shift, num_steps, 1.0)
-            ours_h = X._FusedHeads(pdd_sd[f"h3_pdd.bank.{stream}.weight"].float(),
-                                   pdd_sd[f"h3_pdd.bank.{stream}.bias"].float(),
-                                   *base[stream], shift, num_steps, 1.0)
-            bad = [blk for blk in want
-                   if not all(torch.equal(a, b) for a, b in
-                              zip(ours_h.get(blk, "cpu", torch.float32),
-                                  pack_h.get(blk, "cpu", torch.float32)))]
-            check(f"fused {stream} heads, {label}", f"blocks {bad} differ" if bad else None)
+        for label, blocks in (("all", "all"), ("34-49", "34-49")):
+            ours = X.select(X.parse_lora(fg_sd, C.FLASHGEN_STRENGTH), X.parse_blocks(blocks))
+            pack = lb.select(lb.parse_lora(fg_sd, C.FLASHGEN_STRENGTH), "all", lb.parse_blocks(blocks))
+            check(f"{part}: FlashGen branches, blocks {label}", _branches_equal(ours, pack))
+
+        dm_sd = {k: v for k, v in pdd_sd.items() if k.startswith("diffusion_model.")}
+        check(f"{part}: PDD backbone branches",
+              _branches_equal(X.parse_lora(dm_sd, 1.0), lb.parse_lora(dm_sd, 1.0)))
+
+        shift_v, shift_a = float(pdd_meta["pdd_shift_video"]), float(pdd_meta["pdd_shift_audio"])
+        num_steps = int(pdd_meta["pdd_num_steps"])
+        with safe_open(str(UNETS / unet), "pt") as f:
+            base = {st: (f.get_tensor(f"final_layer.{st}_out.weight").float(),
+                         f.get_tensor(f"final_layer.{st}_out.bias").float()) for st in ("video", "audio")}
+        bank = P._HeadBank({st: (pdd_sd[f"h3_pdd.bank.{st}.weight"].float(),
+                                 pdd_sd[f"h3_pdd.bank.{st}.bias"].float(), *base[st])
+                            for st in ("video", "audio")})
+
+        for label, text in SCHEDULES.items():
+            sched = torch.tensor([float(x) for x in text.split(",")], dtype=torch.float32)
+            knots = M.schedule_knots(sched, shift_v, num_steps)
+            want = list(zip(knots, knots[1:]))
+            sc = X._Schedule(shift_v, num_steps)
+            got = []
+            for i in range(len(sched) - 1):
+                sc.update({"sample_sigmas": sched, "sigmas": sched[i:i + 1]})
+                got.append(sc.block)
+            check(f"{part}: head blocks, {label}", None if got == want else f"{got} against {want}")
+            for stream, shift in (("video", shift_v), ("audio", shift_a)):
+                pack_h = P._FusedHeads(bank, stream, shift, num_steps, 1.0)
+                ours_h = X._FusedHeads(pdd_sd[f"h3_pdd.bank.{stream}.weight"].float(),
+                                       pdd_sd[f"h3_pdd.bank.{stream}.bias"].float(),
+                                       *base[stream], shift, num_steps, 1.0)
+                bad = [blk for blk in want
+                       if not all(torch.equal(a, b) for a, b in
+                                  zip(ours_h.get(blk, "cpu", torch.float32),
+                                      pack_h.get(blk, "cpu", torch.float32)))]
+                check(f"{part}: fused {stream} heads, {label}", f"blocks {bad} differ" if bad else None)
 
     print(f"\n{'RED' if fails else 'GREEN'}: {len(fails)} failure(s)")
     return 1 if fails else 0
+
+
+def pin_pdd_sigmas(graph: dict) -> dict:
+    """Feed the sampler a `ManualSigmas` where it read the PDD node's SIGMAS output.
+
+    `H3ExactLoRA` has no SIGMAS output, and the node's own float32 schedule is
+    not bit-identical to the 6-decimal string the examples use. Applied to
+    BOTH arms of a pair, so they still differ only in the LoRA node."""
+    g = copy.deepcopy(graph)
+    nxt = max(int(k) for k in g) + 1
+    for nid, n in list(g.items()):
+        if n["class_type"] != "MiniMaxH3PDDLoRA" or \
+                not any(v == [nid, 1] for m in g.values() for v in m["inputs"].values()):
+            continue
+        steps = n["inputs"].get("steps")
+        if isinstance(steps, list):
+            steps = g[str(steps[0])]["inputs"]["value"]
+        if int(steps) != C.PDD_STEPS:
+            raise ValueError(f"node {nid} emits {steps} steps; only PDD8's schedule is pinned")
+        sig = str(nxt)
+        nxt += 1
+        g[sig] = {"class_type": "ManualSigmas", "inputs": {"sigmas": C.PDD8_SIGMAS}}
+        for m in g.values():
+            for k, v in m["inputs"].items():
+                if v == [nid, 1]:
+                    m["inputs"][k] = [sig, 0]
+    return g
 
 
 def swap(graph: dict) -> dict:
@@ -197,10 +235,12 @@ def with_latents(graph: dict, prefix: str) -> dict:
     return g
 
 
-def graphs(out: Path) -> int:
+def graphs(out: Path, only=None) -> int:
     out.mkdir(parents=True, exist_ok=True)
     for name, rel in RECIPES.items():
-        pack = json.loads((REPO / rel).read_text())
+        if only and name not in only:
+            continue
+        pack = pin_pdd_sigmas(json.loads((REPO / rel).read_text()))
         for arm, g in (("pack", pack), ("ours", swap(pack))):
             path = out / f"parity_{name}_{arm}_api.json"
             path.write_text(json.dumps(with_latents(g, f"mutant_parity_{name}_{arm}"), indent=2) + "\n")
@@ -209,8 +249,8 @@ def graphs(out: Path) -> int:
 
 
 def compare(a: Path, b: Path) -> int:
-    import comfy.utils
-    la, lb_ = comfy.utils.load_torch_file(str(a)), comfy.utils.load_torch_file(str(b))
+    from safetensors.torch import load_file      # a `.latent` is a safetensors file
+    la, lb_ = load_file(str(a)), load_file(str(b))
     keys = sorted(set(la) | set(lb_))
     bad = [k for k in keys if k not in la or k not in lb_ or not torch.equal(la[k], lb_[k])]
     for k in keys:
@@ -226,6 +266,7 @@ def main(argv=None) -> int:
     sub.add_parser("static")
     g = sub.add_parser("graphs")
     g.add_argument("--out", type=Path, required=True)
+    g.add_argument("--only", nargs="*", help="recipe names (default: all)")
     c = sub.add_parser("compare")
     c.add_argument("a", type=Path)
     c.add_argument("b", type=Path)
@@ -233,7 +274,7 @@ def main(argv=None) -> int:
     if args.cmd in (None, "static"):
         return static()
     if args.cmd == "graphs":
-        return graphs(args.out)
+        return graphs(args.out, args.only)
     return compare(args.a, args.b)
 
 
