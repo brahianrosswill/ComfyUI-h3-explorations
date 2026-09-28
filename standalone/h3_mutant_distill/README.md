@@ -12,12 +12,13 @@ ComfyUI's LoRA loader merges a LoRA into the int8 checkpoint by
 requantizing it, which rounds away most of these adapters; the node applies
 them at the call instead.
 
-Install through ComfyUI-Manager, or clone this repo into `custom_nodes/`.
-Then open a workflow from `example_workflows/`: the frontend offers to
-download each missing model.
+Install [h3-mutant-distill](https://github.com/fblissjr/h3-mutant-distill) through ComfyUI-Manager, or clone it into
+`custom_nodes/`. Then open a workflow from
+[`example_workflows/`](https://github.com/fblissjr/h3-mutant-distill/tree/main/example_workflows): the frontend
+offers to download each missing model.
 
 Text to video for now but entirely possible this works for i2va and ref2va, just haven't tested it enough. 
-One workflow each in `example_workflows/`, with a note on why.
+One workflow each, with a note on why.
 
 | workflow | what | model evaluations |
 |---|---|---|
@@ -132,6 +133,9 @@ with the commands to rebuild both files in
 
 ## License
 
-Code: MIT (`LICENSE`). The models are MiniMax H3 Model Derivatives under the
-[MiniMax H3 Community License](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE);
-see the Hugging Face repo's `NOTICE`.
+The node's code is MIT ([`LICENSE`](https://github.com/fblissjr/h3-mutant-distill/blob/main/LICENSE) on GitHub). The
+adapters are MiniMax H3 Model Derivatives under the
+[MiniMax H3 Community License](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE)
+([`LICENSE`](https://huggingface.co/fbjr/h3-mutant-distill/blob/main/LICENSE)
+and [`NOTICE`](https://huggingface.co/fbjr/h3-mutant-distill/blob/main/NOTICE)
+on Hugging Face).
