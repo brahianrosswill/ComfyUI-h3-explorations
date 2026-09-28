@@ -4,6 +4,15 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.169.2
+
+### Changed
+
+- The Hugging Face staging files (card, `NOTICE`, H3 license, `reference/`
+  converter) move from `standalone/h3_mutant_distill/hf/` to
+  `standalone/h3_mutant_distill_hf/` (owner: the GitHub repo carries only
+  what an install needs). They are published to `fbjr/h3-mutant-distill`.
+
 ## 0.169.1
 
 ### Changed
