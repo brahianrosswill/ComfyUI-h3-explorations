@@ -25,7 +25,7 @@ merging into int8 weights rounds away most of the LoRA.
 
 ### FlashGen for fl2va (text to video)
 
-`minimax_h3_flashgen_4step_v1.0_768p_fl2va_pruned_rank64_comfy.safetensors`
+[`minimax_h3_flashgen_4step_v1.0_768p_fl2va_pruned_rank64_comfy.safetensors`](https://huggingface.co/fbjr/h3-mutant-distill/blob/main/minimax_h3_flashgen_4step_v1.0_768p_fl2va_pruned_rank64_comfy.safetensors)
 
 - **Loads on:** `minimax_h3_fl2va_pruned_int8_convrot`.
 - **Taken from FlashGen:** every module of the LoRA (attention q/k/v and
@@ -40,7 +40,7 @@ merging into int8 weights rounds away most of the LoRA.
 
 ### FlashGen for ref2va (reference to video)
 
-`minimax_h3_flashgen_4step_v1.0_768p_ref2va_pruned_rank64_comfy.safetensors`
+[`minimax_h3_flashgen_4step_v1.0_768p_ref2va_pruned_rank64_comfy.safetensors`](https://huggingface.co/fbjr/h3-mutant-distill/blob/main/minimax_h3_flashgen_4step_v1.0_768p_ref2va_pruned_rank64_comfy.safetensors)
 
 - **Loads on:** `minimax_h3_ref2va_pruned_int8_convrot`.
 - **Taken from FlashGen:** the same modules, at the same full rank.
@@ -58,12 +58,20 @@ merging into int8 weights rounds away most of the LoRA.
 - the modulation `lora_A` re-expressed in the checkpoint's 8-column time
   basis, its mean moved into `diff_b`.
 
-Each file's metadata records its source and conversion.
+Each file's metadata records its source and conversion. The converter is
+[`reference/convert_flashgen_lora.py`](https://huggingface.co/fbjr/h3-mutant-distill/blob/main/reference/convert_flashgen_lora.py),
+with the commands to rebuild both files in
+[`reference/README.md`](https://huggingface.co/fbjr/h3-mutant-distill/blob/main/reference/README.md).
 
 ### PDD8
 
 The PDD8 sidecars the recipes also use are on
-[fbjr/MiniMax-H3-Acc-LoRAs-sidecar](https://huggingface.co/fbjr/MiniMax-H3-Acc-LoRAs-sidecar).
+[fbjr/MiniMax-H3-Acc-LoRAs-sidecar](https://huggingface.co/fbjr/MiniMax-H3-Acc-LoRAs-sidecar):
+[`minimax_h3_fl2va_pdd_8step_comfy.safetensors`](https://huggingface.co/fbjr/MiniMax-H3-Acc-LoRAs-sidecar/blob/main/minimax_h3_fl2va_pdd_8step_comfy.safetensors)
+for fl2va and
+[`minimax_h3_ref2va_pdd_8step_comfy.safetensors`](https://huggingface.co/fbjr/MiniMax-H3-Acc-LoRAs-sidecar/blob/main/minimax_h3_ref2va_pdd_8step_comfy.safetensors)
+for ref2va. They are alibaba-pai's PDD8 LoRAs, converted by
+[`bench/convert_pdd_lora.py`](https://github.com/fblissjr/ComfyUI-h3-explorations/blob/main/bench/convert_pdd_lora.py).
 
 ## License
 
