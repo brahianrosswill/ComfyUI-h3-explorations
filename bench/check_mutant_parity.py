@@ -178,7 +178,7 @@ def swap(graph: dict) -> dict:
 
 
 def with_latents(graph: dict, prefix: str) -> dict:
-    """Save the final AV latent of every `SamplerCustomAdvanced` nobody else samples from."""
+    """Save the final latent, video and audio, of every `SamplerCustomAdvanced` nobody else samples from."""
     g = copy.deepcopy(graph)
     fed = {str(v[0]) for n in g.values() for v in n["inputs"].values()
            if isinstance(v, list) and len(v) == 2 and n["class_type"] == "SamplerCustomAdvanced"}
@@ -186,9 +186,14 @@ def with_latents(graph: dict, prefix: str) -> dict:
               if n["class_type"] == "SamplerCustomAdvanced" and nid not in fed]
     nxt = max(int(k) for k in g) + 1
     for nid in finals:
-        g[str(nxt)] = {"class_type": "SaveLatent",
-                       "inputs": {"samples": [nid, 0], "filename_prefix": f"latents/{prefix}"}}
-        nxt += 1
+        # The AV latent is nested; split it as the pack's `_savelat` twins do.
+        sep = str(nxt)
+        g[sep] = {"class_type": "LTXVSeparateAVLatent", "inputs": {"av_latent": [nid, 0]}}
+        for slot, stream in ((0, "video"), (1, "audio")):
+            g[str(nxt + 1 + slot)] = {"class_type": "SaveLatent",
+                                      "inputs": {"samples": [sep, slot],
+                                                 "filename_prefix": f"latents/{prefix}_{stream}"}}
+        nxt += 3
     return g
 
 
