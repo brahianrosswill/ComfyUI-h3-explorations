@@ -1,4 +1,4 @@
-"""h3-mutant-distilling: one node for experimental MiniMax H3 distill recipes."""
+"""h3-mutant-distill: one node for experimental MiniMax H3 distill recipes."""
 
 from comfy_api.latest import ComfyExtension, io
 

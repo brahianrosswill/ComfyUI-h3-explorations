@@ -10,10 +10,10 @@ tags:
   - lora
 ---
 
-# h3-mutant-distilling
+# h3-mutant-distill
 
 **Experimental. YMMV.** Weights for the recipes in
-[h3-mutant-distilling](https://github.com/fblissjr/h3-mutant-distilling),
+[h3-mutant-distill](https://github.com/fblissjr/h3-mutant-distill),
 a ComfyUI node pack.
 
 ## Files

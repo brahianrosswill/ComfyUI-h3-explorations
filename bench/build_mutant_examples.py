@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Generate h3-mutant-distilling's example workflows, in the frontend's own UI format.
+"""Generate h3-mutant-distill's example workflows, in the frontend's own UI format.
 
-The published repo (`standalone/h3_mutant_distilling/`) ships one workflow
+The published repo (`standalone/h3_mutant_distill/`) ships one workflow
 per recipe in `example_workflows/`. They are UI-format files, not API
 prompts, because only a UI file carries each loader's `properties.models`
 (name, URL, folder), which is what makes ComfyUI's frontend offer to download
@@ -20,7 +20,7 @@ then is it written.
     <comfy venv python> bench/build_mutant_examples.py --check    # round-trip the committed files
 
 Needs the ComfyUI server at 127.0.0.1:8188 with `H3ExactLoRA` loaded
-(`custom_nodes/h3-mutant-distilling` linking to the standalone folder), and
+(`custom_nodes/h3-mutant-distill` linking to the standalone folder), and
 Google Chrome. No GPU work: nothing is queued.
 """
 
@@ -44,7 +44,7 @@ sys.path.insert(0, str(REPO / "workflows"))
 import h3_config as C  # noqa: E402
 from build_workflows import LONG_T2V_PROMPT  # noqa: E402
 
-OUT = REPO / "standalone" / "h3_mutant_distilling" / "example_workflows"
+OUT = REPO / "standalone" / "h3_mutant_distill" / "example_workflows"
 SERVER = "http://127.0.0.1:8188"
 CHROME = "google-chrome"
 
@@ -52,7 +52,7 @@ CHROME = "google-chrome"
 #: sidecar repo and is byte-identical to `h3_config.PDD_FL2VA_LORA` (sha256
 #: e225a89f..., checked 2026-09-28). The FlashGen conversion goes up with this
 #: package, to the HF repo named below.
-HF_PACKAGE = "fbjr/h3-mutant-distilling"
+HF_PACKAGE = "fbjr/h3-mutant-distill"
 COMFY_ORG = "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main"
 MODELS = {
     "minimax_h3_fl2va_pruned_int8_convrot.safetensors":
@@ -341,7 +341,7 @@ async def run(check: bool) -> int:
             api = build()
             missing = await fe.missing_nodes(api)
             if missing:
-                print(f"  RED   {stem}: the frontend has no {missing}; is h3-mutant-distilling loaded?")
+                print(f"  RED   {stem}: the frontend has no {missing}; is h3-mutant-distill loaded?")
                 fails += 1
                 continue
             path = OUT / f"{stem}.json"
@@ -369,7 +369,7 @@ async def run(check: bool) -> int:
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description="h3-mutant-distilling's example workflows.")
+    ap = argparse.ArgumentParser(description="h3-mutant-distill's example workflows.")
     ap.add_argument("--check", action="store_true",
                     help="round-trip the committed files instead of writing them")
     args = ap.parse_args(argv)

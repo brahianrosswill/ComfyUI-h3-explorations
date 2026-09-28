@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """The standalone `H3ExactLoRA` node computes what this pack's two nodes compute.
 
-`standalone/h3_mutant_distilling/` is published as its own repo
-(`h3-mutant-distilling`) with one node, `H3ExactLoRA`, written small instead of
+`standalone/h3_mutant_distill/` is published as its own repo
+(`h3-mutant-distill`) with one node, `H3ExactLoRA`, written small instead of
 bundling `pdd_lora.py` and its helpers. A rewrite is a new implementation,
 so it is held to this pack's `MiniMaxH3PDDLoRA` (at `backbone_apply="exact
 branch"`, heads patched) and `MiniMaxH3LoRABranch`, which rendered the recipes
@@ -93,7 +93,7 @@ def static() -> int:
     import lora_branch as lb
     import pdd_lora as P
     import pdd_math as M
-    from h3_mutant_distilling import exact_lora as X
+    from h3_mutant_distill import exact_lora as X
 
     fails = []
 

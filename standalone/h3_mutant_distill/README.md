@@ -1,4 +1,4 @@
-# h3-mutant-distilling
+# h3-mutant-distill
 
 **Experimental. YMMV.** Combinations of MiniMax H3's few-step distills for
 ComfyUI, and one node to run them. Each was judged by eye, by one person, on
@@ -35,7 +35,7 @@ modulation update and fuses the per-step output heads.
   converted to ComfyUI at its full rank 64: keys renamed, q/k/v rows
   reordered, and the modulation update re-expressed in the pruned
   checkpoint's 8-column time basis. Hosted at
-  [fbjr/h3-mutant-distilling](https://huggingface.co/fbjr/h3-mutant-distilling).
+  [fbjr/h3-mutant-distill](https://huggingface.co/fbjr/h3-mutant-distill).
 - **PDD8:** [alibaba-pai/MiniMax-H3-Acc-LoRAs](https://huggingface.co/alibaba-pai/MiniMax-H3-Acc-LoRAs),
   converted, from [fbjr/MiniMax-H3-Acc-LoRAs-sidecar](https://huggingface.co/fbjr/MiniMax-H3-Acc-LoRAs-sidecar).
 - **FastH3:** [FastVideo/FastVideo-FastH3-Comfy](https://huggingface.co/FastVideo/FastVideo-FastH3-Comfy), unchanged.

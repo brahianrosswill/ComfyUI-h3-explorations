@@ -4,6 +4,15 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.169.1
+
+### Changed
+
+- The standalone pack is renamed `h3-mutant-distill` (owner), its source
+  `standalone/h3_mutant_distill/`, and its Hugging Face repo
+  `fbjr/h3-mutant-distill`. The example workflows are regenerated for the new
+  URL.
+
 ## 0.169.0
 
 ### Added
