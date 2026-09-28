@@ -2,7 +2,9 @@
 license: other
 license_name: minimax-h3-community-license-agreement
 license_link: https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE
-base_model: Beidouqixing/minimax-h3-4step-lora-flashgen
+base_model:
+  - Beidouqixing/minimax-h3-4step-lora-flashgen
+  - alibaba-pai/MiniMax-H3-Acc-LoRAs
 tags:
   - comfyui
   - minimax-h3
@@ -21,10 +23,46 @@ them at the call instead.
 
 ## Files
 
-Both are [Beidouqixing/minimax-h3-4step-lora-flashgen](https://huggingface.co/Beidouqixing/minimax-h3-4step-lora-flashgen)
-(published under Apache-2.0), converted for ComfyUI. Nothing was trained.
-Load them with the pack's `H3 Exact LoRA` node, not `LoraLoaderModelOnly`:
-merging into int8 weights rounds away most of the LoRA.
+Nothing here was trained: each file is someone else's distill, converted for
+ComfyUI and the pruned int8 checkpoints of
+[Comfy-Org/MiniMax-H3](https://huggingface.co/Comfy-Org/MiniMax-H3). Load
+them with the pack's `H3 Exact LoRA` node, not `LoraLoaderModelOnly`.
+
+### PDD8 for fl2va
+
+[`minimax_h3_fl2va_pdd_8step_comfy.safetensors`](https://huggingface.co/fbjr/h3-mutant-distill/blob/main/minimax_h3_fl2va_pdd_8step_comfy.safetensors)
+
+- **Loads on:** `minimax_h3_fl2va_pruned_int8_convrot`.
+- **Taken from PDD:** alibaba-pai's FL2VA 8-step Parallel Decoding
+  Distillation LoRA, all three parts: the backbone LoRA (every block and
+  the token refiner, rank 64), the modulation update, and the bank of 32
+  per-interval output heads.
+- **Taken from the checkpoint:** its 8-column time basis, which the
+  modulation update is pre-solved into, and a few fingerprint tensors the
+  node checks before patching.
+- **The gist:** PDD distills the base's trajectory into 8 steps, each step
+  using the heads for the slice of the trajectory it covers. By eye it is
+  natural, flatter and dimmer than the other distills, with the least
+  motion. The recipes use it alone (PDD6 runs the same file on 6 steps), and
+  for PDD8's first 6 steps before a FlashGen finish.
+
+### PDD8 for ref2va
+
+[`minimax_h3_ref2va_pdd_8step_comfy.safetensors`](https://huggingface.co/fbjr/h3-mutant-distill/blob/main/minimax_h3_ref2va_pdd_8step_comfy.safetensors)
+
+- **Loads on:** `minimax_h3_ref2va_pruned_int8_convrot`.
+- **Taken from PDD:** alibaba-pai's Ref2VA 8-step LoRA, the same three
+  parts.
+- **Taken from the checkpoint:** ref2va's own time basis and fingerprints.
+  The node refuses a PDD file on the other partition.
+- **The gist:** PDD8 for reference to video.
+
+Both PDD8 files were converted by
+[`bench/convert_pdd_lora.py`](https://github.com/fblissjr/ComfyUI-h3-explorations/blob/main/bench/convert_pdd_lora.py):
+diffusers names to ComfyUI's, q/k/v fused, SwiGLU halves reordered, alpha
+tensors added, and the modulation update pre-solved into the pruned
+checkpoint's time basis. They are byte-identical to the copies on
+[fbjr/MiniMax-H3-Acc-LoRAs-sidecar](https://huggingface.co/fbjr/MiniMax-H3-Acc-LoRAs-sidecar).
 
 ### FlashGen for fl2va (text to video)
 
@@ -53,7 +91,9 @@ merging into int8 weights rounds away most of the LoRA.
   video on fl2va. One render held both references and the likeness by eye;
   it has not been compared against PDD8.
 
-### How both were converted
+### How both FlashGen files were converted
+
+From [Beidouqixing/minimax-h3-4step-lora-flashgen](https://huggingface.co/Beidouqixing/minimax-h3-4step-lora-flashgen) (published under Apache-2.0):
 
 - keys renamed from PEFT to ComfyUI's, with an alpha tensor per module so
   strength 1.0 is the publisher's merge scale;
@@ -65,16 +105,6 @@ Each file's metadata records its source and conversion. The converter is
 [`reference/convert_flashgen_lora.py`](https://huggingface.co/fbjr/h3-mutant-distill/blob/main/reference/convert_flashgen_lora.py),
 with the commands to rebuild both files in
 [`reference/README.md`](https://huggingface.co/fbjr/h3-mutant-distill/blob/main/reference/README.md).
-
-### PDD8
-
-The PDD8 sidecars the recipes also use are on
-[fbjr/MiniMax-H3-Acc-LoRAs-sidecar](https://huggingface.co/fbjr/MiniMax-H3-Acc-LoRAs-sidecar):
-[`minimax_h3_fl2va_pdd_8step_comfy.safetensors`](https://huggingface.co/fbjr/MiniMax-H3-Acc-LoRAs-sidecar/blob/main/minimax_h3_fl2va_pdd_8step_comfy.safetensors)
-for fl2va and
-[`minimax_h3_ref2va_pdd_8step_comfy.safetensors`](https://huggingface.co/fbjr/MiniMax-H3-Acc-LoRAs-sidecar/blob/main/minimax_h3_ref2va_pdd_8step_comfy.safetensors)
-for ref2va. They are alibaba-pai's PDD8 LoRAs, converted by
-[`bench/convert_pdd_lora.py`](https://github.com/fblissjr/ComfyUI-h3-explorations/blob/main/bench/convert_pdd_lora.py).
 
 ## License
 

@@ -515,7 +515,7 @@
         "models": [
           {
             "name": "minimax_h3_fl2va_pdd_8step_comfy.safetensors",
-            "url": "https://huggingface.co/fbjr/MiniMax-H3-Acc-LoRAs-sidecar/resolve/main/minimax_h3_fl2va_pdd_8step_comfy.safetensors",
+            "url": "https://huggingface.co/fbjr/h3-mutant-distill/resolve/main/minimax_h3_fl2va_pdd_8step_comfy.safetensors",
             "directory": "loras"
           }
         ]

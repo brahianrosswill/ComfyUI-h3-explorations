@@ -49,10 +49,10 @@ OUT = REPO / "standalone" / "h3_mutant_distill" / "example_workflows"
 SERVER = "http://127.0.0.1:8188"
 CHROME = "google-chrome"
 
-#: Where each file is published. The PDD8 sidecar is already on the owner's
-#: sidecar repo and is byte-identical to `h3_config.PDD_FL2VA_LORA` (sha256
-#: e225a89f..., checked 2026-09-28). The FlashGen conversion goes up with this
-#: package, to the HF repo named below.
+#: Where each file is published. The PDD8 and FlashGen files are all on the
+#: package's HF repo; the PDD8 ones are byte-identical to
+#: `h3_config.PDD_FL2VA_LORA` / `PDD_REF2VA_LORA` and to the owner's sidecar
+#: repo (sha256 e225a89f... and f1e552ad..., checked 2026-09-28).
 HF_PACKAGE = "fbjr/h3-mutant-distill"
 COMFY_ORG = "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main"
 MODELS = {
@@ -68,7 +68,7 @@ MODELS = {
     "minimax_h3_audio_vae_fp32.safetensors":
         (f"{COMFY_ORG}/vae/minimax_h3_audio_vae_fp32.safetensors", "vae"),
     "minimax_h3_fl2va_pdd_8step_comfy.safetensors":
-        ("https://huggingface.co/fbjr/MiniMax-H3-Acc-LoRAs-sidecar/resolve/main/"
+        (f"https://huggingface.co/{HF_PACKAGE}/resolve/main/"
          "minimax_h3_fl2va_pdd_8step_comfy.safetensors", "loras"),
     "minimax_h3_flashgen_4step_v1.0_768p_fl2va_pruned_rank64_comfy.safetensors":
         (f"https://huggingface.co/{HF_PACKAGE}/resolve/main/"
