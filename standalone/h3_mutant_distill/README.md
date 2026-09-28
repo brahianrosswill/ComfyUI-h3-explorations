@@ -15,13 +15,6 @@ distill, converted for ComfyUI or used as published.
 | [`minimax_h3_flashgen_4step_v1.0_768p_fl2va_pruned_rank64_comfy.safetensors`](https://huggingface.co/fbjr/h3-mutant-distill/resolve/main/minimax_h3_flashgen_4step_v1.0_768p_fl2va_pruned_rank64_comfy.safetensors) (`loras/`) | FlashGen: a 4-step distill LoRA for text to video, trained by distribution matching (VSD, data-free) | [Beidouqixing/minimax-h3-4step-lora-flashgen](https://huggingface.co/Beidouqixing/minimax-h3-4step-lora-flashgen) at its full rank 64, converted: keys renamed with an alpha per module, q/k/v rows reordered to ComfyUI's layout, the modulation update re-expressed in the pruned fl2va checkpoint's 8-column time basis | `pdd8_flashgen_finish`, `flashgen_late_blocks` |
 | [`fastvideo_fasth3_8step_v2_pruned_int8_convrot.safetensors`](https://huggingface.co/FastVideo/FastVideo-FastH3-Comfy/resolve/main/diffusion_models/fastvideo_fasth3_8step_v2_pruned_int8_convrot.safetensors) (`diffusion_models/`) | FastH3: FastVideo's 8-step distill of H3 for text to video. A full checkpoint, not an adapter | FastVideo's own (DMD2, data-free, trained with VSA sparse attention), used unchanged | `fasth3_contract` |
 
-Every recipe also loads the base files from
-[Comfy-Org/MiniMax-H3](https://huggingface.co/Comfy-Org/MiniMax-H3):
-`minimax_h3_fl2va_pruned_int8_convrot` (`diffusion_models/`, all but
-FastH3), `qwen3vl_32b_minimax_h3_int8_convrot` (`text_encoders/`), and
-`minimax_h3_video_vae_int8_convrot` and `minimax_h3_audio_vae_fp32`
-(`vae/`). The workflows carry every URL, so ComfyUI offers the downloads.
-
 ## Recipes
 
 Text to video for now but entirely possible this works for i2va and ref2va, just haven't tested it enough. 
