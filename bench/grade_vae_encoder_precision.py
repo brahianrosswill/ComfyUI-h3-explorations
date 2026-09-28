@@ -116,7 +116,8 @@ def main() -> int:
     # Added 2026-09-26 for the INT8 ConvRot file, whose decoder is quantized.
     ap.add_argument("--against", action="append", default=[], metavar="VAE_NAME")
     # Experiment #33 (docs/open_experiments.md): the fp16 encode with
-    # `--fast fp16_accumulation`'s switch on, as start.sh launches the server.
+    # `--fast fp16_accumulation`'s switch on, as start.sh launched the server
+    # until 2026-09-28 (it passes no --fast since).
     # kitchen's fp16_conv3d only runs on CUDA with the switch on, so this arm
     # needs the card; comparing it across kitchen builds is the experiment.
     ap.add_argument("--size", default=None, metavar="WxH",

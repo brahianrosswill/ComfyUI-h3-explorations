@@ -70,8 +70,9 @@ everything below is in it from `0.2.35+sol.863e953.up.c8c7825`.*
   raises the depth gate on `fp16_conv3d`'s fp16 accumulation. Core's H3 VAE
   calls that kernel when fp16 accumulation is on (`comfy/ldm/minimax/vae.py`,
   the `fp16_conv3d` helper, gated on `comfy/ops.py::_fp16_linear_wanted`).
-  This install's launcher turns fp16 accumulation on (`start.sh`,
-  `--fast fp16_accumulation`). The reader counted the encoder's 512-channel
+  This install's launcher turned fp16 accumulation on (`start.sh`,
+  `--fast fp16_accumulation`) until 2026-09-28, and passes no `--fast`
+  since. The reader counted the encoder's 512-channel
   3x3x3 convolutions that fall between the old gate and the new one; the
   decoder has none. So after that rebase, reference and keyframe encodes on
   those stages move to fp16 accumulation. The PR body reports the fidelity
@@ -151,8 +152,11 @@ test).
 the new attention key, with no file filter, so a PR that touches an H3 path
 under an unrelated title can be missed.
 
-- **16508 (fp16 inference for H3) would move this install's DiT to fp16 if
-  it merged.** It adds `torch.float16` to H3's `supported_inference_dtypes`.
+- **16508 (fp16 inference for H3) would have moved this install's DiT to
+  fp16 if it merged.** *Not since 2026-09-28: `start.sh` passes no `--fast`,
+  so `PRIORITIZE_FP16` is off and both calls below choose bf16 with or
+  without the PR (check 4's other three cases). Someone launching with
+  `--fast fp16_accumulation` still gets the fp16 case.* It adds `torch.float16` to H3's `supported_inference_dtypes`.
   `start.sh`'s `--fast fp16_accumulation` sets `PRIORITIZE_FP16`
   (`comfy/model_management.py`). With the flag on and the PR's list,
   `unet_dtype` and `unet_manual_cast` both choose fp16 for a quantized

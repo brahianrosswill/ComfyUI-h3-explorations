@@ -2494,7 +2494,8 @@ Before and after, the fp16-accumulate encode is identical to every printed
 digit, because core's H3 encoder always tiles at 256 px. Its 512-channel
 convs launch at 16x16 tiles, where #192's small-launch rule keeps fp32
 accumulation. It reopens if core encodes H3 untiled or with much larger
-tiles.
+tiles. *Since 2026-09-28 `start.sh` passes no `--fast`, so the kernel's fp16
+path is not reached here at any tile size; a reopening also needs the flag.*
 
 
 ## 34. PDD8 finished by late-block FlashGen

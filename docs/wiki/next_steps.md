@@ -393,7 +393,8 @@ mapped to the owner decision it feeds. None of the decisions is made here.
 - *Done 2026-09-25 in 0.139.0:* the torchaudio resample sites call
   `comfy.audio.resample` through `audio_resample.py`, and the Sol node refuses
   an H3 model that will not compute in bf16, which is what core PR 16508 would
-  cause on this launcher. Still worth watching 16508; if it merges, the
+  cause on a launcher with `--fast fp16_accumulation` (this one dropped it
+  2026-09-28). Still worth watching 16508; if it merges, the
   refusal is what users will see, and `--bf16-unet` is the fix it names.
 - **The PDD head-half question is live.** Core's head bank merged 2026-08-29
   (`../h3_pdd.md`, "Core is learning this"): should `MiniMaxH3PDDLoRA` keep

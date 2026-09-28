@@ -15,6 +15,18 @@ Older history lives elsewhere and is not copied here:
   decisions" and forward-plan sections.
 - `bench/results/`: the verdict records, each with its conditions.
 
+## 2026-09-28
+
+- **The launcher dropped `--fast fp16_accumulation`, and `comfy.env` dropped
+  `NVIDIA_TF32_OVERRIDE=1`** (owner: "Yes make these changes"). Both DiTs
+  compute bf16/int8 only, so the flag reached only the fp16 text encoders,
+  and its `PRIORITIZE_FP16` made core PR 16508 an fp16 switch for H3. The
+  override forced TF32 onto fp32 matmuls, the audio VAE's among them.
+  `docs/sol_upstream.md`, `next_steps.md` and #33 used to say this launcher
+  runs fp16 accumulation; each carries a dated note. The launcher and its
+  reasons live in the dotfiles repo (`comfy/start.sh`, default mode).
+  `bench/compare_vae_decoders.py` defaults to no `--fast` to match.
+
 ## 2026-09-27
 
 - **PDD6 is a low-motion and close-up option, not the default** (owner:

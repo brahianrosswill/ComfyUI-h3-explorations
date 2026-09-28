@@ -4,6 +4,18 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.168.0
+
+### Changed
+
+- `bench/compare_vae_decoders.py` defaults `--fast` to none, matching the
+  launcher, which stopped passing `--fast fp16_accumulation` on 2026-09-28
+  (the dotfiles `comfy/start.sh`). Pass the flag to reproduce a record made
+  before then, such as `bench/results/2026-09-26_vae_decoders_345f.md`.
+- `docs/sol_upstream.md`, `docs/wiki/next_steps.md` and open experiment #33
+  said this launcher runs fp16 accumulation; each now carries a dated note.
+  `docs/wiki/decisions.md` logs the change.
+
 ## 0.167.0
 
 ### Added

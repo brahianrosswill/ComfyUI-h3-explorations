@@ -12,8 +12,9 @@ Each arm runs in a fresh process, so its peak VRAM is its own (weights plus
 activations) and no arm inherits another's cache. Each child decodes twice and
 reports both times: the first pays the weight transfer and kernel warm-up, the
 second is the steady state. The children parse the server's `--fast` flags
-(default `fp16_accumulation`, as `start.sh` launches it), because core's H3
-VAE takes a different convolution path under it.
+(default none, as `start.sh` launches it since 2026-09-28), because core's H3
+VAE takes a different convolution path under `fp16_accumulation`. Records
+before that date ran `--fast fp16_accumulation`; pass it to reproduce them.
 
 Controls, and the reading depends on them:
   fp16 twice    must be bit-identical, or every delta below includes
@@ -127,7 +128,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("latent", type=Path)
     ap.add_argument("--out", type=Path)
-    ap.add_argument("--fast", nargs="*", default=["fp16_accumulation"])
+    ap.add_argument("--fast", nargs="*", default=[])
     ap.add_argument("--child", action="store_true", help=argparse.SUPPRESS)
     ap.add_argument("--folder", help=argparse.SUPPRESS)
     ap.add_argument("--file", help=argparse.SUPPRESS)
