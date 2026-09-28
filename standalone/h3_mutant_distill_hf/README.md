@@ -19,7 +19,8 @@ Experimental distill adapters for h3 in comfyui safetensor format. YMMV.
 
 ## How to run in ComfyUI
 
-Sorry for adding yet more custom code, but requires using nodes from
+**Do not** use the standard load LoRA node (I mean you can if you want, I
+guess): sorry for adding yet more custom code, but requires using nodes from
 [h3-mutant-distill](https://github.com/fblissjr/h3-mutant-distill) because
 ComfyUI's LoRA loader merges a LoRA into the int8 checkpoint by
 requantizing it, which rounds away most of these adapters; the node applies
