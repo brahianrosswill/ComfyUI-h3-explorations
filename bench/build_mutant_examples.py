@@ -35,6 +35,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import uuid
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -183,11 +184,13 @@ RECIPES = {
         "highlights and fine detail. On i2v it brightened the frame at once, so it is "
         "t2v only.")),
     "h3_t2v_pdd6": (pdd6, (
-        "## PDD6: the low-motion and close-up option (t2v)\n\n"
-        "The PDD8 file on a 6-step schedule that keeps PDD8's last, narrow blocks.\n\n"
+        "## PDD6: close-ups and low motion only (t2v)\n\n"
+        "The PDD8 file on a 6-step schedule that keeps PDD8's last, narrow blocks. Use it "
+        "only for close-ups and low-motion scenes, and expect it to be iffy even there; it "
+        "is here because it is faster, not because it is good.\n\n"
         "Why: PDD's quality follows how coarse its final steps are, not how many there are. "
         "It kept 90-95% of PDD8's fine detail at three quarters of the steps, but PDD8 won "
-        "all three fast-motion scenes on artifacts. Fine for close-ups and low motion.")),
+        "all three fast-motion scenes on artifacts.")),
     "h3_t2v_flashgen_late_blocks": (flashgen_late_blocks, (
         "## FlashGen on blocks 34-49 only (t2v), a curiosity\n\n"
         "FlashGen's 4 steps with its LoRA applied to DiT blocks 34-49 and nothing else.\n\n"
@@ -283,9 +286,13 @@ class Frontend:
         return await self.eval(f"{json.dumps(types)}.filter(t => !LiteGraph.registered_node_types[t])")
 
 
-def dress(ui: dict, note: str) -> dict:
-    """Add each loader's model URL and the recipe's note to a serialized UI graph."""
+def dress(ui: dict, note: str, stem: str) -> dict:
+    """Add each loader's model URL and the recipe's note to a serialized UI graph.
+
+    The frontend gives every serialized graph a random `id`; a UUID5 of the
+    file name keeps a regenerated file byte-identical when its recipe is."""
     ui = copy.deepcopy(ui)
+    ui["id"] = str(uuid.uuid5(uuid.NAMESPACE_URL, f"h3-mutant-distill/{stem}"))
     for n in ui["nodes"]:
         widget = FILE_WIDGETS.get(n["type"])
         if widget is None:
@@ -352,7 +359,7 @@ async def run(check: bool) -> int:
                     continue
                 ui = json.loads(path.read_text())
             else:
-                ui = dress(await fe.api_to_ui(api), note)
+                ui = dress(await fe.api_to_ui(api), note, stem)
             probs = diff(api, await fe.ui_to_api(ui))
             if probs:
                 fails += 1

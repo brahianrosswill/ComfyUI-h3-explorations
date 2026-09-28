@@ -1,5 +1,5 @@
 {
-  "id": "984b7bb9-4e65-4e03-a8ad-d3cabda6815e",
+  "id": "21b5a226-1ced-5a6a-a7dc-133fa4c228fd",
   "revision": 0,
   "last_node_id": 94,
   "last_link_id": 36,
@@ -1013,7 +1013,7 @@
       "outputs": [],
       "properties": {},
       "widgets_values": [
-        "**Experimental. YMMV.** Judged by eye, on one seed, by one person, on an RTX 4090 at 1344x768 and 345 frames. Those renders also ran Sol-Attn (sparse attention from ComfyUI-h3-explorations), which this graph does not.\n\n## PDD6: the low-motion and close-up option (t2v)\n\nThe PDD8 file on a 6-step schedule that keeps PDD8's last, narrow blocks.\n\nWhy: PDD's quality follows how coarse its final steps are, not how many there are. It kept 90-95% of PDD8's fine detail at three quarters of the steps, but PDD8 won all three fast-motion scenes on artifacts. Fine for close-ups and low motion."
+        "**Experimental. YMMV.** Judged by eye, on one seed, by one person, on an RTX 4090 at 1344x768 and 345 frames. Those renders also ran Sol-Attn (sparse attention from ComfyUI-h3-explorations), which this graph does not.\n\n## PDD6: close-ups and low motion only (t2v)\n\nThe PDD8 file on a 6-step schedule that keeps PDD8's last, narrow blocks. Use it only for close-ups and low-motion scenes, and expect it to be iffy even there; it is here because it is faster, not because it is good.\n\nWhy: PDD's quality follows how coarse its final steps are, not how many there are. It kept 90-95% of PDD8's fine detail at three quarters of the steps, but PDD8 won all three fast-motion scenes on artifacts."
       ]
     }
   ],

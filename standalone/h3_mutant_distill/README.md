@@ -24,7 +24,7 @@ One workflow each in `example_workflows/`, with a note on why.
 | workflow | what | model evaluations |
 |---|---|---|
 | `h3_t2v_pdd8_flashgen_finish` | PDD8 from sigma 1.0 to 0.8, then FlashGen to 0 | 6 + 2 |
-| `h3_t2v_pdd6` | the PDD8 LoRA on a 6-step schedule, for close-ups and low motion | 6 |
+| `h3_t2v_pdd6` | the PDD8 LoRA on a 6-step schedule. Only for close-ups and low-motion scenes, and iffy even there; included anyway | 6 |
 | `h3_t2v_flashgen_late_blocks` | FlashGen applied to DiT blocks 34-49 only; a curiosity | 4 |
 | `h3_t2v_fasth3_contract` | FastVideo's FastH3 on FastVideo's own sampling settings; core nodes only | 8 |
 
