@@ -1,12 +1,31 @@
 # h3-mutant-distill
 
 **Experimental. YMMV.** Combinations of MiniMax H3's few-step distills for
-ComfyUI, and one node to run them. Each was judged by eye, by one person, on
-one seed, on an RTX 4090 at 1344x768 and 345 frames.
+ComfyUI, and one node to run them. Each was judged by eye (blinded as best as I could),
+by me, often on 1-2 seeds max, on an RTX 4090 at 1344x768 and 345 frames.
+
+## Models
+
+One row per adapter. Nothing here was trained: each file is someone else's
+distill, converted for ComfyUI or used as published.
+
+| file (folder) | what it does | how it was made | used by |
+|---|---|---|---|
+| [`minimax_h3_fl2va_pdd_8step_comfy.safetensors`](https://huggingface.co/fbjr/MiniMax-H3-Acc-LoRAs-sidecar/resolve/main/minimax_h3_fl2va_pdd_8step_comfy.safetensors) (`loras/`) | PDD8: alibaba-pai's Parallel Decoding Distillation at 8 steps. A backbone LoRA, a modulation update, and 32 per-interval output heads; each step uses the heads for the slice of the trajectory it covers | [alibaba-pai/MiniMax-H3-Acc-LoRAs](https://huggingface.co/alibaba-pai/MiniMax-H3-Acc-LoRAs), FL2VA 8-step, converted: diffusers names to ComfyUI's, q/k/v fused, SwiGLU halves reordered, alpha tensors added, the modulation update pre-solved into the pruned checkpoint's 8-column time basis | `pdd8_flashgen_finish`, `pdd6` |
+| [`minimax_h3_flashgen_4step_v1.0_768p_fl2va_pruned_rank64_comfy.safetensors`](https://huggingface.co/fbjr/h3-mutant-distill/resolve/main/minimax_h3_flashgen_4step_v1.0_768p_fl2va_pruned_rank64_comfy.safetensors) (`loras/`) | FlashGen: a 4-step distill LoRA for text to video, trained by distribution matching (VSD, data-free) | [Beidouqixing/minimax-h3-4step-lora-flashgen](https://huggingface.co/Beidouqixing/minimax-h3-4step-lora-flashgen) at its full rank 64, converted: keys renamed with an alpha per module, q/k/v rows reordered to ComfyUI's layout, the modulation update re-expressed in the pruned fl2va checkpoint's 8-column time basis | `pdd8_flashgen_finish`, `flashgen_late_blocks` |
+| [`fastvideo_fasth3_8step_v2_pruned_int8_convrot.safetensors`](https://huggingface.co/FastVideo/FastVideo-FastH3-Comfy/resolve/main/diffusion_models/fastvideo_fasth3_8step_v2_pruned_int8_convrot.safetensors) (`diffusion_models/`) | FastH3: FastVideo's 8-step distill of H3 for text to video. A full checkpoint, not an adapter | FastVideo's own (DMD2, data-free, trained with VSA sparse attention), used unchanged | `fasth3_contract` |
+
+Every recipe also loads the base files from
+[Comfy-Org/MiniMax-H3](https://huggingface.co/Comfy-Org/MiniMax-H3):
+`minimax_h3_fl2va_pruned_int8_convrot` (`diffusion_models/`, all but
+FastH3), `qwen3vl_32b_minimax_h3_int8_convrot` (`text_encoders/`), and
+`minimax_h3_video_vae_int8_convrot` and `minimax_h3_audio_vae_fp32`
+(`vae/`). The workflows carry every URL, so ComfyUI offers the downloads.
 
 ## Recipes
 
-Text to video. One workflow each in `example_workflows/`, with a note on why.
+Text to video for now but entirely possible this works for i2va and ref2va, just haven't tested it enough. 
+One workflow each in `example_workflows/`, with a note on why.
 
 | workflow | what | model evaluations |
 |---|---|---|
@@ -31,14 +50,7 @@ modulation update and fuses the per-step output heads.
 
 ## How it was made
 
-- **FlashGen:** [Beidouqixing/minimax-h3-4step-lora-flashgen](https://huggingface.co/Beidouqixing/minimax-h3-4step-lora-flashgen),
-  converted to ComfyUI at its full rank 64: keys renamed, q/k/v rows
-  reordered, and the modulation update re-expressed in the pruned
-  checkpoint's 8-column time basis. Hosted at
-  [fbjr/h3-mutant-distill](https://huggingface.co/fbjr/h3-mutant-distill).
-- **PDD8:** [alibaba-pai/MiniMax-H3-Acc-LoRAs](https://huggingface.co/alibaba-pai/MiniMax-H3-Acc-LoRAs),
-  converted, from [fbjr/MiniMax-H3-Acc-LoRAs-sidecar](https://huggingface.co/fbjr/MiniMax-H3-Acc-LoRAs-sidecar).
-- **FastH3:** [FastVideo/FastVideo-FastH3-Comfy](https://huggingface.co/FastVideo/FastVideo-FastH3-Comfy), unchanged.
+- The models: see [Models](#models).
 - **The node** is a trimmed copy of `MiniMaxH3PDDLoRA` and
   `MiniMaxH3LoRABranch` from
   [ComfyUI-h3-explorations](https://github.com/fblissjr/ComfyUI-h3-explorations),
