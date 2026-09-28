@@ -4,6 +4,25 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.169.0
+
+### Added
+
+- **`standalone/h3_mutant_distilling/`**, the source of the owner's
+  `h3-mutant-distilling` repo: four experimental t2v recipes (PDD8 then a
+  FlashGen finish, PDD6, FlashGen on blocks 34-49, FastH3 on FastVideo's
+  settings) and one node, `H3ExactLoRA`, a trimmed copy of
+  `MiniMaxH3PDDLoRA` (exact branch, heads patched) and `MiniMaxH3LoRABranch`.
+  `hf/` is the card, `NOTICE` and license for the Hugging Face weights repo.
+- `bench/check_mutant_parity.py`: `static` holds the node's LoRA branches,
+  head-block selection and fused heads torch.equal to this pack's on the real
+  files (controls shown red); `graphs` and `compare` do the same on rendered
+  latents.
+- `bench/build_mutant_examples.py`: builds each recipe's example workflow in
+  the frontend's UI format by loading it into the live frontend in headless
+  Chrome, adds each loader's model URL, and writes it only once the file
+  loads back as the recipe.
+
 ## 0.168.0
 
 ### Changed
