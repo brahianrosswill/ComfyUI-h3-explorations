@@ -10,11 +10,14 @@ tags:
   - lora
 ---
 
-# h3-mutant-distill
+## h3 mutant distills
 
-**Experimental. YMMV.** Weights for the recipes in
-[h3-mutant-distill](https://github.com/fblissjr/h3-mutant-distill),
-a ComfyUI node pack.
+Experimental distill adapters for h3 in comfyui safetensor format. YMMV.
+Requires using nodes from
+[h3-mutant-distill](https://github.com/fblissjr/h3-mutant-distill) because
+ComfyUI's LoRA loader merges a LoRA into the int8 checkpoint by
+requantizing it, which rounds away most of these adapters; the node applies
+them at the call instead.
 
 ## Files
 
