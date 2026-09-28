@@ -15,11 +15,29 @@ tags:
 ## h3 mutant distills
 
 Experimental distill adapters for h3 in comfyui safetensor format. YMMV.
-Requires using nodes from
+¯\\\_(ツ)\_/¯ on if they're any good or not.
+
+## How to run in ComfyUI
+
+Sorry for adding yet more custom code, but requires using nodes from
 [h3-mutant-distill](https://github.com/fblissjr/h3-mutant-distill) because
 ComfyUI's LoRA loader merges a LoRA into the int8 checkpoint by
 requantizing it, which rounds away most of these adapters; the node applies
 them at the call instead.
+
+## What to try first
+
+Judged by eye, by one person, on one or two seeds each.
+
+| try | adapters | task | verdict |
+|---|---|---|---|
+| **first** | PDD8, then FlashGen for the last 2 steps | text to video | The pick for t2v: 8 steps, the same time as PDD8 alone. Never worse than PDD8 alone, and fixed its garbled sign text |
+| **first** | PDD8 alone | image to video | The pick for i2v: the FlashGen finish brightened the frame at once |
+| worth a try | FlashGen alone, 4 steps | text to video | Fastest. Coherent motion and detail; loses track of who does what in busy multi-person scenes |
+| worth a try | PDD8 alone | reference to video | The ref2va PDD8 we run; not compared against the alternatives |
+| experimental | PDD8 on a 6-step schedule | text to video | Close-ups and low motion only, and iffy even there |
+| maybe crap | FlashGen on DiT blocks 34-49 only | text to video | More natural on one figure; people and objects fall apart in busy scenes. A curiosity |
+| maybe crap | FlashGen for ref2va | reference to video | Untested transfer: FlashGen was trained for text to video only. One render held its references |
 
 ## Files
 
