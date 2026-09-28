@@ -16,8 +16,8 @@ ComfyUI's LoRA loader merges a LoRA into the int8 checkpoint by
 requantizing it, which rounds away most of these adapters; the node applies
 them at the call instead.
 
-Install [h3-mutant-distill](https://github.com/fblissjr/h3-mutant-distill) through ComfyUI-Manager, or clone it into
-`custom_nodes/`. Then open a workflow from
+Install [h3-mutant-distill](https://github.com/fblissjr/h3-mutant-distill) with ComfyUI-Manager's
+"Install via Git URL", or clone it into `custom_nodes/`. Then open a workflow from
 [`example_workflows/`](https://github.com/fblissjr/h3-mutant-distill/tree/main/example_workflows): the frontend
 offers to download each missing model.
 
