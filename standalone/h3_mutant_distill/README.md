@@ -18,7 +18,8 @@ them at the call instead.
 
 ## What to try first
 
-Judged by eye, by one person, on one or two seeds each.
+Each was judged by eye (blinded as best as I could), by me, often on 1-2 seeds
+max, on an RTX 4090 at 1344x768 and 345 frames.
 
 | try | adapters | task | verdict |
 |---|---|---|---|
