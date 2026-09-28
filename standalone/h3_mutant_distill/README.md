@@ -7,7 +7,8 @@ by me, often on 1-2 seeds max, on an RTX 4090 at 1344x768 and 345 frames.
 ## Models
 
 One row per adapter. Nothing here was trained: each file is someone else's
-distill, converted for ComfyUI or used as published.
+distill, converted for ComfyUI or used as published. The adapters are built
+for, and tested only on, the pruned int8 convrot H3 checkpoints.
 
 | file (folder) | what it does | how it was made | used by |
 |---|---|---|---|
