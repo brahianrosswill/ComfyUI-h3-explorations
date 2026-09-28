@@ -3,6 +3,10 @@
 Experimental distill adapters for h3 in comfyui safetensor format. YMMV.
 ¯\\\_(ツ)\_/¯ on if they're any good or not.
 
+Get the adapters from
+[fbjr/h3-mutant-distill](https://huggingface.co/fbjr/h3-mutant-distill) on
+Hugging Face and put them in your ComfyUI `models/loras/` folder.
+
 ## How to run in ComfyUI
 
 **Do not** use the standard load LoRA node (I mean you can if you want, I
