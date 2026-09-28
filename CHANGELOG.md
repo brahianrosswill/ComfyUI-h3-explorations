@@ -4,6 +4,19 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.170.0
+
+### Added
+
+- h3-mutant-distill: three more example workflows, `h3_i2v_pdd8`,
+  `h3_r2v_pdd8` and `h3_r2v_flashgen`, built by `bench/build_mutant_examples.py`
+  on core's image-to-video and reference-to-video nodes, with the prompts read
+  from the pack graphs they were parity-checked against
+  (`bench/results/2026-09-28_mutant_parity.md`). Reference images use core's
+  autogrow slots, `ref_images.ref_image_0` onward. All seven example
+  workflows were rendered once on 2026-09-28 at a small canvas to confirm they
+  run as shipped.
+
 ## 0.169.2
 
 ### Changed

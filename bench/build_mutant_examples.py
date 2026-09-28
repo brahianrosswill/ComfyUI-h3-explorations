@@ -70,6 +70,14 @@ MODELS = {
     "minimax_h3_fl2va_pdd_8step_comfy.safetensors":
         (f"https://huggingface.co/{HF_PACKAGE}/resolve/main/"
          "minimax_h3_fl2va_pdd_8step_comfy.safetensors", "loras"),
+    "minimax_h3_ref2va_pruned_int8_convrot.safetensors":
+        (f"{COMFY_ORG}/diffusion_models/minimax_h3_ref2va_pruned_int8_convrot.safetensors", "diffusion_models"),
+    "minimax_h3_ref2va_pdd_8step_comfy.safetensors":
+        (f"https://huggingface.co/{HF_PACKAGE}/resolve/main/"
+         "minimax_h3_ref2va_pdd_8step_comfy.safetensors", "loras"),
+    "minimax_h3_flashgen_4step_v1.0_768p_ref2va_pruned_rank64_comfy.safetensors":
+        (f"https://huggingface.co/{HF_PACKAGE}/resolve/main/"
+         "minimax_h3_flashgen_4step_v1.0_768p_ref2va_pruned_rank64_comfy.safetensors", "loras"),
     "minimax_h3_flashgen_4step_v1.0_768p_fl2va_pruned_rank64_comfy.safetensors":
         (f"https://huggingface.co/{HF_PACKAGE}/resolve/main/"
          "minimax_h3_flashgen_4step_v1.0_768p_fl2va_pruned_rank64_comfy.safetensors", "loras"),
@@ -79,6 +87,21 @@ FILE_WIDGETS = {"UNETLoader": "unet_name", "CLIPLoader": "clip_name",
 
 PDD = Path(C.PDD_FL2VA_LORA).name
 FLASHGEN = Path(C.FLASHGEN_R64_LORA).name
+PDD_R2V = Path(C.PDD_REF2VA_LORA).name
+FLASHGEN_R2V = Path(C.FLASHGEN_R64_REF2VA_LORA).name
+
+#: The i2v and ref2va prompts are read from the pack graphs these recipes were
+#: parity-checked against, so the example cannot drift from them.
+I2V_GRAPH = "workflows/distill_experiments/h3_first_frame_to_video_pdd_savelat_api.json"
+R2V_GRAPH = "workflows/h3_image_ref_plus_text_to_video_pdd_api.json"
+#: Placeholder image names: the user loads their own.
+I2V_IMAGE = "first_frame.png"
+R2V_IMAGES = ("reference_person.png", "reference_place.png")
+
+
+def pack_prompt(rel: str, class_type: str) -> str:
+    g = json.loads((REPO / rel).read_text())
+    return next(n["inputs"]["prompt"] for n in g.values() if n["class_type"] == class_type)
 SEED = 730451892
 WIDTH, HEIGHT, LENGTH, FPS = 1344, 768, 345, 24.0
 
@@ -87,8 +110,8 @@ HEADER = ("**Experimental. YMMV.** Judged by eye, on one seed, by one person, on
           "(sparse attention from ComfyUI-h3-explorations), which this graph does not.")
 
 
-def base(unet: str) -> dict:
-    return {
+def base(unet: str, task: str = "t2v") -> dict:
+    g = {
         "1": {"class_type": "UNETLoader", "inputs": {"unet_name": unet, "weight_dtype": "default"}},
         "2": {"class_type": "CLIPLoader",
               "inputs": {"clip_name": "qwen3vl_32b_minimax_h3_int8_convrot.safetensors",
@@ -101,6 +124,21 @@ def base(unet: str) -> dict:
         "6": {"class_type": "RandomNoise", "inputs": {"noise_seed": SEED}},
         "7": {"class_type": "KSamplerSelect", "inputs": {"sampler_name": "euler"}},
     }
+    if task == "i2v":
+        g["15"] = {"class_type": "LoadImage", "inputs": {"image": I2V_IMAGE}}
+        g["5"]["inputs"].update(prompt=pack_prompt(I2V_GRAPH, "MiniMaxH3Conditioning"),
+                                first_frame=["15", 0])
+    elif task == "r2v":
+        g["15"] = {"class_type": "LoadImage", "inputs": {"image": R2V_IMAGES[0]}}
+        g["16"] = {"class_type": "LoadImage", "inputs": {"image": R2V_IMAGES[1]}}
+        g["5"] = {"class_type": "MiniMaxH3ReferenceToVideo",
+                  "inputs": {"clip": ["2", 0], "vae": ["3", 0], "audio_vae": ["4", 0],
+                             "prompt": pack_prompt(R2V_GRAPH, "MiniMaxH3ReferenceConditioning"),
+                             "width": WIDTH, "height": HEIGHT, "length": LENGTH,
+                             "ref_image_size": "max",
+                             "ref_images.ref_image_0": ["15", 0],
+                             "ref_images.ref_image_1": ["16", 0]}}
+    return g
 
 
 def sampler(g: dict, nid: str, model: list, sigmas: str, latent: list, noise=("6", 0)) -> None:
@@ -158,6 +196,27 @@ def flashgen_late_blocks() -> dict:
     return g
 
 
+def i2v_pdd8() -> dict:
+    g = base(C.MODELS["unet_fl2va"], "i2v")
+    sampler(g, "20", lora(g, "10", PDD), C.PDD8_SIGMAS, ["5", 1])
+    decode(g, ["22", 0], "h3_i2v_pdd8")
+    return g
+
+
+def r2v_pdd8() -> dict:
+    g = base(C.MODELS["unet_ref2va"], "r2v")
+    sampler(g, "20", lora(g, "10", PDD_R2V), C.PDD8_SIGMAS, ["5", 1])
+    decode(g, ["22", 0], "h3_r2v_pdd8")
+    return g
+
+
+def r2v_flashgen() -> dict:
+    g = base(C.MODELS["unet_ref2va"], "r2v")
+    sampler(g, "20", lora(g, "10", FLASHGEN_R2V), C.FLASHGEN_MANUAL_SIGMAS, ["5", 1])
+    decode(g, ["22", 0], "h3_r2v_flashgen")
+    return g
+
+
 def fasth3_contract() -> dict:
     g = base(C.MODELS["unet_fasth3_v2"])
     g["10"] = {"class_type": "MiniMaxH3SigmaShift",
@@ -199,6 +258,27 @@ RECIPES = {
         "single figure, more so on unusual prompts, but a third person and a piano lost "
         "coherence where people and objects must hold. Shipped because the split is "
         "interesting, not as a recommendation.")),
+    "h3_i2v_pdd8": (i2v_pdd8, (
+        "## PDD8 alone (image to video)\n\n"
+        "PDD8's 8 steps from a first frame. Load your own image, and set width and "
+        "height to its aspect: the node stretches the image to the canvas.\n\n"
+        "Why: the pick for i2v. The FlashGen finish brightened the frame at once, "
+        "so PDD8 alone won on the one image judged.")),
+    "h3_r2v_pdd8": (r2v_pdd8, (
+        "## PDD8 alone (reference to video)\n\n"
+        "PDD8's 8 steps on the ref2va checkpoint, with two reference images. The "
+        "prompt calls <Picture 1> the main character and <Picture 2> the setting; "
+        "load your own and edit the subject definitions to match.\n\n"
+        "Why: the ref2va PDD8 we run. It has not been compared against the "
+        "alternatives.")),
+    "h3_r2v_flashgen": (r2v_flashgen, (
+        "## FlashGen alone (reference to video), maybe crap\n\n"
+        "FlashGen's 4 steps on the ref2va checkpoint, with FlashGen converted for "
+        "ref2va's time basis. Same prompt and references as the ref2va PDD8 "
+        "workflow.\n\n"
+        "Why: an untested transfer. FlashGen was trained for text to video only. "
+        "One render held both references and the likeness by eye; it has not been "
+        "compared against PDD8.")),
     "h3_t2v_fasth3_contract": (fasth3_contract, (
         "## FastH3 on FastVideo's own sampling settings (t2v)\n\n"
         "FastVideo's FastH3 8-step V2 run the way FastVideo runs it: shift 10/3, its own "
