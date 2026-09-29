@@ -35,19 +35,30 @@ CPU only, no render. Records: `2026-09-29_partition_delta_map.jsonl`
      (`delta_centered_top_shares`). So ref2va's conditioning is fl2va's plus a
      fixed offset and a small smooth part, which is what a mode or task offset
      would look like. This is a reading, not a test.
-4. **Audio differs more than video only at the tail.** Per-modality modulation
-   weight deltas are about equal across video, text and audio through most of the
-   depth and rise for audio in blocks 45 to 49; the audio output head differs
-   more than the video head. The older record's biggest chunks
-   (`2026-08-20_dit_internals.json`, audio `shift_mlp`, `scale_mlp`, `gate_mlp`)
-   are the time-varying part of the modulation in the pruned int8 files, a
-   different quantity, and this does not reproduce them on the weights.
+4. **The audio side differs more in two places: the first block's audio MLP
+   modulation, and the tail.**
+   - *Block 0.* The older record (`2026-08-20_dit_internals.json`, pruned int8
+     files) found the time-varying part of the modulation differing most on the
+     audio `shift_mlp`, `scale_mlp` and `gate_mlp` chunks (15 to 17) of block 0.
+     This reproduces on the release's own weights (`mod_tv_rel_by_chunk` in
+     `2026-09-29_time_warp.json`): those three chunks differ roughly two to four times more than
+     any other chunk of block 0, and blocks 25 and 48 show no such standout. It is a
+     first-block, audio-side difference, and a real one; nothing in the repo
+     explains it.
+   - *Tail.* The per-modality weight deltas are about equal across video, text and
+     audio through most of the depth and rise for audio in blocks 45 to 49, and
+     the audio output head differs more than the video head. The weight rows
+     compare the weights, the time-varying part compares what they do over t, so
+     the block-0 standout does not appear in the first view and the two do not
+     contradict each other.
 
 ## Not shown
 
 - That any of this is a defect. A fine-tune for a different task should differ;
   nothing here separates intended change from damage, and no base or reference
   model exists here to say what ref2va should be.
+- Whether the block-0 audio modulation difference or the audio tail matters for
+  any behaviour.
 - Anything about behaviour. The community reports (Hugging Face discussions 50, 82
   and 91, MiniMax-H3 issue 17) are about identity, audio and noise; weights alone
   cannot say whether they are real.

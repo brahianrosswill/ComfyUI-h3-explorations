@@ -18,6 +18,10 @@ over t in [0, 1] and asks:
 - how the embedding difference is built: the share of its squared norm that is a
   vector constant in t (`delta_constant_share`), and how few directions the rest
   needs (`delta_centered_top_shares`);
+- per chunk (3 modalities x 6 params of 5376), the relative delta of the
+  time-varying part of the modulation, the quantity `bench/analyze_checkpoint_delta.py`
+  records for the pruned files (`mod_tv_rel_by_chunk`), and each chunk's share of
+  that time-varying norm (`mod_tv_norm_share_by_chunk`);
 - the best flow-shift warp, t' = s t / (1 + (s - 1) t), and the best affine
   warp, by least squares over s and (a, b) on the embedding.
 
@@ -117,11 +121,15 @@ def main() -> int:
         mr, mf = mod("ref", e_ref), mod("fl", e_fl)
         mfw = mod("fl", e_warped)
         tv = lambda x: x - x.mean(dim=0, keepdim=True)
-        rec["blocks"][b] = {"mod_rel": float(rel(mr, mf).pow(2).mean().sqrt()),
+        by_chunk = [float((tv(mr)[:, i * 5376:(i + 1) * 5376] - tv(mf)[:, i * 5376:(i + 1) * 5376]).norm()
+                          / tv(mf)[:, i * 5376:(i + 1) * 5376].norm()) for i in range(18)]
+        share = [float(tv(mf)[:, i * 5376:(i + 1) * 5376].norm() / tv(mf).norm()) for i in range(18)]
+        rec["blocks"][b] = {"mod_tv_rel_by_chunk": by_chunk, "mod_tv_norm_share_by_chunk": share,
+                            "mod_rel": float(rel(mr, mf).pow(2).mean().sqrt()),
                             "mod_rel_warped": float(rel(mr, mfw).pow(2).mean().sqrt()),
                             "mod_tv_rel": float((tv(mr) - tv(mf)).norm() / tv(mf).norm()),
                             "mod_tv_rel_warped": float((tv(mr) - tv(mfw)).norm() / tv(mfw).norm())}
-        print("block", b, {k: round(v, 4) for k, v in rec["blocks"][b].items()})
+        print("block", b, {k: round(v, 4) for k, v in rec["blocks"][b].items() if not isinstance(v, list)})
     print("embed rms rel unwarped", round(rec["unwarped_rms_rel"], 4), "best warp", round(rec["warped_rms_rel"], 4),
           "flow-shift fit", rec["best_flow_shift"], "affine fit", rec["best_affine"])
     print("warp at t=0,.25,.5,.75,1:", [round(warp[i].item(), 3) for i in (0, 25, 50, 75, 100)])
