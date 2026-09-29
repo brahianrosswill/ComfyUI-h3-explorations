@@ -117,9 +117,11 @@ stays the shipped default.
   (`../../bench/results/2026-09-29_ref2va_partition_delta_verify.md`,
   `../../bench/results/2026-09-29_ref2va_block49_verify.md`; the corrections are
   in `decisions.md`, 2026-09-29). Still open:
-  - Grade block 49 on video and audio query rows, with the text and reference
-    rows reported apart. `bench/grade_dense_kernels_on_captures.py` counts every
-    row, and the real-kernel version of the control needs the card.
+  - Grade block 49 on video and audio query rows. `bench/grade_dense_kernels_on_captures.py`
+    now prints and records that grade under each cell's all-row grade
+    (`rows_video_audio` in its JSON; the selector is tested on the CPU by
+    `bench/probe_grade_row_selection.py`). Running it on the real kernels over the
+    ref2va and t2v test 2 captures is what remains, and it needs the card.
   - Regenerate `../../bench/results/2026-09-29_partition_delta_map.jsonl`, which
     predates its script; do not read `cos` from it.
   - Comfy-Org/ComfyUI issue 16604 (a reported ref-row shape mismatch above 16384
