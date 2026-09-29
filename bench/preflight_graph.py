@@ -118,7 +118,6 @@ def _core_minimax_cpu():
 # this repo now ships and reads as a clean pass.
 PROMPT_NODES = ("MiniMaxH3ReferenceToVideo", "MiniMaxH3ImageToVideo",
                 "MiniMaxH3Conditioning", "MiniMaxH3ReferenceConditioning")
-FIT_NODE = "MiniMaxH3ReferenceFit"
 LOAD_IMAGE = "LoadImage"
 
 # THE RELEASE SHIPS TWO PROMPT GUIDES AND THEY DO NOT SHARE A SECTION LIST.
@@ -428,9 +427,7 @@ def _reference_media(inputs: dict, graph: dict):
             size_policy = _value("size_policy", "max")
             allow_upscale = _value("allow_upscale", True, group="size_policy")
             # Renamed on the node 2026-08-28; the internal dict key below
-            # stays `short_edge` because it is preflight's own, and the
-            # retired fit node further down still has an input of that
-            # name that must NOT follow this rename.
+            # stays `short_edge` because it is preflight's own.
             short_edge = _value("dit_short_edge", 2048, group="size_policy")
             # `qwen_view` is a DynamicCombo since 2026-08-31, replacing a flat
             # `qwen_short_edge` Int whose 0 meant "shared view". Same rename
@@ -1468,25 +1465,6 @@ def price(node: dict, graph: dict) -> list[str]:
             size_mode = policy["size_policy"]
             upscale = policy["allow_upscale"]
             short_edge = policy["short_edge"]
-        # A saved graph may still wire the retired fit node upstream. The two
-        # COMPOSE -- the fit sizes the source, then the append sizes that
-        # result -- so they must be applied in order. Merging them by taking
-        # the larger short edge and OR-ing the upscale flags, as this did until
-        # 2026-08-24, over-prices by the square of the ratio whenever the
-        # append is narrower than the fit: Fit(2048, upscale) -> Append(1024)
-        # really yields 1024x1024 and was priced at 2048x2048.
-        legacy_fit = None
-        if src.get("class_type") == FIT_NODE:
-            fit_inputs = src["inputs"]
-            legacy_fit = {
-                "short_edge": (2048 if isinstance(fit_inputs.get("short_edge"), list)
-                               else int(fit_inputs.get("short_edge", 2048))),
-                "allow_upscale": (
-                    True if isinstance(fit_inputs.get("allow_upscale"), list)
-                    else bool(fit_inputs.get("allow_upscale", True))),
-            }
-            inner = fit_inputs.get("image")
-            src = graph.get(inner[0], {}) if isinstance(inner, list) else {}
         fname = src.get("inputs", {}).get("image")
         if not fname:
             lines.append(f"  {key}: source not statically resolvable")
@@ -1509,13 +1487,8 @@ def price(node: dict, graph: dict) -> list[str]:
         _core_minimax_cpu()   # puts ComfyUI on sys.path, CPU-forced
         from reference_geometry import (fit_reference_image, latent_rows,
                                         qwen_image_size)
-        stage_w, stage_h = iw, ih
-        if legacy_fit is not None:
-            stage_w, stage_h = fit_reference_image(
-                iw, ih, size_policy="max", short_edge=legacy_fit["short_edge"],
-                allow_upscale=legacy_fit["allow_upscale"])
         tw, th = fit_reference_image(
-            stage_w, stage_h, size_policy=size_mode, short_edge=short_edge,
+            iw, ih, size_policy=size_mode, short_edge=short_edge,
             allow_upscale=upscale, canvas_w=w, canvas_h=h)
         # The Qwen view. 0 (or an unmanaged/legacy reference) means the
         # encoder sees the VAE tensor; N means a separate view of the SOURCE

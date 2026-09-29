@@ -7,10 +7,10 @@ failure:
    edge, 768*1344 area cap, both axes rounded to 32 -- so deriving the canvas
    from a keyframe puts ComfyUI on the reference's default path.
 2. A canvas derived from an image preserves that image's aspect to within the
-   round-to-32 quantisation. This is the property the whole node exists for.
+   round-to-32 quantisation. This is the property `resolve_keyframe_geometry` exists for.
 3. The stock node's first-frame resize is a NON-UNIFORM stretch whenever the
    keyframe aspect differs from the canvas. This is the defect; if this case
-   ever goes green the defect is gone and the node can be retired.
+   ever goes green the defect is gone and the function can be retired.
 4. Feeding a derived canvas makes that stretch a no-op, because the keyframe
    already has exactly the canvas dimensions.
 
@@ -94,7 +94,7 @@ for w, h in SOURCES:
 print("\n--- 5. the trained aspect range is enforced, as the reference does ---")
 # diffusers' resolve_canvas_size raises outside 1:4..4:1 (modular_pipeline.py:
 # 32-33, 76-80); ComfyUI's adapt_canvas has no such check and resolves a
-# plausible canvas for any ratio. This node closes that gap in match_keyframe,
+# plausible canvas for any ratio. `resolve_keyframe_geometry` closes that gap in match_keyframe,
 # where the aspect comes from the image and nobody has chosen it.
 #
 # The pairs below straddle the boundary on purpose. If the in-range cases ever
@@ -102,7 +102,7 @@ print("\n--- 5. the trained aspect range is enforced, as the reference does ---"
 # out-of-range ones stop raising, the guard is gone.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from h3_rules import MAX_ASPECT_RATIO, MIN_ASPECT_RATIO  # noqa: E402
-from keyframe_canvas import MiniMaxH3KeyframeCanvas  # noqa: E402
+from keyframe_canvas import resolve_keyframe_geometry  # noqa: E402
 
 ASPECT_CASES = [
     ((1024, 1024), True), ((2560, 1080), True),     # 1.0, 2.37 -- ordinary
@@ -113,7 +113,7 @@ ASPECT_CASES = [
 for (w, h), want_ok in ASPECT_CASES:
     img = torch.rand(1, h, w, 3)
     try:
-        MiniMaxH3KeyframeCanvas.execute(img, mode="match_keyframe")
+        resolve_keyframe_geometry(img, mode="match_keyframe")
         raised = False
     except RuntimeError:
         raised = True
@@ -124,7 +124,7 @@ for (w, h), want_ok in ASPECT_CASES:
 
 # fit_to_canvas must NOT raise: there the user typed the geometry and owns it.
 try:
-    MiniMaxH3KeyframeCanvas.execute(torch.rand(1, 500, 3000, 3),
+    resolve_keyframe_geometry(torch.rand(1, 500, 3000, 3),
                                     mode="fit_to_canvas", width=3008, height=512)
     check("fit_to_canvas warns rather than refusing an out-of-range aspect", True)
 except RuntimeError as exc:
@@ -161,7 +161,7 @@ LENGTH_CASES = [
 for n, want_ok in LENGTH_CASES:
     img = torch.rand(1, 768, 1024, 3)
     try:
-        MiniMaxH3KeyframeCanvas.execute(img, mode="fit_to_canvas",
+        resolve_keyframe_geometry(img, mode="fit_to_canvas",
                                         width=1024, height=768, length=n)
         raised = False
     except RuntimeError:
@@ -174,11 +174,11 @@ check(f"largest count is {max_legal_length()}",
       and not duration_in_range(snap_length(363)),
       f"362 in range, 363 snaps to {snap_length(363)} which is not")
 check(f"smallest legal count is {min_legal_length()}",
-      min_legal_length() == 124, "matches the node default and the trained floor")
+      min_legal_length() == 124, "matches core's default and the trained floor")
 
-# length=0 opts out entirely; the node must not invent a constraint.
+# length=0 opts out entirely; the function must not invent a constraint.
 try:
-    out = MiniMaxH3KeyframeCanvas.execute(torch.rand(1, 768, 1024, 3),
+    out = resolve_keyframe_geometry(torch.rand(1, 768, 1024, 3),
                                           mode="fit_to_canvas",
                                           width=1024, height=768, length=0)
     check("length 0 skips the check and passes through", out[5] == 0)

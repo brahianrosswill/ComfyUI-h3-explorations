@@ -11,8 +11,6 @@ import logging
 from comfy_api.latest import ComfyExtension, io
 
 from .assert_chain import SageChainAssert
-from .keyframe_canvas import MiniMaxH3KeyframeCanvas
-from .marker_arms import MiniMaxH3MarkerArm
 from .conditioning import MiniMaxH3Conditioning
 from .exact_blocks import MiniMaxH3ExactBlocks
 # The channel-balance node is published on its own as ComfyUI-H3-Quant
@@ -52,13 +50,11 @@ from .core_sparse_capture import MiniMaxH3CoreSparseCapture
 from .preflight import MiniMaxH3Preflight
 from .provenance import MiniMaxH3ProvenanceStamp
 from .quant_observe import MiniMaxH3QuantObserve
-from .reference_fit import MiniMaxH3ReferenceFit
 from .resolution import MiniMaxH3Resolution
 from .sol_attn_h3 import MiniMaxH3Sol
 from .sol_chunked_h3 import MiniMaxH3SolChunked
 from .vsa_attention import MiniMaxH3VSAAttention
 from .vae_precision import MiniMaxH3VAEPrecision
-from .reference_video_fit import MiniMaxH3ReferenceVideoFit
 from .reference_conditioning import (
     MiniMaxH3AppendRefAudio,
     MiniMaxH3AppendRefImage,
@@ -293,19 +289,20 @@ class H3ExplorationsExtension(ComfyExtension):
         # Append only. A saved graph stores widget values as a bare list matched
         # by index and wires links to integer slots, so inserting anywhere but
         # the end silently re-points every later entry in every existing graph.
-        return [MiniMaxH3SageAttention, SageChainAssert, MiniMaxH3KeyframeCanvas,
-                MiniMaxH3ReferenceFit, MiniMaxH3Resolution, MiniMaxH3Preflight,
+        # `MiniMaxH3KeyframeCanvas`, `MiniMaxH3ReferenceFit`,
+        # `MiniMaxH3ReferenceVideoFit` and `MiniMaxH3MarkerArm` sat in this list
+        # until 0.173.0 (owner, 2026-09-29): retired, no graph used them.
+        return [MiniMaxH3SageAttention, SageChainAssert,
+                MiniMaxH3Resolution, MiniMaxH3Preflight,
                 MiniMaxH3ProvenanceStamp,
                 MiniMaxH3VAEPrecision,
                 MiniMaxH3Conditioning,
-                MiniMaxH3ReferenceVideoFit,
                 MiniMaxH3AppendRefImage, MiniMaxH3AppendRefVideo,
                 MiniMaxH3AppendRefAudio, MiniMaxH3ReferenceConditioning,
                 # `MiniMaxH3AWQEncoderLoader` sat here until 2026-09-13; the
                 # AWQ lane is closed and the node is gone. Removal, unlike
                 # insertion, moves nothing that follows.
                 MiniMaxH3EncoderLoader,
-                MiniMaxH3MarkerArm,
                 MiniMaxH3PDDLoRA, MiniMaxH3AudioCarryProbe,
                 MiniMaxH3ExactBlocks,
                 # MiniMaxH3SolAttn sat here until 2026-09-27; replaced by MiniMaxH3Sol

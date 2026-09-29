@@ -1044,8 +1044,8 @@ rendered clip cannot A/B a numerical change.
 
 | what | where |
 |---|---|
-| The node that was missing entirely | [`reference_video_fit.py`](../reference_video_fit.py) |
-| Holds its copy of core's sizing rule to core's real behaviour | [`bench/check_ref_video_prediction.py`](../bench/check_ref_video_prediction.py) |
+| The node that was missing entirely | `MiniMaxH3ReferenceVideoFit`, retired 0.173.0 (`CHANGELOG.md`); git has `reference_video_fit.py` |
+| Held its copy of core's sizing rule to core's real behaviour | `bench/check_ref_video_prediction.py`, retired with the node |
 | Opt-in local release policy | `MiniMaxH3ReferenceConditioning.video_policy=release`, controlled by [`bench/check_reference_runtime.py`](../bench/check_reference_runtime.py) and its red harness |
 | Shipped default | `video_policy=comfy`: core's no-upscale VAE geometry and per-pair Qwen processor. The `encoder` hybrid this row used to name (native VAE view plus a stamped contract's duration-aware Qwen stage) was removed 2026-09-13; on the shipped encoder it always ran as `comfy` |
 

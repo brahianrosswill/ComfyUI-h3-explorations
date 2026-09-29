@@ -97,10 +97,6 @@ SENTINELS = {
         "what this rule governs -- but the check reads declared input NAMES "
         "and cannot see the difference, so the entry stays rather than the "
         "detector growing a special case it would be wrong about later."),
-    ("reference_video_fit.py", "short_edge"): (
-        "0 means REPORTING ONLY -- the node measures and warns and resizes "
-        "nothing. Replacement: a boolean `resize` beside the size, or a "
-        "combo `report only` / `downscale to N`."),
     ("pdd_lora.py", "nfe"): (
         "0 means take the evaluation count baked into the LoRA file, which is "
         "the ordinary case. Named by CLAUDE.md as a falsy sentinel on the "
@@ -110,10 +106,6 @@ SENTINELS = {
         "file_nfe`. Its default is 8, so unlike `nfe` the sentinel is not what "
         "you get by omission, but it is the same overload. Replacement: the "
         "same combo `nfe` needs, since the two knobs answer one question."),
-    ("keyframe_canvas.py", "length"): (
-        "`if length:` -- 0 means do not set a length at all rather than a "
-        "length of zero frames. Replacement: leave the input optional and test "
-        "for None, which already means absent without overloading a number."),
 }
 
 #: Zero is REFUSED: the comparison guards a `raise`, and the declared widget

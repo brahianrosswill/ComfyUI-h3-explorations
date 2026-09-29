@@ -14,8 +14,7 @@ disk.
 So every row is driven, not derived. The graph is walked for real, the file is
 opened for its real dimensions, the real shared sizing function
 (`reference_geometry.fit_reference_image`) is called with the arguments that
-graph wires -- once per preparation stage, in order, since a legacy
-`MiniMaxH3ReferenceFit` and the append node COMPOSE -- and the real
+graph wires -- once per preparation stage, in order -- and the real
 `process_qwen2vl_images` is called on the result. A row says SHRUNK because the
 helper returned a smaller grid, not because a ratio was compared to 3.0625.
 
@@ -122,12 +121,6 @@ def _fitted(src_w: int, src_h: int, fit_args: dict | None,
     reproduces -- recorded in the row as `fit: "core clamp"` so the two cases
     stay legible.
 
-    Two stages when a legacy `MiniMaxH3ReferenceFit` is on the path: it sizes
-    the source, then the append sizes that result. They COMPOSE and must be
-    applied in order; merging them into one argument set produced a geometry no
-    node ever receives, which is precisely the derived-row failure this audit
-    exists to exclude.
-
     `size_policy` defaults to `match`, matching the node's own default rather
     than the policy every shipped graph happens to set. `match` needs a canvas,
     so a caller that cannot supply one gets a clear refusal for that row
@@ -166,8 +159,8 @@ def _trace_to_loader(wf: dict, link: list, append_inputs: dict | None = None):
     **This used to be the load-bearing heuristic and is no longer.** Sizing now
     lives on the append node, so `append_inputs` carries it directly and the
     walk only has to find a filename. The loop is retained because a saved
-    graph may still put the retired fit node -- or an unrelated image node --
-    between the loader and the append, and it still follows the first linked
+    graph may still put an image node between the loader and the append, and
+    it still follows the first linked
     input at each hop, which its own docstring conceded was the only shape
     these graphs use. A node reached with no linked inputs and no filename ends
     the walk and the caller reports it.
@@ -177,7 +170,6 @@ def _trace_to_loader(wf: dict, link: list, append_inputs: dict | None = None):
         append_stage = {k: v for k, v in append_inputs.items()
                         if k in ("size_policy", "allow_upscale", "short_edge")
                         and not isinstance(v, list)} or None
-    upstream_stages = []
     fit_args = [append_stage] if append_stage else None
     node_id = link[0]
     for _ in range(8):
@@ -187,18 +179,6 @@ def _trace_to_loader(wf: dict, link: list, append_inputs: dict | None = None):
         ct = node.get("class_type")
         if ct == "LoadImage":
             return node["inputs"].get("image"), fit_args
-        if ct == "MiniMaxH3ReferenceFit":
-            # A legacy fit upstream of the append. It runs FIRST and its output
-            # is what the append then sizes, so it is prepended as its own
-            # stage rather than merged into the append's arguments.
-            upstream = {k: v for k, v in node["inputs"].items()
-                        if not isinstance(v, list)}
-            upstream_stages.insert(0, {
-                "size_policy": "max",
-                "short_edge": int(upstream.get("short_edge", 2048)),
-                "allow_upscale": bool(upstream.get("allow_upscale", True)),
-            })
-            fit_args = upstream_stages + ([append_stage] if append_stage else [])
         linked = [v for v in node.get("inputs", {}).values()
                   if isinstance(v, list)]
         if not linked:

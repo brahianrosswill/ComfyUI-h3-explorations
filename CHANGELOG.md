@@ -4,6 +4,33 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.173.0
+
+### Removed
+
+- Four nodes retired (owner, 2026-09-29), each in no shipped graph:
+  `MiniMaxH3KeyframeCanvas`, `MiniMaxH3ReferenceFit`,
+  `MiniMaxH3ReferenceVideoFit` and `MiniMaxH3MarkerArm`. Their `node_id`s leave
+  `bench/node_id_manifest.json` deliberately; a saved graph outside this repo
+  that wires one will not load.
+- `reference_fit.py` and `reference_video_fit.py`, and their checks
+  `bench/check_reference_fit.py` and `bench/check_ref_video_prediction.py`.
+  Reference sizing itself lives in `reference_geometry.py`, which
+  `bench/check_reference_runtime.py` drives.
+- The legacy fit-node branches in `bench/preflight_graph.py` and
+  `bench/audit_shipped_reference_bounds.py`, which existed only for saved
+  graphs wiring `MiniMaxH3ReferenceFit`.
+
+### Changed
+
+- `keyframe_canvas.py` keeps `resolve_keyframe_geometry`, which
+  `MiniMaxH3Conditioning` calls; `bench/check_keyframe_canvas.py` now drives
+  that function directly. `marker_arms.py` keeps the library the marker bench
+  scripts and `MiniMaxH3ProvenanceStamp` call.
+- `docs/checks.md`, `docs/custom_node_gaps.md`, `docs/wiki/stages.md`: rows and
+  pointers for the retired nodes and checks. Older prose elsewhere that names
+  them describes the repo before this version.
+
 ## 0.172.8
 
 ### Added

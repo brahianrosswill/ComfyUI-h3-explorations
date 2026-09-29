@@ -35,7 +35,7 @@ _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO))
 sys.path.insert(0, str(Path.home() / "ComfyUI"))
 
-# The short edge `MiniMaxH3ReferenceFit` and core's `max` mode both target, and
+# The short edge `MiniMaxH3AppendRefImage` and core's `max` mode both target, and
 # the ratios the reference resize accepts, inclusive.
 REF_SHORT_EDGE = 2048
 REF_RATIOS = (1.0, 2.0, 3.0, 3.0625, 3.25, 3.5, 4.0)

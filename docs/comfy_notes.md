@@ -234,7 +234,7 @@ registers each file under its own path-minus-extension
 paragraph above describes and which this citation walked into),
 and `comfy_extras/` has no `__init__.py`, so a dotted
 `import comfy_extras.nodes_minimax_h3` builds a **second, independent module
-object**. `keyframe_canvas.py` and `reference_fit.py` do this at module scope;
+object**. `keyframe_canvas.py` (and `reference_fit.py`, retired 0.173.0) did this at module scope;
 `resolution.py`, `preflight.py` and `build_workflows.py` do it inside
 functions. On 2026-08-15 `single_frame.py` -- parked since 2026-08-27 and now
 `archive/single_frame.py` -- patched only the dotted copy: it

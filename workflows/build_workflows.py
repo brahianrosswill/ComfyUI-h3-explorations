@@ -74,8 +74,8 @@ HERE = Path(__file__).resolve().parent
 # Kept beside each other so a node added to one and not the other is visible.
 _CNR_ID = "comfyui-h3-explorations"
 _OUR_NODES = {
-    "MiniMaxH3SageAttention", "SageChainAssert", "MiniMaxH3KeyframeCanvas",
-    "MiniMaxH3ReferenceFit", "MiniMaxH3Resolution", "MiniMaxH3Preflight",
+    "MiniMaxH3SageAttention", "SageChainAssert",
+    "MiniMaxH3Resolution", "MiniMaxH3Preflight",
     "MiniMaxH3ProvenanceStamp", "MiniMaxH3FreezeAudio", "MiniMaxH3FreezeAudioWindow",
     "MiniMaxH3EncodeTrack", "MiniMaxH3AudioAttentionGain",
     "MiniMaxH3AudioFreezeSong", "MiniMaxH3PromptList",

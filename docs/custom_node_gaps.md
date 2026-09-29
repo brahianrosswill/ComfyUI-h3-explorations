@@ -57,13 +57,9 @@ without it, **convenience** means the graph could be wired by hand instead, and
 | `SageChainAssert` | load-bearing (it raises) | yes |
 | `MiniMaxH3PDDLoRA` | load-bearing on PDD arms | yes |
 | `MiniMaxH3Resolution` | convenience | yes |
-| `MiniMaxH3KeyframeCanvas` | convenience | **no** |
-| `MiniMaxH3ReferenceFit` | convenience, **DEPRECATED 2026-08-28** | **no** |
-| `MiniMaxH3ReferenceVideoFit` | convenience | **no** |
 | `MiniMaxH3Preflight` | instrumentation | yes |
 | `MiniMaxH3VAEPrecision` | instrumentation | the fp32 probe arm, not the canonical graphs |
 | `MiniMaxH3ProvenanceStamp` | instrumentation | bench only |
-| `MiniMaxH3MarkerArm` | instrumentation | **no** |
 | `MiniMaxH3EncoderLoader` | load-bearing (it refuses a bad load) | yes |
 | `MiniMaxH3ReferenceReport` | instrumentation | **no** (a UI node; the conditioner's preview carries the same text) |
 | `MiniMaxH3ChannelBalance` | instrumentation (an experiment lever: off by default, changes numerics only when switched on) | **no** |
@@ -71,25 +67,19 @@ without it, **convenience** means the graph could be wired by hand instead, and
 The registered nodes wired by no shipped graph are not dead code, and the
 distinction matters:
 
-- `MiniMaxH3KeyframeCanvas` was **folded into its consumer** —
-  `keyframe_canvas.py::resolve_keyframe_geometry` is called by
-  `MiniMaxH3Conditioning` on every keyframe render. Only the node wrapper is
-  unwired.
-- `MiniMaxH3ReferenceFit` and `MiniMaxH3ReferenceVideoFit` were superseded by
-  the append-ref chain and kept registered so externally saved graphs still
-  load. **`MiniMaxH3ReferenceFit` carries `is_deprecated=True` since
-  2026-08-28**, so it no longer appears in the node picker while saved graphs
-  that wire it keep loading. Three reasons it is not merely redundant: chaining
-  it in front of the append resamples TWICE, it hardcodes `size_policy="max"`
-  and cannot express `match`, and it has no `qwen_view`, so it cannot give
-  the text encoder a view separate from the VAE's. `MiniMaxH3ReferenceVideoFit`
-  is NOT deprecated -- it is unwired but still live as the reporter
-  `bench/check_ref_video_prediction.py` grades core's behaviour against.
+- **Retired 0.173.0 (owner, 2026-09-29):** `MiniMaxH3KeyframeCanvas`,
+  `MiniMaxH3ReferenceFit`, `MiniMaxH3ReferenceVideoFit` and `MiniMaxH3MarkerArm`
+  are gone, with `reference_fit.py`, `reference_video_fit.py` and their two
+  checks; git keeps them. No shipped graph used any of them.
+  `keyframe_canvas.py::resolve_keyframe_geometry` stays because
+  `MiniMaxH3Conditioning` calls it on every keyframe render, and
+  `marker_arms.py` stays as the library the marker bench scripts and
+  `MiniMaxH3ProvenanceStamp` call. Older prose in this file and elsewhere that
+  names them describes the repo before that.
 - `MiniMaxH3AWQEncoderLoader` **was deleted on 2026-09-13** with the AWQ
   lane's code (`docs/wiki/decisions.md`). Until then this row called it a
   format adapter with no consumer but live code, read by preflight and the
   config. See §5.1.
-- `MiniMaxH3MarkerArm` is a research instrument.
 - `MiniMaxH3ChannelBalance` (added 2026-09-14) folds a per-channel q/k
   rebalancing into the norm weights of the blocks whose `k_norm.weight` is
   lopsided (45, 48, 49 on the shipped checkpoint), so both INT8 attention
@@ -118,8 +108,7 @@ contradicts. Cosmetic, but it is the kind of sentence that costs a session.
 
 The two nodes present in every shipped graph — `SageChainAssert` and
 `MiniMaxH3Preflight` — have no dedicated check, and nothing asserts they stay
-wired. The two most heavily asserted, `MiniMaxH3ProvenanceStamp` and
-`MiniMaxH3MarkerArm`, are wired in bench graphs and none respectively. Coverage
+wired. The most heavily asserted node, `MiniMaxH3ProvenanceStamp`, is wired in bench graphs. Coverage
 has grown where the work happened, not where the renders are.
 
 *2026-09-17:* `SageChainAssert` is no longer in any generated graph (owner); the

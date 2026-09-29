@@ -12,21 +12,22 @@ entirely once the keyframe already matches.
 So the reference's deliberate-override branch is ComfyUI's default branch, and
 an off-16:9 keyframe is silently distorted: measured 1.75x for a square source
 at the default canvas and 2.33x for 3:4 portrait, carried by every frame of the
-clip. This node closes that gap. `adapt_canvas` is ComfyUI's own port of
-`resolve_canvas_size` -- same 768 short edge, same 768*1344 area cap, same
-round-to-32 -- and it already sits in `nodes_minimax_h3.py`, just unused on the
-keyframe path.
+clip. `resolve_keyframe_geometry` closes that gap for `MiniMaxH3Conditioning`,
+its only caller. `adapt_canvas` is ComfyUI's own port of `resolve_canvas_size`
+-- same 768 short edge, same 768*1344 area cap, same round-to-32 -- and it
+already sits in `nodes_minimax_h3.py`, just unused on the keyframe path.
 
-Verified in `bench/check_keyframe_canvas.py`: feeding the fitted image plus the
-derived size makes both of the stock node's resize calls bit-identical
-no-ops, so this composes with it rather than replacing it.
+Verified in `bench/check_keyframe_canvas.py`.
+
+This module held a node, `MiniMaxH3KeyframeCanvas`, until 0.173.0 (owner,
+2026-09-29): `MiniMaxH3Conditioning` replaced it, no graph used it, and the
+function it wrapped is what remains (`CHANGELOG.md`).
 """
 
 from __future__ import annotations
 
 import logging
 
-from comfy_api.latest import io
 from comfy_extras.nodes_minimax_h3 import adapt_canvas, _resize
 
 logger = logging.getLogger(__name__)
@@ -47,113 +48,18 @@ except ImportError:
                           max_legal_length, min_legal_length, snap_length)
 
 
-class MiniMaxH3KeyframeCanvas(io.ComfyNode):
-    @classmethod
-    def define_schema(cls):
-        return io.Schema(
-            node_id="MiniMaxH3KeyframeCanvas",
-            display_name="MiniMax H3 Keyframe Resolution",
-            category="model/conditioning/minimax",
-            description=(
-                "Derives the generation canvas from the first keyframe, matching the "
-                "reference pipeline's default, and fits the keyframes onto it. Wire "
-                "width/height and the fitted images into MiniMax H3 Image to Video: "
-                "the keyframe then arrives already at canvas size, so that node's "
-                "resize is a no-op and nothing is distorted."
-            ),
-            inputs=[
-                io.Image.Input("first_frame"),
-                # Options keep their order: a saved graph stores the chosen
-                # string, but the default changed on 2026-08-13 from
-                # fit_to_canvas to match_keyframe. Saved graphs carry their own
-                # value and are unaffected; only a newly dropped node moves.
-                io.Combo.Input("mode", options=["fit_to_canvas", "match_keyframe"],
-                               default="match_keyframe", tooltip=(
-                                   "match_keyframe (default): what the reference pipeline "
-                                   "actually does when no size is given -- the canvas is "
-                                   "derived from the keyframe's aspect and your width/height "
-                                   "are ignored. Nothing is cropped, and the first frame is "
-                                   "stretched while a last frame is cover-cropped, as in the "
-                                   "reference. Use this for anything compared against diffusers. "
-                                   "fit_to_canvas: you own the geometry -- BOTH keyframes are "
-                                   "cover-cropped into the width/height you pass. That is the "
-                                   "reference's deliberate-override branch, not its default, "
-                                   "and it is lossy: a 3:4 photo forced to 1344x768 keeps 43% "
-                                   "of its frame. It saves nothing at 1344x768, which is "
-                                   "already the largest area adapt_canvas ever returns, so it "
-                                   "only pays once you lower width/height on purpose.")),
-                io.Int.Input("width", default=1344, min=32, max=16384, step=32,
-                             tooltip="Used by fit_to_canvas; ignored by match_keyframe."),
-                io.Int.Input("height", default=768, min=32, max=16384, step=32,
-                             tooltip="Used by fit_to_canvas; ignored by match_keyframe."),
-                io.Image.Input("last_frame", optional=True),
-                # Default moved 0 -> 124 on 2026-08-13. At 0 this output
-                # forwards 0, and core's own min=5 does NOT catch it: a linked
-                # input skips range validation entirely, so the render was a
-                # 5-frame, 0.208s clip. 124 is the trained floor and matches
-                # both core's default and MiniMaxH3Resolution's.
-                io.Int.Input("length", default=124, min=0, max=3600, optional=True,
-                             tooltip=(
-                                 "Frame count to check and snap, passed straight "
-                                 "through to MiniMax H3 Image to Video. Frames "
-                                 "snap UP to the video VAE's 17n+5 grid, and "
-                                 "the ceiling is 362 (15.083s), the longest "
-                                 "length H3 was trained on. ComfyUI's node "
-                                 "accepts up to 3600 with no ceiling at all. "
-                                 "The reference pipeline stops at 345, one grid "
-                                 "step lower -- portability, not a model limit. "
-                                 "0 skips the check AND emits 0, which becomes "
-                                 "a 5-frame clip downstream -- do not wire this "
-                                 "output at 0."
-                             )),
-            ],
-            outputs=[
-                io.Int.Output(display_name="width"),
-                io.Int.Output(display_name="height"),
-                io.Image.Output(display_name="first_frame"),
-                io.Image.Output(display_name="last_frame"),
-                io.Float.Output(display_name="attn_cost_vs_1to1"),
-                # Appended, NOT inserted next to width/height where it belongs
-                # semantically. Output slots are positional in every saved
-                # graph: putting `length` third would shift first_frame,
-                # last_frame and attn_cost down one, and every existing
-                # workflow wiring them would silently connect to the wrong
-                # slot. Same reasoning as the node_id rule in CLAUDE.md.
-                io.Int.Output(display_name="length"),
-            ],
-        )
-
-    @classmethod
-    # These MUST match the schema defaults above. ComfyUI does not inject a
-    # schema default for an input a prompt omits -- the Python default is what
-    # applies -- so the widget default only protects a node newly dropped in
-    # the UI. An API-format prompt that leaves `length` out lands on the
-    # signature's value, and at 0 that emits 0 from slot 5 and renders a
-    # 5-frame 0.208s clip. The API path is how the benches are driven, so a
-    # split between these two is a live bug on exactly the path that matters.
-    # `bench/check_schema_defaults.py` asserts they agree, for every node here.
-    def execute(cls, first_frame, mode="match_keyframe", width=1344, height=768,
-                last_frame=None, length=124) -> io.NodeOutput:
-        return io.NodeOutput(*resolve_keyframe_geometry(
-            first_frame=first_frame, last_frame=last_frame, mode=mode,
-            width=width, height=height, length=length))
-
-
 def resolve_keyframe_geometry(first_frame=None, last_frame=None,
                               mode="match_keyframe", width=1344, height=768,
                               length=0):
     """(width, height, first_out, last_out, attn_cost, length) for a keyframe set.
 
-    **Module-level so the geometry has exactly one implementation.** The node
-    above is a thin wrapper and `conditioning.py` calls this directly. Every
-    rule below -- the aspect refusal in `match_keyframe`, the snap-then-check
+    **One implementation of the geometry.** `conditioning.py` calls this
+    directly. Every rule below -- the aspect refusal in `match_keyframe`, the snap-then-check
     length order, the anchor-versus-follower crop asymmetry -- was reasoned
     out once and must not be reasoned out twice.
 
-    **`first_frame` is optional here and is not on the node.** The node keeps
-    requiring it for compatibility; this function accepts a last-frame-only
-    set because that is a released fl2va signature the node could never
-    reach. The anchor is chosen by semantic frame index, which is sglang's
+    **`first_frame` is optional.** A last-frame-only set is a released fl2va
+    signature, so it is accepted. The anchor is chosen by semantic frame index, which is sglang's
     rule at `prequeue.py:97-107` -- frame 0 sorts before the final-frame
     sentinel, so `first_frame` anchors when present and `last_frame` anchors
     when it is the only one. That is what makes a lone last frame keep its
@@ -196,7 +102,7 @@ def resolve_keyframe_geometry(first_frame=None, last_frame=None,
         # Round to the DiT's multiple of 32 and otherwise leave the size
         # alone. NOT adapt_canvas: that forces a 768 short edge and the area
         # cap, which would silently promote a 832x480 preview canvas to
-        # 1344x768 -- a 6.7x attention increase from a node whose whole job
+        # 1344x768 -- a 6.7x attention increase from a function whose whole job
         # here is keeping render cost where the user put it.
         snapped_w = max(32, round(width / 32) * 32)
         snapped_h = max(32, round(height / 32) * 32)
@@ -212,8 +118,8 @@ def resolve_keyframe_geometry(first_frame=None, last_frame=None,
             )
         width, height = snapped_w, snapped_h
         # Warn rather than raise: in this mode the user typed the geometry,
-        # and this node's contract here is "you own it". Refusing a size
-        # somebody deliberately entered would be this node overruling them,
+        # and this mode's contract here is "you own it". Refusing a size
+        # somebody deliberately entered would be this function overruling them,
         # which is the opposite of the mode. They still get told, because
         # the failure is a quality one and would otherwise be invisible.
         if not aspect_in_range(width, height):
@@ -254,7 +160,7 @@ def resolve_keyframe_geometry(first_frame=None, last_frame=None,
     if length:
         snapped = snap_length(length)
         # Single frame is refused HERE and left to the reference path, and
-        # that asymmetry is deliberate rather than an oversight. This node
+        # that asymmetry is deliberate rather than an oversight. This path
         # feeds MiniMaxH3ImageToVideo, which pins a `last_frame` at
         # `frame_count - 1` -- frame 0 in a one-frame video, i.e. on top of
         # `first_frame`. Nobody has established what fl2va does at one

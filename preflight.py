@@ -1,7 +1,7 @@
 """What this render will actually cost, before you queue it.
 
 Every other node in the graph knows one piece. `MiniMaxH3Resolution` knows the
-video and nothing about references. `MiniMaxH3ReferenceFit` knows one
+video and nothing about references. `MiniMaxH3AppendRefImage` knows one
 reference and nothing about the video. The total only exists once conditioning
 is assembled, which is where this sits.
 

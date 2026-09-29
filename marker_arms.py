@@ -1,5 +1,9 @@
 """Bench-only marker-corpus arms: bind one to a CLIP, and read back what bound.
 
+This module held a node, `MiniMaxH3MarkerArm`, until 0.173.0 (owner, 2026-09-29): no
+graph used it, the marker-arm manifest is a closed record, and what remains is
+the library the bench measurements and `MiniMaxH3ProvenanceStamp` call.
+
 `bench/marker_corpus/compiled.json` declares each arm as a triple -- prompt
 bytes, tokenizer identity, model transform. The prompt bytes are the corpus's
 and reach a render through the graph's text widget; this module owns the other
@@ -31,8 +35,6 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-
-from comfy_api.latest import io
 
 try:
     from .vendor_config import additional_special_tokens
@@ -301,41 +303,3 @@ def apply_arm(clip, arm: str):
         out = mean_init_rows_clip(clip)
     out._h3_declared_marker_arm = arm
     return out
-
-
-class MiniMaxH3MarkerArm(io.ComfyNode):
-    @classmethod
-    def define_schema(cls):
-        return io.Schema(
-            node_id="MiniMaxH3MarkerArm",
-            display_name="MiniMax H3 Marker Corpus Arm (bench)",
-            category="MiniMaxH3/experimental",
-            description=(
-                "BENCH ONLY. Binds one marker-corpus arm to this CLIP and "
-                "leaves the loaded model untouched: the transform lives on a "
-                "clone, so no later render inherits it. 'release' binds "
-                "nothing and is what the release_id and stripped arms use -- "
-                "their difference is prompt bytes, which the corpus owns. "
-                "'legacy_bpe' swaps in a freshly built pre-fix tokenizer. "
-                "'mean_init_rows' replaces the seven H3 marker embedding rows "
-                "with the table mean, as a patch, never on disk. Wire the CLIP "
-                "through MiniMaxH3ProvenanceStamp to record what actually "
-                "bound; the arm name here is a label, not evidence."
-            ),
-            inputs=[
-                io.Clip.Input("clip"),
-                io.Combo.Input("arm", options=list(ARMS), default="release"),
-            ],
-            outputs=[io.Clip.Output()],
-        )
-
-    @classmethod
-    def execute(cls, clip, arm="release") -> io.NodeOutput:
-        out = apply_arm(clip, arm)
-        record = encoder_arm_record(out)
-        logger.info(
-            "[h3] marker arm %r bound: %s markers resolved, rows %s",
-            arm, record["tokenizer"].get("markers_resolved"),
-            record["marker_rows"].get("sha256", "?")[:12],
-        )
-        return io.NodeOutput(out)
