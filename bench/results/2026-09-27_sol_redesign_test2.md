@@ -83,6 +83,7 @@ for this. Records: `2026-09-27_dense_tail_grade_pdd8_{t2v,ref2va}.json`.
 - **Kitchen int8 is the more accurate dense kernel on all 12 cells.**
 - **Sage without rotation is the worst on every cell.**
 - **ref2va's block 49 is the hardest cell** for every int8 kernel.
+  *Note 2026-09-29:* largely a property of the grade, which counts every query row, and at block 49 the text and reference rows' output is never read; see `2026-09-29_ref2va_block49_hardest_cell.md`.
 
 This answers audit §9b's open question. On matched cells, the kitchen chain
 serves the dense tail better than the sage chain.

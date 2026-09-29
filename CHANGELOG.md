@@ -4,6 +4,19 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.172.7
+
+### Added
+
+- Why ref2va's block 49 is the hardest INT8 cell
+  (`bench/results/2026-09-29_ref2va_block49_hardest_cell.md`): mostly text and
+  reference query rows whose last-block output is dropped, not the weights, K's
+  stress or peakiness. Scripts `bench/scan_original_block49.py`,
+  `analyze_k_by_segment.py`, `analyze_attention_mass.py`,
+  `analyze_error_by_query_segment.py`, all CPU. The release's own weights carry
+  block 49's loud K channels and its zero text-row modulation
+  (`bench/results/2026-09-29_original_block49_scan.json`).
+
 ## 0.172.6
 
 ### Changed
