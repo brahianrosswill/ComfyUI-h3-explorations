@@ -44,6 +44,26 @@ Older history lives elsewhere and is not copied here:
   `docs/h3_block49_quant_error.md` said or implied it was a live reference for
   the tail's precision; each now says otherwise.
 
+- **Eight nodes retired, `llmcompressor` dropped, 33 old bench scripts deleted**
+  (owner, 2026-09-29; CHANGELOG 0.173.0 to 0.176.0). Each of
+  `MiniMaxH3KeyframeCanvas`, `MiniMaxH3ReferenceFit`, `MiniMaxH3ReferenceVideoFit`,
+  `MiniMaxH3MarkerArm`, `SageChainAssert`, `MiniMaxH3ReferenceReport`,
+  `MiniMaxH3VSAAttention` and `MiniMaxH3QuantObserve` was in no shipped graph.
+  Open experiment #23 is closed, not refuted; the AWQ and GPTQ recipe files that
+  needed `llmcompressor` went with the dependency ("llmcompressor is for awq
+  stuff - remove that dependency"); the bench scripts went on the owner's "most
+  benches that havent been touched since august can probably go", applied as: last
+  commit before 2026-09-01, no live reference, and not cited by a September
+  record. What prose said before: `docs/custom_node_gaps.md` called
+  `MiniMaxH3ReferenceVideoFit` "NOT deprecated ... still live", `SageChainAssert`
+  "registered so saved graphs still load", and `MiniMaxH3VSAAttention` a live
+  alternative to Sol; `docs/wiki/next_steps.md` told a reader to wire
+  `MiniMaxH3ReferenceReport` before a reference render. Each now points at the
+  replacement (`MiniMaxH3Conditioning`, `MiniMaxH3AppendRefImage`, core's
+  `BlockSparseAttention` in `vsa` mode, the conditioner's preview). Saved graphs
+  outside this repo that wire a retired node no longer load. `docs/roadmap.md`
+  "Closed lanes" carries #23 and the VSA node.
+
 ## 2026-09-28
 
 - **The launcher dropped `--fast fp16_accumulation`, and `comfy.env` dropped

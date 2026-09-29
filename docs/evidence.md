@@ -186,8 +186,7 @@ for each, as it stood when it was written, is in `docs/rules_history.md`.
   with the vendor short edge matches the vendor; `dit_short_edge` targets the
   shorter side and only shrinks unless `allow_upscale`; both live on
   `MiniMaxH3AppendRefImage` and are read only under `max`.
-  `MiniMaxH3ReferenceFit` is deprecated since 2026-08-28 and no shipped graph
-  wires it. `qwen_view` on the append node can give the encoder a view of its
+  `MiniMaxH3ReferenceFit` was deprecated on 2026-08-28 and deleted in 0.173.0. `qwen_view` on the append node can give the encoder a view of its
   own (`separate`, pre-filled from `h3_rules.REF_QWEN_SHORT_EDGE`); a flat
   `qwen_short_edge` whose 0 meant shared until 2026-08-31. **Since 2026-09-13
   the node's defaults are vendor parity**: `max`, a 2048 short edge,
@@ -197,8 +196,9 @@ for each, as it stood when it was written, is in `docs/rules_history.md`.
   the node's `define_schema`. The separate 512 view that shipped from
   2026-08-27 rested on one render at one seed (CHANGELOG 0.82.0).
   `bench/refview2_arms.json` is the ablation built to settle `qwen_view` and
-  `allow_upscale`, unrendered. `MiniMaxH3ReferenceReport` draws both copies
-  of every reference before anything is encoded.
+  `allow_upscale`, unrendered. `MiniMaxH3ReferenceConditioning`'s preview prices both
+  copies of every reference before anything is encoded (the `MiniMaxH3ReferenceReport`
+  node that drew them was deleted in 0.174.0).
 
 - **The marker ids are the release's own, fixed by construction rather than by
   literal.** No file in the release assigns `<d>`..`<|caption_end|>` an id --

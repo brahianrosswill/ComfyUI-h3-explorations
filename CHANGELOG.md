@@ -4,6 +4,15 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.176.1
+
+### Changed
+
+- `docs/wiki/decisions.md` logs the eight retired nodes, the `llmcompressor`
+  removal and the bench deletions, with what the prose used to say.
+  `docs/wiki/stages.md`, `docs/evidence.md` and `docs/wiki/next_steps.md` no
+  longer point a reader at nodes deleted in 0.173.0 and 0.174.0.
+
 ## 0.176.0
 
 ### Removed

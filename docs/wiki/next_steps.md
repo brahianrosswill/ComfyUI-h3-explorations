@@ -727,8 +727,9 @@ mapped to the owner decision it feeds. None of the decisions is made here.
     failures including the three-still parity arm on this card; the report
     node's numbers match the static pricer's
     (`bench/results/2026-09-13_reference_settings_three_stills.json`).
-- Before queueing a reference render, wire `MiniMaxH3ReferenceReport` or run
-  `bench/preflight_graph.py`: both price what each reader sees.
+- Before queueing a reference render, read `MiniMaxH3ReferenceConditioning`'s
+  preview or run `bench/preflight_graph.py`: both price what each reader sees
+  (the `MiniMaxH3ReferenceReport` node this used to name was deleted in 0.174.0).
 
 **2026-09-12:**
 
