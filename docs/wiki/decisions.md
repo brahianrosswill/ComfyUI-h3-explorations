@@ -17,6 +17,34 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-29
 
+- **Two ref2va findings re-checked by a second pass; details corrected**
+  (board `ref2va-verify`, mrblue). Both of h3lora's findings mostly hold, and
+  their records are left as written; this line is where a reader who trusted a
+  detail is pointed. The records are
+  `bench/results/2026-09-29_ref2va_partition_delta_verify.md` and
+  `2026-09-29_ref2va_block49_verify.md`. What changed:
+  - The block 49 record's attention-mass figures were read as made with the
+    script's docstring command; they were made at `--queries 256` (the default
+    is 384), and the median effective-key figure moves with sample size. Only
+    `heads_eff_under_20` supports "peakiness alike".
+  - The block 49 record's "the text rows' gates are exactly zero, so nothing
+    trained them" was stated for the whole ref2va text span. That span includes
+    vision rows tagged as video, whose block 49 modulation is not zero. The
+    dropped-row claim is unaffected.
+  - The partition-delta record's block-0 audio modulation "standout" is partly a
+    small-denominator ratio, and the audio tail's rise starts near block 30, not
+    block 45.
+  - `2026-09-29_partition_delta_map.jsonl` predates its script: `cos` is above 1
+    in about half its rows. Regenerate it before reading `cos`.
+  - Stale lines in `next_steps.md` were corrected in the same pass: #36 "waits
+    on the owner's go" (it was rendered and read, and its blind batch awaits the
+    owner), and PDD8-finished-by-FastH3 "the scoring is what remains" (it was
+    scored and parked, two lines up).
+  - What the checks now support: ref2va's block 49 is the hardest INT8 cell
+    mainly because the grade counts rows the model discards
+    (`2026-09-27_sol_redesign_test2.md` did not say why), and "not a time warp"
+    holds under a control that can fail (`bench/control_time_warp.py`).
+
 - **FastH3 finisher and FastH3 mutant: parked** (owner). No more FastH3-finisher
   tests, and the FastH3 mutant (overlay plus loader, and shipped loader graphs)
   is on hold, because FastH3 still requires its full weights. This records

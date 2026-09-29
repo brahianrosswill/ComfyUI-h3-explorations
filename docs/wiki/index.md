@@ -1,6 +1,6 @@
 # The wiki: where to start, and who owns each answer
 
-last updated: 2026-09-29 (the FastH3 overlay, rank, gates and finisher rows); 2026-09-29 (the block-49 row says the problem is specific to unrotated attention); 2026-09-27 (the two encoder tool rows: the bf16 pruned rebuild and the int8-vs-bf16 DiT measurement)
+last updated: 2026-09-29 (next_steps and decisions: the ref2va verification, the gate dial and issue 16604); 2026-09-29 (the FastH3 overlay, rank, gates and finisher rows); 2026-09-29 (the block-49 row says the problem is specific to unrotated attention); 2026-09-27 (the two encoder tool rows: the bf16 pruned rebuild and the int8-vs-bf16 DiT measurement)
 
 Written by hand, and the only copy of these routes: `CLAUDE.md` points here
 instead of carrying them. This is a router, not an authority. It states no

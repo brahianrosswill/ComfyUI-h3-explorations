@@ -93,18 +93,41 @@ stays the shipped default.
     look travels with the gates (`../../bench/results/2026-09-29_fasth3_gates.md`).
     Open in that record: whether the gate values or only the coarse branch's
     presence matter, and whether the gates work off fl2va.
-  - #36, the gate dial, is now the next FastH3 question; it waits on the
-    owner's go. The overlay loader's `gate_scale` makes it a widget value.
+  - #36, the gate dial (`gate_scale` on `MiniMaxH3OverlayLoader`), is rendered
+    and read: it is a look-and-motion dial, not a detail-only control, and scale
+    0 is bit-identical to the no-gates checkpoint
+    (`../../bench/results/2026-09-29_fasth3_gate_dial.md`; reread from the saved
+    latents in `../../bench/results/2026-09-29_gate_dial_reanalysis.md`). It can
+    only act on a checkpoint with `to_gate_compress` layers and sparse attention
+    on: in `models/diffusion_models` and `models/loras/h3` only the two FastVideo
+    VSA checkpoints have them, and none of the adapters (`mb-03` on the board). What remains is the owner's
+    eye on the blind batch `fasth3_gate_dial_look_anchor`.
   - FastH3 as exact pieces on fl2va, and the node that applies them
     (`MiniMaxH3OverlayLoader`): see the index row for the overlay code and
     `../../bench/results/2026-09-29_fasth3_overlay_exact.md`.
   - PDD8 finished by FastH3's own checkpoint, t2v and ref2va: graphs built
-    (`step_switch_to="fasth3"`), rendered once each and blinded for the
-    owner's eye; the scoring is what remains
-    (`../../bench/results/2026-09-29_pdd8_fasth3_finish.jsonl`).
+    (`step_switch_to="fasth3"`), rendered once each, scored by the owner and
+    parked (`../../bench/results/2026-09-29_blind_sessions_read.md`;
+    `decisions.md`, 2026-09-29).
   - A general FastH3 backbone adapter is not built: the backbone change is
     not low-rank (`../../bench/results/2026-09-29_fasth3_bf16_rank.md`), and
     with #35 it is not what carries the look.
+- **ref2va (2026-09-29):** the board's `ref2va-investigation` is h3lora's.
+  Two of its findings were re-checked by a second pass and mostly hold
+  (`../../bench/results/2026-09-29_ref2va_partition_delta_verify.md`,
+  `../../bench/results/2026-09-29_ref2va_block49_verify.md`; the corrections are
+  in `decisions.md`, 2026-09-29). Still open:
+  - Grade block 49 on video and audio query rows, with the text and reference
+    rows reported apart. `bench/grade_dense_kernels_on_captures.py` counts every
+    row, and the real-kernel version of the control needs the card.
+  - Regenerate `../../bench/results/2026-09-29_partition_delta_map.jsonl`, which
+    predates its script; do not read `cos` from it.
+  - Comfy-Org/ComfyUI issue 16604 (a reported ref-row shape mismatch above 16384
+    packed rows) does not reproduce on the layout on the CPU
+    (`../../bench/results/2026-09-29_ref_rows_16604.md`). Not tested: CUDA or
+    ROCm, and the reporter's stack. One thing to check in this pack: the
+    reference-video branch of `reference_conditioning.py` sets its latent grid
+    from `canvas // 16` and not from the latent's shape.
 - **Comparing across 0.166.0:** anything compared against a render made
   before it pins `quantizer=balanced` or re-renders its baseline. FastH3's
   contract graphs use core's attention and are unaffected.
