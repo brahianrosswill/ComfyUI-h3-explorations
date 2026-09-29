@@ -1294,6 +1294,27 @@ STEP_SWITCH_BASE = {
 # Each handoff is the grid point its tail starts from.
 assert all(abs(float(p1.split(", ")[-1]) - 12 * t / (1 + 11 * t)) < 5e-7
            for (p1, _), t in zip(STEP_SWITCH_BASE.values(), (4 / 32, 8 / 32)))
+#: PDD8 cut at 0.8, then FastH3's own checkpoint finishes on Euler (a second
+#: full checkpoint, so a model swap between the passes). Handoff at base-grid
+#: t = 8/32 = 0.25, which is also FastH3's rung 0.25 (FASTH3_CONTRACT_POSITIONS).
+#: **The audio decides the shift.** Core derives the audio sigma from the video
+#: sigma through the model's own shifts (`time_shift_sigma`): PDD8 leaves it at
+#: 0.5 at video sigma 0.8 (12/3). A pass at 10/3 that keeps video sigma 0.8
+#: tells the audio 0.545 instead; on the same base-grid point, video sigma
+#: 0.769231, both agree at 0.5. So:
+#:   s10: FastH3's own 10/3, handoff and tail on its rungs (0.769231, 0.588235).
+#:        The audio is exact; the video is told 0.769231 where PDD8 left 0.8.
+#:   s12: 12/3 as PDD8 ran, 0.8 and 0.631579. Both streams exact; off FastH3's
+#:        trained shift.
+#: **Reasoned, not rendered.**
+def _fasth3_tail(shift):
+    return ", ".join(f"{shift * u / (1 + (shift - 1) * u):.6f}" for u in (0.25, 0.125)) + ", 0.0"
+
+
+STEP_SWITCH_FASTH3 = {
+    "s10": (STEP_SWITCH_REV["h080"][0], _fasth3_tail(10.0), FASTH3_SHIFT),
+    "s12": (STEP_SWITCH_REV["h080"][0], _fasth3_tail(12.0), SIGMA_SHIFT),
+}
 #: Every step-switch graph's (pass 1, pass 2) sigma pair, for the checks.
 STEP_SWITCH_PAIRS = (((STEP_SWITCH_PASS1_SIGMAS, STEP_SWITCH_PASS2_SIGMAS),) + tuple(STEP_SWITCH_REV.values())
                      + tuple(STEP_SWITCH_BASE.values()))

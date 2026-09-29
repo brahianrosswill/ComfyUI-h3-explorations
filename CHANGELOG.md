@@ -4,6 +4,18 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.172.1
+
+### Added
+
+- `build_api(step_switch_to="fasth3")`: PDD8 to sigma 0.8, then FastH3's own
+  checkpoint finishes on its own UNETLoader and core's VSA at the contract
+  (`h3_config.STEP_SWITCH_FASTH3`). Two graphs, `h3_probe_t2v_step_switch_pdd8_fasth3_s10`
+  (FastH3's 10/3, handoff at 0.769231) and `_s12` (12/3 as PDD8 ran, 0.8), with
+  their savelat twins. The shift is what sets the audio's noise level at the
+  handoff (`time_shift_sigma` in core). Neither graph has rendered yet.
+  `bench/check_distill_settings.py` grades the pair.
+
 ## 0.172.0
 
 ### Added

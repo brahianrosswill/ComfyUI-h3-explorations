@@ -328,6 +328,26 @@ def main():
             nodes_all = [n for n in doc.values() if isinstance(n, dict)]
             unets_all = {n["inputs"].get("unet_name") for n in nodes_all
                          if n.get("class_type") == "UNETLoader"}
+            if (cfg.MODELS["unet_fasth3_v2"] in unets_all and set(found.loras) == {cfg.PDD_FL2VA_LORA}
+                    and any(n.get("class_type") == "DisableNoise" for n in nodes_all)):
+                # PDD8 then FastH3's own checkpoint (step_switch_to="fasth3"):
+                # the one LoRA is pass 1's, on fl2va. The pair and the shift
+                # travel together (h3_config.STEP_SWITCH_FASTH3): the shift
+                # decides the audio's noise level at the handoff.
+                manual = sorted(n["inputs"]["sigmas"] for n in nodes_all
+                                if n.get("class_type") == "ManualSigmas")
+                declared = {tuple(sorted(p[:2])): (p[2]["shift_video"], p[2]["shift_audio"])
+                            for p in cfg.STEP_SWITCH_FASTH3.values()}
+                assert tuple(manual) in declared, (
+                    f"{path.name}: a PDD8-then-FastH3 switch must sample one of "
+                    f"h3_config.STEP_SWITCH_FASTH3, has {manual}")
+                assert found.shifts == (declared[tuple(manual)],), (
+                    f"{path.name}: its finish pass runs at shift {declared[tuple(manual)]}, "
+                    f"graph has {found.shifts}")
+                vsa = [n["inputs"] for n in nodes_all if n.get("class_type") == cfg.SOL_CORE_NODE]
+                assert vsa and all(v.get("selection") == "vsa" for v in vsa), (
+                    f"{path.name}: FastH3 V2 finishes on core's VSA node; graph has {vsa}")
+                continue
             if cfg.MODELS["unet_fasth3_v2"] in unets_all:
                 # A distilled CHECKPOINT, not a LoRA, so it is keyed on the
                 # unet. Without this row it read as a base graph and failed on

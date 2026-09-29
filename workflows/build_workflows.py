@@ -107,7 +107,7 @@ from h3_config import (  # noqa: E402
     FLASHGEN_R64_LORA, FLASHGEN_R64_REF2VA_LORA, LORA_BRANCH_NODE, FLASHGEN_STRENGTH, FLASHGEN_STEPS,
     FLASHGEN_MANUAL_SIGMAS, FLASHGEN_SAMPLER,
     FASTH3_STEPS, FASTH3_SAMPLER, FASTH3_SCHEDULER, FASTH3_SHIFT, FASTH3_CORE_VSA,
-    FASTH3_CONTRACT_SIGMAS, FASTH3_CONTRACT_SAMPLER, FASTH3_CONTRACT_VSA,
+    FASTH3_CONTRACT_SIGMAS, FASTH3_CONTRACT_SAMPLER, FASTH3_CONTRACT_VSA, STEP_SWITCH_FASTH3,
     refine_scheduler_ids,
 )
 
@@ -1500,9 +1500,13 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
               # at STEP_SWITCH_PASS2_SIGMAS) or "flashgen" (the reverse: this
               # graph's own PDD chain, then FlashGen at step_switch_sigmas), or
               # "base" (this graph's PDD chain, then the undistilled base on
-              # Euler at step_switch_sigmas; open_experiments #37).
+              # Euler at step_switch_sigmas; open_experiments #37), or
+              # "fasth3" (this graph's PDD chain, then FastH3's own checkpoint
+              # at step_switch_sigmas and step_switch_shift, on its core VSA
+              # at the contract; h3_config.STEP_SWITCH_FASTH3).
               step_switch_to: str = "pdd8",
               step_switch_sigmas: str | None = None,
+              step_switch_shift: dict | None = None,
               # The FlashGen pass's `blocks` in a PDD-first switch.
               step_switch_blocks: str = "all",
               # Save every step's x0 prediction (MiniMaxH3StepX0Observer, node
@@ -2352,10 +2356,10 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
         g["12"]["inputs"]["samples"] = ["87", 0]
 
     if step_switch:
-        if step_switch_to not in ("pdd8", "flashgen", "base"):
-            raise SystemExit(f"step_switch_to must be pdd8, flashgen or base, not {step_switch_to!r}")
+        if step_switch_to not in ("pdd8", "flashgen", "base", "fasth3"):
+            raise SystemExit(f"step_switch_to must be pdd8, flashgen, base or fasth3, not {step_switch_to!r}")
         if (lora is None or audio_refine or split_at or freeze_audio or freeze_windows or single_frame
-                or pdd != (step_switch_to in ("flashgen", "base"))):
+                or pdd != (step_switch_to in ("flashgen", "base", "fasth3"))):
             raise SystemExit("step_switch runs this graph's own chain as pass 1 (a non-PDD LoRA "
                              "before pdd8, PDD before flashgen or base) and composes with none of "
                              "audio_refine, split_at, freeze_*, single_frame")
@@ -2383,6 +2387,15 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
                            sol_impl=sol_impl, dense_backend=dense_backend,
                            steps=base_evals, sampler_name="euler",
                            manual_sigmas=pass2_sigmas, unet=unet, clip=clip, **canvas)
+        elif step_switch_to == "fasth3":
+            if not (step_switch_sigmas and step_switch_shift):
+                raise SystemExit("step_switch_to='fasth3' needs step_switch_sigmas and step_switch_shift (h3_config.STEP_SWITCH_FASTH3)")
+            pass2_sigmas = step_switch_sigmas
+            g2 = build_api(task, sage=False, prompt=prompt, length=length, seed=seed,
+                           sol=None, dense_backend=dense_backend, core_vsa=FASTH3_CONTRACT_VSA,
+                           steps=len(pass2_sigmas.split(",")) - 1, sampler_name=FASTH3_CONTRACT_SAMPLER,
+                           manual_sigmas=pass2_sigmas, shift=step_switch_shift,
+                           unet=MODELS["unet_fasth3_v2"], clip=clip, **canvas)
         else:
             if not step_switch_sigmas:
                 raise SystemExit("step_switch_to='flashgen' needs step_switch_sigmas (h3_config.STEP_SWITCH_REV)")
@@ -2394,14 +2407,16 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
                            lora_blocks=step_switch_blocks,
                            steps=FLASHGEN_STEPS, sampler_name=FLASHGEN_SAMPLER,
                            manual_sigmas=pass2_sigmas, unet=unet, clip=clip, **canvas)
-        if g2["1"] != g["1"]:
-            raise SystemExit("step_switch: pass 1 and pass 2 load different UNETs")
+        if (g2["1"] != g["1"]) != (step_switch_to == "fasth3"):
+            raise SystemExit("step_switch: pass 1 and pass 2 load different UNETs only for fasth3")
         chain, ref = {}, g2["9"]["inputs"]["model"]
         while ref[0] != "1":
             node = g2[ref[0]]
             chain[ref[0]] = node
             ref = next(v for k, v in node["inputs"].items()
                        if isinstance(v, list) and len(v) == 2 and k == "model")
+        if step_switch_to == "fasth3":
+            chain["1"] = g2["1"]
 
         def _moved(v):
             return ([str(int(v[0]) + 200), v[1]] if isinstance(v, list) and len(v) == 2
@@ -5518,6 +5533,19 @@ def main():
               out_prefix=f"Video/h3_probe_t2v_step_switch_pdd8_flashgen_late_{h}"),
          f"reverse step switch: PDD8 to {STEP_SWITCH_REV[h][1].split(',')[0]}, then FlashGen on blocks 34-49 finishing")
         for h in ("h080",))
+    # PDD8 finished by FastH3's own checkpoint (2026-09-29, the owner via
+    # mutant): a second full checkpoint between the passes, and a shift that
+    # decides the audio (h3_config.STEP_SWITCH_FASTH3). Same handoff as h080.
+    _reverse = _reverse + tuple(
+        (f"h3_probe_t2v_step_switch_pdd8_fasth3_{k}.json", f"t2v-step-switch-pdd8-fasth3-{k}", "t2v",
+         LONG_T2V_PROMPT,
+         dict(pdd=True, sampler_name="euler", lora=(PDD_FL2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS,
+              manual_sigmas=STEP_SWITCH_FASTH3[k][0], step_switch=True, step_switch_to="fasth3",
+              step_switch_sigmas=STEP_SWITCH_FASTH3[k][1], step_switch_shift=STEP_SWITCH_FASTH3[k][2],
+              out_prefix=f"Video/h3_probe_t2v_step_switch_pdd8_fasth3_{k}"),
+         f"step switch: PDD8 to 0.8, then FastH3's checkpoint at {STEP_SWITCH_FASTH3[k][1].split(',')[0]} "
+         f"(shift {STEP_SWITCH_FASTH3[k][2]['shift_video']:g}/3) finishing")
+        for k in STEP_SWITCH_FASTH3)
     # PDD8 finished by the undistilled base (open_experiments #37, 2026-09-27):
     # whether PDD8's dim highlights are its coarse tail's, with no second
     # distill in the finish. Same handoff as rev_h063.
