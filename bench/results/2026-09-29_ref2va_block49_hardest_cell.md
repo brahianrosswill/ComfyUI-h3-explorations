@@ -45,9 +45,12 @@ Records, each written by its script under `bench/`:
 So "ref2va's block 49 is the hardest cell" is largely a property of the grade,
 not of the render: it counts error in rows the model discards, and ref2va has
 8424 text rows and two reference images of 4096 rows each where t2v has 599 text rows
-(the capture's `segments`; the manifest's `token_accounting` lists 14568 `text_tokens`, which is a
-remainder that also holds 6144 of the reference rows, and gives 1024 `latent_rows` per image against
-4096 in the segments, an unexplained difference; the segments are what the analyses used). Video rows, which decide the
+(the capture's `segments`, which agree with the graph that ran: both 1024x1024 references went through
+`MiniMaxH3AppendRefImage` with `allow_upscale` true and `dit_short_edge` 2048, so the DiT saw each at
+2048x2048, 4096 rows. The manifest is wrong here: `bench/generate_capture_manifest.py` writes a fixed
+`fit_settings` with `allow_upscale` false and computes `fitted_dimensions` and `latent_rows` (1024 each)
+from the image alone, without reading the node's policy, so its `token_accounting` gives 14568
+`text_tokens`, a remainder that also holds 6144 reference rows. The analyses used the segments). Video rows, which decide the
 picture, are about as hard in both.
 
 ## Not shown
