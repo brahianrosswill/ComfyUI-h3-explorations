@@ -692,14 +692,25 @@ def _compile_reference_records(
                     index + 1, video_policy, int(qwen_frames.shape[0]))
                 continue
             latent = vae.encode(frames)
+            # The grid comes off the tensor the VAE returned, as for a still
+            # above; `canvas // 16` is what the installed video VAE returns for
+            # these frames, and would disagree silently with any VAE that
+            # compresses differently. Inherited from the still branch.
+            latent_h, latent_w = int(latent.shape[-2]), int(latent.shape[-1])
+            if (latent_h, latent_w) != (canvas_h // 16, canvas_w // 16):
+                logger.warning(
+                    "[h3] reference video %d: the VAE returned a %dx%d latent "
+                    "grid where %dx%d pixels implies %dx%d. Using the VAE's.",
+                    index + 1, latent_h, latent_w, canvas_w, canvas_h,
+                    canvas_h // 16, canvas_w // 16)
             audio_latent, ref_audio_t = None, 0
             if soundtrack is not None and audio_vae is not None:
                 audio_latent, ref_audio_t = _encode_ref_audio_aligned(audio_vae,soundtrack)
             ref_blocks.append({
                 "kind": "video_audio" if ref_audio_t else "video",
                 "latent_t": latent.shape[2],
-                "latent_h": canvas_h // 16,
-                "latent_w": canvas_w // 16,
+                "latent_h": latent_h,
+                "latent_w": latent_w,
                 "ref_audio_t": ref_audio_t,
                 "latent": latent,
                 "audio_latent": audio_latent,

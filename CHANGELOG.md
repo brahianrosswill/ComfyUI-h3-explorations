@@ -27,6 +27,18 @@ artifact.
   `analyze_time_warp.py`) and how much video attention goes to the reference
   images by depth (`bench/results/2026-09-29_ref2va_reference_attention.md`).
 
+## 0.176.2
+
+### Changed
+
+- The reference-video block in `reference_conditioning.py` reads its latent grid
+  off the tensor the VAE returned, and logs when that differs from `canvas // 16`,
+  as the still branch already did. The installed video VAE gives the same grid
+  both ways, so no shipped graph changes; the case is a VAE that compresses
+  differently. `bench/check_reference_runtime.py::video_grid_is_read_off_the_latent`
+  is red on the old code and green on this (raised by a peer session, owner
+  approved).
+
 ## 0.176.1
 
 ### Changed

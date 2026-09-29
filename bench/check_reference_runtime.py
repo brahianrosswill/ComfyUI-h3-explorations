@@ -827,6 +827,61 @@ def preflight_resolves_the_contract_from_the_loader_node():
     assert contract is None and "not linked" in note, (contract, note)
 
 
+class _CoarserVideoVae(_VideoVae):
+    """A VAE that compresses 32x where the installed one compresses 16x."""
+
+    def encode(self, frames):
+        import torch
+        self.inputs.append(frames)
+        return torch.zeros(
+            1, 24, max(1, int(frames.shape[0])),
+            int(frames.shape[1]) // 32, int(frames.shape[2]) // 32,
+        )
+
+
+def video_grid_is_read_off_the_latent():
+    """The reference video block carries the grid the VAE returned, not `canvas // 16`.
+
+    Control first: the installed VAE's 16x compression gives the same grid both
+    ways, so the shipped path is unchanged. Then a VAE that compresses 32x: the
+    block must carry its 2x2 grid for a 64x64 canvas (a canvas-derived 4x4
+    would describe tokens that are not in the latent) and the disagreement is
+    logged, as it is for a still.
+    """
+    import logging
+    frames = _frames(22, 64, 64)
+    records = (R.RuntimeVideoReference(frames, 24.0, None),)
+    original_adapt_canvas = R.adapt_canvas
+    R.adapt_canvas = lambda _w, _h: (64, 64)
+    try:
+        _, blocks = R._compile_reference_records(
+            records, _VideoVae(), _AudioVae(), 64, 64, 22, video_policy="release")
+        assert (blocks[0]["latent_h"], blocks[0]["latent_w"]) == (4, 4), blocks[0]
+
+        class _Capture(logging.Handler):
+            def __init__(self):
+                super().__init__()
+                self.messages = []
+
+            def emit(self, record):
+                self.messages.append(record.getMessage())
+
+        handler = _Capture()
+        logger = logging.getLogger(R.__name__)
+        logger.addHandler(handler)
+        try:
+            _, blocks = R._compile_reference_records(
+                records, _CoarserVideoVae(), _AudioVae(), 64, 64, 22,
+                video_policy="release")
+        finally:
+            logger.removeHandler(handler)
+        assert (blocks[0]["latent_h"], blocks[0]["latent_w"]) == (2, 2), blocks[0]
+        assert tuple(blocks[0]["latent"].shape[-2:]) == (2, 2)
+        assert any("latent grid" in m for m in handler.messages), handler.messages
+    finally:
+        R.adapt_canvas = original_adapt_canvas
+
+
 CHECKS = (
     append_is_copy_on_add_and_ordered,
     video_metadata_is_owned,
@@ -846,6 +901,7 @@ CHECKS = (
     conditioning_node_assembles_the_real_payload_shape,
     encoder_only_references_skip_the_dit_rows,
     preflight_reads_the_vae_gate_off_the_graph,
+    video_grid_is_read_off_the_latent,
 )
 
 
