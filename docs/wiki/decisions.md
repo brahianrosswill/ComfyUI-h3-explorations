@@ -17,6 +17,17 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-29
 
+- **FastH3's look travels with its gates, not its backbone change** (#35,
+  measured, not judged by eye). `2026-09-27_fasth3_swap.md` put the look in
+  "its weights and gates" and could not say which; the gates arm answers:
+  fl2va plus FastH3's gate tensors behaves like FastH3, and FastH3 without
+  them behaves like fl2va. Two predictions filed on 2026-09-27 (G1, G2) were
+  falsified. It also closes the general adapter (`fasth3-adapter` on the board):
+  the backbone change is not low-rank in bf16 and does not carry the look.
+  Record: `bench/results/2026-09-29_fasth3_gates.md`; rank:
+  `bench/results/2026-09-29_fasth3_bf16_rank.md`. One seed, three scenes, and
+  the no-gates arm also drops VSA's coarse branch, so gate values against the
+  branch's presence is open.
 - **Block 49's INT8 problem is specific to unrotated attention** (owner,
   2026-09-29). It is sage's plain fp8++ and stock Sol's per-row K scale that
   meet block 49's four loud K channels badly; comfy-kitchen's `int8_attention`

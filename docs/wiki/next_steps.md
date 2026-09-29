@@ -88,11 +88,23 @@ stays the shipped default.
   - #44, timestamps inside a shot (fastdude): first the timed and untimed
     bank pair and their checklist (`../open_experiments.md` #44), then the
     renders. It compares within itself, so no pin.
-- **Queued, waiting on the owner's go:**
-  - #35, FastH3's gates against backbone drift: built, with 7 renders, and
-    its predictions committed before rendering (0a23dcae). Its graph has no
-    Sol, so 0.166.0 does not affect it (vaedude).
-  - #36, the gate dial, only if #35 says the gates carry the look.
+- **FastH3 (2026-09-29):**
+  - #35, FastH3's gates against backbone drift, is rendered and read: the
+    look travels with the gates (`../../bench/results/2026-09-29_fasth3_gates.md`).
+    Open in that record: whether the gate values or only the coarse branch's
+    presence matter, and whether the gates work off fl2va.
+  - #36, the gate dial, is now the next FastH3 question; it waits on the
+    owner's go. The overlay loader's `gate_scale` makes it a widget value.
+  - FastH3 as exact pieces on fl2va, and the node that applies them
+    (`MiniMaxH3OverlayLoader`): see the index row for the overlay code and
+    `../../bench/results/2026-09-29_fasth3_overlay_exact.md`.
+  - PDD8 finished by FastH3's own checkpoint, t2v and ref2va: graphs built
+    (`step_switch_to="fasth3"`), rendered once each and blinded for the
+    owner's eye; the scoring is what remains
+    (`../../bench/results/2026-09-29_pdd8_fasth3_finish.jsonl`).
+  - A general FastH3 backbone adapter is not built: the backbone change is
+    not low-rank (`../../bench/results/2026-09-29_fasth3_bf16_rank.md`), and
+    with #35 it is not what carries the look.
 - **Comparing across 0.166.0:** anything compared against a render made
   before it pins `quantizer=balanced` or re-renders its baseline. FastH3's
   contract graphs use core's attention and are unaffected.

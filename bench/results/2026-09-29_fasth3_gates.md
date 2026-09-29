@@ -51,7 +51,9 @@ arms loaded the two hybrid files, not the overlay loader.
    the one the 2026-09-27 rows ran on (`0.2.35+sol.fc32da2.up.c8c7825` in
    `2026-09-27_finisher_grid.md`; today `0.2.36+sol.a4e0dd8.up.888b13e`, which
    took upstream's int8 attention commits), and core or the pack may differ
-   too. That is a candidate, not a finding, and nothing here tests it. Every arm above
+   too. That is a candidate, not a finding, and nothing here tests it. It is not
+   run-to-run noise: two loads of FastH3 on today's build render bit for bit the
+   same (`2026-09-29_overlay_loader_render.md`). Every arm above
    except the rerun is read against yesterday's rows, so a shift of the
    rerun's size is inside every difference the table calls small.
 4. **What this cannot say.** The no-gates arm also drops VSA's coarse branch
