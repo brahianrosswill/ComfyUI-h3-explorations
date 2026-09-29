@@ -3128,6 +3128,12 @@ precision, and this entry closes without being built.
 
 ## 48. Does FastH3's late-block backbone add anything to fl2va plus its gates
 
+**Read 2026-09-29 (owner, blind, six pairs): no arm is clearly different from gates alone.** Late (blocks 30-49) took
+two preferences to none with one tie, early (0-29) two to one, nearly all described as slight, audio the same
+throughout; the arms and the depth are not separated, and no FastH3-as-released arm was in the session
+(`../bench/results/2026-09-29_fasth3_late_blocks.md`). The gates-alone reading stands, untested against FastH3 itself;
+the entry stays held with the FastH3 mutant.
+
 Added 2026-09-29 (mutantdude, from a transplant brainstorm h3dude asked for at
 the owner's request; board directions `transplant-*`). **Held** with the FastH3
 mutant: the owner put it on hold on 2026-09-29, so nothing here starts until it

@@ -15,6 +15,16 @@ artifact.
   records carry dated correction notes from `mrblue`'s verification
   (`2026-09-29_ref2va_partition_delta_verify.md`, `2026-09-29_ref2va_block49_verify.md`).
 
+## 0.178.2
+
+### Added
+
+- #48 read by the owner, blind, on the lean pairs-only form: no arm is clearly
+  different from gates alone, and late against early does not separate
+  (`bench/results/2026-09-29_fasth3_late_blocks.md` and its verdict JSON).
+  `docs/open_experiments.md` #48 carries the result; it stays held with the FastH3
+  mutant.
+
 ## 0.178.1
 
 ### Added
