@@ -3223,6 +3223,12 @@ projections on fl2va's basis. `h3_config.MODELS` describes it as "fl2va
 everywhere except the adaln projections". No clean set swap of this pair is
 named in `h3_config` or in the records I read.
 
+- **Built 2026-09-29 (owner approved the disk), not rendered:**
+  `h3_research/hybrid__fl2va-weights__plus-ref2va-timestep-set__int8.safetensors`
+  and `h3_research/hybrid__ref2va-weights__plus-fl2va-timestep-set__int8.safetensors`
+  in `models/diffusion_models`, about 21 GB each. The tool reopened each and
+  confirmed the 103 swapped tensors equal the donor's and 42 sampled others equal
+  the backbone's, byte for byte. Rendering them is still the owner's call.
 - **How it gets built, once the owner agrees, with no new code:**
   `python bench/build_adaln_swap.py --backbone <fl2va pruned> --donor <ref2va pruned> --out <new>`
   gives fl2va's backbone with ref2va's whole timestep set; swap the two paths

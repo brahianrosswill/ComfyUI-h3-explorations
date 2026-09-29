@@ -4,6 +4,15 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.177.1
+
+### Added
+
+- Two clean timestep-set swaps of fl2va and ref2va, built for #50 with
+  `bench/build_adaln_swap.py` (owner approved the disk): fl2va's weights with
+  ref2va's whole timestep set, and the reverse, in `h3_research/`. Each was
+  verified byte for byte by the tool and neither has been rendered.
+
 ## 0.177.0
 
 ### Added
