@@ -41,15 +41,17 @@ arms loaded the two hybrid files, not the overlay loader.
    sits next to FastH3 on detail, chroma, contrast and moved share, and FastH3
    without its gates sits next to plain fl2va. By the manifest's own
    falsifier (hf within 10% of FastH3 on all three scenes) fl2va plus gates
-   passes, and FastH3 without gates does not on look_anchor.
+   passes, and FastH3 without gates does not on any of them.
 2. **hf alone does not separate the arms on slapstick**: plain fl2va is within
    10% of FastH3 there. The reading above rests on detail, chroma, contrast and
    moved share, where the pairing holds on all three scenes.
 3. **The rerun is close on tone, not identical.** Today's FastH3 differs from
    yesterday's clip (`2026-09-29_gates_look_anchor_divergence.json`), while its
-   tone measures agree to a few percent. The kitchen was rebuilt between them
-   (upstream's int8 attention changes came in with the merge); that is a
-   candidate, not a finding, and nothing here tests it. Every arm above
+   tone measures agree to a few percent. The kitchen build differs from
+   the one the 2026-09-27 rows ran on (`0.2.35+sol.fc32da2.up.c8c7825` in
+   `2026-09-27_finisher_grid.md`; today `0.2.36+sol.a4e0dd8.up.888b13e`, which
+   took upstream's int8 attention commits), and core or the pack may differ
+   too. That is a candidate, not a finding, and nothing here tests it. Every arm above
    except the rerun is read against yesterday's rows, so a shift of the
    rerun's size is inside every difference the table calls small.
 4. **What this cannot say.** The no-gates arm also drops VSA's coarse branch
@@ -70,7 +72,7 @@ arms loaded the two hybrid files, not the overlay loader.
   if today's changes touched the path): **not exact**; within a few percent on
   tone. Whether that is the floor or a change on this path is not known.
 - **Falsifier**: the gates arm meets its branch (hf within 10% on all three
-  scenes) and the no-gates arm does not on look_anchor. Read with point 2.
+  scenes) and the no-gates arm does not on any scene. Read with point 2.
 
 ## What it decides
 
