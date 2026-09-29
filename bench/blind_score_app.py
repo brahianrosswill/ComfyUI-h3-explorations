@@ -113,6 +113,16 @@ PAIR_RUBRIC = [
              "the tally counts them apart."},
 ]
 
+_INTRO = ("Nothing on this page says which arm a clip came from. Start on the\n  pairs: say what differs between the two halves and which way it goes. A pair plays\n  the audio of the half you select (Hear: Clip 1 / Clip 2), from that half's own clip,\n  in sync with the stack; hear both before a verdict. The singles are for anything\n  wrong with one clip on its own. Answers are held in this browser; export when you\n  are done.")
+
+_INTRO_PAIRS_ONLY = (
+    "Nothing on this page says which arm a clip came from. Each item is two clips "
+    "stacked, Clip 1 and Clip 2, in a random order. Use Hear to play each half's "
+    "sound, then answer: which would you rather have received for this prompt, or "
+    "the same. Picture and sound both count. Two different samples always differ "
+    "somewhere, so choose the same when you would not care which one you got. "
+    "Answers are held in this browser; export when you are done.")
+
 _VALID_TYPES = {"scale", "flag", "text", "choice", "tags"}
 
 
@@ -152,13 +162,16 @@ def _js_safe(payload: dict) -> str:
 
 def write_score_app(batch: Path | str, rubric: list[dict] | None = None,
                     brief: str | None = None, out: Path | str | None = None,
-                    pair_rubric: list[dict] | None = None) -> Path:
+                    pair_rubric: list[dict] | None = None,
+                    pairs_only: bool = False) -> Path:
     """Render `score.html` into a blind batch directory and return its path.
 
     `batch` is the directory `blind_batch.py` wrote. `rubric` is the loaded
     singles rubric (default: `bench/rubrics/default.json`); `pair_rubric`
     defaults to `PAIR_RUBRIC`. `brief` is the session's brief text, shown
-    collapsed at the top of the page.
+    collapsed at the top of the page. `pairs_only` leaves the singles out of the
+    scoring page: they stay in the batch as the audio each half plays, but the
+    judge is not asked about them, and the export says so.
     """
     batch = Path(batch)
     manifest_path = batch / "MANIFEST.json"
@@ -185,7 +198,8 @@ def write_score_app(batch: Path | str, rubric: list[dict] | None = None,
 
     payload = {
         "session": session,
-        "clips": clips,
+        "pairs_only": bool(pairs_only),
+        "clips": [] if pairs_only else clips,
         "pairs": pairs,
         "rubric": rubric if rubric is not None else load_rubric(),
         "pair_rubric": pair_rubric if pair_rubric is not None else PAIR_RUBRIC,
@@ -194,6 +208,7 @@ def write_score_app(batch: Path | str, rubric: list[dict] | None = None,
         "pair_audio": pair_audio,
     }
     html = (_TEMPLATE
+            .replace("__INTRO__", _INTRO_PAIRS_ONLY if pairs_only else _INTRO)
             .replace("__SESSION_TITLE__", session.replace("&", "&amp;").replace("<", "&lt;"))
             .replace("__APPDATA__", _js_safe(payload)))
     out = Path(out) if out else batch / "score.html"
@@ -288,12 +303,7 @@ textarea { width: 100%; font: inherit; color: var(--fg); background: var(--sunk)
 <body>
 <header>
   <h1>Blind scoring: <span id="sessname"></span></h1>
-  <p class="sub">Nothing on this page says which arm a clip came from. Start on the
-  pairs: say what differs between the two halves and which way it goes. A pair plays
-  the audio of the half you select (Hear: Clip 1 / Clip 2), from that half's own clip,
-  in sync with the stack; hear both before a verdict. The singles are for anything
-  wrong with one clip on its own. Answers are held in this browser; export when you
-  are done.</p>
+  <p class="sub">__INTRO__</p>
   <details id="briefbox"><summary>The brief</summary><pre id="brief"></pre></details>
   <details><summary>Keyboard</summary>
     <ul>
@@ -363,7 +373,10 @@ textarea { width: 100%; font: inherit; color: var(--fg); background: var(--sunk)
     if (!bucket[it.name]) { bucket[it.name] = {}; }
     return bucket[it.name];
   }
-  function isRequired(q) { return q.required === true || q.type === "scale" || q.type === "choice"; }
+  function isRequired(q) {
+    if (q.required === false) { return false; }
+    return q.required === true || q.type === "scale" || q.type === "choice";
+  }
   function empty(v) {
     return v === undefined || v === null || v === "" ||
            (Array.isArray(v) && !v.length) ||
@@ -700,6 +713,7 @@ textarea { width: 100%; font: inherit; color: var(--fg); background: var(--sunk)
     });
     return {
       session: DATA.session,
+      pairs_only: !!DATA.pairs_only,
       scored_at: new Date().toISOString().replace(/\.\d+Z$/, "Z"),
       rubric: DATA.rubric,
       pair_rubric: DATA.pair_rubric,
@@ -770,6 +784,9 @@ def main() -> int:
                     help="the blind batch directory blind_batch.py wrote (holds MANIFEST.json)")
     ap.add_argument("--rubric", default=None,
                     help=f"singles rubric JSON; default {DEFAULT_RUBRIC.relative_to(REPO)}")
+    ap.add_argument("--pairs-only", action="store_true",
+                    help="score the pairs only; the singles stay in the batch as each "
+                         "half's audio and are not shown to the judge")
     ap.add_argument("--pair-rubric", default=None,
                     help="pair rubric JSON; default is this file's PAIR_RUBRIC")
     ap.add_argument("--brief-file", default=None,
@@ -780,7 +797,8 @@ def main() -> int:
     try:
         brief = Path(args.brief_file).read_text() if args.brief_file else None
         out = write_score_app(args.batch, load_rubric(args.rubric), brief, args.out,
-                              load_rubric(args.pair_rubric) if args.pair_rubric else None)
+                              load_rubric(args.pair_rubric) if args.pair_rubric else None,
+                              pairs_only=args.pairs_only)
     except (ValueError, FileNotFoundError) as exc:
         sys.exit(f"refuse: {exc}")
     print(f"wrote {out.name} into {out.parent}")

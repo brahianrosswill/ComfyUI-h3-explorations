@@ -69,6 +69,8 @@ UNSURE = "can't tell"
 
 
 def _required(q: dict) -> bool:
+    if q.get("required") is False:
+        return False
     return q.get("required") is True or q.get("type") in ("scale", "choice")
 
 
@@ -192,12 +194,23 @@ def main() -> int:
                 out.append(f"{name}: blank {', '.join(blank)}")
         return out
 
-    missing = gaps(got_pairs, pair_key, pair_rubric) + gaps(got_clips, clip_key, rubric)
+    # A pairs-only page (`blind_score_app.py --pairs-only`) never asked about the
+    # singles, which stay in the batch as each half's audio; the export says so.
+    pairs_only = bool(scores.get("pairs_only"))
+    missing = gaps(got_pairs, pair_key, pair_rubric)
+    if not pairs_only:
+        missing += gaps(got_clips, clip_key, rubric)
     if missing and not args.partial:
         sys.exit("refuse: the scores do not cover the batch:\n  " + "\n  ".join(missing) +
                  "\npass --partial to join anyway")
 
     # ---- pairs, grouped by contest ---------------------------------------
+    # The tally is the `verdict` question. A rubric with several choice questions
+    # (the lean pair rubric adds `audio`) tallies only that one and keeps the rest
+    # per pair and per contest; a rubric with a single choice question of any id
+    # is read as its verdict, as every earlier session was.
+    choice_ids = [q["id"] for q in pair_rubric if q["type"] == "choice"]
+    verdict_id = "verdict" if "verdict" in choice_ids else (choice_ids[0] if choice_ids else None)
     contests: dict[str, dict] = {}
     by_pair = []
     for name in sorted(pair_key):
@@ -225,7 +238,14 @@ def main() -> int:
             v = a.get(q["id"])
             if _blank(v):
                 continue
-            if q["type"] == "choice":
+            if q["type"] == "choice" and q["id"] != verdict_id:
+                slot = _slot_from_verdict(str(v))
+                arm_won = slots[slot]["label"] if slot else None
+                row.setdefault("choices", {})[q["id"]] = {"answer": v, "preferred_arm": arm_won}
+                other = c.setdefault("other_choices", {}).setdefault(q["id"], {})
+                bucket = arm_won or ("n/a" if "listen" in str(v) else _tally_bucket(str(v)))
+                other[bucket] = other.get(bucket, 0) + 1
+            elif q["type"] == "choice":
                 row["verdict"] = v
                 slot = _slot_from_verdict(str(v))
                 if slot:
@@ -318,6 +338,7 @@ def main() -> int:
         "scored_at": scores.get("scored_at"),
         "jsonl": keydoc.get("jsonl"),
         "shuffle_seed": keydoc.get("shuffle_seed"),
+        "pairs_only": pairs_only,
         "partial": bool(missing),
         "not_covered": missing,
         "rubric": rubric,
@@ -356,6 +377,11 @@ def _print_summary(record: dict, rubric: list[dict]) -> None:
                 tags = c["tags_by_arm"].get(arm)
                 if tags:
                     print(f"    tags {arm}: " + ", ".join(f"{k} {v}" for k, v in sorted(tags.items())))
+            for qid, tally in sorted((c.get("other_choices") or {}).items()):
+                print(f"    {qid}: " + ", ".join(f"{k} {v}" for k, v in sorted(tally.items())))
+            broken = [r["pair"] for r in pairs["by_pair"] if r["contest"] == cname and r.get("flags")]
+            if broken:
+                print(f"    flagged broken: {', '.join(broken)}")
             n_notes = len(c["notes"])
             if n_notes:
                 print(f"    {n_notes} free-text note{'' if n_notes == 1 else 's'} in the record")

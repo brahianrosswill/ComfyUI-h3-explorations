@@ -1,0 +1,12 @@
+[
+ {"id": "verdict", "label": "Which would you rather have received for this prompt?",
+  "type": "choice", "options": ["Clip 1 better", "Clip 2 better", "same"],
+  "help": "Judge the whole clip, picture and sound, against the prompt in the brief. Pick 'same' when you would not care which one you got; you do not have to find a difference. Two different samples always differ somewhere, so the question is whether it matters."},
+ {"id": "audio", "label": "Audio, only if you listened", "type": "choice", "required": false,
+  "options": ["Clip 1 better", "Clip 2 better", "same", "didn't listen"],
+  "help": "Clearer, better level, better synced with the picture. Use Hear above to play each half's sound."},
+ {"id": "why", "label": "Why, in a line (optional)", "type": "text",
+  "help": "Name the defect and the clip it is on: 'Clip 2's sign text melts by the end.' Skip it when the two are the same."},
+ {"id": "broken", "label": "Something is broken in one or both clips", "type": "flag",
+  "help": "Garbage, a hard cut, a frozen figure, missing or desynced audio. Leave off if nothing is."}
+]

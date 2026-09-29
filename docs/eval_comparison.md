@@ -451,6 +451,38 @@ texture in the dark, on-screen text.
 (paste the textarea into a file if the download is refused), and say it is
 there; `bench/score_session.py` does the rest.
 
+### The lean pairs-only session (2026-09-29, owner)
+
+The page above asks for a free-text difference, per-half tags and a verdict on
+every pair, then asks again about each single. The owner found that slow and
+unclear, and the two per-half `same` and `can't tell` tags meaningless on their
+own (they are, as item 4 above says). For a comparison whose question is "does
+this arm change what I would rather watch", use the lean form:
+
+- `bench/blind_score_app.py --pairs-only --pair-rubric bench/rubrics/pair_preference.json`
+  scores the pairs only. The singles stay in the batch as each half's audio and
+  are not shown to the judge; the export carries `pairs_only`, and
+  `bench/score_session.py` then does not ask for them.
+- One required question per pair: **which would you rather have received for
+  this prompt**, `Clip 1 better`, `Clip 2 better` or `same` (you would not care
+  which you got). It is the standard forced-choice preference with a tie option,
+  over picture and sound together. `can't tell` is gone: it separated "looked and
+  did not care" from "no judgement possible" and the judge could not tell them
+  apart either. A run of `same` is the arm being free.
+- Optional: an audio preference (`didn't listen` is an answer), one line on why,
+  and a flag for something broken in either clip. No per-half tags, no scales.
+- The joiner tallies only the `verdict` question; `audio` is kept per pair and
+  per contest (`other_choices`), `broken` per pair.
+- Build it with one `--pairs` per contest, then regenerate the page with the flags
+  above (`blind_batch.py` writes the default page). When the arms have one row per
+  scene, the labels are per scene and so are the contests: read the aggregate over
+  scenes by arm from `by_pair`. The blinding, the sealed key and the
+  score-before-unblinding rule are unchanged, and so is the different-sample rule:
+  a preference over distributions, one pair per scene is one sample.
+- Not built: an identical-clip control pair (the same clip on both sides, which
+  should come back `same`), the usual way to see how often a judge picks a side
+  by position alone. It needs a duplicate of an arm's output on the share.
+
 ### Predictions before the verdict: the PDD bake pair as the worked example
 
 A session's brief should say, before anyone scores, what the arm changes,

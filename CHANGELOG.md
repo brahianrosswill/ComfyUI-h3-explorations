@@ -15,6 +15,26 @@ artifact.
   records carry dated correction notes from `mrblue`'s verification
   (`2026-09-29_ref2va_partition_delta_verify.md`, `2026-09-29_ref2va_block49_verify.md`).
 
+## 0.178.0
+
+### Added
+
+- A lean pairs-only scoring form for a blind session
+  (`bench/blind_score_app.py --pairs-only`, `bench/rubrics/pair_preference.json`;
+  `docs/eval_comparison.md`, "The lean pairs-only session"): one required
+  preference per pair (`Clip 1 better`, `Clip 2 better`, `same`), optional audio
+  preference, one line and a broken flag; no singles, no per-half tags.
+  `bench/score_session.py` reads it: a pairs-only export needs no singles, an
+  optional question (`"required": false`) may be blank, and only the `verdict`
+  question is the tally, other choice questions being kept beside it. A rubric
+  with a single choice question is read as before. Tested on a synthetic batch in
+  headless Chrome and through the joiner; a full-rubric export still refuses when
+  singles are unscored.
+- #48's nine renders (`bench/results/2026-09-29_fasth3_late_blocks.jsonl`): no
+  errors, no cache hits; sampler about 202 s on the 345-frame scenes and about
+  122 s on `radio_drama`. Blinded as the session `fasth3_late_blocks` (six pairs,
+  nine clips), not yet scored.
+
 ## 0.177.1
 
 ### Added
