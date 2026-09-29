@@ -2403,7 +2403,8 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
             g2 = build_api(task, sage=sage, prompt=prompt, length=length, seed=seed,
                            sol=(sol_for_graph(False, FLASHGEN_STEPS) if sol is not None else None),
                            sol_impl=sol_impl, dense_backend=dense_backend,
-                           lora=(FLASHGEN_R64_LORA, FLASHGEN_STRENGTH), lora_branch=True,
+                           lora=(FLASHGEN_R64_REF2VA_LORA if task == "r2v" else FLASHGEN_R64_LORA,
+                                 FLASHGEN_STRENGTH), lora_branch=True,
                            lora_blocks=step_switch_blocks,
                            steps=FLASHGEN_STEPS, sampler_name=FLASHGEN_SAMPLER,
                            manual_sigmas=pass2_sigmas, unet=unet, clip=clip, **canvas)
@@ -5544,6 +5545,28 @@ def main():
               step_switch_sigmas=STEP_SWITCH_FASTH3[k][1], step_switch_shift=STEP_SWITCH_FASTH3[k][2],
               out_prefix=f"Video/h3_probe_t2v_step_switch_pdd8_fasth3_{k}"),
          f"step switch: PDD8 to 0.8, then FastH3's checkpoint at {STEP_SWITCH_FASTH3[k][1].split(',')[0]} "
+         f"(shift {STEP_SWITCH_FASTH3[k][2]['shift_video']:g}/3) finishing")
+        for k in STEP_SWITCH_FASTH3)
+    # The same two finishes on ref2va (2026-09-29, the owner): PDD8 on ref2va
+    # with one reference image, then FlashGen's ref2va LoRA (the control) or
+    # FastH3's own checkpoint, which is fl2va-derived and has never seen a
+    # reference token: an untrained transfer, like FlashGen on ref2va.
+    _r2v_switch = dict(ref_images=MARKET_REF_IMAGES, ref_image_count=1, pdd=True, sampler_name="euler",
+                       lora=(PDD_REF2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS,
+                       manual_sigmas=STEP_SWITCH_REV["h080"][0], step_switch=True)
+    _reverse = _reverse + (
+        ("h3_probe_r2v_step_switch_pdd8_flashgen_h080.json", "r2v-step-switch-pdd8-flashgen-h080", "r2v",
+         MARKET_REF2V_PROMPT,
+         dict(_r2v_switch, step_switch_to="flashgen", step_switch_sigmas=STEP_SWITCH_REV["h080"][1],
+              out_prefix="Video/h3_probe_r2v_step_switch_pdd8_flashgen_h080"),
+         "market scene as ref2va: PDD8 to 0.8, then FlashGen finishing"),
+    ) + tuple(
+        (f"h3_probe_r2v_step_switch_pdd8_fasth3_{k}.json", f"r2v-step-switch-pdd8-fasth3-{k}", "r2v",
+         MARKET_REF2V_PROMPT,
+         dict(_r2v_switch, step_switch_to="fasth3", step_switch_sigmas=STEP_SWITCH_FASTH3[k][1],
+              step_switch_shift=STEP_SWITCH_FASTH3[k][2],
+              out_prefix=f"Video/h3_probe_r2v_step_switch_pdd8_fasth3_{k}"),
+         f"market scene as ref2va: PDD8 to 0.8, then FastH3's checkpoint at {STEP_SWITCH_FASTH3[k][1].split(',')[0]} "
          f"(shift {STEP_SWITCH_FASTH3[k][2]['shift_video']:g}/3) finishing")
         for k in STEP_SWITCH_FASTH3)
     # PDD8 finished by the undistilled base (open_experiments #37, 2026-09-27):

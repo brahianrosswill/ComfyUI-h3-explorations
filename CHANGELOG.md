@@ -4,6 +4,19 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.172.2
+
+### Added
+
+- ref2va finishers: `h3_probe_r2v_step_switch_pdd8_{flashgen_h080,fasth3_s10,fasth3_s12}`
+  and their `_savelat` twins. PDD8 on ref2va with one reference image to
+  sigma 0.8, then FlashGen's ref2va LoRA (control) or FastH3's checkpoint,
+  which is fl2va-derived and has never seen a reference token. The FlashGen
+  finish branch now picks the ref2va LoRA for r2v tasks; existing graphs are
+  unchanged. `bench/check_distill_settings.py` grades the ref2va pairs.
+- Rows for the t2v and ref2va finisher renders:
+  `bench/results/2026-09-29_pdd8_fasth3_finish.jsonl` and `..._r2v.jsonl`.
+
 ## 0.172.1
 
 ### Added

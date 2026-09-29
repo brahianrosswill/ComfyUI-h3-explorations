@@ -328,7 +328,8 @@ def main():
             nodes_all = [n for n in doc.values() if isinstance(n, dict)]
             unets_all = {n["inputs"].get("unet_name") for n in nodes_all
                          if n.get("class_type") == "UNETLoader"}
-            if (cfg.MODELS["unet_fasth3_v2"] in unets_all and set(found.loras) == {cfg.PDD_FL2VA_LORA}
+            if (cfg.MODELS["unet_fasth3_v2"] in unets_all
+                    and set(found.loras) in ({cfg.PDD_FL2VA_LORA}, {cfg.PDD_REF2VA_LORA})
                     and any(n.get("class_type") == "DisableNoise" for n in nodes_all)):
                 # PDD8 then FastH3's own checkpoint (step_switch_to="fasth3"):
                 # the one LoRA is pass 1's, on fl2va. The pair and the shift
@@ -403,7 +404,8 @@ def main():
                     f"{path.name}: a PDD8-then-base switch must sample one of "
                     f"h3_config.STEP_SWITCH_BASE, has {manual}")
                 continue
-            if (set(found.loras) == {cfg.FLASHGEN_R64_LORA, cfg.PDD_FL2VA_LORA} and switched):
+            if (set(found.loras) in ({cfg.FLASHGEN_R64_LORA, cfg.PDD_FL2VA_LORA},
+                                     {cfg.FLASHGEN_R64_REF2VA_LORA, cfg.PDD_REF2VA_LORA}) and switched):
                 # A step switch (build_api(step_switch=True), either direction)
                 # loads both on purpose, one per pass. Its settings are one of the
                 # declared sigma pairs in h3_config.STEP_SWITCH_PAIRS, exactly.
