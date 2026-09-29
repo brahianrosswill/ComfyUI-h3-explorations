@@ -1,7 +1,7 @@
 # #36's gate dial, read again from the saved latents and measure records (2026-09-29)
 
 Second pass on `2026-09-29_fasth3_gate_dial.md` (h3dude). Script:
-`bench/check_gate_dial_reanalysis.py`; output: `2026-09-29_gate_dial_reanalysis.json`.
+`bench/analyze_gate_dial_reanalysis.py`; output: `2026-09-29_gate_dial_reanalysis.json`.
 CPU only, nothing rendered, one seed and one clip per arm as in the original.
 
 ## What holds
