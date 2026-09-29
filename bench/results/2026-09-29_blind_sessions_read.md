@@ -31,12 +31,13 @@ pass-1 latent.
 3. **FastH3 handles the reference on ref2va at `s12`.** The transfer was
    untrained (FastH3 has never seen a reference token) and the owner saw no
    loss against the FlashGen finish, on one scene and one clip.
-4. **So the shift matters, and the finish should run at PDD8's 12/3, not
-   FastH3's own 10/3.** Why `s10` is grainy is not tested here. The two arms
+4. **So, on this evidence (one scene each, two tasks), the finish should run at
+   PDD8's 12/3, not FastH3's own 10/3.** Why `s10` is grainy is not tested here. The two arms
    differ in shift, handoff sigma (0.769231 against 0.8) and the tail's rungs,
    and this session changed all three together. The audio was not the
-   difference: it was fine on `s10` and the same on `s12`, which the audio
-   sigma reasoning (`h3_config.STEP_SWITCH_FASTH3`) did not predict either way.
+   difference: it was fine on `s10`, as the audio sigma reasoning
+   (`h3_config.STEP_SWITCH_FASTH3`) had it exact there. The grain is in the
+   video.
 
 ## #35's arms, look_anchor
 
