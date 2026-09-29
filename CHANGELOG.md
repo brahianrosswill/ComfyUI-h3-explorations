@@ -4,6 +4,15 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.171.0
+
+### Added
+
+- `bench/measure_checkpoint_overlay.py`: how small an exact overlay of one
+  int8 H3 checkpoint on another would be (tensor bytes by category, changed
+  int8 codes, scales, and optionally the gates' rank). Run on FastH3 V2 and
+  #35's two hybrids against fl2va: `bench/results/2026-09-29_fasth3_overlay_size.md`.
+
 ## 0.170.0
 
 ### Added
