@@ -4,6 +4,23 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.175.0
+
+### Removed
+
+- `llmcompressor` as a dependency (owner, 2026-09-29: "llmcompressor is for awq
+  stuff - remove that dependency"). The nine bench files that imported it are
+  gone: `h3_awq_recipe.py`, `h3_gptq_recipe.py`, `h3_calibration_checkpoint.py`,
+  `pilot_sequential_feasibility.py`, `probe_awq_recipe_boundary.py`,
+  `probe_calibration_input_seam.py`, `prove_calibration_seam.py`,
+  `check_calibration_checkpoint.py` and `check_h3_gptq_recipe.py`, with
+  `compare_awq_scales.py`, which only read the pilot's output. The AWQ/GPTQ lane
+  was already closed (`docs/roadmap.md`); its records in `bench/results/` and its
+  research docs stay, and git has the code.
+- The two checks' rows in `docs/checks.md`; the six removed files the research
+  docs cite are declared absent in its `doc-link-absent` ledger, and the ten
+  markdown links that pointed at them read `removed 0.175.0`.
+
 ## 0.174.0
 
 ### Removed

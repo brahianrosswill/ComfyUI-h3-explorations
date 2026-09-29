@@ -34,7 +34,7 @@ call traces the model once, and that trace fixes which modalities exist for the
 whole run.
 
 Case identifiers refer to
-[`probe_calibration_input_seam.py`](../../../../bench/probe_calibration_input_seam.py);
+`bench/probe_calibration_input_seam.py` (removed 0.175.0);
 its output is
 [`2026-08-24_calibration_input_seam_probe.json`](../../../../bench/results/2026-08-24_calibration_input_seam_probe.json).
 Neither is part of the archived rejected

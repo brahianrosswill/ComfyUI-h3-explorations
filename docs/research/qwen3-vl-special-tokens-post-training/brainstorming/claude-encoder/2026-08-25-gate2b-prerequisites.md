@@ -55,7 +55,7 @@ Producers: [`h3_calibration_precision.py`](../../../../../bench/h3_calibration_p
 [`h3_attention_kernel.py`](../../../../../bench/h3_attention_kernel.py),
 [`check_attention_kernel.py`](../../../../../bench/check_attention_kernel.py),
 [`compare_transformers_comfy_layer50.py`](../../../../../bench/compare_transformers_comfy_layer50.py),
-[`pilot_sequential_feasibility.py`](../../../../../bench/pilot_sequential_feasibility.py).
+`bench/pilot_sequential_feasibility.py` (removed 0.175.0).
 Every report names the commit that wrote it. Fixtures are the four Gate 1B
 rows, rebuilt from the accepted pool on the current tree; the long-row
 population is the Gate 2A primary and stress bundles.

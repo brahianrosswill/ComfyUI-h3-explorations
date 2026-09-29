@@ -58,7 +58,7 @@ Reports, all under `bench/results/`:
 - [`2026-08-25_sdpa_backend_selection_primary.json`](../../../../../bench/results/archive/v2_encoder/2026-08-25_sdpa_backend_selection_primary.json)
 - [`2026-08-25_sdpa_backend_selection_stress.json`](../../../../../bench/results/archive/v2_encoder/2026-08-25_sdpa_backend_selection_stress.json)
 
-Producers: [`pilot_sequential_feasibility.py`](../../../../../bench/pilot_sequential_feasibility.py),
+Producers: `bench/pilot_sequential_feasibility.py` (removed 0.175.0),
 [`probe_sdpa_backend_selection.py`](../../../../../bench/probe_sdpa_backend_selection.py),
 [`build_native_h3_calibration_batch.py`](../../../../../bench/build_native_h3_calibration_batch.py).
 

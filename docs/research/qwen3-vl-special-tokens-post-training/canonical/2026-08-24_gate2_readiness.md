@@ -54,7 +54,7 @@ weights have been produced, and no absolute calibration population has been
 accepted.
 
 The committed Gate 2A producer is
-[`pilot_sequential_feasibility.py`](../../../../bench/pilot_sequential_feasibility.py).
+`bench/pilot_sequential_feasibility.py` (removed 0.175.0).
 The separate dispatch instrument is
 [`probe_sdpa_backend_selection.py`](../../../../bench/probe_sdpa_backend_selection.py).
 The corrected final result files are intentionally absent at this stopping

@@ -14,7 +14,7 @@ calibration. Those are not the same object, and the gap is structural rather
 than a matter of the metric Gate 5 chose.
 
 **SOURCE.** The quantization scheme targets `["Linear"]`.
-[`bench/h3_awq_recipe.py`](../../../../bench/h3_awq_recipe.py) says why the
+`bench/h3_awq_recipe.py` (removed 0.175.0) says why the
 embedding needs no ignore entry -- it is an `nn.Embedding`, never a target --
 and its boundary assertion checks that the embedding and the output head carry
 no scheme rather than trusting the pattern list. The vision tower, patch merger
@@ -395,7 +395,7 @@ distrusted before it is believed.
 establishes that the objective being minimised is layer-local: AWQ's loss
 compares one mapping's parent module against its quantized self, with no term
 anywhere for the layer-49 state H3 actually reads. GPTQ is the same shape --
-[`bench/h3_gptq_recipe.py`](../../../../bench/h3_gptq_recipe.py) describes it as
+`bench/h3_gptq_recipe.py` (removed 0.175.0) describes it as
 compensating against "the inverse Hessian of the layer's own input covariance",
 which is a *different* solver for the same local objective, not a wider one.
 So changing the calibration distribution changes **where** each layer's local
@@ -416,7 +416,7 @@ of shipped graphs rather than a stratified draw from a public dataset.
 
 The stronger reading -- per-layer solve against that layer's own observed input
 statistics -- is **already what GPTQ does**, and
-[`bench/h3_gptq_recipe.py`](../../../../bench/h3_gptq_recipe.py) exists. GPTQ
+`bench/h3_gptq_recipe.py` (removed 0.175.0) exists. GPTQ
 compensates rounding against the layer's own input covariance, which is the
 traced quantity. So this idea and the GPTQ card on the 2026-08-26 handoff are
 closer to the same experiment than they look, and running them as one arm --
@@ -425,7 +425,7 @@ cleanly from the v1/v2 pair, which varied neither.
 
 **Added after 52d5916, and it bounds the paragraph above rather than refuting
 it.** GPTQ's objective is layer-local too. Its own recipe module says so:
-[`bench/h3_gptq_recipe.py`](../../../../bench/h3_gptq_recipe.py) describes GPTQ
+`bench/h3_gptq_recipe.py` (removed 0.175.0) describes GPTQ
 as pushing each column's error into the columns it has not reached yet "using
 the inverse Hessian of **the layer's own input covariance**". So GPTQ changes
 *how* a layer's local error is minimised where AWQ only moves it between
