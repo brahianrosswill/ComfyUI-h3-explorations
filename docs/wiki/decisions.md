@@ -17,6 +17,16 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-09-29
 
+- **FastH3 finisher and FastH3 mutant: parked** (owner). No more FastH3-finisher
+  tests, and the FastH3 mutant (overlay plus loader, and shipped loader graphs)
+  is on hold, because FastH3 still requires its full weights. This records
+  what was tried, not a verdict on the method: PDD8 then FastH3 at 12/3 was
+  indistinguishable from the FlashGen finish by eye on one t2v and one ref2va
+  scene, and at 10/3 it was grainy
+  (`bench/results/2026-09-29_blind_sessions_read.md`). Whether FastH3's finish
+  adds anything on audio or motion was not measured. Built and kept: the
+  finisher graphs, the overlay and its loader. Board: `fasth3-finisher` and
+  `overlay-followups`, both parked.
 - **FastH3's look travels with its gates, not its backbone change** (#35,
   measured, not judged by eye). `2026-09-27_fasth3_swap.md` put the look in
   "its weights and gates" and could not say which; the gates arm answers:
