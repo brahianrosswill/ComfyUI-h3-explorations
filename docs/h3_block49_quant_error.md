@@ -124,7 +124,8 @@ misspelled sign, a chef appearing from nothing (section 6). Not blind,
 not a protocol; consistent in direction on every look.
 
 **An outside runtime treats the tail as sensitive too** (read 2026-09-15 in
-`coderef/TaoMate-H3`): TaoLiveAIGC's TaoMate-H3 runs
+`coderef/TaoMate-H3`; TaoMate is deprecated as of 2026-09-27, so this is history, not
+a live reference): TaoLiveAIGC's TaoMate-H3 runs
 H3 with W8A8 on the linears but keeps the first two and last three blocks
 in bf16 -- `resolve_h3_cutlass_w8a8_policy` protects blocks 0, 1, 47, 48
 and 49, and quantizes only `qkv_proj` and `fc1` of the interior blocks. That

@@ -55,7 +55,9 @@ news at least once. Three facts every session acts on:
 Rules with no other home. The tenet behind each is in `VISION.md`.
 
 - **Closed lanes stay closed** unless the owner reopens them. `docs/roadmap.md`
-  "Closed lanes" lists them.
+  "Closed lanes" lists them. **TaoMate-H3 is deprecated** (owner, 2026-09-27,
+  said again 2026-09-29): cite it as history only, never as a live reference, a
+  target or a source of evidence for a choice here.
 - **Every walker goes through `workflows/h3_config.py::graph_paths`** and the
   set it walks is `GRAPH_DIRS`. Enforced by `bench/check_graph_discovery.py`.
 - **Never hand-edit `workflows/*.json`.** `workflows/build_workflows.py`

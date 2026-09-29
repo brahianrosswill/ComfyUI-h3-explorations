@@ -4,6 +4,14 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.172.3
+
+### Added
+
+- `bench/analyze_refiner_requant.py`: fl2va's bf16 token refiner requantized in
+  FastH3's declared int8 convrot format against FastH3's own refiner, with a
+  round-trip control (`bench/results/2026-09-29_refiner_requant.md`).
+
 ## 0.172.2
 
 ### Added
@@ -16,14 +24,6 @@ artifact.
   unchanged. `bench/check_distill_settings.py` grades the ref2va pairs.
 - Rows for the t2v and ref2va finisher renders:
   `bench/results/2026-09-29_pdd8_fasth3_finish.jsonl` and `..._r2v.jsonl`.
-
-## 0.172.2
-
-### Added
-
-- `bench/analyze_refiner_requant.py`: fl2va's bf16 token refiner requantized in
-  FastH3's declared int8 convrot format against FastH3's own refiner, with a
-  round-trip control (`bench/results/2026-09-29_refiner_requant.md`).
 
 ## 0.172.1
 

@@ -32,7 +32,7 @@ placeholder, not a recommendation.
 | blocks | linears | status | evidence |
 |---|---|---|---|
 | all | int8 convrot (`qkv_proj`, `out_proj`, `fc1`, `fc2`) | shipped | inherited; no sensitivity measurement exists here |
-| tail | bf16? | unmeasured | TaoMate protects 0, 1, 47, 48, 49 on its W8A8 path; near-miss against our loud set, and a different surface |
+| tail | bf16? | unmeasured | TaoMate (deprecated, history only) protected 0, 1, 47, 48, 49 on its W8A8 path; near-miss against our loud set, and a different surface |
 
 ## LoRAs on the int8 checkpoints (2026-09-26)
 
