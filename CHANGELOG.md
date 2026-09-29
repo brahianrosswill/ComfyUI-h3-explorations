@@ -4,6 +4,16 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.176.4
+
+### Changed
+
+- `docs/open_experiments.md` #48 to #50 say how each gets built (the existing
+  overlay arm and one new entry; the w6a8 download, `build_gate_transplant.py`
+  and a manifest; `build_adaln_swap.py` with the time embedder added), and the
+  board directions carry the same. No code was written; the FastH3 mutant is on
+  hold.
+
 ## 0.176.3
 
 ### Added

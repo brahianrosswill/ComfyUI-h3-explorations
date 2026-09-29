@@ -3156,6 +3156,14 @@ with the gates on, so this needs no new code.
   itself (two few-step schedules), and any LoRA merged into int8 (the requant
   record). None of these were rendered.
 - **Blocker:** the owner's hold, and his eye for the pair.
+- **How it gets built:** no new checkpoint and no new node. The overlay
+  `fasth3_v2_on_fl2va.h3overlay.safetensors` exists. Arm A is the existing
+  `overlay_gates` arm of `../bench/make_overlay_loader_graphs.py`. Arm B is one
+  new entry there (`blocks` "30-49", gates on, refiner, adaln and io off), and
+  an optional control takes `blocks` "0-29". A manifest modelled on
+  `../bench/fasth3_gates_arms.json` drives `../bench/run_graph_arms.py` on the
+  same contract harness graph, scenes and seed. The loader graphs belong to
+  h3dude (board `overlay-followups`, item c), so coordinate before editing.
 
 ## 49. FastH3's gate tensors on the w6a8 fl2va file
 
@@ -3171,6 +3179,16 @@ overlay's code diffs they do not depend on the int8 codes underneath.
 - **First step, and the blocker:** w6a8 has never run here. Its load, sampler
   time and look on the owner's 4090 against int8 convrot are unmeasured, and
   nothing else in this entry means anything until they are.
+- **How it gets built:** the w6a8 file is not on disk (`diffusion_models` holds
+  w4a8_mixed and fp8_scaled, no w6a8), so a download of about 16 GB comes first,
+  which is the owner's to approve. Then w6a8 alone against int8 convrot (load,
+  sampler time, peak VRAM, look). Then
+  `python bench/build_gate_transplant.py --add --base <w6a8> --donor <FastH3 V2 int8> --out <new>`:
+  it streams the base and appends the 150 gate tensors byte for byte, reopens the
+  output and compares. It was written for int8 bases, so its behaviour on w6a8 is
+  untested. Then confirm core places all 50 gates (the `check_vsa_core_patch.py`
+  style test), record the core commit, and render the contract harness against the
+  int8 fl2va-plus-gates arm. Code needed: a manifest, unless the build fails.
 
 ## 50. One partition's timestep path onto the other, fl2va and ref2va
 
@@ -3189,6 +3207,17 @@ is not known.
 - **First step, CPU only:** list which tensors each hybrid swapped (records in
   `../bench/results/2026-08-20_ref_transfer_single.jsonl` and
   `../bench/results/archive/lora_compare/`), and read what those renders showed.
+- **How it gets built, once the owner agrees:** header-diff the hybrids already
+  on disk (`minimax_h3_hybrid_fl2va_ref2va_adaln_all-int8`, `b15-49`, `b20-49`,
+  `b25-49`, `b30-49`) against the two pruned files with
+  `../bench/analyze_checkpoint_delta.py`'s header reader. The current swap tool,
+  `../bench/build_adaln_swap.py`, moves `adaln_t_table` plus every
+  `adaln_proj.linear` weight and bias; `time_embedder.proj_in` and `proj_out` are
+  not in that set. If the August hybrids used the same set (unverified), the time
+  embedder is untested, and a new hybrid needs `is_conditioning` extended with
+  those two tensors, for example behind an `--include-time-embedder` flag: about
+  a dozen lines. Build on the pruned int8 files, render against plain ref2va and
+  plain fl2va on the reference scenes, and the owner judges.
 - **What it changes:** whether reports about ref2va localise to the timestep
   path, and so whether `ref2va-investigation` has a lead.
 - **Confidence:** a hunch.
