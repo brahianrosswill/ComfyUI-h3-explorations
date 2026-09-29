@@ -31,6 +31,9 @@ runs the tool each prediction names
   FastH3 as the reference against fl2va plus FastH3's gates, FastH3 without
   them, today's FastH3 rerun and the swap batch's plain fl2va: tone,
   temporal and divergence, as `swap`.
+- `dial`: #36 (`bench/fasth3_gate_dial_arms.json`). Per scene, FastH3 at gate
+  scale 1 (the loader's bit-exact `overlay_all`) against scales 0.75, 0.5 and
+  0: tone, temporal, resolution and divergence, as `gates`.
 - `transplant`: FlashGen on block ranges (`bench/flashgen_transplant_arms.json`,
   fastdude's, its own rows file). Per scene, full FlashGen from the rerun and
   the 0-49, 0-33 and 34-49 arms: tone and temporal on the clips, and
@@ -119,9 +122,9 @@ def run(tool: str, args: list, json_out: Path):
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--group", action="append",
-                    choices=("looks", "ladder", "vsa", "spec", "reverse", "swap", "transplant", "late_switch", "grid", "fg46", "gates"))
+                    choices=("looks", "ladder", "vsa", "spec", "reverse", "swap", "transplant", "late_switch", "grid", "fg46", "gates", "dial"))
     args = ap.parse_args()
-    groups = args.group or ["looks", "ladder", "vsa", "spec", "reverse", "swap", "transplant", "late_switch", "grid", "fg46", "gates"]
+    groups = args.group or ["looks", "ladder", "vsa", "spec", "reverse", "swap", "transplant", "late_switch", "grid", "fg46", "gates", "dial"]
     out_root = comfy_output()
     if not ROWS.exists():
         print(f"no rows yet: {ROWS.relative_to(REPO)} does not exist")
@@ -208,7 +211,11 @@ def main() -> int:
             # #35: fl2va plus FastH3's gates, FastH3 minus them, today's rerun
             # of FastH3, and the swap batch's plain fl2va on the same harness.
             ("gates", "2026-09-29_fasth3_gates.jsonl", "fasth3",
-             ("fl2va_gates", "fasth3_nogates", "fasth3_rerun", "fl2va_contract"), "2026-09-29")):
+             ("fl2va_gates", "fasth3_nogates", "fasth3_rerun", "fl2va_contract"), "2026-09-29"),
+            # #36: the gate dial, FastH3 through the overlay loader (alpha 1 is
+            # bit-exact FastH3) with the gate row scales times 0.75, 0.5 and 0.
+            ("dial", "2026-09-29_fasth3_gate_dial.jsonl", "overlay_all",
+             ("g075", "g050", "g000"), "2026-09-29")):
         if group not in groups:
             continue
         landed = rows(OUT / rows_file)
@@ -227,7 +234,7 @@ def main() -> int:
                 print(f"== {group}: {scene} temporal")
                 run("measure_clip_temporal.py", [*got, "--stride", "4"],
                     OUT / f"{day}_{group}_{scene}_temporal.json")
-            if group in ("late_switch", "grid", "fg46", "gates"):
+            if group in ("late_switch", "grid", "fg46", "gates", "dial"):
                 print(f"== {group}: {scene} resolution")
                 run("measure_clip_resolution.py", got, OUT / f"{day}_{group}_{scene}_resolution.json")
             if lats[0] and any(lats[1:]):
