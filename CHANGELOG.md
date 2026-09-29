@@ -22,6 +22,16 @@ artifact.
   re-derived from the graph's own size policy; the original is kept beside it as
   `manifest.json.before_reference_fix`. All eight captures pass the new check.
 
+## 0.176.3
+
+### Added
+
+- `docs/open_experiments.md` #48 to #50, from a transplant brainstorm: FastH3's
+  late-block backbone on fl2va plus gates, the gate tensors on the w6a8 file,
+  and one partition's timestep path onto the other. All held or waiting on the
+  owner; nothing was built or rendered. Board directions `transplant-*` carry
+  the same.
+
 ## 0.176.2
 
 ### Fixed

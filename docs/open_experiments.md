@@ -1,6 +1,6 @@
 # Open experiments
 
-Last updated: 2026-09-27 (#33 closed; #34 to #46 added); #28 status 2026-09-19; otherwise 2026-09-11
+Last updated: 2026-09-29 (#48 to #50 added); 2026-09-27 (#33 closed; #34 to #46 added); #28 status 2026-09-19; otherwise 2026-09-11
 
 > **Several of these are now scheduled rather than parked.** The working plan
 > and the render scenes that would settle the quality-blocked ones live in
@@ -3125,3 +3125,70 @@ precision, and this entry closes without being built.
 - **Decision it changes:** only whether the image-conditioned distill graphs
   keep `ENCODER_INT8`. That is unlikely to move given the base-DiT result.
 - **Blocker:** the floor arm's result, then the owner's go.
+
+## 48. Does FastH3's late-block backbone add anything to fl2va plus its gates
+
+Added 2026-09-29 (mutantdude, from a transplant brainstorm h3dude asked for at
+the owner's request; board directions `transplant-*`). **Held** with the FastH3
+mutant: the owner put it on hold on 2026-09-29, so nothing here starts until it
+is reopened.
+
+#35 found that fl2va plus FastH3's 50 gate tensors reproduces FastH3's look and
+FastH3 without them does not (`../bench/results/2026-09-29_fasth3_gates.md`).
+What is left is whether any of FastH3's backbone change adds to that. The only
+structure in it is at the ends (blocks 0, 43 and 49 in
+`../bench/results/2026-09-29_fasth3_bf16_rank.md`), and FastH3 and FlashGen
+agree in blocks 30 to 49 (`../bench/results/2026-09-26_fasth3_weights.md`
+finding 5). `MiniMaxH3OverlayLoader`'s `blocks` input already selects a range
+with the gates on, so this needs no new code.
+
+- **Arms:** fl2va plus gates, against the same plus FastH3's backbone diff on
+  blocks 30-49, same seed and scene, on the contract harness.
+- **What it changes:** if the second arm looks the same, the shippable piece is
+  the gates alone (`fl2va_plus_gates_on_fl2va.h3overlay`, small) and the
+  backbone diff is dead weight. If not, the late blocks are the piece to keep.
+- **Confidence:** the structure is measured; any quality difference is a hunch.
+  A low-rank adapter for blocks 43 and 49 alone is `fasth3-adapter` on the
+  board, parked ("an end-blocks-only adapter has no case").
+- **Ruled out before this entry:** FastH3's backbone as a general adapter (not
+  low-rank), its adaln or time table onto anything (no shared basis), PDD's
+  head bank onto FastH3 (no shared step grid), FlashGen or PDD stacked on FastH3
+  itself (two few-step schedules), and any LoRA merged into int8 (the requant
+  record). None of these were rendered.
+- **Blocker:** the owner's hold, and his eye for the pair.
+
+## 49. FastH3's gate tensors on the w6a8 fl2va file
+
+Added 2026-09-29 (mutantdude; held with #48). Comfy-Org published
+`minimax_h3_fl2va_pruned_w6a8.safetensors` on 2026-09-29 (about 5 GB smaller
+than the int8 convrot one). The gates are new whole tensors, so unlike the
+overlay's code diffs they do not depend on the int8 codes underneath.
+
+- **What it changes:** whether the FastH3 look can go onto a smaller base by
+  adding the gates alone.
+- **Confidence:** a hunch. Not checked: that core loads the gates beside the
+  w6a8 layout.
+- **First step, and the blocker:** w6a8 has never run here. Its load, sampler
+  time and look on the owner's 4090 against int8 convrot are unmeasured, and
+  nothing else in this entry means anything until they are.
+
+## 50. One partition's timestep path onto the other, fl2va and ref2va
+
+Added 2026-09-29 (mutantdude). **Owner's call before anything runs:** it sits
+beside the closed fl2va-to-ref2va reference LoRA lane (`roadmap.md` "Closed
+lanes"), and closed is not refuted.
+
+The one structured difference between the release's two partitions is the
+timestep path: `time_embedder.proj_in`, `proj_out` and every `adaln_proj`
+(`../bench/results/2026-09-29_ref2va_partition_delta.md` finding 3). It bears on
+the board's `ref2va-investigation`. `h3_config.MODELS` already names two August
+hybrids (`unet_hybrid_adaln_all`, `unet_hybrid_b30`); no verdict on them is
+recorded that I have seen, and whether they carried the `time_embedder` tensors
+is not known.
+
+- **First step, CPU only:** list which tensors each hybrid swapped (records in
+  `../bench/results/2026-08-20_ref_transfer_single.jsonl` and
+  `../bench/results/archive/lora_compare/`), and read what those renders showed.
+- **What it changes:** whether reports about ref2va localise to the timestep
+  path, and so whether `ref2va-investigation` has a lead.
+- **Confidence:** a hunch.
