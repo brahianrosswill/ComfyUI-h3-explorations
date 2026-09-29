@@ -376,6 +376,20 @@ def check_manifest(manifest_path: Path):
             f"Tensor shape sequence dimension {t['shape'][axis]} (axis {axis}, kind "
             f"{t.get('kind', 'qkv')}) does not match total_sequence_length {tokens['total_sequence_length']}"
         )
+        # The token accounting against the tensor's own segment table, which the
+        # capture recorded from the layout that ran. The reference-row check above
+        # sums `latent_rows` against `reference_tokens`, and both come from the
+        # generator's sizing of the images, so a wrong size passes it (the
+        # 2026-09-27 ref2va capture carried 1024 rows per reference against 4096
+        # in its segments). The segments are the independent witness.
+        by_kind: dict = {}
+        for start, stop, kind in t.get("segments") or []:
+            by_kind[kind] = by_kind.get(kind, 0) + stop - start
+        if by_kind:
+            for kind, field in (("video", "video_tokens"), ("audio", "audio_tokens"), ("ref_img", "reference_tokens")):
+                assert by_kind.get(kind, 0) == tokens[field], (
+                    f"token_accounting.{field} ({tokens[field]}) != the {kind!r} rows of {t['filename']}'s "
+                    f"segment table ({by_kind.get(kind, 0)})")
 
 
 VERIFY_HASHES = False

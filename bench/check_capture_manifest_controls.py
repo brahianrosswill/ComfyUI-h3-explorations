@@ -19,6 +19,9 @@ Cases, all on fixtures of a few megabytes (real captures are 4 GiB a cell):
   chk_flipped_byte    a tensor byte changed after hashing  -> checker fails under --verify-hashes
   chk_altered_text    full_prompt_text edited              -> checker fails (hash of the text)
   chk_wrong_bank_id   bank_id names another entry          -> checker fails (identity of the text)
+  chk_segments_agree  a segment table matching the accounting -> checker passes
+  chk_segment_ref_rows reference rows in the segment table the accounting does not count
+                                                          -> checker fails (the 2026-09-27 ref2va manifest)
 
 Needs torch for the fixture tensors and the installed ComfyUI checkout for
 the generator's audio-row helper (the same dependency preflight has). No
@@ -185,6 +188,25 @@ def main() -> int:
             err = _check(d, verify=False)
             return err is None, err or ""
         case("chk_wrong_bank_id", False, wrong_bank)
+
+        def with_segments(ref_rows: int):
+            def run():
+                d = root / f"chk_seg_{ref_rows}"; shutil.copytree(good, d)
+                m = json.loads((d / "manifest.json").read_text())
+                ta = m["token_accounting"]
+                segs = [[0, ta["text_tokens"] - ref_rows, "text"]]
+                cursor = segs[-1][1]
+                for kind, n in (("ref_img", ref_rows), ("audio", ta["audio_tokens"]), ("video", ta["video_tokens"])):
+                    if n:
+                        segs.append([cursor, cursor + n, kind]); cursor += n
+                for t in m["captured_tensors"]:
+                    t["segments"] = segs
+                (d / "manifest.json").write_text(json.dumps(m))
+                err = _check(d, verify=False)
+                return err is None, err or ""
+            return run
+        case("chk_segments_agree", True, with_segments(0))
+        case("chk_segment_ref_rows", False, with_segments(64))
 
     n_bad = results.count(False)
     if n_bad:

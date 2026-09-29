@@ -4,6 +4,24 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.176.3
+
+### Added
+
+- `bench/check_capture_manifest.py` checks `token_accounting`'s video, audio and
+  reference rows against each tensor's recorded segment table, the independent
+  witness its reference-row check lacked (that check compares two figures from
+  the generator's own sizing, so a wrong size passed it). Two controls in
+  `bench/check_capture_manifest_controls.py`: a matching segment table passes,
+  one with reference rows the accounting does not count fails.
+
+### Fixed
+
+- The manifest of `2026-09-27_sol_test2_pdd8_ref2va` (in the capture directory,
+  not in git) had its reference fields, `reference_tokens` and `text_tokens`
+  re-derived from the graph's own size policy; the original is kept beside it as
+  `manifest.json.before_reference_fix`. All eight captures pass the new check.
+
 ## 0.176.2
 
 ### Fixed
