@@ -99,3 +99,12 @@ within a cell are unaffected in direction.
 Real-kernel per-segment error (needs the card, and h3dude's say), the V and P
 quantisation's contribution in the real kernels, the count of video-tagged rows in
 the ref2va text span, and whether the guessed Hadamard sign pattern matters.
+
+## Later note, 2026-09-29: item 5 "not verified" is now checked
+
+The real kernels' per-segment error was run after this record, once the card was
+free: `2026-09-29_grade_video_audio_real_kernels.md`. Over the video and audio rows the kitchen, sage and rotated-sage
+grades of ref2va's block 49 fall to about 1.1 to 1.2 times t2v's (against 1.9 to 3.0
+times over all rows), so the emulation's reading survives on the kernels. A first
+run at the grader's default `--heads 8` read very differently and was wrong for this
+question; that record says why.

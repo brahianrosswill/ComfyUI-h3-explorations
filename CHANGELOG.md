@@ -15,6 +15,26 @@ artifact.
   records carry dated correction notes from `mrblue`'s verification
   (`2026-09-29_ref2va_partition_delta_verify.md`, `2026-09-29_ref2va_block49_verify.md`).
 
+## 0.178.1
+
+### Added
+
+- `bench/results/2026-09-29_grade_video_audio_real_kernels.md` and its four JSON
+  files: block 49's grade over the video and audio rows on the real kernels, both
+  captures, all 56 heads. Over the rows the model reads, ref2va's block 49 is about
+  1.1 to 1.2 times t2v's, against 1.9 to 3.0 times over every row, so "ref2va's
+  block 49 is the hardest cell" was mostly the grade, now on the kernels and not
+  only in a CPU emulation. Dated notes point at it from
+  `2026-09-27_sol_redesign_test2.md`, `2026-09-29_ref2va_block49_hardest_cell.md`,
+  `2026-09-29_ref2va_block49_verify.md` and `docs/wiki/decisions.md`.
+
+### Changed
+
+- `bench/grade_dense_kernels_on_captures.py` says so in its docstring, and warns
+  that `--heads` defaults to 8: a first run of this grade at 8 heads read the
+  opposite way (ref2va only 1.2 to 1.4 times t2v on both lines) and was withdrawn.
+  It now prints how many heads it measured.
+
 ## 0.178.0
 
 ### Added

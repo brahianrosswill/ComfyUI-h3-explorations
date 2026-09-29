@@ -15,8 +15,13 @@ it, is the error over the video and audio rows only, from the capture manifest's
 segment table (`rows_video_audio` in the JSON; `rows` is unchanged): the final layer reads only those two segments, so text and reference rows
 are never read out of the last block, and at block 49 a cell with many of them
 (ref2va) reads far worse over all rows than over the rows that reach the picture
-(`bench/results/2026-09-29_ref2va_block49_verify.md`). A capture without a
-manifest segment table gets no second line.
+(measured on the kernels, all heads: `bench/results/2026-09-29_grade_video_audio_real_kernels.md`).
+A capture without a manifest segment table gets no second line.
+
+**`--heads` defaults to 8, the first eight, and that is a quick look, not a grade.**
+The earlier records used every head (`heads_measured` in their JSON). On the
+ref2va capture's block 49 the first eight heads read about half the all-head error
+and hide the row effect entirely; pass `--heads 56` for anything quoted.
 
 Kernels: comfy_kitchen.int8_attention (Model Attention Backend), sage fp8++
 (sageattn_qk_int8_pv_fp8_cuda, pv fp32+fp16), the same with `qk_rotate` (the
@@ -111,6 +116,7 @@ def main() -> int:
     rows = []
     rows_va = []  # same shape as rows, over the video and audio rows only; `rows` stays as it was for readers of the JSON
     capture_dir = Path(args.capture_dir)
+    print(f"heads measured: the first {args.heads}" + ("  (a quick look; the records use every head)" if args.heads < 56 else ""))
     print(f"{'cell':14s}" + "".join(f"{k:>14s}" for k in KERNELS))
     for cell in cells:
         m = re.search(r"_b(\d+)_s(\d+)", cell.name)

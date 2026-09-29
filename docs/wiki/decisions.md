@@ -44,6 +44,10 @@ Older history lives elsewhere and is not copied here:
     mainly because the grade counts rows the model discards
     (`2026-09-27_sol_redesign_test2.md` did not say why), and "not a time warp"
     holds under a control that can fail (`bench/control_time_warp.py`).
+  - Later the same day, on the real kernels (`2026-09-29_grade_video_audio_real_kernels.md`,
+    all 56 heads): over the video and audio rows ref2va's block 49 is close to t2v's,
+    so "the hardest cell" was mostly the grade. A first run at the grader's default of
+    8 heads read the opposite and was withdrawn; the default is a trap for block 49.
 
 - **FastH3 finisher and FastH3 mutant: parked** (owner). No more FastH3-finisher
   tests, and the FastH3 mutant (overlay plus loader, and shipped loader graphs)

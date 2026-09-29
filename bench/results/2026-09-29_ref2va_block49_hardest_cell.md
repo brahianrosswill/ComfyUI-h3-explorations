@@ -95,3 +95,11 @@ harder, so read "mostly the grade", not "entirely". What was wrong or overstated
 - **The K-only unrotated simulation** is not the kitchen kernel. The emulation that
   rotates K and adds Q lands near kitchen's real test 2 grades for both cells and
   gives the same conclusion; the real-kernel per-segment error still needs the card.
+
+## Later note, 2026-09-29: the real kernels
+
+`2026-09-29_grade_video_audio_real_kernels.md` graded the two captures' block 49 over the video and audio rows on the
+kernels' own outputs (all 56 heads). The "Not shown" item on the kernels' own numbers
+is now answered: the all-row grade reproduces `2026-09-27_sol_redesign_test2.md`, and
+over the rows the final layer reads ref2va's cell is close to t2v's. The central
+claim holds on the real kernels; "shrinks, does not vanish" holds too.

@@ -1,0 +1,42 @@
+{
+  "capture_dir": "2026-09-27_sol_test2_pdd8_ref2va",
+  "heads_measured": 56,
+  "referent": "fp32 dense attention on the same bf16 inputs (analyze_sol_error.dense_reference)",
+  "rows": [
+    {
+      "block": 24,
+      "step": 2,
+      "kitchen_int8": 0.007363507913654989,
+      "sage_fp8pp": 0.01085806897018522,
+      "sage_fp8pp_rotated": 0.01047624509103265,
+      "bf16_sdpa": 0.001748807623641757
+    },
+    {
+      "block": 49,
+      "step": 2,
+      "kitchen_int8": 0.036666155629715265,
+      "sage_fp8pp": 0.14581638687171,
+      "sage_fp8pp_rotated": 0.04047764883294607,
+      "bf16_sdpa": 0.0015315202975931094
+    }
+  ],
+  "rows_video_audio": [
+    {
+      "block": 24,
+      "step": 2,
+      "kitchen_int8": 0.007463252618460708,
+      "sage_fp8pp": 0.010991170610643778,
+      "sage_fp8pp_rotated": 0.010606874974800956,
+      "bf16_sdpa": 0.0017513886394261262
+    },
+    {
+      "block": 49,
+      "step": 2,
+      "kitchen_int8": 0.014820833060382482,
+      "sage_fp8pp": 0.05586796003484396,
+      "sage_fp8pp_rotated": 0.023666130963639606,
+      "bf16_sdpa": 0.0015113553811891764
+    }
+  ],
+  "rows_video_audio_note": "the same cells over the video and audio query rows only (the segments the final layer reads), from the capture manifest's segment table; empty without one"
+}
