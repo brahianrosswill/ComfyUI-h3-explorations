@@ -1,0 +1,41 @@
+{
+ "what": "open_experiments #48: does FastH3's backbone diff add anything to fl2va plus its gates, and does depth matter. MiniMaxH3OverlayLoader on fasth3_v2_on_fl2va.h3overlay.safetensors with the gates on and refiner, adaln and io off, blocks empty (gates_only), '30-49' (late_30_49) and '0-29' (early_0_29), on FastH3's contract harness, seed 730451892, three scenes each at its written length. Graphs: bench/make_overlay_loader_graphs.py --out-dir internal/overlay_graphs (scratch, gitignored). FastH3 as released, per scene, is overlay_all in bench/fasth3_gate_dial_arms.json and 2026-09-29_overlay_loader_render.jsonl; it is not re-rendered here.",
+ "why": "#35 (2026-09-29_fasth3_gates.md) put FastH3's look in its gates. The only structure left in the backbone change is at the ends, and FastH3 and FlashGen agree in blocks 30-49 (2026-09-26_fasth3_weights.md finding 5; 2026-09-29_fasth3_bf16_rank.md). This asks whether any of it shows once the gates are on. HELD: the owner put the FastH3 mutant on hold on 2026-09-29; this manifest is written and not run.",
+ "predictions": {
+  "written": "2026-09-29, before any render, by mutantdude",
+  "P1": "late_30_49 looks like gates_only: the same convergence, tone and fine-detail level on all three scenes, within the run-to-run floor on the measures #35 used. A hunch: #35 found the backbone change is not what carries the look.",
+  "P2": "early_0_29 looks like gates_only too, and is closer to it than late_30_49 is. A weaker hunch, resting only on the bf16 rank record (the middle blocks sit near a noise control).",
+  "falsifier": "if late_30_49 reaches FastH3's own numbers (overlay_all) on hf where gates_only does not, on all three scenes, the late backbone carries part of the look and the shippable piece is not the gates alone. If early_0_29 does that instead, location is not what the weight-agreement finding suggested."
+ },
+ "arms": {
+  "look_anchor__gates_only": "internal/overlay_graphs/overlay_gates.json",
+  "look_anchor__late_30_49": "internal/overlay_graphs/overlay_late_30_49.json",
+  "look_anchor__early_0_29": "internal/overlay_graphs/overlay_early_0_29.json",
+  "slapstick_moving_piano__gates_only": "internal/overlay_graphs/overlay_gates.json",
+  "slapstick_moving_piano__late_30_49": "internal/overlay_graphs/overlay_late_30_49.json",
+  "slapstick_moving_piano__early_0_29": "internal/overlay_graphs/overlay_early_0_29.json",
+  "radio_drama__gates_only": "internal/overlay_graphs/overlay_gates.json",
+  "radio_drama__late_30_49": "internal/overlay_graphs/overlay_late_30_49.json",
+  "radio_drama__early_0_29": "internal/overlay_graphs/overlay_early_0_29.json"
+ },
+ "patches": [
+  "look_anchor__gates_only:MiniMaxH3Conditioning.prompt=@bank:t2va_look_anchor",
+  "look_anchor__gates_only:MiniMaxH3Resolution.length=345",
+  "look_anchor__late_30_49:MiniMaxH3Conditioning.prompt=@bank:t2va_look_anchor",
+  "look_anchor__late_30_49:MiniMaxH3Resolution.length=345",
+  "look_anchor__early_0_29:MiniMaxH3Conditioning.prompt=@bank:t2va_look_anchor",
+  "look_anchor__early_0_29:MiniMaxH3Resolution.length=345",
+  "slapstick_moving_piano__gates_only:MiniMaxH3Conditioning.prompt=@bank:t2va_slapstick_moving_piano",
+  "slapstick_moving_piano__gates_only:MiniMaxH3Resolution.length=345",
+  "slapstick_moving_piano__late_30_49:MiniMaxH3Conditioning.prompt=@bank:t2va_slapstick_moving_piano",
+  "slapstick_moving_piano__late_30_49:MiniMaxH3Resolution.length=345",
+  "slapstick_moving_piano__early_0_29:MiniMaxH3Conditioning.prompt=@bank:t2va_slapstick_moving_piano",
+  "slapstick_moving_piano__early_0_29:MiniMaxH3Resolution.length=345",
+  "radio_drama__gates_only:MiniMaxH3Conditioning.prompt=@bank:t2va_radio_drama",
+  "radio_drama__gates_only:MiniMaxH3Resolution.length=243",
+  "radio_drama__late_30_49:MiniMaxH3Conditioning.prompt=@bank:t2va_radio_drama",
+  "radio_drama__late_30_49:MiniMaxH3Resolution.length=243",
+  "radio_drama__early_0_29:MiniMaxH3Conditioning.prompt=@bank:t2va_radio_drama",
+  "radio_drama__early_0_29:MiniMaxH3Resolution.length=243"
+ ]
+}

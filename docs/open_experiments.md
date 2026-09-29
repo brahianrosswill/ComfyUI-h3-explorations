@@ -3156,14 +3156,17 @@ with the gates on, so this needs no new code.
   itself (two few-step schedules), and any LoRA merged into int8 (the requant
   record). None of these were rendered.
 - **Blocker:** the owner's hold, and his eye for the pair.
-- **How it gets built:** no new checkpoint and no new node. The overlay
-  `fasth3_v2_on_fl2va.h3overlay.safetensors` exists. Arm A is the existing
-  `overlay_gates` arm of `../bench/make_overlay_loader_graphs.py`. Arm B is one
-  new entry there (`blocks` "30-49", gates on, refiner, adaln and io off), and
-  an optional control takes `blocks` "0-29". A manifest modelled on
-  `../bench/fasth3_gates_arms.json` drives `../bench/run_graph_arms.py` on the
-  same contract harness graph, scenes and seed. The loader graphs belong to
-  h3dude (board `overlay-followups`, item c), so coordinate before editing.
+- **How it gets built, and what exists (2026-09-29, not run):** no new checkpoint
+  and no new node. The overlay `fasth3_v2_on_fl2va.h3overlay.safetensors` exists.
+  `../bench/make_overlay_loader_graphs.py` writes the three arms as scratch graphs:
+  `overlay_gates` (gates only), `overlay_late_30_49` and the location control
+  `overlay_early_0_29` (refiner, adaln and io stay fl2va's). Checked from the
+  overlay's header: gates only selects the gates and no backbone diff, late selects
+  gates plus the 20 diffs of blocks 30-49, early gates plus the 30 of blocks 0-29.
+  `../bench/fasth3_late_blocks_arms.json` drives `../bench/run_graph_arms.py`
+  on the contract harness, three scenes, seed 730451892, with predictions written
+  before any render. The loader graphs were h3dude's; with h3dude on other work
+  mutantdude carries this (owner, 2026-09-29).
 
 ## 49. FastH3's gate tensors on the w6a8 fl2va file
 
@@ -3192,32 +3195,42 @@ overlay's code diffs they do not depend on the int8 codes underneath.
 
 ## 50. One partition's timestep path onto the other, fl2va and ref2va
 
-Added 2026-09-29 (mutantdude). **Owner's call before anything runs:** it sits
-beside the closed fl2va-to-ref2va reference LoRA lane (`roadmap.md` "Closed
-lanes"), and closed is not refuted.
+Added 2026-09-29 (mutantdude); corrected the same day after a byte comparison.
+**Owner's call before anything renders:** it sits beside the closed
+fl2va-to-ref2va reference LoRA lane (`roadmap.md` "Closed lanes"), and closed is
+not refuted.
 
 The one structured difference between the release's two partitions is the
-timestep path: `time_embedder.proj_in`, `proj_out` and every `adaln_proj`
-(`../bench/results/2026-09-29_ref2va_partition_delta.md` finding 3). It bears on
-the board's `ref2va-investigation`. `h3_config.MODELS` already names two August
-hybrids (`unet_hybrid_adaln_all`, `unet_hybrid_b30`); no verdict on them is
-recorded that I have seen, and whether they carried the `time_embedder` tensors
-is not known.
+timestep path: `time_embedder.proj_in` and `proj_out`, every `adaln_proj`
+(`../bench/results/2026-09-29_ref2va_partition_delta.md` finding 3, confirmed on
+an independent float64 path by
+`../bench/results/2026-09-29_ref2va_partition_delta_verify.md`; that record also
+says the older `2026-09-29_partition_delta_map.jsonl` has cosines above 1 in
+about half its rows, so do not read cosines from it). It bears on the board's
+`ref2va-investigation`.
 
-- **First step, CPU only:** list which tensors each hybrid swapped (records in
-  `../bench/results/2026-08-20_ref_transfer_single.jsonl` and
-  `../bench/results/archive/lora_compare/`), and read what those renders showed.
-- **How it gets built, once the owner agrees:** header-diff the hybrids already
-  on disk (`minimax_h3_hybrid_fl2va_ref2va_adaln_all-int8`, `b15-49`, `b20-49`,
-  `b25-49`, `b30-49`) against the two pruned files with
-  `../bench/analyze_checkpoint_delta.py`'s header reader. The current swap tool,
-  `../bench/build_adaln_swap.py`, moves `adaln_t_table` plus every
-  `adaln_proj.linear` weight and bias; `time_embedder.proj_in` and `proj_out` are
-  not in that set. If the August hybrids used the same set (unverified), the time
-  embedder is untested, and a new hybrid needs `is_conditioning` extended with
-  those two tensors, for example behind an `--include-time-embedder` flag: about
-  a dozen lines. Build on the pruned int8 files, render against plain ref2va and
-  plain fl2va on the reference scenes, and the owner judges.
+**What the pruned files hold** (`../bench/compare_hybrid_timestep_set.py`,
+`../bench/results/2026-09-29_hybrid_adaln_all_timestep_set.json`, CPU): the
+pruned int8 files have no `time_embedder` tensors at all. The embedder is folded
+into `adaln_t_table` (a 1025x8 curve basis) and every `adaln_proj.linear` is
+expressed on it, so in pruned form the timestep path is that whole set, and
+`../bench/build_adaln_swap.py` already moves exactly that set. The August
+hybrid `minimax_h3_hybrid_fl2va_ref2va_adaln_all-int8` is **not** a clean swap
+of it: its 102 `adaln_proj` tensors are ref2va's, byte for byte, but its
+`adaln_t_table` is fl2va's, and the two tables differ (largest element
+difference about 0.014, on values averaging about 0.034). So it puts ref2va's
+projections on fl2va's basis. `h3_config.MODELS` describes it as "fl2va
+everywhere except the adaln projections". No clean set swap of this pair is
+named in `h3_config` or in the records I read.
+
+- **How it gets built, once the owner agrees, with no new code:**
+  `python bench/build_adaln_swap.py --backbone <fl2va pruned> --donor <ref2va pruned> --out <new>`
+  gives fl2va's backbone with ref2va's whole timestep set; swap the two paths
+  for the reverse. It streams bytes, asserts the two sets match in dtype and
+  shape, and reopens the output to compare. Each output is a full checkpoint on
+  disk. Render against plain fl2va and plain ref2va on the reference scenes; the
+  owner judges.
 - **What it changes:** whether reports about ref2va localise to the timestep
-  path, and so whether `ref2va-investigation` has a lead.
+  path, and so whether `ref2va-investigation` has a lead. The older hybrids
+  cannot answer it, because they mix bases.
 - **Confidence:** a hunch.

@@ -4,6 +4,28 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.177.0
+
+### Added
+
+- #48 is ready to run and not run (held with the FastH3 mutant):
+  `bench/make_overlay_loader_graphs.py` gains `overlay_late_30_49` and
+  `overlay_early_0_29`, and `bench/fasth3_late_blocks_arms.json` is the manifest,
+  with predictions written before any render. The arms' piece selection was read
+  off the overlay header, and the manifest's patches were applied to the
+  generated graphs without error.
+- `bench/compare_hybrid_timestep_set.py` and
+  `bench/results/2026-09-29_hybrid_adaln_all_timestep_set.json`: the August
+  `adaln_all` hybrid has ref2va's 102 `adaln_proj` tensors and fl2va's
+  `adaln_t_table`, so it is not a clean swap of the timestep path.
+
+### Changed
+
+- `docs/open_experiments.md` #50 is corrected: the pruned files carry no
+  `time_embedder` tensors (folded into `adaln_t_table`), so `build_adaln_swap.py`
+  already moves the whole timestep path and no new code is needed. The first
+  version of the entry said otherwise.
+
 ## 0.176.4
 
 ### Changed

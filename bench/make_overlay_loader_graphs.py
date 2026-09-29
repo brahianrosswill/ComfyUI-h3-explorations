@@ -20,6 +20,9 @@ Arms (`overlay_fasth3_v2_on_fl2va`, `blocks` as the loader takes it):
 - `overlay_all_g075`, `overlay_all_g050`, `overlay_all_g000` (#36, the gate dial,
   `bench/fasth3_gate_dial_arms.json`): every piece with the gate row scales
   times 0.75, 0.5 and 0.
+- `overlay_late_30_49` and `overlay_early_0_29` (#48, `bench/fasth3_late_blocks_arms.json`):
+  the gates plus FastH3's backbone diff on blocks 30-49, and on blocks 0-29 as the
+  location control; refiner, adaln and io stay fl2va's. Looks, not equality checks.
 - `overlay_no_refiner`: every piece but the refiner, so FastH3's backbone and
   gates run on fl2va's own bf16 token refiner. Not an equality check: a look.
 
@@ -45,6 +48,11 @@ ARMS = {
     "overlay_all_g075": dict(blocks="all", gates=True, refiner=True, adaln=True, io_layers=True, gate_scale=0.75),
     "overlay_all_g050": dict(blocks="all", gates=True, refiner=True, adaln=True, io_layers=True, gate_scale=0.5),
     "overlay_all_g000": dict(blocks="all", gates=True, refiner=True, adaln=True, io_layers=True, gate_scale=0.0),
+    # #48, FastH3's backbone diff by depth on top of the gates alone. Gates are their own
+    # piece, so `blocks` only selects backbone diffs. Late is where FastH3 and FlashGen
+    # agree (2026-09-26_fasth3_weights.md finding 5); early is the control for location.
+    "overlay_late_30_49": dict(blocks="30-49", gates=True, refiner=False, adaln=False, io_layers=False),
+    "overlay_early_0_29": dict(blocks="0-29", gates=True, refiner=False, adaln=False, io_layers=False),
 }
 
 
