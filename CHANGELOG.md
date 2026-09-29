@@ -4,6 +4,17 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.177.2
+
+### Fixed
+
+- `bench/map_partition_delta.py` computes its norms in float64 and seeds its
+  randomized SVD; `bench/results/2026-09-29_partition_delta_map.jsonl` is
+  regenerated (the old file had `cos` above 1 in about half its rows and
+  `rel_delta` a few percent low on the largest adaln weights). The three ref2va
+  records carry dated correction notes from `mrblue`'s verification
+  (`2026-09-29_ref2va_partition_delta_verify.md`, `2026-09-29_ref2va_block49_verify.md`).
+
 ## 0.177.1
 
 ### Added

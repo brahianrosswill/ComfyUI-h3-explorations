@@ -5,13 +5,13 @@ Reads the two original checkpoints (`<release>/FL2VA/transformer`,
 `<release>/Ref2VA/transformer`, bf16, native key names) and writes one JSONL row
 per tensor as it goes:
 
-- `rel_delta`: ||ref - fl|| / ||fl||, and `cos` between the two tensors, from the three norms
-  (a float32 sum of products over a 150M-element tensor drifts past 1);
+- `rel_delta`: ||ref - fl|| / ||fl||, and `cos` between the two tensors, from the three norms,
+  all in float64 (float32 norms drift by a few percent on the 260M-element adaln weights);
 - `identical`, `only_in`: byte-equal tensors, and keys one partition lacks;
 - `fl_norm_zero`, `ref_norm_zero`: an all-zero tensor in either;
 - for 2-D weights with `--lowrank Q`: `top_energy`, the share of the delta's
   squared Frobenius norm in its top Q singular directions (a randomized SVD,
-  `torch.svd_lowrank`), and `noise_top_energy`, the same for a Gaussian matrix
+  `torch.svd_lowrank`, seeded, and still approximate), and `noise_top_energy`, the same for a Gaussian matrix
   of the same shape and norm, the calibration for "concentrated" versus
   "spread like noise".
 
@@ -77,15 +77,17 @@ def main() -> int:
                 if a.shape != b.shape or a.dtype != b.dtype:
                     row = {"key": key, "shape_or_dtype_differs": [str(a.dtype), list(a.shape), str(b.dtype), list(b.shape)]}
                 else:
-                    af, bf = a.float(), b.float()
+                    af, bf = a.double(), b.double()      # float32 norms of 260M-element tensors come out several percent low
                     d = bf - af
-                    an, bn = float(af.norm()), float(bf.norm())
+                    an, bn, dn = float(af.norm()), float(bf.norm()), float(d.norm())
                     row = {"key": key, "shape": list(a.shape), "dtype": str(a.dtype).removeprefix("torch."),
                            "identical": bool(torch.equal(a, b)), "fl_norm": an, "ref_norm": bn,
-                           "rel_delta": float(d.norm() / an) if an else None,
-                           "cos": (an * an + bn * bn - float(d.norm()) ** 2) / (2 * an * bn) if an and bn else None}
+                           "rel_delta": dn / an if an else None,
+                           "cos": (an * an + bn * bn - dn * dn) / (2 * an * bn) if an and bn else None}
                     if args.lowrank and a.ndim == 2 and min(a.shape) > args.lowrank * 2 and not row["identical"]:
-                        noise = torch.randn(a.shape) * (float(d.norm()) / (a.numel() ** 0.5))
+                        torch.manual_seed(0)      # the randomized SVD moves by a few hundredths between unseeded runs
+                        d = d.float()
+                        noise = torch.randn(a.shape) * (dn / (a.numel() ** 0.5))
                         row["top_energy"] = top_energy(d, args.lowrank)
                         row["noise_top_energy"] = top_energy(noise, args.lowrank)
             out.write(json.dumps(row) + "\n")

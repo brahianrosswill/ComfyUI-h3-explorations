@@ -33,3 +33,12 @@ equally likely".
   cannot be asked yet.
 - Anything about how the reference is used other than through attention from
   video rows; nothing about audio queries or the audio reference.
+
+## Correction notes, 2026-09-29, after verification
+
+- **"Text" here is the whole text span.** In the ref2va cell the first 8424 rows
+  include vision-embed rows tagged with the video modality (see the correction in
+  `2026-09-29_ref2va_block49_hardest_cell.md`), so the text-mass figures are for the
+  span, not for the prompt's text alone. Their number was not counted.
+- **Only `heads_eff_under_20` is a stable peakiness measure.** `eff_keys_median_head`
+  moves with the query sample (this run used 128 queries).

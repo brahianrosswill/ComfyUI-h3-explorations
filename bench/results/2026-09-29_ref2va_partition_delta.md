@@ -69,3 +69,27 @@ The reference rows' role: how much the video queries read them by depth
 (`bench/analyze_attention_mass.py` on the ref2va capture), then a paired capture
 with a reference on both partitions (`workflows/h3_probe_capture_ref3_api.json`
 and its fl2va twin), which needs the card.
+
+## Correction notes, 2026-09-29, after verification
+
+`2026-09-29_ref2va_partition_delta_verify.md` (mrblue) re-ran this on an independent
+float64 path and built the control this record lacked. The structure holds: the
+two partitions differ by a few percent, structured only in the timestep path, and
+it is not a time warp (`bench/control_time_warp.py` recovers known warps of about
+two percent or more; the real Ref2VA reads the identity). What was wrong or
+overstated above:
+
+- **Block 0's audio modulation "standout"** is partly a small-denominator ratio:
+  chunk 15 carries a small share of FL2VA's time-varying norm. Read point 4 as "a
+  relatively large change to a small quantity", not "a real one".
+- **The audio tail's rise starts near block 30, not block 45.** The audio-to-video
+  weight-delta ratio is about 1 until block 27; block 49 is high for all three
+  modalities. Audio adaln bias also differs more than video's in blocks 0 to 2.
+- **"Close to a noise control, not concentrated" holds for the bulk only.**
+  `blocks.49.mlp.fc2` holds its delta in a few directions at many times the noise
+  control, and blocks 0 and 1 attention somewhat.
+- **The data file changed.** `2026-09-29_partition_delta_map.jsonl` was written by an
+  older version of `bench/map_partition_delta.py`: 261 of 535 rows had `cos` above
+  1, and `rel_delta` on the largest adaln tensors was about 1% low (float32 norms).
+  The script now uses float64 norms and a seeded SVD, and the file was regenerated;
+  `top_energy` is still a randomized, approximate measure.

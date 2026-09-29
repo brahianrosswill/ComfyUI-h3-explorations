@@ -70,3 +70,28 @@ A grade of a captured cell is better taken over video and audio query rows for
 block 49 (and the text and reference rows reported apart), at least for the last
 block. The test 2 verdicts on kernel ranking are unaffected in direction: the
 kernels are ranked within a cell, on the same rows.
+
+## Correction notes, 2026-09-29, after verification
+
+`2026-09-29_ref2va_block49_verify.md` (mrblue) re-ran the four scripts, closed the
+simulation gap with a kitchen-like emulation
+(`bench/emulate_kitchen_int8_by_segment.py`), and ran the control this record
+proposed. The central claim survives: ref2va's block 49 grades hardest mainly
+because the cell grade counts text and reference rows the model discards. Shrinks,
+does not vanish: over video and audio rows only, ref2va's cell is still somewhat
+harder, so read "mostly the grade", not "entirely". What was wrong or overstated:
+
+- **"Video rows about the same" (point 3) is soft.** Video-only error is somewhat
+  higher in ref2va, and a single video-only figure moves with the query sample.
+- **"Peakiness alike" rests on `heads_eff_under_20` only.**
+  `2026-09-29_attention_mass.json` was made at `--queries 256`, not the docstring's
+  384, and `eff_keys_median_head` moves with sample size; by that median ref2va is
+  flatter, not harder.
+- **The ref2va "text" span is not all text.** It contains vision-embed rows tagged
+  with the video modality (`text_token_tags`), whose block 49 modulation is not
+  zero, so "the text rows' gates are exactly zero, nothing trained them" covers
+  only the text-tagged rows. The dropped-row claim (the final layer reads only
+  video and audio) is unaffected; the number of such rows was not counted.
+- **The K-only unrotated simulation** is not the kitchen kernel. The emulation that
+  rotates K and adds Q lands near kitchen's real test 2 grades for both cells and
+  gives the same conclusion; the real-kernel per-segment error still needs the card.
