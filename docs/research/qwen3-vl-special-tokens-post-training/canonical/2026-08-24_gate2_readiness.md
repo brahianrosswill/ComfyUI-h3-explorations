@@ -56,7 +56,7 @@ accepted.
 The committed Gate 2A producer is
 `bench/pilot_sequential_feasibility.py` (removed 0.175.0).
 The separate dispatch instrument is
-[`probe_sdpa_backend_selection.py`](../../../../bench/probe_sdpa_backend_selection.py).
+`bench/probe_sdpa_backend_selection.py` (removed 0.176.0).
 The corrected final result files are intentionally absent at this stopping
 point; tomorrow's rerun must create them from commit `745d916` or record and
 review any subsequent producer change.

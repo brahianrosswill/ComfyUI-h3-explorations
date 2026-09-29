@@ -59,7 +59,7 @@ Reports, all under `bench/results/`:
 - [`2026-08-25_sdpa_backend_selection_stress.json`](../../../../../bench/results/archive/v2_encoder/2026-08-25_sdpa_backend_selection_stress.json)
 
 Producers: `bench/pilot_sequential_feasibility.py` (removed 0.175.0),
-[`probe_sdpa_backend_selection.py`](../../../../../bench/probe_sdpa_backend_selection.py),
+`bench/probe_sdpa_backend_selection.py` (removed 0.176.0),
 [`build_native_h3_calibration_batch.py`](../../../../../bench/build_native_h3_calibration_batch.py).
 
 Bundles were rebuilt on the current tree from the accepted pool at H3-IR

@@ -17,8 +17,8 @@ inputs and weights.
 Two probes compare these independent implementations and include deliberate
 mutations that must make the comparisons fail:
 
-- [`probe_mrope_implementation_parity.py`](../../../../bench/probe_mrope_implementation_parity.py)
-- [`probe_vision_tower_parity.py`](../../../../bench/probe_vision_tower_parity.py)
+- `bench/probe_mrope_implementation_parity.py` (removed 0.176.0)
+- `bench/probe_vision_tower_parity.py` (removed 0.176.0)
 
 ## Results
 
@@ -83,7 +83,7 @@ weight mutation moves the matched-precision comparison by more than an order of
 magnitude, so the probe can distinguish the claimed agreement from a wrong
 weight.
 
-- [`probe_released_vision_precision.py`](../../../../bench/probe_released_vision_precision.py)
+- `bench/probe_released_vision_precision.py` (removed 0.176.0)
 - [`2026-08-24_released_vision_precision.json`](../../../../bench/results/2026-08-24_released_vision_precision.json)
 
 **MEASURED.** The same difference is already present at the language model's
@@ -94,7 +94,7 @@ layer 49, Transformers FP32 versus deployed ComfyUI measured relative L2
 therefore dominated by visual-row share and is not a reliable wrong-layer
 control unless results are split by position class.
 
-- [`compare_transformers_comfy_layer50.py`](../../../../bench/compare_transformers_comfy_layer50.py)
+- `bench/compare_transformers_comfy_layer50.py` (removed 0.176.0)
 - [`2026-08-24_crossstack_layer50_mixed.json`](../../../../bench/results/archive/v2_encoder/2026-08-24_crossstack_layer50_mixed.json)
 - [`2026-08-24_crossstack_layer50_controls.json`](../../../../bench/results/archive/v2_encoder/2026-08-24_crossstack_layer50_controls.json)
 
@@ -113,7 +113,7 @@ explicit four-term reduction reproduced ComfyUI's position-embedding tensor
 bit-for-bit on all four fixtures. Corrupt-index and corrupt-weight controls
 moved the output.
 
-[`h3_calibration_precision.py`](../../../../bench/h3_calibration_precision.py)
+`bench/h3_calibration_precision.py` (removed 0.176.0)
 implements that result as the calibration-only `comfy_exact` policy:
 
 - released BF16 position-embedding values;
@@ -126,7 +126,7 @@ every modified object after success or exception, refuses an unrecognized
 Transformers source expression, and does not edit the checkpoint, installed
 package, or deployed ComfyUI model. The executable guard and its mutation
 control are
-[`check_calibration_precision_policy.py`](../../../../bench/check_calibration_precision_policy.py).
+`bench/check_calibration_precision_policy.py` (removed 0.176.0).
 
 **MEASURED.** `comfy_exact` passed the predeclared Gate 1B rule on every real
 fixture. The table reports the worst relative L2 across the merged vision

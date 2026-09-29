@@ -4,6 +4,27 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.176.0
+
+### Removed
+
+- 33 bench scripts (owner, 2026-09-29: the calibration and encoder-parity
+  helpers `probe_sdpa_backend_selection.py`, `probe_vision_tower_parity.py`,
+  `h3_calibration_precision.py`, `h3_effective_batch.py` and
+  `h3_attention_kernel.py` "can all be removed", and "most benches that havent
+  been touched since august can probably go"). The rule applied: last commit
+  before 2026-09-01, and no reference from a live script, doc or shipped code;
+  then whatever imported a removed module (`check_attention_kernel.py`,
+  `check_calibration_precision_policy.py`, `probe_released_vision_precision.py`).
+  Six that qualified were kept because a September record or plan cites them as
+  tools (`analyze_audio_hum.py`, `analyze_audio_spectral_tilt.py`,
+  `measure_audio_seed_spread.py`, `grade_subtitle_timing.py`,
+  `score_shot_ablation.py`, `measure_merge_rounding_regimes.py`).
+  Removed: `analyze_vsa_checkpoint.py`, `check_attention_kernel.py`, `check_calibration_precision_policy.py`, `compare_h3_encoder_captures.py`, `compare_h3_partitions.py`, `compare_h3_tokenizers.py`, `compare_marker_tokenizations.py`, `compare_transformers_comfy_layer50.py`, `diff_render_graphs.py`, `h3_attention_kernel.py`, `h3_calibration_precision.py`, `h3_effective_batch.py`, `join_density_error.py`, `join_selection_arms.py`, `list_prose_citations.py`, `measure_int8_convrot_headroom.py`, `measure_marker_row_perturbation.py`, `measure_pdd_adaln_cross_partition.py`, `measure_pdd_block_magnitude.py`, `measure_pdd_step_ladder.py`, `measure_stochastic_rounding.py`, `prepare_hf_reference_encoder_arms.py`, `probe_mrope_implementation_parity.py`, `probe_pdd_strength_depth.py`, `probe_position_embedding_parity.py`, `probe_released_vision_precision.py`, `probe_sdpa_backend_selection.py`, `probe_sol_topk.py`, `probe_vision_tower_parity.py`, `score_pdd_strength_depth.py`, `select_gate6_ablation_rows.py`, `select_t2va_holdout_rows.py`, `summarize_h3_holdout_captures.py`.
+- Their two rows in `docs/checks.md`. Markdown links to removed scripts in
+  `docs/` read `removed 0.176.0`. The records they produced stay in
+  `bench/results/`, and git has the code.
+
 ## 0.175.0
 
 ### Removed

@@ -8,7 +8,7 @@ blocks with different task lists. This file measures what that split is
 **worth in the weights**, which nothing had.
 
 Everything here is *measured* by
-[`../../bench/compare_h3_partitions.py`](../../bench/compare_h3_partitions.py)
+`bench/compare_h3_partitions.py` (removed 0.176.0)
 into
 [`../../bench/results/2026-08-29_h3_partition_distance.json`](../../bench/results/2026-08-29_h3_partition_distance.json):
 relative Frobenius distance and cosine, in float64, over every shared

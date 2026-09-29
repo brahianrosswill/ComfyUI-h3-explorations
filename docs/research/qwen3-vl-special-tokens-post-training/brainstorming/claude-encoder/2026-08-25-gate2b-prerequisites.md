@@ -50,11 +50,11 @@ fourth row at 22.5 GiB. Every step clean; mask omission proven in every step.
 | `7e13ce4` | kernel-axis and composed-path results; TF32 note |
 | `d5d58d8` | early-tap control results |
 
-Producers: [`h3_calibration_precision.py`](../../../../../bench/h3_calibration_precision.py),
-[`check_calibration_precision_policy.py`](../../../../../bench/check_calibration_precision_policy.py),
-[`h3_attention_kernel.py`](../../../../../bench/h3_attention_kernel.py),
-[`check_attention_kernel.py`](../../../../../bench/check_attention_kernel.py),
-[`compare_transformers_comfy_layer50.py`](../../../../../bench/compare_transformers_comfy_layer50.py),
+Producers: `bench/h3_calibration_precision.py` (removed 0.176.0),
+`bench/check_calibration_precision_policy.py` (removed 0.176.0),
+`bench/h3_attention_kernel.py` (removed 0.176.0),
+`bench/check_attention_kernel.py` (removed 0.176.0),
+`bench/compare_transformers_comfy_layer50.py` (removed 0.176.0),
 `bench/pilot_sequential_feasibility.py` (removed 0.175.0).
 Every report names the commit that wrote it. Fixtures are the four Gate 1B
 rows, rebuilt from the accepted pool on the current tree; the long-row
@@ -85,7 +85,7 @@ failing at the first linear, not by design.
 
 ### What the check holds it to
 
-[`check_calibration_precision_policy.py`](../../../../../bench/check_calibration_precision_policy.py),
+`bench/check_calibration_precision_policy.py` (removed 0.176.0),
 on a tiny full Qwen3-VL at the released shape ratios through
 `from_pretrained`: load path applies the keep-FP32 set and nothing else;
 tower-only use refused; bit identity to the FP32-stored arm at the last layer;
@@ -151,7 +151,7 @@ therefore not a divergence, and now written beside the policy that patches
 
 ### The switch
 
-[`h3_attention_kernel.py`](../../../../../bench/h3_attention_kernel.py)
+`bench/h3_attention_kernel.py` (removed 0.176.0)
 fixes what transformers' `sdpa_attention_forward` sends to SDPA:
 `grouped_query` leaves the library's `enable_gqa=True` decision alone;
 `expanded_kv` forces `repeat_kv` so SDPA sees 64 KV heads and no `enable_gqa`.

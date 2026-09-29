@@ -45,7 +45,7 @@ references or the 2048 processor ceiling.
 ## The storage axis: accepted
 
 **MEASURED.** `comfy_exact_bf16_store`
-([`h3_calibration_precision.py`](../../../../bench/h3_calibration_precision.py))
+(`bench/h3_calibration_precision.py` (removed 0.176.0))
 stores and offloads the weights at BF16 and computes every parameterised op
 with a transient FP32 copy of its weight, at the functional layer, gated on the
 parameterised modules. On the four released-weight Gate 1B fixtures it is
@@ -55,7 +55,7 @@ bit-identical to FP32-stored `comfy_exact` at the raw layer-49 state
 it loads in 0.2 s with 62 GiB on CPU, nothing on disk, and `MemAvailable`
 holding at 118 to 120 GiB across the run
 (`2026-08-25_gate2a_primary_bf16_store.json`). The guard is
-[`check_calibration_precision_policy.py`](../../../../bench/check_calibration_precision_policy.py);
+`bench/check_calibration_precision_policy.py` (removed 0.176.0);
 its leak controls refuse a BF16 patch embed at entry and a BF16 activation at
 the first linear.
 
@@ -70,7 +70,7 @@ TF32 is off on both. Consistent, therefore not a divergence.
 
 ## The kernel axis: measured, and decided under a stated reading
 
-**MEASURED.** [`h3_attention_kernel.py`](../../../../bench/h3_attention_kernel.py)
+**MEASURED.** `bench/h3_attention_kernel.py` (removed 0.176.0)
 fixes whether SDPA sees grouped-query or expanded key/value heads. Codex's
 four-step matrix, storage held at `comfy_exact_bf16_store`, relative L2 at
 layer 49 on vision rows against deployed ComfyUI, with the accepted

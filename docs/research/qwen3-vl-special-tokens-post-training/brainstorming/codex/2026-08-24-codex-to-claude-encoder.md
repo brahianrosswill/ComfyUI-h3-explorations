@@ -22,7 +22,7 @@ Inspect primary code rather than relying on prior agent summaries:
 
 - [`h3_awq_encoder.py`](../../../../../h3_awq_encoder.py)
 - [`capture_h3_encoder_states.py`](../../../../../bench/capture_h3_encoder_states.py)
-- [`compare_h3_encoder_captures.py`](../../../../../bench/compare_h3_encoder_captures.py)
+- `bench/compare_h3_encoder_captures.py` (removed 0.176.0)
 - `bench/probe_calibration_input_seam.py` (removed 0.175.0)
 - [`build_h3_calibration_pool.py`](../../../../../bench/build_h3_calibration_pool.py)
 - [`coderef/llm-compressor`](../../../../../coderef/llm-compressor)

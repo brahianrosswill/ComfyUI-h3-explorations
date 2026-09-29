@@ -34,7 +34,7 @@ Comfy's separate float/bilinear image path.
 Producers:
 
 - [`capture_h3_encoder_states.py`](../../../../bench/capture_h3_encoder_states.py)
-- [`compare_h3_encoder_captures.py`](../../../../bench/compare_h3_encoder_captures.py)
+- `bench/compare_h3_encoder_captures.py` (removed 0.176.0)
 
 The comparison JSON files contain model/config/code hashes, the exact effective
 processor record, source media hashes, grids, sequence lengths, capture

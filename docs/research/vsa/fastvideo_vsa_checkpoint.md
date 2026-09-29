@@ -9,7 +9,7 @@ as `models/diffusion_models/` plus that name.
 
 **This file owns what is inside that artifact and how far its weights sit from
 the base it was built on.** Everything numeric in it was produced by
-[`../../../bench/analyze_vsa_checkpoint.py`](../../../bench/analyze_vsa_checkpoint.py)
+`bench/analyze_vsa_checkpoint.py` (removed 0.176.0)
 into
 [`../../../bench/results/2026-08-30_fastvideo_vsa_checkpoint.json`](../../../bench/results/2026-08-30_fastvideo_vsa_checkpoint.json),
 except the load behaviour in section 5, which was produced by executing this

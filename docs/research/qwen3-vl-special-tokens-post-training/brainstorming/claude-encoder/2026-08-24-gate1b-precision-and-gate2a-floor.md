@@ -42,7 +42,7 @@ best there by a factor of nine, so it is not.
 ### Where the difference actually was
 
 Four comparison points, in order, on the released position table
-([`probe_position_embedding_parity.py`](../../../../../bench/probe_position_embedding_parity.py)):
+(`bench/probe_position_embedding_parity.py` (removed 0.176.0)):
 
 | grid | gather indices | BF16 weights | `.sum(1)` result | four-term add result |
 |---|---|---|---|---|
@@ -76,7 +76,7 @@ verdicts above are falsifiable.
 
 ### The policy, and what it is allowed to touch
 
-[`h3_calibration_precision.py`](../../../../../bench/h3_calibration_precision.py)
+`bench/h3_calibration_precision.py` (removed 0.176.0)
 now carries named policies rather than a dtype flag:
 
 | policy | coefficients | reduction | active linears |
@@ -144,7 +144,7 @@ approximation, arrived at by eliminating a specific identified cause.
 
 ### The policy's own guardrails, each watched failing
 
-[`check_calibration_precision_policy.py`](../../../../../bench/check_calibration_precision_policy.py),
+`bench/check_calibration_precision_policy.py` (removed 0.176.0),
 six arms, on a reduced-width model:
 
 - **Restoration**: the module-level helper, the `pos_embed` forward, its dtype
@@ -171,7 +171,7 @@ six arms, on a reduced-width model:
 
 ## The effective-input transform
 
-[`h3_effective_batch.py`](../../../../../bench/h3_effective_batch.py) is the one
+`bench/h3_effective_batch.py` (removed 0.176.0) is the one
 declared transformation between the raw presentation and `oneshot`. It asserts
 the mask exists and is all ones, records that assertion with the raw-presentation
 hash, omits the mask, records the effective-model-input hash, and refuses the row

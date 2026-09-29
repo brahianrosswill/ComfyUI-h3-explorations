@@ -458,7 +458,7 @@ raw state after language layer index 49 -- with the presentation hashing and the
 refusal-on-mismatch its comparator needs. What it does not have is a tap on
 every layer's *input*. Adding one is an extension of an existing arm rather than
 a new capture path, and
-[`compare_transformers_comfy_layer50.py`](../../../../bench/compare_transformers_comfy_layer50.py)'s
+`bench/compare_transformers_comfy_layer50.py` (removed 0.176.0)'s
 `_embedding_tap` is the shape to copy.
 
 **Which graph to trace, added 2026-08-26 after a peer proposed the four
