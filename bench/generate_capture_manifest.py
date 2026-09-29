@@ -28,8 +28,14 @@ import torch
 _REPO = Path(__file__).resolve().parent.parent
 if str(_REPO) not in sys.path:
     sys.path.insert(0, str(_REPO))
+# reference_geometry imports comfy_extras, so ComfyUI's root has to be importable too
+if str(_REPO.parents[1]) not in sys.path:
+    sys.path.insert(0, str(_REPO.parents[1]))
 
 from substrate import infer_quantization  # noqa: E402
+import comfy.cli_args  # noqa: E402
+comfy.cli_args.args.cpu = True   # importing comfy_extras must not need a card; this script reads files
+from reference_geometry import REF_IMAGE_SHORT_EDGE, fit_reference_image, latent_rows  # noqa: E402
 
 sys.path.insert(0, str(_REPO / "workflows"))
 from h3_config import LORA_LOADER_CLASSES, graph_schedule  # noqa: E402
@@ -143,26 +149,39 @@ def parse_prompt_sections(text: str) -> dict[str, str]:
     return sections
 
 
-def compute_reference_fit(
-    img_path: Path,
-    allow_upscale: bool = False,
-    short_edge: int = 2048,
-    max_area: int = 2048 * 2048,
-) -> tuple[list[int], list[int], int]:
-    """Calculate raw dimensions, fitted dimensions, and latent token count."""
+def reference_fit(wf: dict, load_id: str, img_path: Path, canvas: dict) -> tuple[list[int], list[int], int, dict]:
+    """Raw dimensions, fitted dimensions, latent rows and the settings behind them, for one LoadImage.
+
+    The size policy is the one the graph ran: the `MiniMaxH3AppendRefImage` whose
+    `image` input is this LoadImage carries `size_policy`, and under `max` the
+    flattened `size_policy.dit_short_edge` and `size_policy.allow_upscale`. This
+    used to assume no upscale for every image, which recorded 1024 rows for a
+    reference the graph had upscaled to 4096 (the 2026-09-27 ref2va capture).
+    The sizing itself is `reference_geometry.fit_reference_image`, the function
+    the node uses. Where no append node consumes the image, or `match` needs a
+    canvas the graph does not give, the settings say so instead of guessing.
+    """
     with Image.open(img_path) as im:
         raw_w, raw_h = im.size
-
-    w, h = float(raw_w), float(raw_h)
-    if not allow_upscale:
-        scale = min(1.0, short_edge / min(w, h), math.sqrt(max_area / (w * h)))
+    appends = [n["inputs"] for n in wf.values()
+               if n.get("class_type") == "MiniMaxH3AppendRefImage"
+               and str((n["inputs"].get("image") or [None])[0]) == str(load_id)]
+    if not appends:
+        settings = {"size_policy": "max", "short_edge": REF_IMAGE_SHORT_EDGE, "allow_upscale": False,
+                    "source": "assumed: no MiniMaxH3AppendRefImage takes this LoadImage"}
     else:
-        scale = min(short_edge / min(w, h), math.sqrt(max_area / (w * h)))
-
-    fit_w = int(math.ceil((w * scale) / 32.0) * 32)
-    fit_h = int(math.ceil((h * scale) / 32.0) * 32)
-    latent_rows = (fit_w // 32) * (fit_h // 32)
-    return [raw_w, raw_h], [fit_w, fit_h], latent_rows
+        inputs = appends[0]
+        policy = str(inputs.get("size_policy", "max"))
+        settings = {"size_policy": policy,
+                    "short_edge": int(inputs.get("size_policy.dit_short_edge", REF_IMAGE_SHORT_EDGE)),
+                    "allow_upscale": bool(inputs.get("size_policy.allow_upscale", policy == "max")),
+                    "source": "graph"}
+    canvas_w, canvas_h = canvas.get("width"), canvas.get("height")
+    if settings["size_policy"] == "match" and not (isinstance(canvas_w, int) and isinstance(canvas_h, int)):
+        return [raw_w, raw_h], [0, 0], 0, {**settings, "source": "unresolved: match needs the canvas, which the graph does not give"}
+    fit_w, fit_h = fit_reference_image(raw_w, raw_h, size_policy=settings["size_policy"], short_edge=settings["short_edge"],
+                                       allow_upscale=settings["allow_upscale"], canvas_w=canvas_w, canvas_h=canvas_h)
+    return [raw_w, raw_h], [fit_w, fit_h], latent_rows(fit_w, fit_h), settings
 
 
 def read_substrate() -> dict:
@@ -582,9 +601,10 @@ def extract_from_workflow(wf: dict, input_base: Path):
                 ref_path = input_base / "h3_refs" / img_name
 
             raw_dim, fit_dim, lat_rows = ([0, 0], [0, 0], 0)
+            fit_settings = {"source": "missing: the image file is not on disk"}
             f_hash = "missing"
             if ref_path.is_file():
-                raw_dim, fit_dim, lat_rows = compute_reference_fit(ref_path)
+                raw_dim, fit_dim, lat_rows, fit_settings = reference_fit(wf, node_id, ref_path, canvas)
                 f_hash = sha256_file(ref_path)
 
             references.append({
@@ -594,7 +614,7 @@ def extract_from_workflow(wf: dict, input_base: Path):
                 "raw_dimensions": raw_dim,
                 "fitted_dimensions": fit_dim,
                 "latent_rows": lat_rows,
-                "fit_settings": {"allow_upscale": False, "short_edge": 2048, "lift_downstream_clamp": False},
+                "fit_settings": fit_settings,
             })
 
     # Steps and scheduler come from `h3_config.graph_schedule`, NOT from the

@@ -4,6 +4,29 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.176.2
+
+### Fixed
+
+- `bench/generate_capture_manifest.py` sized every reference image as if the
+  graph did not upscale, so a manifest could record 1024 latent rows for a
+  reference the graph had upscaled to 4096, and put the difference in
+  `token_accounting.text_tokens`. It now reads the size policy off the
+  `MiniMaxH3AppendRefImage` that takes each LoadImage and sizes with
+  `reference_geometry.fit_reference_image` (its own copy of the sizing is
+  gone); `fit_settings` says where the policy came from. Of the captures on
+  disk, only `2026-09-27_sol_test2_pdd8_ref2va` carried the wrong numbers, and
+  its manifest is not regenerated. `check_capture_manifest.py` could not see it:
+  its reference-row check compares two figures from the same source.
+
+### Added
+
+- The ref2va investigation's CPU records: FL2VA against Ref2VA in the release's
+  own weights (`bench/results/2026-09-29_ref2va_partition_delta.md`, scripts
+  `bench/map_partition_delta.py`, `analyze_adaln_chunks_original.py`,
+  `analyze_time_warp.py`) and how much video attention goes to the reference
+  images by depth (`bench/results/2026-09-29_ref2va_reference_attention.md`).
+
 ## 0.176.1
 
 ### Changed
