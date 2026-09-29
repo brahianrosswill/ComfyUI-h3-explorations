@@ -44,8 +44,10 @@ Records, each written by its script under `bench/`:
 
 So "ref2va's block 49 is the hardest cell" is largely a property of the grade,
 not of the render: it counts error in rows the model discards, and ref2va has
-14568 text rows and two reference images where t2v has 599 text rows
-(`token_accounting` in each capture's manifest). Video rows, which decide the
+8424 text rows and two reference images of 4096 rows each where t2v has 599 text rows
+(the capture's `segments`; the manifest's `token_accounting` lists 14568 `text_tokens`, which is a
+remainder that also holds 6144 of the reference rows, and gives 1024 `latent_rows` per image against
+4096 in the segments, an unexplained difference; the segments are what the analyses used). Video rows, which decide the
 picture, are about as hard in both.
 
 ## Not shown
