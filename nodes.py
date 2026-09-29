@@ -45,6 +45,7 @@ from .audio_freeze_song import MiniMaxH3AudioFreezeSong
 from .audio_refine import MiniMaxH3AudioRefineMask
 from .frozen_video_cache import MiniMaxH3FrozenVideoCache
 from .lora_branch import MiniMaxH3LoRABranch
+from .overlay_loader import MiniMaxH3OverlayLoader
 from .denoise_mask_probe import MiniMaxH3DenoiseMaskProbe
 from .step_x0_observer import MiniMaxH3StepX0Observer
 from .core_sparse_capture import MiniMaxH3CoreSparseCapture
@@ -338,7 +339,10 @@ class H3ExplorationsExtension(ComfyExtension):
                 MiniMaxH3Sol,
                 # appended 2026-09-27, capture on core's sparse producer path
                 # (core_sparse_capture.py; open_experiments #45)
-                MiniMaxH3CoreSparseCapture]
+                MiniMaxH3CoreSparseCapture,
+                # appended 2026-09-29, a research checkpoint as an overlay on the released
+                # one, by piece (overlay_loader.py, checkpoint_overlay.py)
+                MiniMaxH3OverlayLoader]
 
 
 async def comfy_entrypoint() -> H3ExplorationsExtension:

@@ -4,6 +4,26 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.172.0
+
+### Added
+
+- `checkpoint_overlay.py`, `bench/build_checkpoint_overlay.py`: a research
+  checkpoint built on a released one, stored as an exact overlay per piece
+  (each block's backbone diff, the gates, the token refiner, adaln with its
+  time table, the tensors outside the blocks). The overlay names its base by
+  sha256 and refuses any other file. Built for FastH3 V2 and #35's two hybrids
+  on fl2va; sizes in `bench/results/2026-09-29_overlay_build_*.json`.
+- `MiniMaxH3OverlayLoader` ("MiniMax H3 Overlay Loader", appended to the node
+  list): reads `models/h3_overlays/*.h3overlay.safetensors`, applies the
+  selected pieces to the base's state dict and gives it to core's
+  `load_diffusion_model_state_dict`, so core builds the gate modules from the
+  keys. A `gate_scale` widget multiplies the gate row scales.
+- `bench/check_checkpoint_overlay.py` (`docs/checks.md`): base plus overlay is
+  the target tensor for tensor, on synthetic files with each claim broken on
+  purpose, and with `--models` on FastH3 V2 and the two hybrids
+  (`bench/results/2026-09-29_fasth3_overlay_exact.md`).
+
 ## 0.171.0
 
 ### Added

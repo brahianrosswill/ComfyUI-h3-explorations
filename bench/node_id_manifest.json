@@ -293,6 +293,21 @@
       "Output"
     ]
   },
+  "MiniMaxH3OverlayLoader": {
+    "inputs": [
+      "overlay_name",
+      "blocks",
+      "gates",
+      "refiner",
+      "adaln",
+      "io_layers",
+      "gate_scale"
+    ],
+    "node_id": "MiniMaxH3OverlayLoader",
+    "outputs": [
+      "model"
+    ]
+  },
   "MiniMaxH3PDDLoRA": {
     "inputs": [
       "model",

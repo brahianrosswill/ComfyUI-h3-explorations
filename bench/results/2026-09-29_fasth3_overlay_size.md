@@ -16,7 +16,7 @@ Sizes are in the JSON; this page says what they mean.
 
 1. **FastH3's backbone is fl2va's, give or take one int8 step.** Across all
    200 backbone linears, a small fraction of codes differ (`changed_fraction`),
-   every one of them by exactly 1 (`max_abs_code_diff`). Every row scale
+   every one of them by at most `max_abs_code_diff`. (This page first said "exactly 1"; the JSON records 2, and `bench/results/2026-09-29_fasth3_overlay_exact.md` builds the overlay from the true differences.) Every row scale
    differs slightly (`scales_equal_count` is 0). So the backbone travels
    exactly as the changed positions, their sign, and the new scales
    (`overlay_bytes_*`), not as 19 GB of codes.
