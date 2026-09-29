@@ -125,9 +125,9 @@ stays the shipped default.
   - Comfy-Org/ComfyUI issue 16604 (a reported ref-row shape mismatch above 16384
     packed rows) does not reproduce on the layout on the CPU
     (`../../bench/results/2026-09-29_ref_rows_16604.md`). Not tested: CUDA or
-    ROCm, and the reporter's stack. One thing to check in this pack: the
-    reference-video branch of `reference_conditioning.py` sets its latent grid
-    from `canvas // 16` and not from the latent's shape.
+    ROCm, and the reporter's stack. The one weak spot it found in this pack,
+    the reference-video branch taking its latent grid from `canvas // 16`, was
+    fixed in 0.176.2.
 - **Comparing across 0.166.0:** anything compared against a render made
   before it pins `quantizer=balanced` or re-renders its baseline. FastH3's
   contract graphs use core's attention and are unaffected.
