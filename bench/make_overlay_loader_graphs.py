@@ -17,6 +17,9 @@ Arms (`overlay_fasth3_v2_on_fl2va`, `blocks` as the loader takes it):
 - `overlay_all`: every piece. Should equal the FastH3 V2 file's render.
 - `overlay_no_gates`: every piece but the gates. Should equal the
   `fasth3_nogates` hybrid file's render.
+- `overlay_all_g075`, `overlay_all_g050`, `overlay_all_g000` (#36, the gate dial,
+  `bench/fasth3_gate_dial_arms.json`): every piece with the gate row scales
+  times 0.75, 0.5 and 0.
 - `overlay_no_refiner`: every piece but the refiner, so FastH3's backbone and
   gates run on fl2va's own bf16 token refiner. Not an equality check: a look.
 
@@ -38,6 +41,10 @@ ARMS = {
     "overlay_all": dict(blocks="all", gates=True, refiner=True, adaln=True, io_layers=True),
     "overlay_no_gates": dict(blocks="all", gates=False, refiner=True, adaln=True, io_layers=True),
     "overlay_no_refiner": dict(blocks="all", gates=True, refiner=False, adaln=True, io_layers=True),
+    # #36, the gate dial: every piece, the gate row scales multiplied by alpha.
+    "overlay_all_g075": dict(blocks="all", gates=True, refiner=True, adaln=True, io_layers=True, gate_scale=0.75),
+    "overlay_all_g050": dict(blocks="all", gates=True, refiner=True, adaln=True, io_layers=True, gate_scale=0.5),
+    "overlay_all_g000": dict(blocks="all", gates=True, refiner=True, adaln=True, io_layers=True, gate_scale=0.0),
 }
 
 

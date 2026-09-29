@@ -1,0 +1,42 @@
+{
+ "what": "open_experiments #36: a strength dial on FastH3's gates. FastH3 V2 through MiniMaxH3OverlayLoader with every piece and gate_scale 0.75 and 0.5 on three scenes, and 0 on look_anchor, on FastH3's contract harness (10/3, its rungs, euler, core VSA keep 20%), seed 730451892, each scene at its written length. Graphs: bench/make_overlay_loader_graphs.py --out-dir internal/overlay_graphs (scratch, gitignored). Alpha 1 is the loader's own bit-exact FastH3: look_anchor's is look_anchor__overlay_all in 2026-09-29_overlay_loader_render.jsonl; the other two scenes render it here as <scene>__overlay_all.",
+ "why": "FastH3 has the most fine detail on every scene and the owner reads it as over-polished (fasth3-gate-dial). #35 (2026-09-29_fasth3_gates.md) put the look in the gates. Core computes the coarse branch's gate as gate(xc) with no activation, and the gate rows are int8 with a per-row fp32 scale and no bias, so gate_scale multiplies the gate exactly.",
+ "predictions": {
+  "written": "2026-09-29, before any render, by h3dude; all reasoned, none measured",
+  "D1": "detail and hf fall monotonically from alpha 1 to 0.75 to 0.5 on all three scenes.",
+  "D2": "moved_share falls with them: #35's no-gates arm lost motion (moved share) as well as detail, so the gates carry both and the dial is not a detail-only control. It ships as a look dial, not as 'less polish, same motion'.",
+  "D3": "alpha 0 (look_anchor) lands where fasth3_nogates did on tone, resolution and moved share: a zero gate removes the coarse branch's contribution, so it separates 'the gate values' from 'the branch's presence' only if it differs from the no-gates arm. If it matches, presence of nonzero gates is what matters and the values are not tested by this dial.",
+  "falsifiers": "D1: any scene where detail rises from 1 to 0.5. D2: moved_share at 0.5 within 10% of alpha 1 while detail at 0.5 is below 0.8 of alpha 1 on the same scene (then detail and motion separate and the dial ships as a detail control). D3: alpha 0 far from fasth3_nogates on those measures (then the no-gates arm differs by more than a zero coarse gate)."
+ },
+ "arms": {
+  "look_anchor__g075": "internal/overlay_graphs/overlay_all_g075.json",
+  "look_anchor__g050": "internal/overlay_graphs/overlay_all_g050.json",
+  "slapstick_moving_piano__overlay_all": "internal/overlay_graphs/overlay_all.json",
+  "slapstick_moving_piano__g075": "internal/overlay_graphs/overlay_all_g075.json",
+  "slapstick_moving_piano__g050": "internal/overlay_graphs/overlay_all_g050.json",
+  "radio_drama__overlay_all": "internal/overlay_graphs/overlay_all.json",
+  "radio_drama__g075": "internal/overlay_graphs/overlay_all_g075.json",
+  "radio_drama__g050": "internal/overlay_graphs/overlay_all_g050.json",
+  "look_anchor__g000": "internal/overlay_graphs/overlay_all_g000.json"
+ },
+ "patches": [
+  "look_anchor__g075:MiniMaxH3Conditioning.prompt=@bank:t2va_look_anchor",
+  "look_anchor__g075:MiniMaxH3Resolution.length=345",
+  "look_anchor__g050:MiniMaxH3Conditioning.prompt=@bank:t2va_look_anchor",
+  "look_anchor__g050:MiniMaxH3Resolution.length=345",
+  "slapstick_moving_piano__overlay_all:MiniMaxH3Conditioning.prompt=@bank:t2va_slapstick_moving_piano",
+  "slapstick_moving_piano__overlay_all:MiniMaxH3Resolution.length=345",
+  "slapstick_moving_piano__g075:MiniMaxH3Conditioning.prompt=@bank:t2va_slapstick_moving_piano",
+  "slapstick_moving_piano__g075:MiniMaxH3Resolution.length=345",
+  "slapstick_moving_piano__g050:MiniMaxH3Conditioning.prompt=@bank:t2va_slapstick_moving_piano",
+  "slapstick_moving_piano__g050:MiniMaxH3Resolution.length=345",
+  "radio_drama__overlay_all:MiniMaxH3Conditioning.prompt=@bank:t2va_radio_drama",
+  "radio_drama__overlay_all:MiniMaxH3Resolution.length=243",
+  "radio_drama__g075:MiniMaxH3Conditioning.prompt=@bank:t2va_radio_drama",
+  "radio_drama__g075:MiniMaxH3Resolution.length=243",
+  "radio_drama__g050:MiniMaxH3Conditioning.prompt=@bank:t2va_radio_drama",
+  "radio_drama__g050:MiniMaxH3Resolution.length=243",
+  "look_anchor__g000:MiniMaxH3Conditioning.prompt=@bank:t2va_look_anchor",
+  "look_anchor__g000:MiniMaxH3Resolution.length=345"
+ ]
+}
