@@ -1,13 +1,16 @@
-# Four blind sessions, read (2026-09-29)
+# Five blind sessions, read (2026-09-29)
 
-The owner scored four blind batches (`docs/eval_comparison.md` section 3),
+The owner scored five blind batches (`docs/eval_comparison.md` section 3),
 seed 730451892, one clip per arm, so each is a look and not a distribution.
 Verdict records, from `bench/score_session.py` after the scores were in:
 
 - `2026-09-29_finish_fasth3_covered_market_verdict.json` (t2v);
 - `2026-09-29_finish_fasth3_r2v_market_verdict.json` (ref2va, one reference);
 - `2026-09-29_gates_look_anchor_verdict.json` (#35's arms, look_anchor);
-- `2026-09-29_overlay_refiner_look_anchor_verdict.json` (refiner off).
+- `2026-09-29_overlay_refiner_look_anchor_verdict.json` (refiner off);
+- `2026-09-29_fasth3_gate_dial_look_anchor_verdict.json` (the #36 gate dial,
+  scored later the same day; its rows are
+  `2026-09-29_blind_rows_fasth3_gate_dial_look_anchor.jsonl`).
 
 The blinded rows the keys point at are `2026-09-29_blind_rows_<session>.jsonl`
 (the render rows filtered of the failed first control and relabelled to the arm
@@ -56,3 +59,21 @@ difference is one hearing and untested.
 
 Scored `same` ("same thing?"). On paper the change is near null
 (`2026-09-29_refiner_requant.md`); by eye it is null on this scene.
+
+## The gate dial, look_anchor (#36)
+
+FastH3 through the overlay loader at gate scale 1, 0.75 and 0.5
+(`2026-09-29_fasth3_gate_dial.md` has the measures).
+
+- **0.75 against full: can't tell.** "slightly different scenes but both look
+  good". No sign that a lower setting reads as less over-polished.
+- **0.5 against full: full slightly ahead.** "spoken delivery of dialogue is
+  slightly better in clip 1 [full] but both are also different scenes slightly
+  so i cant say for certain". The 0.5 single: "slightly more muted colors and
+  spoken delivery of dialogue is a little off but not bad".
+
+By eye this agrees with the measures, which said the dial takes colour and
+motion down with the detail: nothing gained at 0.75, and at 0.5 a little lost
+(muted colour, dialogue delivery). One scene, one clip per arm, so it does not
+show the dial is worse everywhere, only that this scene gave no reason to use
+it.
