@@ -1,6 +1,6 @@
 # The wiki: where to start, and who owns each answer
 
-last updated: 2026-09-27 (the two encoder tool rows: the bf16 pruned rebuild and the int8-vs-bf16 DiT measurement)
+last updated: 2026-09-29 (the block-49 row says the problem is specific to unrotated attention); 2026-09-27 (the two encoder tool rows: the bf16 pruned rebuild and the int8-vs-bf16 DiT measurement)
 
 Written by hand, and the only copy of these routes: `CLAUDE.md` points here
 instead of carrying them. This is a router, not an authority. It states no
@@ -66,7 +66,7 @@ under `docs/` that no link from `CLAUDE.md` or this wiki reaches.
 | [`docs/research/merge_requantisation.md`](../../docs/research/merge_requantisation.md) | what happens to a LoRA merged onto an int8 module. Stored weights only |
 | [`docs/research/smoothquant_for_attention_qk.md`](../../docs/research/smoothquant_for_attention_qk.md) | where the channel balance comes from (SmoothQuant), who already uses it on DiT linears, and what pointing it at attention's q/k changes |
 | [`docs/h3_quant_policy.md`](../../docs/h3_quant_policy.md) | the per-block precision policy for H3 attention and linears, each row with its status and evidence, and the tiered plan that fills the rows (Tier 0 graph, Sol quantizer balance, mixed-granularity K, sensitivity bake) |
-| [`docs/h3_block49_quant_error.md`](../../docs/h3_block49_quant_error.md) | why the last block's INT8 attention error is five times block 0's (loud K-norm channels under a shared scale, amplified by peaky attention), which blocks share it (45, 48 from the weights), and the free fold that recovers part of it (`MiniMaxH3ChannelBalance`, off by default) |
+| [`docs/h3_block49_quant_error.md`](../../docs/h3_block49_quant_error.md) | why the last block's INT8 attention error is five times block 0's **on unrotated INT8 attention** (sage's plain fp8++, stock Sol): loud K-norm channels under a shared scale, amplified by peaky attention. comfy-kitchen's `int8_attention` already rotates q/k and never had it, and the sage fork's rotated mode (`qk_rotate`, the sage node's `auto` since 0.129.0) was added to address it. Which blocks share it (45, 48 from the weights), and the free fold that recovers part of it (`MiniMaxH3ChannelBalance`, off by default) |
 | [`docs/research/quant_levers.md`](../../docs/research/quant_levers.md) | what can be changed about H3's quantisation and which levers are closed |
 | [`docs/research/h3_dit_implementations.md`](../../docs/research/h3_dit_implementations.md) | the DiT across every implementation available here; diffusers is the reference of record |
 | [`docs/research/comfyui_h3_t2va_trace.md`](../../docs/research/comfyui_h3_t2va_trace.md) | what ComfyUI's own code does, call by call, for one t2va render |

@@ -607,6 +607,8 @@ distance between "which block Sol approximates worst" and "which block to keep
 dense".** Closing it is one experiment: perturb one block's attention output by
 its measured sparsity error and read the change at the output head.
 
+*Note 2026-09-29:* the propagation this paragraph says nothing here measures was measured on 2026-08-29 (the table below): the output moves least for blocks 45, 48 and 49. "Block 49's lands on the output head directly" stands as reasoning only, and the measurement did not cover PDD's fused head.
+
 ##### The paper's own dense-layer policy is not evidence about H3
 
 Worth stating before someone reaches for it as corroboration, which is what
@@ -745,6 +747,8 @@ and `cos_min` **negative** (-0.04 to -0.11), so on some rows sage's output is
 anti-correlated with the exact answer
 (`bench/results/2026-08-18_sage_accuracy_on_capture.json`). That is also the
 block a distilled output head reads directly.
+
+*Note 2026-09-29:* these figures are unrotated sage's (the 2026-08-18 capture). Block 49's INT8 problem is specific to unrotated INT8 attention (sage's plain fp8++, stock Sol's per-row K scale). comfy-kitchen's `int8_attention` (the `--use-ck-attention` and Model Attention Backend path) already rotates q and k and was never affected, and the sage fork's rotated mode (`qk_rotate`, the sage node's `auto` since 0.129.0) was added to address it (`docs/h3_block49_quant_error.md`).
 
 **No shipped graph wires it, and what it buys end to end is unmeasured** --
 only what it removes at the call. Cost is roughly 1.7x the sage time on the
@@ -1838,6 +1842,8 @@ scale-invariantly with cosine, so it is not a denominator effect:
     1 - quant_cos    blocks 0-40:   2.1e-4 to 8.3e-4
     1 - quant_cos    block 49:      7.5e-3, 7.7e-3      about 10x
 
+*Note 2026-09-29:* "the block whose error reaches the output with no remaining network to absorb it" is reasoning; the 2026-08-29 propagation table above measured the output moving least for blocks 45, 48 and 49. These cosines are for unrotated INT8. Block 49's INT8 problem is specific to unrotated INT8 attention (sage's plain fp8++, stock Sol's per-row K scale). comfy-kitchen's `int8_attention` (the `--use-ck-attention` and Model Attention Backend path) already rotates q and k and was never affected, and the sage fork's rotated mode (`qk_rotate`, the sage node's `auto` since 0.129.0) was added to address it (`docs/h3_block49_quant_error.md`).
+
 **And sparsity simultaneously gets EASIER there** — `sparsity_cos` 0.9915 at
 block 49 against 0.9784 at block 40. The two terms swap which one is hard.
 
@@ -2343,6 +2349,8 @@ exactly where it was. The K-channel fold is the move at block 49, and it
 costs nothing at render time; `-1` in `dense_blocks` costs a dense block
 and fixes half. Rests on the split.
 
+*Note 2026-09-29:* written when `dense_blocks` fell back to sage. The default dense kernel under Sol has been comfy-kitchen's rotated `int8_attention` since 2026-09-15, which `bench/results/2026-09-27_sol_redesign_test2.md` measures as more accurate than Sol on the 45, 48 and 49 tail cells, and Sol's quantizer default is `rotated` since 0.166.0. Read this paragraph as describing the sage fallback.
+
 **New candidate, the only one here that costs no render time: fold the
 block-49 K balancing into the norm weights.** As an EXPERIMENT under this
 page's decision standard, not a default. Steps, cheapest first, none of
@@ -2439,7 +2447,7 @@ set this rests on is kept to 2026-10-31 (moved from 2026-09-20 on 2026-09-18).
 | CUDA e2e vs Triton e2e, ours | we have upstream's 1.4x, not our own | **the Triton pack is deleted**; recover from `kijai/ComfyUI-SolAttn_triton@842c4ea` first |
 | **comfy-kitchen's 4090 kernel vs NVLabs' own** | since PR #464 (2026-08-15) there are two independent sm89 implementations; which is faster or more accurate here is unknown, and it is the only external cross-check available on this card. Sana's RTX 4090 cell (added 2026-08-17) is the first published H3 run on theirs, with a real-QKV gate against SDPA and no comparison against kitchen's | one Python dep (`cutlass.cute`) and a seam -- their API has no `sink_q`, so `exact_kv_and_rows`'s query half needs doing at the integration layer. See [`docs/sol_upstream.md`](sol_upstream.md) |
 | **Which `dense_blocks`, if any?** | Empty is the honest default as of 2026-09-02. The historical `0-2,32` probe sampled only 11/50 blocks and did not cover the PDD head, actual active sigmas, interactions, or perceptual output. Upstream no longer agrees with itself either (2026-09-10): Sol-Engine's per-hardware cells keep the first two, Sol-H3 keeps two for T2V and none for Ref2VA, Spark's Ref2VA draft keeps layer 0, and sglang's SubBlock measured its layer cutoff inside run-to-run noise ([`docs/sol_upstream.md`](sol_upstream.md)) | all-50-block scans at actual PDD/base schedule states, then a set-level multi-scene A/B; the route observer supplies costs, not sensitivity |
-| **Fold block-49 K-channel balancing into the norm weights** | the one lever on this page that costs no render time; cuts sage's INT8 error at block 49 by a fifth on captures, and block 49 is where Sol's INT8 term equals its sparsity term (section "The defaults, re-read against the sage-side error records, 2026-09-14") | whether Sol's kernel shares the channel scale the way sage does: `analyze_sol_error.py` on the balanced q/k, step 3 there |
+| **Fold block-49 K-channel balancing into the norm weights** | the one lever on this page that costs no render time; cuts sage's INT8 error at block 49 by a fifth on captures, and block 49 is where Sol's INT8 term equals its sparsity term (section "The defaults, re-read against the sage-side error records, 2026-09-14") | whether Sol's kernel shares the channel scale the way sage does: `analyze_sol_error.py` on the balanced q/k, step 3 there *Note 2026-09-29: written for the balance fold on unrotated sage; the sage node's `auto` has been the rotated mode since 0.129.0 and Sol's quantizer default `rotated` since 0.166.0, and this row has not been re-evaluated against them.* |
 | **Per-step tau** | the only upstream H3 policy that varies sparsity with the step is Sana Spark's opt-in Ref2VA draft, and it goes sparser as denoising proceeds; our node varies tau per block (`tau_profile`) and never per step | a step-indexed tau in `sol_attn_h3.py`, graded first on captures as "What Sana's newer H3 packages offer this card" above says |
 | **Text and audio exact, references sparse** | the sink split the `sink_conditioning` row says our kernel cannot express, because reference rows sit between text and audio; Sana's Spark expresses it with the same kind of contiguous-sink kernel by permuting Q/K/V | a permuting sink mode in `sol_attn_h3.py`, graded on a reference capture first, as the section above says |
 | quality at the shipped tau, watched to the end | the artifact is temporal and length-dependent. *Corrected 2026-09-10:* this row named tau 1.3, which stopped being the shipped value on 2026-08-20 | a human watching |

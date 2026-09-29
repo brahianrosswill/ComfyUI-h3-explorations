@@ -4,6 +4,16 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.172.6
+
+### Changed
+
+- Block 49 prose (owner, 2026-09-29): the INT8 problem is specific to
+  unrotated attention. The wiki router row says so, and four passages and one
+  table row of `docs/SOLATTN.md` that read block 49 as a general last-block
+  problem carry dated notes (nothing removed). Logged in
+  `docs/wiki/decisions.md`.
+
 ## 0.172.5
 
 ### Added

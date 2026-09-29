@@ -15,6 +15,24 @@ Older history lives elsewhere and is not copied here:
   decisions" and forward-plan sections.
 - `bench/results/`: the verdict records, each with its conditions.
 
+## 2026-09-29
+
+- **Block 49's INT8 problem is specific to unrotated attention** (owner,
+  2026-09-29). It is sage's plain fp8++ and stock Sol's per-row K scale that
+  meet block 49's four loud K channels badly; comfy-kitchen's `int8_attention`
+  already rotates q and k and never had the problem, and the sage fork's
+  rotated mode (`qk_rotate`, the sage node's `auto` since 0.129.0) was added
+  to address it. `docs/h3_block49_quant_error.md` says so; the router row in
+  `index.md` now does too, and the passages of `docs/SOLATTN.md` that read
+  block 49 as a general last-block problem carry dated notes: the output head
+  "reached directly" (propagation was measured 2026-08-29 and moves least for
+  45, 48 and 49), the dense fallback described as sage, and the K-channel fold
+  as "the move at block 49". Nothing was removed.
+- **TaoMate-H3 is history only** (owner, again 2026-09-29; deprecated
+  2026-09-27). `CLAUDE.md`, `docs/h3_quant_policy.md` and
+  `docs/h3_block49_quant_error.md` said or implied it was a live reference for
+  the tail's precision; each now says otherwise.
+
 ## 2026-09-28
 
 - **The launcher dropped `--fast fp16_accumulation`, and `comfy.env` dropped
