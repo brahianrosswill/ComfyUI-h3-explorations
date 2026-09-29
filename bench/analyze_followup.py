@@ -27,6 +27,10 @@ runs the tool each prediction names
   FastH3 with the base's, and the base on FastH3's harness:
   `measure_clip_tone.py` and `measure_clip_temporal.py` on the clips, and
   `latent_path_distance.py` with FastH3 as the reference.
+- `gates`: #35 (`bench/fasth3_gates_arms.json`, its own rows file). Per scene,
+  FastH3 as the reference against fl2va plus FastH3's gates, FastH3 without
+  them, today's FastH3 rerun and the swap batch's plain fl2va: tone,
+  temporal and divergence, as `swap`.
 - `transplant`: FlashGen on block ranges (`bench/flashgen_transplant_arms.json`,
   fastdude's, its own rows file). Per scene, full FlashGen from the rerun and
   the 0-49, 0-33 and 34-49 arms: tone and temporal on the clips, and
@@ -115,9 +119,9 @@ def run(tool: str, args: list, json_out: Path):
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--group", action="append",
-                    choices=("looks", "ladder", "vsa", "spec", "reverse", "swap", "transplant", "late_switch", "grid", "fg46"))
+                    choices=("looks", "ladder", "vsa", "spec", "reverse", "swap", "transplant", "late_switch", "grid", "fg46", "gates"))
     args = ap.parse_args()
-    groups = args.group or ["looks", "ladder", "vsa", "spec", "reverse", "swap", "transplant", "late_switch", "grid", "fg46"]
+    groups = args.group or ["looks", "ladder", "vsa", "spec", "reverse", "swap", "transplant", "late_switch", "grid", "fg46", "gates"]
     out_root = comfy_output()
     if not ROWS.exists():
         print(f"no rows yet: {ROWS.relative_to(REPO)} does not exist")
@@ -200,7 +204,11 @@ def main() -> int:
             ("grid", "2026-09-27_finisher_grid.jsonl", "pdd8",
              ("rev_h080", "rev_late_h080", "rev_base_h080"), "2026-09-27"),
             ("fg46", "2026-09-27_finisher_grid.jsonl", "flashgen",
-             ("flashgen_late",), "2026-09-27")):
+             ("flashgen_late",), "2026-09-27"),
+            # #35: fl2va plus FastH3's gates, FastH3 minus them, today's rerun
+            # of FastH3, and the swap batch's plain fl2va on the same harness.
+            ("gates", "2026-09-29_fasth3_gates.jsonl", "fasth3",
+             ("fl2va_gates", "fasth3_nogates", "fasth3_rerun", "fl2va_contract"), "2026-09-29")):
         if group not in groups:
             continue
         landed = rows(OUT / rows_file)
@@ -219,7 +227,7 @@ def main() -> int:
                 print(f"== {group}: {scene} temporal")
                 run("measure_clip_temporal.py", [*got, "--stride", "4"],
                     OUT / f"{day}_{group}_{scene}_temporal.json")
-            if group in ("late_switch", "grid", "fg46"):
+            if group in ("late_switch", "grid", "fg46", "gates"):
                 print(f"== {group}: {scene} resolution")
                 run("measure_clip_resolution.py", got, OUT / f"{day}_{group}_{scene}_resolution.json")
             if lats[0] and any(lats[1:]):
