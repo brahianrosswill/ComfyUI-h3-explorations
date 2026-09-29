@@ -5,25 +5,28 @@ latent rows that the DiT attends on every sampling step; Qwen3-VL reads a copy
 as vision tokens that sit in the text segment ahead of the prompt, and the
 hidden states of those positions ride the DiT's text segment on every step
 too. `MiniMaxH3AppendRefImage.size_policy` sizes the first copy and its
-`qwen_view` the second, and nothing in the graph showed either until this
-node: the numbers lived in a server log line and in `bench/preflight_graph.py`,
-which nobody runs from the UI.
+`qwen_view` the second.
 
-`MiniMaxH3ReferenceReport` takes the same references, prompt and canvas the
+`price_references` takes the same references, prompt and canvas the
 conditioner takes, prices both copies of every reference with the SAME sizing
 functions the conditioner calls (`reference_geometry.fit_reference_image`,
 `reference_conditioning.qwen_view_size`, `reference_geometry.qwen_image_size`),
 builds the packed sequence the model will build (`comfy.ldm.minimax.model
-.PackedLayout`, from shapes alone) and returns a text report and a picture of
-it. No VAE, no encoder forward: the only model it touches is the tokenizer,
-for the prompt's token count.
+.PackedLayout`, from shapes alone) and `format_report` turns it into text.
+`MiniMaxH3ReferenceConditioning` calls both for its preview. No VAE, no encoder
+forward: the only model it touches is the tokenizer, for the prompt's token
+count.
+
+This module held a node, `MiniMaxH3ReferenceReport`, and a report picture until
+0.173.0 (owner, 2026-09-29): no graph used it and the conditioner's preview
+carries the same text. The pricing functions stay.
 
 **What is exact and what is not.** Every pixel size, every DiT row count and
 every vision-token count is the geometry the conditioner will produce, from
 the same functions. The prompt and label token counts come from the installed
 tokenizer. Reference audio rows are an estimate: the aligned encode pads to
-the audio VAE's hop, which this node does not load, so a soundtrack's rows can
-be one hop off. The report says so on the line.
+the audio VAE's hop, which this module does not load, so a soundtrack's rows
+can be one hop off. The report says so on the line.
 
 **Two ceilings apply to the encoder's copy, in order.** The selected
 `image_policy` pre-applies its own bounds (none for `comfy`, the release's
@@ -39,8 +42,6 @@ import logging
 import math
 from dataclasses import dataclass, field
 
-import torch
-from comfy_api.latest import io, ui
 from comfy_extras.nodes_minimax_h3 import (
     AUDIO_LATENT_FPS,
     CANVAS_MULTIPLE,
@@ -410,250 +411,3 @@ def format_report(p: SequencePricing) -> str:
         out.append(f"the prompt is {share:.0%} of what the text encoder reads; the "
                    f"rest is references placed ahead of it")
     return "\n".join(out)
-
-
-# --------------------------------------------------------------------------
-# The picture
-
-
-def _font(size: int):
-    from PIL import ImageFont
-    try:
-        return ImageFont.load_default(size=size)
-    except TypeError:  # older Pillow: bitmap default only
-        return ImageFont.load_default()
-
-
-def _thumb(image_tensor, box_w: int, box_h: int):
-    """A PIL thumbnail of a [1,H,W,C] float tensor, fitted inside the box."""
-    from PIL import Image
-    arr = (image_tensor[0, ..., :3].clamp(0, 1).mul(255).to(torch.uint8).cpu().numpy())
-    im = Image.fromarray(arr)
-    im.thumbnail((max(1, box_w), max(1, box_h)))
-    return im
-
-
-def render_report_image(p: SequencePricing, records) -> torch.Tensor:
-    """Two columns, one row per reference, then the sequence bar."""
-    from PIL import Image, ImageDraw
-
-    W = 1400
-    margin = 28
-    col_w = (W - 3 * margin) // 2
-    row_gap = 26
-    max_box = 300
-    f_title = _font(30)
-    f_head = _font(20)
-    f_body = _font(17)
-    f_small = _font(14)
-
-    ink = (24, 24, 28)
-    muted = (110, 110, 118)
-    paper = (248, 247, 244)
-    col_dit = (66, 133, 244)
-    col_enc = (219, 68, 55)
-    col_video = (170, 170, 178)
-    col_audio = (120, 190, 140)
-    col_text = (244, 180, 0)
-
-    # Scale thumbnails by the square root of pixel area, against the largest
-    # copy on the page, so a copy twice the rows draws about 1.4x the side.
-    areas = []
-    for it in p.items:
-        if isinstance(it, (StillPricing, VideoPricing)):
-            areas.append(it.vae[0] * it.vae[1])
-            areas.append(it.qwen[0] * it.qwen[1])
-    ref_area = max(areas) if areas else 1
-
-    def box_for(w, h):
-        s = math.sqrt((w * h) / ref_area)
-        side = max(48, int(max_box * s))
-        if w >= h:
-            return side, max(24, int(side * h / w))
-        return max(24, int(side * w / h)), side
-
-    # Pre-compute row heights.
-    rows = []
-    for it, rec in zip(p.items, records):
-        if isinstance(it, StillPricing):
-            bw1, bh1 = box_for(*it.vae)
-            bw2, bh2 = box_for(*it.qwen)
-            text_h = 24 * 2 + 18 * len(it.notes)
-            rows.append(max(bh1, bh2) + text_h + row_gap)
-        elif isinstance(it, VideoPricing):
-            bw1, bh1 = box_for(*it.vae)
-            bw2, bh2 = box_for(*it.qwen)
-            text_h = 24 * 3 + 18 * len(it.notes)
-            rows.append(max(bh1, bh2) + text_h + row_gap)
-        else:
-            rows.append(24 * 2 + 18 * len(it.notes) + row_gap)
-    header_h = 130
-    bar_h = 200
-    H = header_h + sum(rows) + bar_h + margin
-    im = Image.new("RGB", (W, H), paper)
-    d = ImageDraw.Draw(im)
-
-    d.text((margin, 20), "MiniMax H3 reference report", fill=ink, font=f_title)
-    d.text((margin, 60), f"{p.canvas[0]}x{p.canvas[1]}, {p.frames} frames, "
-                         f"image_policy={p.image_policy}, video_policy={p.video_policy}",
-           fill=muted, font=f_body)
-    x1 = margin
-    x2 = 2 * margin + col_w
-    d.text((x1, 92), "VIDEO MODEL (DiT) sees   -- latent rows, every sampling step",
-           fill=col_dit, font=f_head)
-    d.text((x2, 92), "TEXT ENCODER (Qwen3-VL) sees   -- vision tokens, ahead of the prompt",
-           fill=col_enc, font=f_head)
-    d.line((x1, 120, W - margin, 120), fill=(200, 200, 200), width=1)
-
-    y = header_h
-    for it, rec, rh in zip(p.items, records, rows):
-        d.text((x1, y), it.label, fill=ink, font=f_head)
-        if isinstance(it, (StillPricing, VideoPricing)):
-            src = rec.image if isinstance(it, StillPricing) else rec.frames[:1]
-            bw1, bh1 = box_for(*it.vae)
-            bw2, bh2 = box_for(*it.qwen)
-            top = y + 26
-            t1 = _thumb(src, bw1, bh1)
-            im.paste(t1, (x1, top))
-            d.rectangle((x1, top, x1 + t1.width, top + t1.height), outline=col_dit, width=2)
-            t2 = _thumb(src, bw2, bh2)
-            im.paste(t2, (x2, top))
-            d.rectangle((x2, top, x2 + t2.width, top + t2.height), outline=col_enc, width=2)
-            base = top + max(t1.height, t2.height) + 6
-            if isinstance(it, StillPricing):
-                d.text((x1, base), f"{it.vae[0]}x{it.vae[1]}   {it.dit_rows:,} rows",
-                       fill=ink, font=f_body)
-                d.text((x2, base), f"{it.qwen[0]}x{it.qwen[1]}   {it.qwen_tokens:,} tokens",
-                       fill=ink, font=f_body)
-                ny = base + 24
-            else:
-                d.text((x1, base), f"{it.vae[0]}x{it.vae[1]} x {it.latent_t} latent "
-                                   f"frames   {it.dit_rows:,} rows", fill=ink, font=f_body)
-                d.text((x2, base), f"{it.qwen[0]}x{it.qwen[1]} x {it.sampled} samples"
-                                   f"   {it.qwen_tokens:,} tokens", fill=ink, font=f_body)
-                ny = base + 24
-                if it.has_soundtrack:
-                    d.text((x1, ny), f"soundtrack   {it.audio_rows:,} audio rows",
-                           fill=ink, font=f_body)
-                ny += 24
-            d.text((x1, ny - 2), f"source {it.source[0]}x{it.source[1]}", fill=muted,
-                   font=f_small)
-            ny += 18
-        else:
-            d.text((x1, y + 26), f"audio   {it.audio_rows:,} rows", fill=ink, font=f_body)
-            ny = y + 50
-        for note in it.notes:
-            d.text((x2, ny), f"- {note}", fill=muted, font=f_small)
-            ny += 18
-        y += rh
-        d.line((x1, y - 10, W - margin, y - 10), fill=(225, 225, 225), width=1)
-
-    # The packed sequence.
-    y += 4
-    d.text((x1, y), f"packed sequence, {p.total:,} rows attended on every step",
-           fill=ink, font=f_head)
-    y += 32
-    bar_w = W - 2 * margin
-    parts = [("target video", p.segments.get("video", 0), col_video),
-             ("target audio", p.segments.get("audio", 0), col_audio),
-             ("text: prompt + labels", (p.prompt_tokens or 0) + p.label_tokens, col_text),
-             ("text: reference vision tokens", p.vision_tokens, col_enc),
-             ("reference latent rows",
-              p.segments.get("ref_img", 0) + p.segments.get("ref_video", 0), col_dit),
-             ("reference audio", p.segments.get("ref_audio", 0), (90, 150, 110))]
-    total = max(1, sum(n for _, n, _ in parts))
-    x = x1
-    for name, n, color in parts:
-        w = int(bar_w * n / total)
-        if w > 0:
-            d.rectangle((x, y, x + w, y + 34), fill=color)
-        x += w
-    y += 44
-    x = x1
-    for name, n, color in parts:
-        if n <= 0:
-            continue
-        d.rectangle((x, y + 3, x + 12, y + 15), fill=color)
-        label = f"{name} {n:,} ({n / total:.0%})"
-        d.text((x + 18, y), label, fill=ink, font=f_small)
-        x += 18 + int(d.textlength(label, font=f_small)) + 22
-        if x > W - 260:
-            x = x1
-            y += 20
-    y += 30
-    if p.prompt_tokens is not None and p.text_len:
-        share = p.prompt_share or 0.0
-        d.text((x1, y), f"the prompt's share of what the text encoder reads: {share:.0%}",
-               fill=ink, font=f_body)
-        y += 26
-        d.rectangle((x1, y, x1 + bar_w, y + 16), fill=(225, 225, 225))
-        d.rectangle((x1, y, x1 + int(bar_w * share), y + 16), fill=col_text)
-    else:
-        d.text((x1, y), "wire the CLIP to count the prompt's tokens", fill=muted,
-               font=f_body)
-
-    arr = torch.from_numpy(__import__("numpy").asarray(im)).to(torch.float32) / 255.0
-    return arr.unsqueeze(0)
-
-
-class MiniMaxH3ReferenceReport(io.ComfyNode):
-    @classmethod
-    def define_schema(cls):
-        from .reference_conditioning import H3References, VIDEO_POLICIES
-        return io.Schema(
-            node_id="MiniMaxH3ReferenceReport",
-            display_name="MiniMax H3 Reference Report",
-            category="MiniMaxH3/references",
-            description=(
-                "What the appended references will cost, before anything is "
-                "encoded. Every still is read twice: the video model (DiT) "
-                "attends its latent rows on every sampling step, and the text "
-                "encoder (Qwen3-VL) reads it as vision tokens placed ahead of "
-                "your prompt. This node prices both copies of every reference "
-                "with the conditioner's own sizing, builds the packed sequence "
-                "the model will build, and shows the prompt's share of what the "
-                "encoder reads. Wire the same references, prompt, canvas and "
-                "policies you give the conditioner; connect report_image to a "
-                "Preview Image node."
-            ),
-            inputs=[
-                H3References.Input("references"),
-                io.Clip.Input(
-                    "clip", optional=True,
-                    tooltip="The text encoder, for the prompt's token count. "
-                            "Without it the prompt is not counted."),
-                io.String.Input("prompt", multiline=True, dynamic_prompts=True,
-                                optional=True, default=""),
-                io.Int.Input("width", default=1344, min=32, max=16384, step=32),
-                io.Int.Input("height", default=768, min=32, max=16384, step=32),
-                io.Int.Input("length", default=124, min=5, max=3600, step=17),
-                io.Combo.Input(
-                    "image_policy", options=list(IMAGE_POLICIES), default="comfy",
-                    optional=True,
-                    tooltip="Match the conditioner's image_policy."),
-                io.Combo.Input(
-                    "video_policy", options=list(VIDEO_POLICIES), default="comfy",
-                    optional=True,
-                    tooltip="Match the conditioner's video_policy."),
-            ],
-            outputs=[
-                io.Image.Output(display_name="report_image"),
-                io.String.Output(display_name="report_text"),
-            ],
-        )
-
-    @classmethod
-    def execute(cls, references, clip=None, prompt="", width=1344, height=768,
-                length=124, image_policy="comfy", video_policy="comfy"):
-        from .reference_conditioning import _reference_tuple
-        records = _reference_tuple(references)
-        if not records:
-            raise ValueError("MiniMaxH3ReferenceReport needs at least one appended reference")
-        pricing = price_references(records, width, height, length,
-                                   image_policy=image_policy,
-                                   video_policy=video_policy,
-                                   clip=clip, prompt=prompt or "")
-        text = format_report(pricing)
-        logger.info("[h3] reference report:\n%s", text)
-        image = render_report_image(pricing, records)
-        return io.NodeOutput(image, text, ui=ui.PreviewText(text))

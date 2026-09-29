@@ -54,14 +54,12 @@ without it, **convenience** means the graph could be wired by hand instead, and
 | `MiniMaxH3ReferenceConditioning` | load-bearing | yes |
 | `MiniMaxH3AppendRefImage` / `AppendRefVideo` / `AppendRefAudio` | load-bearing | yes |
 | `MiniMaxH3SageAttention` | load-bearing | yes |
-| `SageChainAssert` | load-bearing (it raises) | yes |
 | `MiniMaxH3PDDLoRA` | load-bearing on PDD arms | yes |
 | `MiniMaxH3Resolution` | convenience | yes |
 | `MiniMaxH3Preflight` | instrumentation | yes |
 | `MiniMaxH3VAEPrecision` | instrumentation | the fp32 probe arm, not the canonical graphs |
 | `MiniMaxH3ProvenanceStamp` | instrumentation | bench only |
 | `MiniMaxH3EncoderLoader` | load-bearing (it refuses a bad load) | yes |
-| `MiniMaxH3ReferenceReport` | instrumentation | **no** (a UI node; the conditioner's preview carries the same text) |
 | `MiniMaxH3ChannelBalance` | instrumentation (an experiment lever: off by default, changes numerics only when switched on) | **no** |
 
 The registered nodes wired by no shipped graph are not dead code, and the
@@ -70,7 +68,13 @@ distinction matters:
 - **Retired 0.173.0 (owner, 2026-09-29):** `MiniMaxH3KeyframeCanvas`,
   `MiniMaxH3ReferenceFit`, `MiniMaxH3ReferenceVideoFit` and `MiniMaxH3MarkerArm`
   are gone, with `reference_fit.py`, `reference_video_fit.py` and their two
-  checks; git keeps them. No shipped graph used any of them.
+  checks; git keeps them. No shipped graph used any of them. The same day,
+  `SageChainAssert` (`assert_chain.py`), `MiniMaxH3ReferenceReport`,
+  `MiniMaxH3QuantObserve` (with `quant_observe.py`, `dit_observe.py` and
+  `check_quant_observe.py`, open experiment #23 being closed) and
+  `MiniMaxH3VSAAttention` (`vsa_attention.py`, `check_vsa_geometry.py` and the
+  `h3_probe_vsa` graphs; core's `BlockSparseAttention` in `vsa` mode is the
+  live path) went too.
   `keyframe_canvas.py::resolve_keyframe_geometry` stays because
   `MiniMaxH3Conditioning` calls it on every keyframe render, and
   `marker_arms.py` stays as the library the marker bench scripts and
@@ -106,9 +110,8 @@ contradicts. Cosmetic, but it is the kind of sentence that costs a session.
 
 ### Two asymmetries in what is asserted
 
-The two nodes present in every shipped graph — `SageChainAssert` and
-`MiniMaxH3Preflight` — have no dedicated check, and nothing asserts they stay
-wired. The most heavily asserted node, `MiniMaxH3ProvenanceStamp`, is wired in bench graphs. Coverage
+`MiniMaxH3Preflight`, present in every shipped graph, has no dedicated check,
+and nothing asserts it stays wired. The most heavily asserted node, `MiniMaxH3ProvenanceStamp`, is wired in bench graphs. Coverage
 has grown where the work happened, not where the renders are.
 
 *2026-09-17:* `SageChainAssert` is no longer in any generated graph (owner); the

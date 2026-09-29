@@ -338,16 +338,6 @@
       "latent"
     ]
   },
-  "MiniMaxH3QuantObserve": {
-    "inputs": [
-      "model",
-      "blocks"
-    ],
-    "node_id": "MiniMaxH3QuantObserve",
-    "outputs": [
-      "Output"
-    ]
-  },
   "MiniMaxH3ReferenceConditioning": {
     "inputs": [
       "clip",
@@ -365,23 +355,6 @@
     "outputs": [
       "positive",
       "Output"
-    ]
-  },
-  "MiniMaxH3ReferenceReport": {
-    "inputs": [
-      "references",
-      "clip",
-      "prompt",
-      "width",
-      "height",
-      "length",
-      "image_policy",
-      "video_policy"
-    ],
-    "node_id": "MiniMaxH3ReferenceReport",
-    "outputs": [
-      "report_image",
-      "report_text"
     ]
   },
   "MiniMaxH3Resolution": {
@@ -461,32 +434,6 @@
     "node_id": "MiniMaxH3VAEPrecision",
     "outputs": [
       "Output"
-    ]
-  },
-  "MiniMaxH3VSAAttention": {
-    "inputs": [
-      "model",
-      "keep_percent",
-      "pooled_tail"
-    ],
-    "node_id": "MiniMaxH3VSAAttention",
-    "outputs": [
-      "Output"
-    ]
-  },
-  "SageChainAssert": {
-    "inputs": [
-      "model",
-      "require_override",
-      "require_forward_patch",
-      "exercise",
-      "warn_only",
-      "require_absent",
-      "require_no_forward_patch"
-    ],
-    "node_id": "SageChainAssert",
-    "outputs": [
-      "model"
     ]
   }
 }

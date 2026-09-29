@@ -4,6 +4,38 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.174.0
+
+### Removed
+
+- Four more nodes retired (owner, 2026-09-29): `SageChainAssert` (out of every
+  generated graph since 2026-09-17), `MiniMaxH3ReferenceReport` (the
+  conditioner's preview carries the same text), `MiniMaxH3VSAAttention` (parked
+  and refusing since 0.157.1; core's `BlockSparseAttention` in `vsa` mode is
+  what the FastH3 graphs use) and `MiniMaxH3QuantObserve`. Their `node_id`s
+  leave `bench/node_id_manifest.json` deliberately.
+- With them: `assert_chain.py`, `vsa_attention.py`, `quant_observe.py` and
+  `dit_observe.py`; the `h3_probe_vsa` and `h3_probe_vsa_dense` graphs, the
+  generator's `vsa` parameter and branches, `MODELS["unet_vsa"]` and
+  `VSA_KEEP_PERCENT`; `bench/check_vsa_geometry.py` and
+  `bench/check_quant_observe.py`; the two graphs' entries in
+  `bench/check_attention_defaults.py`.
+- Open experiment #23 (what INT8 costs at run time) is closed by the owner, not
+  refuted: `docs/roadmap.md` "Closed lanes" carries it, and the entry in
+  `docs/open_experiments.md` stays as the record. The weight-side records in
+  `bench/results/` stay.
+
+### Changed
+
+- `reference_report.py` keeps `price_references` and `format_report`, which
+  `MiniMaxH3ReferenceConditioning` calls, and loses the node and the report
+  picture.
+- `bench/verify_vsa_render.py` stays for the pixel digest and embedded-graph
+  helpers `bench/compare_clip_pixels.py` imports; its docstring says so.
+- `docs/checks.md` (rows, and `assert_chain.py` declared absent),
+  `docs/custom_node_gaps.md`. Regenerated workflows are identical apart from the
+  two graphs removed.
+
 ## 0.173.0
 
 ### Removed

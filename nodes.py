@@ -10,7 +10,6 @@ import logging
 
 from comfy_api.latest import ComfyExtension, io
 
-from .assert_chain import SageChainAssert
 from .conditioning import MiniMaxH3Conditioning
 from .exact_blocks import MiniMaxH3ExactBlocks
 # The channel-balance node is published on its own as ComfyUI-H3-Quant
@@ -49,11 +48,9 @@ from .step_x0_observer import MiniMaxH3StepX0Observer
 from .core_sparse_capture import MiniMaxH3CoreSparseCapture
 from .preflight import MiniMaxH3Preflight
 from .provenance import MiniMaxH3ProvenanceStamp
-from .quant_observe import MiniMaxH3QuantObserve
 from .resolution import MiniMaxH3Resolution
 from .sol_attn_h3 import MiniMaxH3Sol
 from .sol_chunked_h3 import MiniMaxH3SolChunked
-from .vsa_attention import MiniMaxH3VSAAttention
 from .vae_precision import MiniMaxH3VAEPrecision
 from .reference_conditioning import (
     MiniMaxH3AppendRefAudio,
@@ -61,7 +58,6 @@ from .reference_conditioning import (
     MiniMaxH3AppendRefVideo,
     MiniMaxH3ReferenceConditioning,
 )
-from .reference_report import MiniMaxH3ReferenceReport
 from .prompt_lists import MiniMaxH3FillPromptLists, MiniMaxH3PromptList, register_wildcards_folder
 from . import h3_capture
 
@@ -289,10 +285,13 @@ class H3ExplorationsExtension(ComfyExtension):
         # Append only. A saved graph stores widget values as a bare list matched
         # by index and wires links to integer slots, so inserting anywhere but
         # the end silently re-points every later entry in every existing graph.
+        # Retired in 0.173.0 (owner, 2026-09-29), each removed from this list:
         # `MiniMaxH3KeyframeCanvas`, `MiniMaxH3ReferenceFit`,
-        # `MiniMaxH3ReferenceVideoFit` and `MiniMaxH3MarkerArm` sat in this list
-        # until 0.173.0 (owner, 2026-09-29): retired, no graph used them.
-        return [MiniMaxH3SageAttention, SageChainAssert,
+        # `MiniMaxH3ReferenceVideoFit`, `MiniMaxH3MarkerArm`, `SageChainAssert` and
+        # `MiniMaxH3ReferenceReport` (no graph used them), `MiniMaxH3QuantObserve` (open
+        # experiment #23, closed by the owner) and `MiniMaxH3VSAAttention` (parked and
+        # refusing; core's `BlockSparseAttention` in `vsa` mode replaces it).
+        return [MiniMaxH3SageAttention,
                 MiniMaxH3Resolution, MiniMaxH3Preflight,
                 MiniMaxH3ProvenanceStamp,
                 MiniMaxH3VAEPrecision,
@@ -308,12 +307,10 @@ class H3ExplorationsExtension(ComfyExtension):
                 # MiniMaxH3SolAttn sat here until 2026-09-27; replaced by MiniMaxH3Sol
                 # (appended below). Removal, unlike insertion, moves nothing that follows.
                 MiniMaxH3SolChunked,
-                MiniMaxH3VSAAttention,
-                MiniMaxH3QuantObserve,
                 MiniMaxH3FreezeAudio, MiniMaxH3FreezeAudioWindow,
                 MiniMaxH3EncodeTrack,
                 MiniMaxH3AudioAttentionGain, MiniMaxH3AudioFreezeSong,
-                MiniMaxH3ReferenceReport, MiniMaxH3PromptList,
+                MiniMaxH3PromptList,
                 MiniMaxH3FillPromptLists,
                 # appended 2026-09-14; insertion anywhere earlier would move what follows.
                 # Since 2026-09-15 the node also ships on its own as the

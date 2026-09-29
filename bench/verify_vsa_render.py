@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Verify a VSA render actually ran VSA, by its decoded pixels.
 
+**`MiniMaxH3VSAAttention` was retired in 0.173.0** (owner, 2026-09-29), with its two probe graphs.
+This file stays for the decoded-pixel digest and the embedded-graph helpers
+`bench/compare_clip_pixels.py` imports; its VSA-node report has nothing left to read.
+
 ## The question, and why the obvious check does not answer it
 
 `MiniMaxH3VSAAttention` replaces the DiT block forward, and its replacement

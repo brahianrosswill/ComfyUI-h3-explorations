@@ -14,7 +14,7 @@ from the functions the conditioner calls (`reference_geometry.fit_reference_imag
 `reference_conditioning.qwen_view_size`, `reference_geometry.qwen_image_size`)
 and from core's own still-image bounds read out of
 `h3_encoder_loader.native_encoder_contract`, so a row cannot disagree with a
-render. `MiniMaxH3ReferenceReport` does the same inside a graph, on the real
+render. `MiniMaxH3ReferenceConditioning`'s preview does the same inside a graph, on the real
 stills; this is the version you can run on sizes alone.
 
 Two columns per still. The video model's copy (`size_policy`, `dit_short_edge`,

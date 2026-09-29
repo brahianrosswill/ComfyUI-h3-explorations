@@ -18,7 +18,7 @@ AWQ adapter; that lane closed and the policy went with it on 2026-09-13
 **Every still is read twice.** The video VAE encodes one copy into reference
 latent rows the DiT attends on every sampling step; Qwen3-VL reads a copy as
 vision tokens placed in the text segment ahead of the prompt. `size_policy`
-sizes the first, `qwen_view` the second, and `MiniMaxH3ReferenceReport`
+sizes the first, `qwen_view` the second, and the report
 (`reference_report.py`) prices both before anything is encoded.
 
 This is local release-parity handling. It does not change native ComfyUI's

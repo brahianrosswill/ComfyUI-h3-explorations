@@ -74,7 +74,7 @@ HERE = Path(__file__).resolve().parent
 # Kept beside each other so a node added to one and not the other is visible.
 _CNR_ID = "comfyui-h3-explorations"
 _OUR_NODES = {
-    "MiniMaxH3SageAttention", "SageChainAssert",
+    "MiniMaxH3SageAttention",
     "MiniMaxH3Resolution", "MiniMaxH3Preflight",
     "MiniMaxH3ProvenanceStamp", "MiniMaxH3FreezeAudio", "MiniMaxH3FreezeAudioWindow",
     "MiniMaxH3EncodeTrack", "MiniMaxH3AudioAttentionGain",
@@ -92,7 +92,7 @@ from h3_config import (  # noqa: E402
     CORE_LOADED_ENCODERS, IMAGE_VAE, DRAFT_VAE, STEP_SWITCH_PASS1_SIGMAS, STEP_SWITCH_PASS2_SIGMAS,
     STEP_SWITCH_REV, STEP_SWITCH_BASE, CANVAS, FPS, LENGTH, LONG_LENGTH, MODELS,
     SAMPLING, SAGE_NODE, DENSE_BACKEND_NODE, DENSE_CHAINS, DEFAULT_DENSE_CHAIN, SEED, SIGMA_SHIFT, SOL_CORE_NODE, SOL_CORE_DEFAULTS,
-    VSA_KEEP_PERCENT, REF_VIDEO_LOADER,
+    REF_VIDEO_LOADER,
     CACHE_NODE, CACHE_NODE_CLASS,
     DISTILL_SAMPLING,
     REF_VIDEO_BUDGET,
@@ -622,8 +622,8 @@ def _sol_with_overrides(extra: dict) -> dict:
     return dict(base, **over)
 
 
-def _attention_plan(extra: dict) -> tuple[bool, bool, str | None, bool]:
-    """(sage, sol_on, dense_mode, vsa_on) from one GRAPHS entry's extras.
+def _attention_plan(extra: dict) -> tuple[bool, bool, str | None]:
+    """(sage, sol_on, dense_mode) from one GRAPHS entry's extras.
 
     Default, since 2026-09-15 (owner): "ck", core's Model Attention Backend
     at h3_config.DENSE_BACKEND_NODE as the dense kernel and Sol on top, no
@@ -657,39 +657,31 @@ def _attention_plan(extra: dict) -> tuple[bool, bool, str | None, bool]:
                       On an armed server the probe's counterfactual becomes
                       stock attention.
 
-    A VSA arm suppresses Sol because the two are mutually exclusive at the
-    block forward; the builder refuses the pair rather than ordering them. It
-    must name its kernel ("sage" keeps the token-refiner blocks on sage): the
-    kitchen backend on a VSA arm has never been run, so the default is
-    refused there rather than inherited. An image (single-frame) arm, a
-    parked lane, carries what the archived image graphs carried: sage alone.
+    An image (single-frame) arm, a parked lane, carries what the archived
+    image graphs carried: sage alone.
     """
     is_image = bool(extra.get("single_frame", False))
     dense = extra.get("dense_attn", False)
     dense_mode = ("none" if dense is True else dense) or None
     if dense_mode is not None and dense_mode not in _DENSE_ATTN_MODES:
         raise SystemExit(f"dense_attn={dense!r} is not one of {_DENSE_ATTN_MODES}")
-    vsa_on = extra.get("vsa") is not None
     if dense_mode is None:
         if is_image:
-            return True, False, None, vsa_on
-        if vsa_on:
-            raise SystemExit("a VSA arm names its dense kernel (dense_attn='sage'); "
-                             "the kitchen default has never run beside VSA")
+            return True, False, None
         dense_mode = DENSE_CHAINS[DEFAULT_DENSE_CHAIN]["dense_attn"]
     if dense_mode in ("sol", "ck", "sage_sol"):
-        if is_image or vsa_on:
+        if is_image:
             raise SystemExit(f"dense_attn={dense_mode!r} names a Sol-over-dense video arm; "
-                             "it cannot be an image arm or carry VSA")
-        return dense_mode == "sage_sol", bool(extra.get("sol_on", True)), dense_mode, vsa_on
-    return dense_mode == "sage", False, dense_mode, vsa_on
+                             "it cannot be an image arm")
+        return dense_mode == "sage_sol", bool(extra.get("sol_on", True)), dense_mode
+    return dense_mode == "sage", False, dense_mode
 
 
 def _takes_default_chain(extra: dict) -> bool:
     """True for a GRAPHS entry whose dense kernel is the default's to choose:
-    a video entry that names no `dense_attn` and carries no VSA. Everything
+    a video entry that names no `dense_attn`. Everything
     else is an arm about a particular chain and stays on it under `--chain`."""
-    return (not extra.get("single_frame", False) and extra.get("vsa") is None
+    return (not extra.get("single_frame", False)
             and not extra.get("dense_attn", False))
 
 
@@ -1384,7 +1376,7 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
               # what sglang, diffusers and DiffSynth do (every still to the
               # 2048 short edge, one copy for both towers). It was flipped
               # False on 2026-08-28 for cost; the cost is now shown by
-              # `MiniMaxH3ReferenceReport` before a render rather than
+              # the conditioner's preview before a render rather than
               # avoided by default. `REF_VIDEO_BUDGET` still turns it off on
               # the video-bearing arms, for memory.
               ref_upscale: bool = True,
@@ -1416,7 +1408,6 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
               split_base_last: bool = True,
               single_frame: bool = False,
               cache: dict | None = None,
-              vsa: tuple[float, bool] | None = None,
               vae_encoder: str | None = None,
               clip: str | None = None,
               # Reference pathway knobs, 2026-09-03. `ref_latents=False`
@@ -1980,30 +1971,10 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
                           else {"head_chunks": head_chunks}),
                        **({} if sage_mode is None else {"mode": sage_mode}))}}
         model_src = ["20", 0]
-    if vsa is not None:
-        # FastVideo VSA, an ALTERNATIVE TO SOL rather than a companion: both
-        # decide how the same 50 main blocks attend, and VSA wins by replacing
-        # the block forward outright, so a Sol node in the same graph would be
-        # silently inert. Refused rather than ordered.
-        #
-        # sage STAYS, and that is the one difference from the `sla_router` arm
-        # above. VSA replaces the 50 MAIN blocks; the 2 token-refiner blocks
-        # carry no gate and are not VSA's business, so sage keeps them.
-        # Node id 46: 45 is the router and 47 is taken.
-        if sol is not None:
-            raise SystemExit("vsa replaces the DiT block forward and Sol-Attn "
-                             "overrides attention on the same 50 blocks; pass "
-                             "sol=None with vsa")
-        keep_percent, pooled_tail = vsa
-        g["46"] = {"class_type": "MiniMaxH3VSAAttention",
-                   "inputs": {"model": model_src,
-                              "keep_percent": keep_percent,
-                              "pooled_tail": pooled_tail}}
-        model_src = ["46", 0]
     if core_vsa is not None:
-        if sol is not None or vsa is not None:
-            raise SystemExit("core_vsa takes Sol's slot and replaces the block attention VSA "
-                             "would; pass it with sol=None and vsa=None")
+        if sol is not None:
+            raise SystemExit("core_vsa takes Sol's slot and replaces the block attention; "
+                             "pass it with sol=None")
         g["21"] = {"class_type": SOL_CORE_NODE,
                    "inputs": {"model": model_src, **core_vsa}}
         model_src = ["21", 0]
@@ -2032,8 +2003,8 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
     # default chain it could only confirm that no sage kernel ran, and its
     # flags, fixed at generation time, went stale the moment a graph was
     # edited in the editor. `bench/check_attention_defaults.py` grades the
-    # wiring, and Sol logs its own composition. The node stays registered so
-    # saved graphs still load; ids 23 and 43 stay reserved.
+    # wiring, and Sol logs its own composition. The node was deleted in 0.173.0
+    # (owner, 2026-09-29); ids 23 and 43 stay reserved.
     if exact_blocks is not None:
         # After the attention nodes; exact blocks wrap on top (the node's
         # forward survives either order).
@@ -5108,45 +5079,6 @@ def main():
          dict(ref_upscale=False, out_prefix="Video/h3_probe_ref_upscale"),
          "same references, WITHOUT the reference pipeline's upscale"),
 
-        # ---- FastVideo VSA, and its dense control ------------------------
-        #
-        # **The first two arms in this repo whose entire stack is drafts and
-        # experiments.** Read `docs/research/vsa/vsa_node.md` before either.
-        # Core support for loading the gate is a DRAFT PR applied to this box's
-        # working tree; the checkpoint says experimental in its repository name
-        # and carries no metadata at all. Only the kernel half is released.
-        #
-        # **These answer a MECHANICAL question, not a quality one.** Does the
-        # gate get built, computed and consumed, and does the render survive
-        # the cube reorder? Nothing here is a recipe: the checkpoint's "4step"
-        # is a reading of its filename, since the artifact carries no schedule,
-        # no step count and no sampler. So `steps` below is that reading and
-        # not a validated setting, and the pair must not be read as a quality
-        # comparison -- a rendered pair cannot A/B a numerical change, and this
-        # one additionally changes the attention regime outright.
-        #
-        # **1152x768 at 345 frames, which is how the owner actually renders**
-        # (instruction 2026-08-30: "any probes need to be at least 1152x768 and
-        # 345 frames... cuz thats how we render"). These arms were 768x768 at
-        # 124 frames until then, chosen off the standing default-below-16:9
-        # habit, and that was the wrong instinct twice over: 22,121 packed rows
-        # against the ~109k a shipped graph packs, so the figure described a
-        # shape nobody renders; and 124 is not exact on the 40 Hz audio clock
-        # (124*40/24 = 206.67) where 345 is (575 exactly).
-        ("h3_probe_vsa.json", "t2v-vsa", "t2v", LONG_T2V_PROMPT,
-         dict(width=1152, height=768, length=345, steps=4,
-              unet=MODELS["unet_vsa"],
-              vsa=(VSA_KEEP_PERCENT, False), dense_attn="sage",
-              out_prefix="Video/h3_probe_vsa"),
-         "FastVideo VSA -- EXPERIMENTAL, draft core PR, first run"),
-
-        ("h3_probe_vsa_dense.json", "t2v-vsa-dense", "t2v", LONG_T2V_PROMPT,
-         dict(width=1152, height=768, length=345, steps=4,
-              unet=MODELS["unet_vsa"],
-              dense_attn="sage",
-              out_prefix="Video/h3_probe_vsa_dense"),
-         "the VSA checkpoint under sage alone -- the control"),
-
         ("h3_probe_square_canvas.json", "t2v-1to1", "t2v", LONG_T2V_PROMPT,
          dict(width=768, height=768,
               out_prefix="Video/h3_probe_square"),
@@ -5671,7 +5603,7 @@ def main():
         # sage chain's mode, not only its node) rather than the node alone.
         if _takes_default_chain(extra):
             extra = _on_chain(extra, args.chain)
-        sage_on, sol_on, _dense_mode, _vsa_on = _attention_plan(extra)
+        sage_on, sol_on, _dense_mode = _attention_plan(extra)
         api_extra = {k: v for k, v in extra.items()
                      if k not in ("sol_on", "dense_attn", "sol_overrides", "distill_experiment")}
         wf = build_api(task, sage=sage_on,

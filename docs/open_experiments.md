@@ -1659,6 +1659,8 @@ owner, then the tap, then the arms.
 
 ## 23. What INT8 actually costs at run time, per module kind
 
+**Closed 2026-09-29 (owner: "experiment 23 is old i dont think anything has been done with it since august so retire everything related to that").** The Tier 1 observer, `MiniMaxH3QuantObserve`, its module `dit_observe.py` and its check were removed in 0.173.0; the entry below is kept as the record of what was proposed. Closed, not refuted.
+
 **Tests:** how much of a module's `int8_convrot` error is the WEIGHT rounding
 and how much is the ACTIVATION rounding, per module kind, at production
 geometry. Everything this repo has measured about int8 fidelity is the first

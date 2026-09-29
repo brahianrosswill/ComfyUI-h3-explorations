@@ -92,26 +92,9 @@ MODELS = dict(
     unet_fasth3_v2="fastvideo_fasth3_8step_v2_pruned_int8_convrot.safetensors",
     unet_hybrid_b30="minimax_h3_hybrid_fl2va_ref2va_b30-49-int8.safetensors",
     unet_hybrid_adaln_all="minimax_h3_hybrid_fl2va_ref2va_adaln_all-int8.safetensors",
-    # **EXPERIMENTAL, and every word of that is load-bearing.** kijai's
-    # FastVideo VSA distillation, from a repository that says experimental in
-    # its own name. The artifact carries NO metadata at all, so everything it
-    # claims about itself -- including "4step" -- lives in its filename;
-    # `docs/research/vsa/fastvideo_vsa_checkpoint.md` takes it apart.
-    #
-    # It is the pruned fl2va base plus one `to_gate_compress` linear per main
-    # block and nothing else: 150 keys added, none removed, no shape changed,
-    # and the trunk measurably unmoved. So it is a base checkpoint carrying a
-    # gate, not a different model.
-    #
-    # **Loading it needs core's gate support**, in stock core since core
-    # commit e308cc73 (#16072); before that it was the draft
-    # comfyanonymous/ComfyUI#15958 (head 10febb01, applied here 2026-08-30).
-    # Without it the 150 gate keys have no slot, are dropped on load, and the
-    # render SUCCEEDS as the dense base. `bench/check_vsa_core_patch.py` is the
-    # provenance record; `MiniMaxH3VSAAttention` refuses rather than let a
-    # dense render pass for VSA.
-    unet_vsa=("minimax_h3_fastvideo_vsa_datafree_1300step"
-              "_4step_int8_convrot.safetensors"),
+    # `unet_vsa`, kijai's experimental FastVideo VSA checkpoint, left with
+    # `MiniMaxH3VSAAttention` and its two probe graphs in 0.173.0 (owner,
+    # 2026-09-29); `docs/research/vsa/fastvideo_vsa_checkpoint.md` keeps what it was.
     clip=ENCODER_INT8,
     # **The INT8 ConvRot build, by owner decision 2026-09-26** ("yes
     # switch"), after the owner could not tell it from fp16 on a 345-frame
@@ -533,15 +516,6 @@ SOL_BASELINE_124F = dict(
 #: will say so. `bench/check_attention_defaults.py` catches it for shipped
 #: graphs; a hand-edited one is on the person editing it.
 SOL_END_PERCENT_BY_STEPS = {}  # retired 2026-09-11; was {4: 0.74, 6: 0.83, 8: 0.87}
-
-#: VSA's key-block keep fraction, as a percent. The published sparsity is 0.90,
-#: so 10 here, and the T8 pack independently ships the same value.
-#:
-#: **This is the distillation's own value, not a quality dial.** The checkpoint
-#: was trained with this routing; moving away from it is off-distribution in
-#: exactly the direction the distillation cannot compensate for. Nothing here
-#: has measured it, and there is no bf16 VSA release to measure against.
-VSA_KEEP_PERCENT = 10.0
 
 #: ComfyUI core's own Sol node (`comfy_extras/nodes_sparse_attention.py`,
 #: Comfy-Org/ComfyUI#16072, merged 2026-09-06), for an arm that renders it

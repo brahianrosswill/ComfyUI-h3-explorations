@@ -217,20 +217,6 @@ SOL_EXEMPT_STEMS = {
         "the fully dense control (2026-09-15): no Sol, no sage, no dense node, "
         "ComfyUI's own attention on every step; the ceiling for the whole chain "
         "and the arm that separates a kernel flaw from a take",
-    "h3_probe_vsa":
-        "VSA and Sol-Attn are mutually exclusive, not merely redundant: VSA "
-        "replaces the DiT block forward on the 50 main blocks and Sol-Attn "
-        "overrides attention on the same 50, so a Sol node here would be "
-        "SILENTLY INERT rather than additive. The generator refuses the pair "
-        "outright (`build_workflows.py`, the vsa branch). sage is still wired "
-        "and is not decoration -- it takes the 2 token-refiner blocks, which "
-        "carry no gate and are not VSA's business",
-    "h3_probe_vsa_dense":
-        "the control for the arm above, and it must run the VSA CHECKPOINT "
-        "with no sparse attention at all. Sol here would make it a "
-        "Sol-against-VSA comparison instead of the sparse-against-dense one it "
-        "exists to be, and its whole job is to show the checkpoint is a "
-        "working H3 model independently of the attention regime",
     "h3_probe_capture_ref3":
         "activation capture: h3_capture.py records the attention inputs a dense "
         "baseline is measured from, and Sol gives sage only the steps outside "
@@ -275,11 +261,6 @@ FLOOR_STEMS = {
                  "capture target needs the sage node"),
     "h3_probe_capture_ref3_fl2va":
         ("sage", "the capture twin on fl2va; the same reason"),
-    "h3_probe_vsa":
-        ("sage", "sage takes the two token-refiner blocks VSA does not replace, "
-                 "and the generator refuses the kitchen backend on a VSA arm"),
-    "h3_probe_vsa_dense":
-        ("sage", "the VSA arm's control, on the same floor as the arm"),
     "h3_probe_head_chunks":
         ("sage", "head_chunks is an input of MiniMaxH3SageAttention; the arm "
                  "means nothing without the node"),
