@@ -4,6 +4,24 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.172.8
+
+### Added
+
+- `bench/measure_bf16_delta_rank.py`: FastH3's backbone change from fl2va is
+  not low-rank at mid depth, so no general backbone adapter is built
+  (`bench/results/2026-09-29_fasth3_bf16_rank.md`).
+- #35 rendered and read: FastH3's look travels with its gates
+  (`bench/results/2026-09-29_fasth3_gates.md`); `bench/analyze_followup.py`
+  gains the `gates` group.
+- `bench/make_overlay_loader_graphs.py` and
+  `bench/results/2026-09-29_overlay_loader_render.md`: the overlay loader
+  through a real render, bit-identical to the hybrid-file and FastH3-file
+  renders on look_anchor.
+- Wiki rows for the overlay code, the rank and graph tools, the #35 record
+  and the finisher graphs (`docs/wiki/index.md`, `next_steps.md`,
+  `decisions.md`).
+
 ## 0.172.7
 
 ### Added
