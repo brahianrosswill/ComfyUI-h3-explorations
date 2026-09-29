@@ -4,6 +4,14 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.172.5
+
+### Added
+
+- `bench/measure_int8_weight_error.py`: each quantized linear of fl2va's int8
+  file against its bf16 source, block by block, CPU only
+  (`bench/results/2026-09-29_int8_weight_error_fl2va.md`).
+
 ## 0.172.3
 
 ### Added
