@@ -16,6 +16,21 @@ artifact.
   `bench/results/2026-10-01_mutant_keyframe_canvas.md`. This pack's own i2v graphs need nothing:
   `MiniMaxH3Conditioning`'s `canvas=from_keyframe` already runs the same geometry.
 
+## 0.182.7
+
+### Added
+
+- `workflows/h3_text_to_video_pdmd_api.json`: PDMD 4-step on the trainer's contract. It uses the
+  full-rank file (`PDMD_LORA`) at the call through `MiniMaxH3LoRABranch` at 1.0, Euler on `simple` at
+  4 steps, the base 12/3, no guidance, and the repo's Sol default (the trainer ran dense, as
+  FlashGen's does). Unrendered. Probes in `distill_experiments/`: `h3_probe_t2v_pdmd_2step` and
+  `h3_probe_t2v_pdmd_kijai_{4,2}step`, the resize arms.
+- `h3_config.PDMD_*`: the four files, the step count each was trained for, and the strength, each
+  with its provenance.
+- `bench/check_distill_settings.py` grades every PDMD graph: one PDMD file on fl2va, applied at the
+  call, base shift, `simple` at the file's step count (read from the header where it has one), no
+  ManualSigmas, Euler, strength 1.0. A mutation control (the step count set to 5) goes red.
+
 ## 0.182.6
 
 ### Added

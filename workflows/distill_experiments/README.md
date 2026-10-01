@@ -1,19 +1,22 @@
 # distill_experiments: the distill research graphs
 
-last updated: 2026-10-01 (the first-frame and reference map; the i2v PDD8 pick moved to the root)
+last updated: 2026-10-01 (the PDMD graphs; the first-frame and reference map; the i2v PDD8 pick moved to the root)
 
 Generated like every graph here by `workflows/build_workflows.py`; never
 hand-edit the JSON. Moved here 2026-09-27 at the owner's request. The routing
 rule is `build_workflows._is_distill_experiment`:
 - every `_savelat` (saves its latents) and `_x0` (saves each step's x0
   prediction) twin;
-- every `h3_probe_*` graph that runs a distill (PDD, FlashGen, FastH3, a step
-  switch, an audio refine pass);
+- every `h3_probe_*` graph that runs a distill (PDD, FlashGen, PDMD, FastH3, a
+  step switch, an audio refine pass);
 - the entries marked `distill_experiment=True`.
 
 The everyday distill graphs stay at `workflows/`: `h3_text_to_video_pdd`,
 `h3_text_to_video_pdd8_flashgen_finish` (PDD8 then a FlashGen finish, the
 owner's t2v pick on 2026-09-27), `h3_text_to_video_flashgen`,
+`h3_text_to_video_pdmd` (PDMD 4-step at full rank, added 2026-10-01, not yet
+rendered; its 2-step and kijai-resize arms are the `h3_probe_t2v_pdmd_*`
+graphs here),
 `h3_text_to_video_pdd_manual_sigmas` (PDD6), `h3_first_frame_to_video_pdd`
 (the owner's i2v pick, moved to the root on 2026-10-01), and the PDD ref and
 first/last-frame graphs.

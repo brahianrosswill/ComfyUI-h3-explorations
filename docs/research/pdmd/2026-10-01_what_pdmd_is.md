@@ -243,8 +243,12 @@ not compare PDD, FlashGen or FastH3.
 
 ## Open, in order
 
-1. **A graph.** `h3_text_to_video_pdmd` (4-step) and a 2-step twin, built by
-   `workflows/build_workflows.py`:
+1. **The graphs: built the same day, not yet rendered.**
+   `workflows/h3_text_to_video_pdmd_api.json` (4-step, full rank) ships at
+   the root. `distill_experiments/h3_probe_t2v_pdmd_2step` and the two
+   `h3_probe_t2v_pdmd_kijai_*` resize arms are probes. The constants are
+   `h3_config.PDMD_*`, and `bench/check_distill_settings.py` grades every PDMD
+   graph against the contract below. As planned:
    - FlashGen's t2v graph with the LoRA name swapped;
    - `ManualSigmas` replaced by the `simple` scheduler at 4 and 2 steps;
    - `MiniMaxH3LoRABranch` at strength 1.0, the published `lora_scale`.

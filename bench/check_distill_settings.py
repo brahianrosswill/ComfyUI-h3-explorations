@@ -210,6 +210,24 @@ def classify_flashgen(lora_name):
     return "flashgen" in lora_name.lower()
 
 
+def classify_pdmd(lora_name):
+    """A PDMD LoRA (h3_config.PDMD_*): ours at full rank or kijai's resizes."""
+    return "pdmd" in lora_name.lower()
+
+
+def _pdmd_header_steps(lora_name):
+    """`sampler_steps` from one of our converted PDMD files' headers, or None
+    (kijai's files carry no such field; a missing file is
+    `check_model_files.py`'s)."""
+    path = lora_path(lora_name)
+    if path is None:
+        return None
+    from safetensors import safe_open
+    with safe_open(str(path), "pt") as f:
+        got = (f.metadata() or {}).get("sampler_steps")
+    return int(got) if got else None
+
+
 def _flashgen_header_sigmas():
     """`manual_sigmas_shift12` from the FlashGen file's header, or None if the
     file is not on this box (a missing file is `check_model_files.py`'s)."""
@@ -459,6 +477,44 @@ def main():
                 got = (found.strengths or {}).get(found.loras[0])
                 assert got == cfg.FLASHGEN_STRENGTH, (
                     f"{path.name}: FlashGen strength {got}, want {cfg.FLASHGEN_STRENGTH}")
+                continue
+            if any(classify_pdmd(l) for l in found.loras):
+                # PDMD runs the trainer's contract: one file, on fl2va, applied
+                # at the call, at the base shift, Euler on `simple` at the step
+                # count the file was trained for, strength 1.0
+                # (docs/research/pdmd/2026-10-01_what_pdmd_is.md).
+                nodes = [n for n in doc.values() if isinstance(n, dict)]
+                assert len(found.loras) == 1 and found.loras[0] in cfg.PDMD_STEPS, (
+                    f"{path.name}: PDMD must load exactly one of {sorted(cfg.PDMD_STEPS)} "
+                    f"and nothing beside it, has {found.loras}")
+                lora = found.loras[0]
+                loaders = {n.get("class_type") for n in nodes if n.get("inputs", {}).get("lora_name") == lora}
+                assert loaders == {cfg.LORA_BRANCH_NODE}, (
+                    f"{path.name}: PDMD is applied at the call ({cfg.LORA_BRANCH_NODE}); a merge "
+                    f"into int8 keeps little of it. Has {sorted(map(str, loaders))}")
+                unets = {n["inputs"].get("unet_name") for n in nodes if n.get("class_type") == "UNETLoader"}
+                assert unets == {cfg.MODELS["unet_fl2va"]}, (
+                    f"{path.name}: PDMD was trained on the fl2va partition, so it loads on "
+                    f"{cfg.MODELS['unet_fl2va']}, has {sorted(map(str, unets))}")
+                effective = BASE_SHIFT if found.shift is None else found.shift
+                assert effective == BASE_SHIFT, (
+                    f"{path.name}: PDMD samples at the base {BASE_SHIFT}, has {effective}")
+                want = cfg.PDMD_STEPS[lora]
+                header = _pdmd_header_steps(lora)
+                assert header is None or header == want, (
+                    f"{path.name}: {lora}'s header says {header} steps, PDMD_STEPS says {want}")
+                assert (found.scheduler, found.steps) == ("simple", want), (
+                    f"{path.name}: PDMD's grid is `simple` at {want} steps (the trainer's own, "
+                    f"bit for bit); graph has {found.scheduler!r}/{found.steps}")
+                manual = [n for n in nodes if n.get("class_type") == "ManualSigmas"]
+                assert not manual, f"{path.name}: PDMD needs no ManualSigmas, has {len(manual)}"
+                samplers = {doc[str(n["inputs"]["sampler"][0])]["inputs"].get("sampler_name")
+                            for n in nodes if n.get("class_type") == "SamplerCustomAdvanced"}
+                assert samplers == {cfg.DISTILL_SAMPLER}, (
+                    f"{path.name}: PDMD steps {cfg.DISTILL_SAMPLER}, graph has {sorted(map(str, samplers))}")
+                got = (found.strengths or {}).get(lora)
+                assert got == cfg.PDMD_STRENGTH, (
+                    f"{path.name}: PDMD strength {got}, want {cfg.PDMD_STRENGTH}")
                 continue
             pdd = [l for l in found.loras if classify_pdd(l)]
 

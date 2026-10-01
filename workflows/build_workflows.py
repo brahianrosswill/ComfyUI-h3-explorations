@@ -106,6 +106,7 @@ from h3_config import (  # noqa: E402
     AUDIO_REFINE, FROZEN_VIDEO_CACHE, FROZEN_VIDEO_CACHE_NODE, FLASHGEN_LORA,
     FLASHGEN_R64_LORA, FLASHGEN_R64_REF2VA_LORA, LORA_BRANCH_NODE, FLASHGEN_STRENGTH, FLASHGEN_STEPS,
     FLASHGEN_MANUAL_SIGMAS, FLASHGEN_SAMPLER,
+    PDMD_LORA, PDMD_2STEP_LORA, PDMD_KIJAI_LORA, PDMD_2STEP_KIJAI_LORA, PDMD_STEPS, PDMD_STRENGTH,
     FASTH3_STEPS, FASTH3_SAMPLER, FASTH3_SCHEDULER, FASTH3_SHIFT, FASTH3_CORE_VSA,
     FASTH3_CONTRACT_SIGMAS, FASTH3_CONTRACT_SAMPLER, FASTH3_CONTRACT_VSA, STEP_SWITCH_FASTH3,
     refine_scheduler_ids,
@@ -579,7 +580,7 @@ def _is_distill_experiment(fname: str, extra: dict) -> bool:
 
     Derived like the image split was: every `_savelat` or `_x0` twin (the
     experiments' instrumentation), and every `h3_probe_*` graph that runs a
-    distill, whether a PDD or FlashGen LoRA, FastH3's checkpoint, a step
+    distill, whether a PDD, FlashGen or PDMD LoRA, FastH3's checkpoint, a step
     switch or an audio refine pass. Entries that are experiments without being
     probes say so with `distill_experiment=True`. The shipped distill graphs
     (`h3_text_to_video_pdd`, `_flashgen`, the PDD ref and fl2v graphs) stay at
@@ -592,7 +593,7 @@ def _is_distill_experiment(fname: str, extra: dict) -> bool:
     if not stem.startswith("h3_probe_"):
         return False
     lora = str((extra.get("lora") or ("",))[0]).lower()
-    return bool(extra.get("pdd") or "pdd" in lora or "flashgen" in lora
+    return bool(extra.get("pdd") or "pdd" in lora or "flashgen" in lora or "pdmd" in lora
                 or "fasth3" in str(extra.get("unet", "")).lower()
                 or extra.get("step_switch") or extra.get("audio_refine"))
 
@@ -3714,6 +3715,22 @@ def main():
               out_prefix="Video/h3_probe_t2v_flashgen_4step"),
          "text -> video + audio at 4 steps via the FlashGen LoRA on its own sigmas"),
 
+        # PDMD's other three arms (docs/research/pdmd/2026-10-01_what_pdmd_is.md):
+        # the 2-step file, which is not the checkpoint the paper scores, and
+        # kijai's rank-reduced resizes of both, the arms that say whether the
+        # resize shows against the shipped full-rank h3_text_to_video_pdmd.
+        ("h3_probe_t2v_pdmd_2step.json", "t2v-pdmd-2step", "t2v", LONG_T2V_PROMPT,
+         dict(lora=(PDMD_2STEP_LORA, PDMD_STRENGTH), lora_branch=True,
+              steps=PDMD_STEPS[PDMD_2STEP_LORA], out_prefix="Video/h3_probe_t2v_pdmd_2step"),
+         "text -> video + audio at 2 steps via PDMD's 2-step LoRA at full rank, at the call"),
+        ("h3_probe_t2v_pdmd_kijai_4step.json", "t2v-pdmd-kijai-4step", "t2v", LONG_T2V_PROMPT,
+         dict(lora=(PDMD_KIJAI_LORA, PDMD_STRENGTH), lora_branch=True,
+              steps=PDMD_STEPS[PDMD_KIJAI_LORA], out_prefix="Video/h3_probe_t2v_pdmd_kijai_4step"),
+         "PDMD 4-step as kijai resized it, at the call: the resize arm"),
+        ("h3_probe_t2v_pdmd_kijai_2step.json", "t2v-pdmd-kijai-2step", "t2v", LONG_T2V_PROMPT,
+         dict(lora=(PDMD_2STEP_KIJAI_LORA, PDMD_STRENGTH), lora_branch=True,
+              steps=PDMD_STEPS[PDMD_2STEP_KIJAI_LORA], out_prefix="Video/h3_probe_t2v_pdmd_kijai_2step"),
+         "PDMD 2-step as kijai resized it, at the call: the resize arm"),
         # FlashGen at the publisher's full rank 64 (FLASHGEN_R64_LORA), merged
         # by the stock loader: the control for h3_text_to_video_flashgen, which
         # applies it at the call (lora_branch.py). The pair isolates how the
@@ -4411,6 +4428,20 @@ def main():
               manual_sigmas=FLASHGEN_MANUAL_SIGMAS,
               out_prefix="Video/text_to_video_flashgen"),
          "text -> video + audio at 4 steps via FlashGen at full rank, applied at the call, kitchen dense + Sol"),
+        # --- PDMD, FlashGen's closest sibling (2026-10-01) ----------------
+        # Owner, 2026-10-01: "go for it". Every choice and its source is
+        # docs/research/pdmd/2026-10-01_what_pdmd_is.md: the published LoRA at
+        # full rank (PDMD_LORA, our exact conversion) applied at the call,
+        # because a merge into int8 keeps little of it
+        # (bench/results/2026-10-01_pdmd_int8_lora_requant.json); Euler on
+        # `simple` at the base 12/3, which is the trainer's own grid bit for
+        # bit, so DISTILL_SAMPLING and no ManualSigmas; no guidance; the repo's
+        # attention default. T2VA only: the trainer's scripts refuse other
+        # tasks. The 4-step file is the checkpoint the paper scores. Unjudged.
+        ("h3_text_to_video_pdmd.json", "texttovideopdmd", "t2v", LONG_T2V_PROMPT,
+         dict(lora=(PDMD_LORA, PDMD_STRENGTH), lora_branch=True, steps=PDMD_STEPS[PDMD_LORA],
+              out_prefix="Video/text_to_video_pdmd"),
+         "text -> video + audio at 4 steps via PDMD at full rank, applied at the call, kitchen dense + Sol"),
         # PDD8 finished by FlashGen from sigma 0.8, promoted from
         # distill_experiments/ (owner, 2026-09-27: "then yeah switch it"). The
         # owner's review of the finisher grid: better than PDD8 alone on three
