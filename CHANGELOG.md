@@ -4,6 +4,21 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.182.1
+
+### Added
+
+- The kitchen fork's `h3-frontier` is merged to upstream main `3f7210f` and installed as
+  `0.2.36+sol.aade8d5.up.3f7210f` (the owner's go, 2026-10-01). Seven upstream commits came in; the one
+  that matters here is #215, the int8 GEMM's banded stream-K walk. Not pushed.
+  `bench/results/2026-10-01_kitchen_merge_aade8d5.md` is the record: the layer-by-layer GEMM A/B
+  (qkv and fc1 faster, outputs bit-identical), the kitchen's tests on both wheels, and two renders whose
+  final latents are `torch.equal` to the old build's with shorter sampler time. Its rows:
+  `2026-10-01_kitchen_merge_int8_linear.json`, `2026-10-01_kitchen_merge_ab.jsonl`.
+- `bench/bench_kitchen_int8_linear.py`: `int8_linear` on H3's block-0 layers, time per call and a bitwise
+  digest, for whichever comfy-kitchen build it imports. It refuses a source tree, because the kitchen
+  clone's in-tree `_C.abi3.so` is a stale build and anything run from the clone imports it.
+
 ## 0.182.0
 
 ### Added

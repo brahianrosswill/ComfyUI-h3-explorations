@@ -17,6 +17,14 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-01
 
+- **comfy-kitchen's build branch moved to upstream main `3f7210f`** (owner: merge what upstream has).
+  `h3-frontier` took seven upstream commits by merge (`aade8d5`); the build is
+  `0.2.36+sol.aade8d5.up.3f7210f`. Outputs are bit-identical on every layer and render checked, and
+  the int8 GEMM's qkv and fc1 are faster. Record: `bench/results/2026-10-01_kitchen_merge_aade8d5.md`.
+  The branch is not pushed to `origin` and `nas` yet. The kitchen's own tests must be run from a copy
+  outside the clone, and its `test_bindings_*` tests are HIP-only checks that poison a CUDA run
+  (same record).
+
 - **Audio refine is never a stage of a mutant example** (owner, 2026-10-01: "usually not
   worth the extra cost"). It belongs in a workflow of its own, named `*_audio_refine`.
   None of the nine examples had one; `bench/build_mutant_examples.py` now refuses an
