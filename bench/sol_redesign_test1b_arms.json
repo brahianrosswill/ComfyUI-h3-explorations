@@ -2,7 +2,7 @@
   "what": "Sol redesign test 1, session B: the balanced i2va, ref2va and t2v arms again on a restarted server, the t2v one LAST, for cross-process and order-independent determinism against session A and test 0.",
   "why": "See sol_redesign_test1a_arms.json.",
   "arms": {
-    "i2va_balanced_repeat": "workflows/distill_experiments/h3_first_frame_to_video_pdd_api.json",
+    "i2va_balanced_repeat": "workflows/h3_first_frame_to_video_pdd_api.json",
     "ref2va_balanced_repeat": "workflows/h3_image_ref_plus_text_to_video_pdd_api.json",
     "t2v_slapstick_balanced_repeat": "workflows/distill_experiments/h3_text_to_video_pdd_savelat_api.json"
   },

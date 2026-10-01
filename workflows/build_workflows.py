@@ -4953,10 +4953,13 @@ def main():
          "text -> video + audio on a tail-weighted PDD partition, kitchen dense + Sol"),
 
         # PDD8 on first frame alone (owner, 2026-09-27): the fl2va sidecar
-        # covers it; until now only the first+last graph existed.
+        # covers it; until now only the first+last graph existed. The owner's
+        # i2v pick over the FlashGen finish (2026-09-27), so promoted from
+        # distill_experiments/ to the root (owner, 2026-10-01: "ok" to moving
+        # it). Its `_savelat` twin stays in distill_experiments/.
         ("h3_first_frame_to_video_pdd.json", "firstframetovideopdd", "i2v", None,
          dict(pdd=True, sampler_name="euler",
-              lora=(PDD_FL2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS, distill_experiment=True,
+              lora=(PDD_FL2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS,
               out_prefix="Video/first_frame_to_video_pdd"),
          "first frame -> video + audio at 8 steps via PDD, kitchen dense + Sol"),
         # ... and PDD8 finished by FlashGen from sigma 0.8, the reverse switch's

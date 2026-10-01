@@ -4,6 +4,17 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.179.2
+
+### Changed
+
+- `h3_first_frame_to_video_pdd`, the owner's i2v pick over the FlashGen finish, moved
+  from `workflows/distill_experiments/` to `workflows/` (owner, 2026-10-01). Its
+  generator entry no longer carries `distill_experiment=True`; the rebuilt file is
+  byte-identical to the one it replaces, and its `_savelat` twin stays where it was.
+  `bench/sol_redesign_test1a_arms.json` and `..._test1b_arms.json` name the new path,
+  and `workflows/distill_experiments/README.md` says where the graph went.
+
 ## 0.179.1
 
 `docs/prompting.md` is now the only home of a prompting rule. Docs and comments

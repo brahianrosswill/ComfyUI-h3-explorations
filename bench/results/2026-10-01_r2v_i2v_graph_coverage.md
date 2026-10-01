@@ -84,6 +84,9 @@ prompt from the prompt bank), because that is what the blind session rendered.
   `distill_experiments/` because its generator entry carries
   `distill_experiment=True`. The t2v finisher was promoted to `workflows/` on
   request (2026-09-27); this one was not. Promote it, or leave it.
+  *Resolved 2026-10-01, the same day: the owner said to promote it. It is
+  `workflows/h3_first_frame_to_video_pdd_api.json` from 0.179.2; the table above
+  names the path it had when this was written.*
 - Which of the unshipped rows should become mutant example workflows. The
   `mutant-packaging` board row already names the ref2va PDD8 against FlashGen
   blind pair as what would give those two rows a verdict.
