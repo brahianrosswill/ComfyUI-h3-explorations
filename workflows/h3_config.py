@@ -562,10 +562,10 @@ SOL_RECOMMENDED_CUDA = dict(
     # reversal condition. 1.3 was the value every Sol number before that date
     # was measured at.
     tau=1.0,
-    # **0.2 here; 0.0 on every PDD graph since 2026-10-01** (SOL_PDD_OVERRIDES,
-    # and on every FlashGen and PDMD graph the same day by the owner's extension,
-    # SOL_DISTILL_LORA_OVERRIDES, unmeasured there;
-    # owner decision, measured). On the t2v PDD8-to-FlashGen finish the owner
+    # **0.2 here; 0.0 on every distill graph since 2026-10-01.** PDD graphs
+    # (SOL_PDD_OVERRIDES): owner decision, measured. FlashGen and PDMD graphs
+    # (SOL_DISTILL_LORA_OVERRIDES): the owner's extension the same day, not
+    # measured on them. On the t2v PDD8-to-FlashGen finish the owner
     # could not tell 0.0 from 0.2 in five blind pairs, and 0.0 cut the sampler
     # by roughly a fifth (bench/results/2026-10-01_start_percent_panel.md).
     # Still unmeasured for the base graphs, which keep 0.2: the node's tooltip
@@ -796,7 +796,7 @@ def sol_for_graph(pdd, steps, distill_lora=False):
     branch. Everything else takes SOL_RECOMMENDED_CUDA with `end_percent`
     lowered per SOL_END_PERCENT_BY_STEPS. The table is empty since
     2026-09-11; SOL_PDD_OVERRIDES carries `start_percent` 0.0 since
-    2026-10-01, so the PDD branch is the one that differs.
+    2026-10-01, as SOL_DISTILL_LORA_OVERRIDES does for the branch below.
 
     `distill_lora` -- the model carries a FlashGen or PDMD LoRA
     (`SOL_DISTILL_LORA_FILES`) and no PDD -- takes SOL_DISTILL_LORA_CUDA
