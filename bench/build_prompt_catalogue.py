@@ -57,9 +57,6 @@ sys.path.insert(0, str(REPO / "workflows"))
 import prompts as _prompts  # noqa: E402  -- workflows/prompts.py, the bank join
 OUT = REPO / "docs" / "prompt_catalogue.md"
 
-CONDITIONERS = ("MiniMaxH3Conditioning", "MiniMaxH3ReferenceConditioning",
-                "MiniMaxH3ImageToVideo", "MiniMaxH3ReferenceToVideo")
-
 # Markers whose presence is a mechanical fact worth recording per scene.
 MARKERS = ("<d>", "<|lyrics_start|>", "<|caption_start|>", "<|cutoff|>",
            "<scenetrans>")
@@ -116,16 +113,11 @@ def scan_graphs() -> dict[str, set[str]]:
             graph = json.loads(Path(path).read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             continue
-        nodes = graph.values() if isinstance(graph, dict) else []
-        for node in nodes:
-            if not isinstance(node, dict):
-                continue
-            ct = node.get("class_type")
-            inputs = node.get("inputs")
-            if ct in CONDITIONERS and isinstance(inputs, dict):
-                p = inputs.get("prompt")
-                if isinstance(p, str) and p.strip():
-                    found[p].add(Path(path).stem)
+        # the carriers come from the one registry; a song node's template is
+        # the scene, so its stored text is what is catalogued
+        for car in _prompts.carriers(graph):
+            if car.text.strip():
+                found[car.text].add(Path(path).stem)
     return found
 
 

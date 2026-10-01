@@ -17,7 +17,9 @@ Scenes are ordered by how many graphs carry them, so the defaults that reach the
 | [`fl2va_interior_converge`](#fl2va-interior-converge) | `fl2va_interior_converge` | 3 | 159 | 1 | 0 | — |
 | [`BENCH_T2V_PROMPT`](#bench-t2v-prompt) | `t2va_frontier_standoff` | 2 | 385 | 3 | 2 | `<d>` |
 | [`DIALOGUE_REF2V_PROMPT`](#dialogue-ref2v-prompt) | `ref2va_stairwell_dialogue` | 2 | 640 | 3 | 2 | `<d>` |
+| [`ref2va_studio_dancer_close_refs`](#ref2va-studio-dancer-close-refs) | `ref2va_studio_dancer_close_refs` | 2 | 568 | 2 | 0 | — |
 | [`ref2va_video_sound_structure`](#ref2va-video-sound-structure) | `ref2va_video_sound_structure` | 2 | 183 | 1 | 0 | — |
+| [`t2va_studio_dancer_close`](#t2va-studio-dancer-close) | `t2va_studio_dancer_close` | 2 | 236 | 2 | 0 | — |
 | [`DIALOGUE_T2V_PROMPT`](#dialogue-t2v-prompt) | `t2va_stairwell_dialogue` | 1 | 224 | 3 | 2 | `<d>` |
 | [`R2V_PROMPT`](#r2v-prompt) | `ref2va_image_ref_default` | 1 | 576 | 1 | 0 | — |
 | [`T2V_AISLE_LONG`](#t2v-aisle-long) | `t2va_hardware_aisle_long` | 1 | 509 | 3 | 2 | `<d>` |
@@ -36,13 +38,13 @@ Scenes are ordered by how many graphs carry them, so the defaults that reach the
 | [`ref2va_scene_subway`](#ref2va-scene-subway) | `ref2va_scene_subway` | 1 | 530 | 4 | 3 | `<d>`, `<|lyrics_start|>`, `<|caption_start|>`, `<|cutoff|>` |
 | [`ref2va_stairwell_dialogue_backstage`](#ref2va-stairwell-dialogue-backstage) | `ref2va_stairwell_dialogue_backstage` | 1 | 710 | 3 | 2 | `<d>` |
 | [`ref2va_stairwell_dialogue_circus`](#ref2va-stairwell-dialogue-circus) | `ref2va_stairwell_dialogue_circus` | 1 | 725 | 3 | 2 | `<d>` |
-| [`ref2va_studio_dancer_close_refs`](#ref2va-studio-dancer-close-refs) | `ref2va_studio_dancer_close_refs` | 1 | 568 | 2 | 0 | — |
 | [`ref2va_video_character_swap`](#ref2va-video-character-swap) | `ref2va_video_character_swap` | 1 | 303 | 1 | 0 | — |
 | [`ref2va_video_continuation`](#ref2va-video-continuation) | `ref2va_video_continuation` | 1 | 181 | 1 | 0 | — |
 | [`ref2va_video_garment_edit`](#ref2va-video-garment-edit) | `ref2va_video_garment_edit` | 1 | 240 | 1 | 0 | — |
 | [`ref2va_video_image_edit`](#ref2va-video-image-edit) | `ref2va_video_image_edit` | 1 | 284 | 1 | 0 | — |
 | [`ref2va_video_motion_transfer`](#ref2va-video-motion-transfer) | `ref2va_video_motion_transfer` | 1 | 181 | 1 | 0 | — |
 | [`ref2va_video_structure_only`](#ref2va-video-structure-only) | `ref2va_video_structure_only` | 1 | 146 | 1 | 0 | — |
+| [`t2va_song_flicker_lists`](#t2va-song-flicker-lists) | `t2va_song_flicker_lists` | 1 | 190 | 2 | 1 | — |
 
 ---
 
@@ -423,6 +425,41 @@ non_diegetic_music:
 N/A
 ```
 
+## ref2va_studio_dancer_close_refs
+
+Carried by **2** graph(s). Sections: `subject_definitions`, `summary`, `retention_analysis`, `detailed_description`, `overall_soundscape`, `non_diegetic_music`.
+
+<details><summary>graphs</summary>
+
+- `h3_probe_refview2_dancer_api`
+- `h3_text_to_video_audio_freeze_song_ref_pdd8_api`
+
+</details>
+
+```text
+subject_definitions:
+<Subject 1> is the woman shown in <Picture 1>, preserving her facial identity, chin-length dark brown hair worn wet-look with a full fringe, bright blue eye makeup, silver nail polish and the small black bird tattoos on both upper arms. The pale blue draped gown and the mirrored dressing room of <Picture 1> are not present in the target video; she wears a plain grey vest and black leggings.
+
+summary:
+[reference generation] In two shots in a bare rehearsal studio, <Subject 1> dances from the waist up to a fast dry drum-machine pulse from a floor speaker, hitting sharp isolations on every beat, and ends square to the lens on a final hit.
+
+retention_analysis:
+<Subject 1> (appears in [Shot 1] and [Shot 2]): fully_preserved - retain the same face, chin-length wet-look dark brown hair with fringe, blue eye makeup and the bird tattoos on both upper arms in every frame; only the wardrobe and setting change.
+
+detailed_description:
+Photorealistic live-action, 16:9, cinematic, evenly lit by high fluorescent panels with a cool neutral palette, one mirrored wall and a sprung wooden floor. The camera is steady and the cuts land on the beat. <Subject 1> produces no vocal sound at any point.
+
+[Shot 1] A medium shot frames <Subject 1>, the woman with chin-length wet-look dark brown hair and a full fringe, blue eye makeup and small black bird tattoos on both upper arms, in a plain grey vest, from the waist up in a bare rehearsal studio, the mirrored wall behind her doubling the room and a portable speaker on the floor at the edge of frame playing a fast, dry drum-machine pulse. Her face is sharp and well lit and her eyes are locked on the lens. She moves to the beat: sharp isolations of the shoulders and head on every hit, chin snapping to the lens on the downbeats, both arms punching out and folding back in time, the tattoos flashing on each extension. The camera holds a static shot as her groove builds, her weight shifting side to side under the vest, the silver nail polish flashing as her hands open and close on each punch, and her expression staying fixed on the camera. The mirrored wall behind her repeats every hit a beat late in the reflection, and the small speaker on the floor buzzes on the loudest kicks.
+
+[Shot 2] The shot cuts to a close-up of her face and shoulders from the mirror side, her reflection sharing the left half of the frame, as she turns on the beat and hits a pose with one arm folded across her chest. She rolls her shoulders in a step sequence that lands on every fourth hit, the fringe swinging and settling with each snap of the head, the blue eye makeup catching the overhead light and a bird tattoo sliding in and out of frame at the edge of her shoulder. Her lips stay closed throughout. The camera pushes in slowly at small amplitude until her face fills the frame, and on a final hit she stops square to the lens, chin down, breathing hard, and holds still until the final frame.
+
+overall_soundscape:
+Bare feet squeak and slap on the sprung floor, fabric rustles with each turn, and her breath comes in short controlled bursts between hits, under the dry room tone of an empty studio and the small speaker's drum-machine pulse.
+
+non_diegetic_music:
+N/A
+```
+
 ## ref2va_video_sound_structure
 
 Carried by **2** graph(s). Sections: `subject_definitions`, `summary`, `retention_analysis`, `detailed_description`, `overall_soundscape`, `non_diegetic_music`.
@@ -457,6 +494,25 @@ The ambience of <Audio 1> continues under the shot.
 
 non_diegetic_music:
 N/A
+```
+
+## t2va_studio_dancer_close
+
+Carried by **2** graph(s). Sections: none.
+
+<details><summary>graphs</summary>
+
+- `h3_text_to_video_audio_freeze_song_api`
+- `h3_text_to_video_audio_freeze_song_pdd8_api`
+
+</details>
+
+```text
+integrated_multimodal_description: [Shot 1] Live-action, cinematic, a medium shot frames a dancer from the waist up in a bare rehearsal studio across the fourteen-second take, one mirrored wall behind her, a portable speaker on the floor at the edge of frame playing a fast, dry drum-machine pulse. She is in her twenties in a grey vest, hair tied back, face sharp and well lit, and she produces no vocal sound. She moves to the beat: sharp isolations of the shoulders and head on every hit, chin snapping to the lens on the downbeats, both arms punching out and folding back in time. The camera holds a static shot as her groove builds and her expression stays locked on the lens. [Shot 2] The shot cuts to a close-up of her face and shoulders from the mirror side, her reflection sharing the frame, as she turns on the beat and hits a pose, then rolls her shoulders in a step sequence that lands on every fourth hit. Her lips stay closed throughout. The camera pushes in slowly at small amplitude until her face fills the frame and she stops square to the lens on a final hit and holds still, breathing hard.
+
+overall_soundscape: Bare feet squeak and slap on the sprung floor, fabric rustles with each turn, and her breath comes in short controlled bursts between hits, under the dry room tone of an empty studio.
+
+non_diegetic_music: N/A
 ```
 
 ## DIALOGUE_T2V_PROMPT
@@ -965,40 +1021,6 @@ non_diegetic_music:
 N/A
 ```
 
-## ref2va_studio_dancer_close_refs
-
-Carried by **1** graph(s). Sections: `subject_definitions`, `summary`, `retention_analysis`, `detailed_description`, `overall_soundscape`, `non_diegetic_music`.
-
-<details><summary>graphs</summary>
-
-- `h3_probe_refview2_dancer_api`
-
-</details>
-
-```text
-subject_definitions:
-<Subject 1> is the woman shown in <Picture 1>, preserving her facial identity, chin-length dark brown hair worn wet-look with a full fringe, bright blue eye makeup, silver nail polish and the small black bird tattoos on both upper arms. The pale blue draped gown and the mirrored dressing room of <Picture 1> are not present in the target video; she wears a plain grey vest and black leggings.
-
-summary:
-[reference generation] In two shots in a bare rehearsal studio, <Subject 1> dances from the waist up to a fast dry drum-machine pulse from a floor speaker, hitting sharp isolations on every beat, and ends square to the lens on a final hit.
-
-retention_analysis:
-<Subject 1> (appears in [Shot 1] and [Shot 2]): fully_preserved - retain the same face, chin-length wet-look dark brown hair with fringe, blue eye makeup and the bird tattoos on both upper arms in every frame; only the wardrobe and setting change.
-
-detailed_description:
-Photorealistic live-action, 16:9, cinematic, evenly lit by high fluorescent panels with a cool neutral palette, one mirrored wall and a sprung wooden floor. The camera is steady and the cuts land on the beat. <Subject 1> produces no vocal sound at any point.
-
-[Shot 1] A medium shot frames <Subject 1>, the woman with chin-length wet-look dark brown hair and a full fringe, blue eye makeup and small black bird tattoos on both upper arms, in a plain grey vest, from the waist up in a bare rehearsal studio, the mirrored wall behind her doubling the room and a portable speaker on the floor at the edge of frame playing a fast, dry drum-machine pulse. Her face is sharp and well lit and her eyes are locked on the lens. She moves to the beat: sharp isolations of the shoulders and head on every hit, chin snapping to the lens on the downbeats, both arms punching out and folding back in time, the tattoos flashing on each extension. The camera holds a static shot as her groove builds, her weight shifting side to side under the vest, the silver nail polish flashing as her hands open and close on each punch, and her expression staying fixed on the camera. The mirrored wall behind her repeats every hit a beat late in the reflection, and the small speaker on the floor buzzes on the loudest kicks.
-
-[Shot 2] The shot cuts to a close-up of her face and shoulders from the mirror side, her reflection sharing the left half of the frame, as she turns on the beat and hits a pose with one arm folded across her chest. She rolls her shoulders in a step sequence that lands on every fourth hit, the fringe swinging and settling with each snap of the head, the blue eye makeup catching the overhead light and a bird tattoo sliding in and out of frame at the edge of her shoulder. Her lips stay closed throughout. The camera pushes in slowly at small amplitude until her face fills the frame, and on a final hit she stops square to the lens, chin down, breathing hard, and holds still until the final frame.
-
-overall_soundscape:
-Bare feet squeak and slap on the sprung floor, fabric rustles with each turn, and her breath comes in short controlled bursts between hits, under the dry room tone of an empty studio and the small speaker's drum-machine pulse.
-
-non_diegetic_music:
-N/A
-```
-
 ## ref2va_video_character_swap
 
 Carried by **1** graph(s). Sections: `subject_definitions`, `summary`, `retention_analysis`, `detailed_description`, `overall_soundscape`, `non_diegetic_music`.
@@ -1212,5 +1234,23 @@ Natural ambient atmosphere continues throughout the shot.
 
 non_diegetic_music:
 N/A
+```
+
+## t2va_song_flicker_lists
+
+Carried by **1** graph(s). Sections: none.
+
+<details><summary>graphs</summary>
+
+- `h3_text_to_video_audio_freeze_song_lists_pdd8_api`
+
+</details>
+
+```text
+integrated_multimodal_description: [Shot 1] Live-action, cinematic, a close-up frames a woman in her late twenties with dark shoulder-length hair and an oversized charcoal knit sweater, her face sharp and softly lit, everything behind her lost to a shallow grey blur. She is on-screen, with a breathy, warm mid-register voice and a relaxed, intimate delivery (S1), and she sings softly with the song, her lips following the vocal line and resting still whenever the vocal pauses, her eyes drifting past the lens. The camera holds a static shot. [Shot 2] The shot cuts to a medium shot of her __place__, __motion__, still singing quietly with the track, lowering her gaze and looking back up into the lens as she carries the phrase through. The camera trucks left with small amplitude at slow speed.
+
+overall_soundscape: Quiet room tone sits under the scene, the knit of her sweater brushes softly as she moves, and her breath is audible between phrases.
+
+non_diegetic_music: A slow, laid-back lo-fi pop beat with a pillowy drum-machine kick, a dry rimshot on the backbeat, softly ticking hi-hats, a warm sliding sub-bass and melancholic electric piano chords under light vinyl crackle.
 ```
 

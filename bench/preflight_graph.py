@@ -78,8 +78,11 @@ from pathlib import Path
 _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO))
 sys.path.insert(0, str(_REPO / "bench"))
+sys.path.insert(0, str(_REPO / "workflows"))
 
+import h3_config  # noqa: E402
 import h3_rules  # noqa: E402
+import prompts  # noqa: E402  -- workflows/prompts.py: which nodes carry prompt text
 import vendor_config  # noqa: E402
 
 # The ordinal rule lives in the label check and must not have a second copy
@@ -113,12 +116,12 @@ def _core_minimax_cpu():
     comfy.cli_args.args.cpu = True
     return importlib.import_module("comfy_extras.nodes_minimax_h3")
 
-# Every node that carries a prompt into the encoder. `MiniMaxH3Conditioning`
-# is this repo's own, and the fl2va path moved onto it on 2026-08-21; a file
-# that knows only the first name reports "nothing to grade" over every graph
-# this repo now ships and reads as a clean pass.
-PROMPT_NODES = ("MiniMaxH3ReferenceToVideo", "MiniMaxH3ImageToVideo",
-                "MiniMaxH3Conditioning", "MiniMaxH3ReferenceConditioning")
+# Every node that carries a prompt into the encoder, from the one registry
+# (`h3_config.PROMPT_INPUTS`). A list kept here went stale twice: it knew only
+# core's node until 2026-08-21 and reported "nothing to grade" over every graph
+# the repo then shipped, and it never learned the song node, so a song graph
+# read the same way until 2026-10-01. A pass that cannot look reads as clean.
+PROMPT_NODES = tuple(h3_config.PROMPT_INPUTS)
 LOAD_IMAGE = "LoadImage"
 
 # THE RELEASE SHIPS TWO PROMPT GUIDES AND THEY DO NOT SHARE A SECTION LIST.
@@ -1939,6 +1942,51 @@ def _vision_bound_warnings(key, tw, th):
             f"pipeline would enlarge it to the floor; the conditioner will not.")
     return out
 
+def grade_template(car, graph: dict, stem: str = "") -> list[str]:
+    """Grade a template carrier (the song node) the way it is read: every text its
+    Prompt Lists expand to, as a base-format prompt of one window's length.
+
+    A stand-in conditioner node carries each text, because `grade` reads a
+    conditioner's sockets; the graph rides along unchanged. Three things are
+    said rather than skipped silently: a wired `references` input (the
+    reference format is not modelled for the song node), a placeholder with no
+    typed values (a wildcard-file list is not resolvable offline, so its token
+    stays in the text), and pricing (not modelled for this node).
+    """
+    out = [f"  {car.cls} {car.node_id}: a prompt template, read as {len(car.texts)} text(s)"]
+    node = graph[car.node_id]
+    if car.note:
+        return out + [f"  FAIL  {car.note}"]
+    if node.get("inputs", {}).get("references") is not None:
+        return out + ["  note  references are wired, so the prompt follows the reference "
+                      "format; grading that format through the song node is not modelled"]
+    bad = 0
+    for name in car.missing:
+        bad += 1
+        out.append(f"  FAIL  __{name}__ is in the prompt and no Prompt List named {name!r} "
+                   f"is chained into `lists`; the node refuses it at run time")
+    for name in car.unused:
+        bad += 1
+        out.append(f"  FAIL  the list {name!r} is chained into `lists` and no text uses "
+                   f"__{name}__; the node refuses it at run time")
+    for name in car.unresolved:
+        out.append(f"  note  __{name}__ has no typed values (a wildcard-file list, or none "
+                   f"chained); its token is left in the text")
+    for i, text in enumerate(car.texts, 1):
+        stand_in = {"class_type": "MiniMaxH3Conditioning",
+                    "inputs": {"prompt": text, "length": car.window_frames}}
+        for level, msg in grade(stand_in, graph, stem):
+            if level == "note":
+                continue
+            bad += level == "FAIL"
+            out.append(f"  {level:<4}  text {i}: {msg}")
+    if not bad:
+        out.append("  prompt: all mechanical rules pass over every text")
+    out.append("  note  pricing is not modelled for the song node")
+    out.append("")
+    return out
+
+
 def main() -> int:
     paths = [Path(p) for p in sys.argv[1:]]
     if not paths:
@@ -1960,12 +2008,16 @@ def main() -> int:
                   "(links are resolved there). Skipped. The attention chain "
                   "above was read from the UI form and is complete.")
             continue
-        refs = {nid: n for nid, n in graph.items()
-                if n.get("class_type") in PROMPT_NODES}
-        if not refs:
+        carried = prompts.carriers(graph)
+        if not carried:
             print(f"  no {' or '.join(PROMPT_NODES)}; nothing to grade")
             continue
-        for node in refs.values():
+        for car in carried:
+            if car.template:
+                for line in grade_template(car, graph, path.stem):
+                    print(line)
+                continue
+            node = graph[car.node_id]
             findings = grade(node, graph, path.stem)
             if not findings:
                 print("  prompt: all mechanical rules pass")

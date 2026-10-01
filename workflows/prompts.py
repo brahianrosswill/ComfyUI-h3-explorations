@@ -31,30 +31,27 @@ bank id (or None for a foreign prompt), the text's sha256, the length,
 canvas and seed, so `bench/run_graph_arms.py` rows and the Sol route
 record's render row say what was rendered rather than only which file.
 
-No torch, no ComfyUI: importable from the generator, the bench and the
-node pack alike.
+`carriers(graph)` is the read side for GRADERS: which nodes of a graph carry
+prompt text and what the encoder reads from each (a song node's template
+expanded through its Prompt Lists). `h3_config.PROMPT_INPUTS` is the one
+registry of carrier classes; nothing else keeps a list of them.
+
+No torch, no ComfyUI: importable from the generator and the bench.
 """
 from __future__ import annotations
 
 import hashlib
 import json
+import re
+from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
+
+import h3_config as _cfg
 
 REPO = Path(__file__).resolve().parent.parent
 BANK = REPO / "prompt_bank"
 MANIFEST = BANK / "bank.json"
-
-# Node class -> the input carrying the prompt text, for `describe`. This is NOT
-# the one list of prompt-carrying nodes: `bench/build_prompt_catalogue.py` and
-# `bench/check_camera_vocabulary.py` each keep their own, and
-# `bench/check_prompt_guide_conformance.py` and `bench/check_ref_prompt_labels.py`
-# name `MiniMaxH3AudioFreezeSong`, which carries the prompt of every song graph
-# and is in none of those three, so those graphs describe no bank id and the
-# catalogue and camera check never read their prompt.
-CONDITIONERS = {"MiniMaxH3Conditioning": "prompt",
-                "MiniMaxH3ReferenceConditioning": "prompt"}
-
 
 def text(prompt_id: str) -> str:
     """The bank text for `prompt_id`, STRIPPED of leading and trailing
@@ -121,8 +118,8 @@ def describe(graph: dict) -> dict:
         if not isinstance(node, dict):
             continue
         ct, inputs = node.get("class_type"), node.get("inputs") or {}
-        if ct in CONDITIONERS and isinstance(inputs.get(CONDITIONERS[ct]), str):
-            t = inputs[CONDITIONERS[ct]]
+        if ct in _cfg.PROMPT_INPUTS and isinstance(inputs.get(_cfg.PROMPT_INPUTS[ct]), str):
+            t = inputs[_cfg.PROMPT_INPUTS[ct]]
             out["prompt_sha256"] = sha256(t.rstrip())
             out["prompt_id"] = identify(t)
             out["prompt_text"] = None if out["prompt_id"] else t
@@ -133,4 +130,199 @@ def describe(graph: dict) -> dict:
             out["canvas"] = res.split()[0] if isinstance(res, str) else res
         elif ct == "RandomNoise":
             out["seed"] = inputs.get("noise_seed")
+    return out
+
+
+# ---------------------------------------------------------------------------
+# What a graph's encoder reads: carriers
+# ---------------------------------------------------------------------------
+
+# The template grammar the song node and Fill Prompt Lists use. These three are
+# COPIES, because `prompt_lists.py` and `loop_plan.py` import ComfyUI and this
+# module must not; `bench/check_prompt_lists.py` pins each against the original
+# and goes red if either side moves. Behaviour copied, not reinvented:
+# `prompt_lists.PLACEHOLDER` / `parse_values` and `loop_plan.BLOCK_LINE`.
+PLACEHOLDER = re.compile(r"__([A-Za-z0-9]+(?:[-_/][A-Za-z0-9]+)*)__")
+BLOCK_LINE = re.compile(r"^---(.*)$")
+
+
+def placeholders(text: str) -> list[str]:
+    """The distinct placeholder names in `text`, in order of first appearance."""
+    seen: list[str] = []
+    for m in PLACEHOLDER.finditer(text):
+        if m.group(1) not in seen:
+            seen.append(m.group(1))
+    return seen
+
+
+def parse_values(text: str) -> tuple[str, ...]:
+    """One value per line; blank lines and lines starting with # are skipped."""
+    out = []
+    for line in (text or "").replace("\r\n", "\n").split("\n"):
+        value = line.strip()
+        if value and not value.startswith("#"):
+            out.append(value)
+    return tuple(out)
+
+
+def split_blocks(text: str) -> list[str]:
+    """The prompt blocks of a template: the whole text when it has no `---` line,
+    else one block per `--- label` line. Lenient where the node raises (an empty
+    or unlabelled block is dropped here), because a grader reports on what is
+    there and the node refuses the rest at run time."""
+    lines = (text or "").replace("\r\n", "\n").split("\n")
+    if not any(BLOCK_LINE.match(line.strip()) for line in lines):
+        return [text.strip()] if (text or "").strip() else []
+    blocks: list[str] = []
+    current: list[str] | None = None
+    for raw in lines:
+        if BLOCK_LINE.match(raw.strip()):
+            if current is not None and "\n".join(current).strip():
+                blocks.append("\n".join(current).strip())
+            current = []
+        elif current is not None:
+            current.append(raw)
+    if current is not None and "\n".join(current).strip():
+        blocks.append("\n".join(current).strip())
+    return blocks
+
+
+@dataclass(frozen=True)
+class Carrier:
+    """One node of a graph that carries prompt text, and what the encoder reads.
+
+    `text` is what is stored in the node: a template for a song node. `texts`
+    is what the encoder reads: `(text,)` for an ordinary carrier, and for a
+    template every block filled so that each value of each list appears in at
+    least one text (the others held at their first value), which covers every
+    value without a combinatorial product. `unresolved` names a placeholder
+    with no typed values to fill it (a wildcard-file list, or none chained);
+    its token is left in the text. `missing` names a placeholder with no list
+    chained at all and `unused` a chained list no block uses; the node refuses
+    both at run time. `note` says why `texts` is empty or partial. `template`
+    is True when `text` is a template and `texts` its expansion.
+    """
+    node_id: str
+    cls: str
+    text: str
+    texts: tuple[str, ...]
+    window_frames: int | None = None
+    unresolved: tuple[str, ...] = ()
+    note: str = ""
+    template: bool = False
+    missing: tuple[str, ...] = ()
+    unused: tuple[str, ...] = ()
+
+
+def _follow(value, graph: dict, *, hops: int = 8):
+    """Follow a two-item link from a prompt input to the node that supplies it.
+    Returns (text, source node dict or None)."""
+    seen: set[str] = set()
+    source = None
+    while isinstance(value, list) and len(value) == 2 and hops:
+        sid = str(value[0])
+        if sid in seen or sid not in graph:
+            return None, None
+        seen.add(sid)
+        source = graph[sid]
+        ins = source.get("inputs", {}) or {}
+        # a frontend string primitive carries the text as `value`; Fill Prompt
+        # Lists carries the template as `prompt`
+        value = ins.get("value", ins.get("text", ins.get("prompt")))
+        hops -= 1
+    return (value, source) if isinstance(value, str) else (None, None)
+
+
+def _list_values(link, graph: dict) -> dict[str, tuple[str, ...] | None]:
+    """{placeholder name: typed values, or None when the list is a wildcard file}
+    for the Prompt List nodes chained from `link`, newest first."""
+    out: dict[str, tuple[str, ...] | None] = {}
+    seen: set[str] = set()
+    while isinstance(link, list) and len(link) == 2 and str(link[0]) in graph:
+        nid = str(link[0])
+        if nid in seen:
+            break
+        seen.add(nid)
+        node = graph[nid]
+        ins = node.get("inputs", {}) or {}
+        if node.get("class_type") == "MiniMaxH3PromptList":
+            name = str(ins.get("name", "")).strip()
+            if len(name) > 4 and name.startswith("__") and name.endswith("__"):
+                name = name[2:-2]
+            if name and name not in out:
+                typed = ins.get("source") == "typed" and isinstance(ins.get("source.values"), str)
+                out[name] = parse_values(ins["source.values"]) if typed else None
+        link = ins.get("lists")
+    return out
+
+
+def _expand(blocks: list[str], lists: dict[str, tuple[str, ...] | None]):
+    """Every block filled so each value of each list is read at least once.
+    Returns (texts, unresolved, missing, unused); see `Carrier`."""
+    texts: list[str] = []
+    unresolved: list[str] = []
+    missing: list[str] = []
+    used: set[str] = set()
+
+    def fill(block: str, chosen: dict[str, str]) -> str:
+        return PLACEHOLDER.sub(lambda m: chosen.get(m.group(1), m.group(0)), block)
+
+    for block in blocks:
+        names = placeholders(block)
+        used.update(names)
+        first = {}
+        for n in names:
+            vals = lists.get(n)
+            if vals:
+                first[n] = vals[0]
+            elif n not in lists:
+                if n not in missing:
+                    missing.append(n)
+            elif n not in unresolved:
+                unresolved.append(n)
+        variants = [fill(block, first)]
+        for n in names:
+            for v in (lists.get(n) or ())[1:]:
+                variants.append(fill(block, {**first, n: v}))
+        for t in variants:
+            if t not in texts:
+                texts.append(t)
+    unused = sorted(set(lists) - used)
+    return tuple(texts), tuple(unresolved), tuple(missing), tuple(unused)
+
+
+def carriers(graph: dict) -> list[Carrier]:
+    """Every prompt carrier in an API graph, with what the encoder reads from it.
+
+    The one answer to "what text does this graph's encoder read", for the
+    graders and the catalogue. Classes come from `h3_config.PROMPT_INPUTS`; a
+    prompt that arrives by link is followed to its string source. A template
+    carrier (`h3_config.PROMPT_TEMPLATE_CARRIERS`, or a prompt fed by a Fill
+    Prompt Lists node) is expanded through its chained lists.
+    """
+    out: list[Carrier] = []
+    if not isinstance(graph, dict):
+        return out
+    for nid, node in graph.items():
+        if not isinstance(node, dict):
+            continue
+        cls = node.get("class_type")
+        field = _cfg.PROMPT_INPUTS.get(cls)
+        if field is None:
+            continue
+        ins = node.get("inputs", {}) or {}
+        text, source = _follow(ins.get(field), graph)
+        if text is None:
+            out.append(Carrier(str(nid), cls, "", (), note="the prompt is linked and its string source could not be resolved"))
+            continue
+        feeder = source is not None and source.get("class_type") == "MiniMaxH3FillPromptLists"
+        if cls in _cfg.PROMPT_TEMPLATE_CARRIERS or feeder:
+            lists_link = ins.get("lists") if cls in _cfg.PROMPT_TEMPLATE_CARRIERS else (source.get("inputs", {}) or {}).get("lists")
+            texts, unresolved, missing, unused = _expand(split_blocks(text), _list_values(lists_link, graph))
+            frames = ins.get("window_frames")
+            out.append(Carrier(str(nid), cls, text, texts,
+                               frames if isinstance(frames, int) and not isinstance(frames, bool) else None,
+                               unresolved, template=True, missing=missing, unused=unused))
+        else:
+            out.append(Carrier(str(nid), cls, text, (text,)))
     return out

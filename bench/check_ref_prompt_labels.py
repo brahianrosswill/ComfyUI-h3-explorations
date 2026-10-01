@@ -89,14 +89,16 @@ WORKFLOWS = REPO / "workflows"
 # green run, which is the failure this repo keeps naming.
 sys.path.insert(0, str(REPO / "workflows"))
 sys.path.insert(0, str(REPO))
-from h3_config import GRAPH_DIRS, graph_paths  # noqa: E402
+from h3_config import (  # noqa: E402
+    GRAPH_DIRS, REF_FORMAT_CARRIERS, REF_FORMAT_WHEN_WIRED, graph_paths)
 from reference_order import VIDEO_SOURCE_CLASSES  # noqa: E402
 
-REF_NODES = ("MiniMaxH3ReferenceToVideo", "MiniMaxH3ReferenceConditioning")
-#: Nodes that compile a `references` chain themselves and carry the prompt
-#: that names it. A ref graph only when the chain is wired: an unwired song
-#: node has no labels for its prompt to agree with.
-REF_WHEN_WIRED = ("MiniMaxH3AudioFreezeSong",)
+#: Both come from the one registry in `h3_config`. A node in `REF_WHEN_WIRED`
+#: compiles a `references` chain itself and carries the prompt that names it:
+#: a ref graph only when the chain is wired, since an unwired song node has no
+#: labels for its prompt to agree with.
+REF_NODES = REF_FORMAT_CARRIERS
+REF_WHEN_WIRED = REF_FORMAT_WHEN_WIRED
 
 
 def wired_labels(inputs, graph=None):

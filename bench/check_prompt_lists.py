@@ -306,6 +306,70 @@ def check_fill(problems):
     _refused(problems, "fill: a placeholder with no list", lambda: pl.fill_at("__nope__", lists, 0), "__nope__")
 
 
+def check_carrier_grammar(problems):
+    """`workflows/prompts.py` reads templates for the graders, and cannot import
+    this module (it needs ComfyUI), so it carries COPIES of the grammar. Each is
+    pinned here against the original: the patterns, and the behaviour on inputs
+    that would tell a drifted copy apart. `carriers(graph).texts` for a song
+    node must also contain what the node itself would fill at use 0."""
+    sys.path.insert(0, str(REPO / "workflows"))
+    import prompts as pr
+    try:
+        # loop_plan imports ComfyUI's model management, which wants a GPU unless
+        # the CPU flag is set first (`bench/preflight_graph.py` does the same)
+        import comfy.cli_args
+        comfy.cli_args.args.cpu = True
+        import loop_plan as lp
+    except Exception as exc:  # the pin is the point; a skipped pin is a silent drift
+        _fail(problems, f"carrier grammar: loop_plan did not import ({type(exc).__name__}: {exc})")
+        return
+    if pr.PLACEHOLDER.pattern != pl.PLACEHOLDER.pattern:
+        _fail(problems, "carrier grammar: prompts.PLACEHOLDER differs from prompt_lists.PLACEHOLDER")
+    if pr.BLOCK_LINE.pattern != lp.BLOCK_LINE.pattern:
+        _fail(problems, "carrier grammar: prompts.BLOCK_LINE differs from loop_plan.BLOCK_LINE")
+    for text in ("a __x__ b __y-z__ c __x__", "__a/b__ and __v2-beat__", "no names", "_x_ __ spaced __ snake_case"):
+        if pr.placeholders(text) != pl.placeholders(text):
+            _fail(problems, f"carrier grammar: placeholders({text!r}) differ")
+    for text in ("a\nb\n\n# c\n  d  \r\n", "", "# only a comment\n", "one"):
+        if pr.parse_values(text) != pl.parse_values(text):
+            _fail(problems, f"carrier grammar: parse_values({text!r}) differ")
+    for text in ("one prompt, no blocks", "--- intro\nfirst\n--- chorus\nsecond line\nthird\n"):
+        want = list(lp.parse_prompt_blocks(text).values())
+        if pr.split_blocks(text) != want:
+            _fail(problems, f"carrier grammar: split_blocks({text!r}) gave {pr.split_blocks(text)}, the node {want}")
+    # the song node's fill at use 0 is among the texts a grader reads
+    graph = {
+        "1": {"class_type": "MiniMaxH3AudioFreezeSong",
+              "inputs": {"prompt": "She stands __place__ and moves __motion__.",
+                         "window_frames": 345, "lists": ["3", 0]}},
+        "2": {"class_type": "MiniMaxH3PromptList",
+              "inputs": {"name": "place", "source": "typed", "source.values": "by the door\nat the window",
+                         "order": "in_order", "shuffle": 0}},
+        "3": {"class_type": "MiniMaxH3PromptList",
+              "inputs": {"name": "motion", "source": "typed", "source.values": "slowly\nquickly\nstill",
+                         "order": "in_order", "shuffle": 0, "lists": ["2", 0]}},
+    }
+    lists = {"place": pl.PromptList("place", ("by the door", "at the window"), "in_order", 0, "typed"),
+             "motion": pl.PromptList("motion", ("slowly", "quickly", "still"), "in_order", 0, "typed")}
+    car = pr.carriers(graph)
+    if len(car) != 1 or not car[0].template:
+        _fail(problems, f"carrier grammar: a song node was not read as a template carrier ({car})")
+        return
+    node_fill = pl.fill_at(graph["1"]["inputs"]["prompt"], lists, 0)[0]
+    if node_fill not in car[0].texts:
+        _fail(problems, f"carrier grammar: the node fills {node_fill!r} at use 0 and the grader reads {car[0].texts}")
+    for want in ("by the door", "at the window", "slowly", "quickly", "still"):
+        if not any(want in t for t in car[0].texts):
+            _fail(problems, f"carrier grammar: no text the grader reads carries the value {want!r}")
+    gone = {k: v for k, v in graph.items() if k != "3"}
+    gone["1"] = {**graph["1"], "inputs": {**graph["1"]["inputs"], "lists": ["2", 0]}}
+    c2 = pr.carriers(gone)[0]
+    if c2.missing != ("motion",):
+        _fail(problems, f"carrier grammar: a placeholder with no list was not reported missing ({c2.missing})")
+    if pr.carriers({**graph, "1": {**graph["1"], "inputs": {**graph["1"]["inputs"], "prompt": "no names"}}})[0].unused != ("motion", "place"):
+        _fail(problems, "carrier grammar: chained lists no text uses were not reported unused")
+
+
 def main() -> int:
     problems: list[str] = []
     check_names(problems)
@@ -316,6 +380,7 @@ def main() -> int:
     check_node(problems)
     loops = check_loop_nodes(problems)
     check_fill(problems)
+    check_carrier_grammar(problems)
     if problems:
         print(f"  FAIL  {len(problems)} problem(s):")
         for p in problems:
@@ -324,7 +389,8 @@ def main() -> int:
     print("  ok    names; shuffled uses a list up before repeating and its rejection rules bite; "
           "in_order and random follow shuffle; filling advances per use and refuses a missing or unused "
           f"list; wildcard files; the node; {len(loops)} loop node(s) fill the same way and the controls "
-          "bite; Fill Prompt Lists agrees with a loop")
+          "bite; Fill Prompt Lists agrees with a loop; the grader's copy of the template grammar "
+          "matches the node's")
     return 0
 
 

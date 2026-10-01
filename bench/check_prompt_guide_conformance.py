@@ -79,6 +79,7 @@ pass.
 
 from __future__ import annotations
 
+import ast
 import json
 import re
 import sys
@@ -100,16 +101,14 @@ BASE_GUIDE = (REPO / "vendor_guides"
 # when they moved to `workflows/image/` on 2026-08-16, and this file's counts
 # would still have printed a plausible number. See h3_config.GRAPH_DIRS.
 sys.path.insert(0, str(REPO / "workflows"))
-from h3_config import graph_paths  # noqa: E402
+from h3_config import (  # noqa: E402
+    AUDIO_DECODING_CARRIERS, PROMPT_INPUTS, REF_FORMAT_CARRIERS, graph_paths)
 
-REF_NODES = ("MiniMaxH3ReferenceToVideo",
-             "MiniMaxH3ReferenceConditioning")
-
-# Every node carrying a prompt. `MiniMaxH3Conditioning` is this repo's own and
-# the fl2va path moved onto it on 2026-08-21. `MiniMaxH3AudioFreezeSong`
+# Both come from the one registry in `h3_config`. `MiniMaxH3AudioFreezeSong`
 # conditions each window itself; its guide follows its `references` input
 # like any node's (2026-09-14).
-PROMPT_NODES = REF_NODES + ("MiniMaxH3Conditioning", "MiniMaxH3AudioFreezeSong")
+REF_NODES = REF_FORMAT_CARRIERS
+PROMPT_NODES = tuple(PROMPT_INPUTS)
 
 # Full-reference mode is the mode that wires reference labels, so the guide a
 # graph is graded against is read off its sockets, never off its filename.
@@ -192,6 +191,7 @@ def _audio_sections_optional(wf: dict) -> bool:
     description exactly like a clip does.
     """
     return not any(n.get("class_type") == AUDIO_DECODE_NODE
+                   or n.get("class_type") in AUDIO_DECODING_CARRIERS
                    for n in wf.values())
 
 # A markdown row of the form `| `value` | prose |`, which is how every table
@@ -303,6 +303,60 @@ def ref_prompts() -> dict[str, tuple[str, str]]:
             if isinstance(value, str):
                 out[path.stem] = (value, guide_of(ins))
     return out
+
+
+#: Classes with a `prompt` string input that are not encoder carriers, and why.
+NOT_CARRIERS = {
+    "MiniMaxH3FillPromptLists": "outputs the filled text; the carrier it feeds is the one graded",
+}
+
+
+def carrier_gaps(registry, graph_files, source_files) -> list[str]:
+    """Every node that carries a `prompt` string and is not in `registry`.
+
+    Two reads, because either alone misses a case: the shipped graphs (a class
+    that ships with a prompt and was never registered) and the pack's node
+    source (a node class that declares a `prompt` input and no graph uses yet).
+    This is the escape the registry exists to stop: a list that misses a
+    carrier reads "nothing to grade" as a pass.
+    """
+    gaps: set[str] = set()
+    for path in graph_files:
+        try:
+            wf = json.loads(path.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(wf, dict) or isinstance(wf.get("nodes"), list):
+            continue
+        for nid, n in wf.items():
+            if not isinstance(n, dict):
+                continue
+            cls = n.get("class_type")
+            if (isinstance((n.get("inputs") or {}).get("prompt"), str)
+                    and cls not in registry and cls not in NOT_CARRIERS):
+                gaps.add(f"{path.stem}: node {nid} ({cls}) carries a `prompt` string "
+                         f"and is not in h3_config.PROMPT_INPUTS")
+    for src in source_files:
+        try:
+            tree = ast.parse(src.read_text(encoding="utf-8"))
+        except (OSError, SyntaxError):
+            continue
+        for cls_node in (n for n in ast.walk(tree) if isinstance(n, ast.ClassDef)):
+            node_id = None
+            has_prompt = False
+            for call in (c for c in ast.walk(cls_node) if isinstance(c, ast.Call)):
+                for kw in call.keywords:
+                    if kw.arg == "node_id" and isinstance(kw.value, ast.Constant):
+                        node_id = kw.value.value
+                if (isinstance(call.func, ast.Attribute) and call.func.attr == "Input"
+                        and call.args and isinstance(call.args[0], ast.Constant)
+                        and call.args[0].value == "prompt"):
+                    has_prompt = True
+            if (has_prompt and node_id and node_id not in registry
+                    and node_id not in NOT_CARRIERS):
+                gaps.add(f"{src.name}: {node_id} declares a `prompt` input and is not in "
+                         f"h3_config.PROMPT_INPUTS")
+    return sorted(gaps)
 
 
 def split_sections(prompt: str, names: list[str]) -> dict[str, str]:
@@ -475,6 +529,25 @@ def main() -> int:
        bad_keyframe)
     ok("markers stay in their set" + base_note, bad_marker)
     ok("dialogue only in the guide's main field", bad_dialogue)
+
+    # 5. Every node that carries a prompt is in the one registry. A list that
+    #    misses a carrier reads "nothing to grade" as a pass, which is how the
+    #    song node's prompts went ungraded, uncatalogued and unnamed.
+    graph_files = list(graph_paths(WORKFLOWS, "*.json", include_bench=True))
+    source_files = sorted(REPO.glob("*.py"))
+    ok("every prompt-carrying node is in h3_config.PROMPT_INPUTS",
+       carrier_gaps(PROMPT_INPUTS, graph_files, source_files))
+    #    The control: the same case on a registry missing the song node must
+    #    fail, or a case that scans nothing would pass for ever.
+    reduced = {k: v for k, v in PROMPT_INPUTS.items() if k != "MiniMaxH3AudioFreezeSong"}
+    ok("that case fails on a registry that lacks the song node (control)",
+       [] if carrier_gaps(reduced, graph_files, source_files)
+       else ["carrier_gaps found nothing missing from a registry without the song node"])
+    #    A song node decodes its own audio, so its graph has no VAEDecodeAudio
+    #    and must still be asked for the two audio sections.
+    ok("a graph with a song node requires the audio sections (control)",
+       [] if not _audio_sections_optional({"1": {"class_type": "MiniMaxH3AudioFreezeSong"}})
+       else ["_audio_sections_optional called a song graph's audio sections optional"])
 
     print()
     if fails:

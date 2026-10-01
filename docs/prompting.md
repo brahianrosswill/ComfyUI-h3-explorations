@@ -1533,6 +1533,7 @@ which also prices the sequence, and a bank entry through
 | `prompt_bank/` → the generator | `workflows/prompts.py` loads every shipped prompt by id and the generator refuses a missing entry; the two keyframe defaults are re-timed at the graph's length and checked at the declared one |
 | `prompt_bank/` → `prompt_bank.md` | `build_prompt_bank.py --check` regrades every entry, fails on edge whitespace and on a stale table; a `recorded_findings` entry is reported, not gated |
 | generator → `workflows/*.json` | generated; nothing is true of a graph until rebuilt |
+| graphs → the graders | `h3_config.PROMPT_INPUTS` is the one list of nodes that carry a prompt, and `check_prompt_guide_conformance.py` fails on a graph or a node that declares a `prompt` input outside it. A song node's template is read as the texts its Prompt Lists expand to (`workflows/prompts.py::carriers`) |
 | graphs → `prompt_catalogue.md` | `build_prompt_catalogue.py --check`, and nothing runs it for you: run it before trusting the table (§13) |
 | catalogue → `prompt_audit.md` | `check_prompt_docs_sync.py` fails on a scene with no verdict |
 | this file → its copies | the same check re-grades every §10 example at the duration its heading names and compares the Part One strings and the camera table with the guide. Its docstring says exactly what is pinned for each portable copy; a prose rule in a copy is not |

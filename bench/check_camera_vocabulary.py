@@ -55,9 +55,6 @@ sys.path.insert(0, str(REPO / "workflows"))
 GUIDE = REPO / "vendor_guides" / \
     "base_en.md"
 
-CONDITIONERS = ("MiniMaxH3Conditioning", "MiniMaxH3ReferenceConditioning",
-                "MiniMaxH3ImageToVideo", "MiniMaxH3ReferenceToVideo")
-
 #: base_en 4.3, verbatim. Cross-checked against the guide below when present.
 MOTION = (
     "Zoom In", "Zoom Out", "Push In", "Pull Out", "Pan Left", "Pan Right",
@@ -120,15 +117,15 @@ SPD_RE = re.compile(r"\b([a-z\-]+)\s+speed\b", re.I)
 
 def prompts() -> dict[str, set[str]]:
     import h3_config
+    import prompts as _prompts
     out: dict[str, set[str]] = {}
     for path in h3_config.graph_paths(REPO / "workflows", include_bench=True):
         graph = json.loads(Path(path).read_text(encoding="utf-8"))
-        for node in graph.values() if isinstance(graph, dict) else []:
-            if not isinstance(node, dict):
-                continue
-            if node.get("class_type") in CONDITIONERS:
-                p = (node.get("inputs") or {}).get("prompt")
-                if isinstance(p, str) and p.strip():
+        # what the encoder reads, from the one registry of carriers: a song
+        # node's template is expanded through its Prompt Lists
+        for car in _prompts.carriers(graph):
+            for p in car.texts:
+                if p.strip():
                     out.setdefault(p, set()).add(Path(path).stem)
     return out
 

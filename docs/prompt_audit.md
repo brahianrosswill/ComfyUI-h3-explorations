@@ -154,6 +154,7 @@ Three t2va prompts written on 2026-09-12 for the shot-per-window chain
 | scene | mode | verdict | why |
 |---|---|---|---|
 | `t2va_studio_dancer_close` | t2va | **keep** | the owner's verdict on the two single-window renders on the share (`h3_t2v_audio_freeze_dancer_close_frozen_s2_00001` and `..._loose_s2_00001`, 2026-09-12): "both are pretty awesome"; the loose one read slightly better without a stated reason, which is the freeze lane's data point, not this prompt's |
+| `t2va_song_flicker_lists` | t2va | **revise** | read 2026-10-01, when the catalogue began to read the song node's template: `non_diegetic_music` carries a mood word, "melancholic" (base §4.7 states no abstract mood words; `prompting.md` section 8). The rest conforms: two shots with no header times, the singer identified where she first appears with `(S1)` and no lyrics in the text by design, camera phrases inside the closed sets, and every text the two lists expand to grades clean. Not edited: changing the text changes a shipped graph, so it is the owner's call |
 | `t2va_dancer_shot_floor` | t2va | **keep** (text only) | one eight-second shot of the feet on the sprung floor, the chain's second window; grades clean; unrendered, so the render verdict is pending the shots graph |
 | `t2va_dancer_shot_face` | t2va | **keep** (text only) | one eight-second close-up with a slow push-in, the chain's third window and the repeat graph's shot; grades clean; unrendered, so the render verdict is pending |
 

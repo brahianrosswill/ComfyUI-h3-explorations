@@ -1856,6 +1856,49 @@ GRAPH_DIRS: tuple[str, ...] = ("", "distill_experiments")
 # widen this function, never to work around it.
 BENCH_GRAPH_DIRS: tuple[str, ...] = ("bench",)
 
+# ---------------------------------------------------------------------------
+# Which nodes carry prompt text into the encoder
+# ---------------------------------------------------------------------------
+
+#: Every node class that carries prompt text to the encoder, mapped to the input
+#: that holds it. **The one copy.** Preflight, the prompt catalogue, the camera
+#: check, the guide-conformance and label checks and `workflows/prompts.py`
+#: each kept their own list until 2026-10-01, and the lists disagreed: the
+#: song node was in only two of them, so its prompts were never graded, catalogued
+#: or tied to a bank id, and preflight said "nothing to grade" over a graph
+#: that renders a prompt. (The same escape had happened once before, in
+#: preflight, when `MiniMaxH3Conditioning` was missing from its list.)
+#: `bench/check_prompt_guide_conformance.py` fails when a shipped graph carries
+#: a `prompt` string on a class that is not here. Core's two H3 nodes are
+#: listed because hand-built and HF-style graphs use them.
+PROMPT_INPUTS: dict[str, str] = {
+    "MiniMaxH3Conditioning": "prompt",
+    "MiniMaxH3ReferenceConditioning": "prompt",
+    "MiniMaxH3ImageToVideo": "prompt",
+    "MiniMaxH3ReferenceToVideo": "prompt",
+    "MiniMaxH3AudioFreezeSong": "prompt",
+}
+
+#: The carriers whose stored text is a template, not what the encoder reads:
+#: `__name__` placeholders filled from the Prompt List nodes chained into the
+#: node's `lists` input, and optionally one block per timeline label, each
+#: opened by a `--- label` line (`prompt_lists.py` and `loop_plan.py` own that
+#: grammar). `workflows/prompts.py::carriers` expands them so a grader sees the
+#: text the model reads.
+PROMPT_TEMPLATE_CARRIERS: tuple[str, ...] = ("MiniMaxH3AudioFreezeSong",)
+
+#: The carriers that take the six-section reference format. A carrier in
+#: `REF_FORMAT_WHEN_WIRED` takes it only when its `references` input is wired.
+REF_FORMAT_CARRIERS: tuple[str, ...] = ("MiniMaxH3ReferenceToVideo",
+                                        "MiniMaxH3ReferenceConditioning")
+REF_FORMAT_WHEN_WIRED: tuple[str, ...] = ("MiniMaxH3AudioFreezeSong",)
+
+#: The carriers that decode their own audio, so a graph with one has an audio track
+#: for the audio sections to describe even though it carries no `VAEDecodeAudio`.
+#: A grader that read only the decoder node would call those two sections
+#: optional on every song graph and pass a prompt that has neither.
+AUDIO_DECODING_CARRIERS: tuple[str, ...] = ("MiniMaxH3AudioFreezeSong",)
+
 
 # ---------------------------------------------------------------------------
 # Reading a value out of a graph

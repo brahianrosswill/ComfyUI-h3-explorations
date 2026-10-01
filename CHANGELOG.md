@@ -36,6 +36,54 @@ mutant examples) reproduced their results and found the following.
   "experimental" row sat below the "maybe crap" rows; it moves up with its tier.
 - This file: the 0.177.2 entry sat above 0.178.x; it moves below 0.178.0.
 
+## 0.181.0
+
+One registry of the nodes that carry prompt text, and the song node's prompts are
+graded, catalogued and named for the first time (owner: redesign the song-node gap).
+No graph changed: the generator rebuilt to a scratch directory is byte-identical to
+the checked-in graphs for every graph it writes.
+
+### Changed
+
+- **`h3_config.PROMPT_INPUTS` is the one list of prompt-carrying nodes.** Preflight,
+  the catalogue, the camera check, the conformance and label checks and
+  `workflows/prompts.py` each kept their own, and the lists disagreed: the song node,
+  which carries the prompt of every song graph, was in two of them. Its prompts were
+  never graded ("nothing to grade" read as a pass), never catalogued, never tied to a
+  bank id and never read by the camera check. Preflight's own list had failed the
+  same way once before, for core's conditioner. The two format lists
+  (`REF_FORMAT_CARRIERS`, `REF_FORMAT_WHEN_WIRED`) and `PROMPT_TEMPLATE_CARRIERS`
+  sit beside it.
+- **`workflows/prompts.py::carriers(graph)`** answers "what text does this graph's
+  encoder read". A song node stores a template, with `__name__` placeholders filled
+  from Prompt List nodes chained into `lists`; `carriers` expands it so every value of
+  every list is read in at least one text, without a product, and a prompt that
+  arrives by link is followed to its source. `describe` now names the bank entry for a
+  song graph.
+- **Preflight grades a song graph** as every text its lists expand to, through a
+  stand-in conditioner of the window's length. A placeholder with no list, or a chained
+  list no text uses, is a FAIL, as the node refuses both at run time. A wildcard-file
+  list is not resolvable offline and is said so; references wired on the node, and
+  pricing, are not modelled and are said so rather than skipped.
+- **A song graph's audio sections are now required of its prompt.** The node decodes
+  audio itself, so its graph has no `VAEDecodeAudio`, and the check that waives the
+  audio sections when there is no decoder waived them on every song graph
+  (`h3_config.AUDIO_DECODING_CARRIERS`).
+- The catalogue and the camera check read carriers: the catalogue lists the song
+  prompt as a scene, and the camera check reads the expanded texts. The new verdict in
+  `docs/prompt_audit.md` is `revise`: `t2va_song_flicker_lists` has a mood word,
+  "melancholic", in `non_diegetic_music`. Not edited, since it changes a shipped graph.
+
+### Added
+
+- `bench/check_prompt_guide_conformance.py`: every node that carries a `prompt` string,
+  in the shipped graphs and in the pack's node source, must be in the registry, with a
+  control that the scan fails on a registry missing the song node and a control for the
+  audio-section fix.
+- `bench/check_prompt_lists.py`: the grader's copy of the template grammar (`prompts.py`
+  cannot import ComfyUI) is pinned against `prompt_lists.py` and `loop_plan.py`, red on
+  each of three corrupted copies.
+
 ## 0.180.0
 
 ### Added
