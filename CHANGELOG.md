@@ -4,6 +4,22 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.182.2
+
+### Added
+
+- `standalone/h3_mutant_distill/CHANGELOG.md`: the published pack's own changelog. 0.1.0 and 0.2.0
+  are reconstructed from the GitHub repo's history; 0.3.0 is the two examples of 0.180.0.
+- `bench/results/2026-10-01_lora_branch_profile.md` and its two row files: where a LoRA at the
+  call spends its time. The fc2 swiglu recompute is the largest piece, then the in-place adds into
+  qkv and fc1; the per-call copy is negligible. Options are listed; nothing changed.
+
+### Published
+
+- h3-mutant-distill 0.3.0, at the owner's go: the two new example workflows, the README rows and
+  the changelog to GitHub (`128cb2c`), and the card to Hugging Face (`d0c64021`). Both live READMEs
+  were read back and match `standalone/`.
+
 ## 0.182.1
 
 ### Added
