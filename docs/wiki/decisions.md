@@ -17,6 +17,11 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-01
 
+- **The at-call LoRA branch stays as it is** (owner, 2026-10-01: neither fix). Fusing swiglu into
+  fc2's projection or folding the add into kitchen's int8 matmul would recover part of the branch's
+  cost, at the price of exact parity with the published `H3ExactLoRA` and, for the kitchen route, a
+  carried kernel (`bench/results/2026-10-01_lora_branch_profile.md`).
+
 - **Sol's `start_percent` is 0.0 on PDD graphs, 0.2 elsewhere** (owner, 2026-10-01, option A of two:
   the distill graphs only, not every Sol graph). Five blind pairs on the t2v finish showed no
   difference and 0.0 is much faster; the base graphs were not tested, so they keep 0.2. Upstreams

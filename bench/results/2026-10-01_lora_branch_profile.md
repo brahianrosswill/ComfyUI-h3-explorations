@@ -59,5 +59,4 @@ Per forward at 110000 rows, from the tool's output:
    the two.
 3. **Not worth doing:** keeping A and B resident (above).
 
-Nothing is changed by this record; the choice between 1, 2 and neither is the
-owner's.
+Nothing is changed by this record. *The owner chose neither, 2026-10-01* (`docs/wiki/decisions.md`).
