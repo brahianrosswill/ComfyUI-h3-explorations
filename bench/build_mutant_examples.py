@@ -125,9 +125,13 @@ def base(unet: str, task: str = "t2v") -> dict:
         "7": {"class_type": "KSamplerSelect", "inputs": {"sampler_name": "euler"}},
     }
     if task == "i2v":
+        # The canvas comes from the image (`H3KeyframeCanvas`, the release's rule), so
+        # core's node never stretches it: a stretched square keyframe drifted on
+        # 2026-10-01 (bench/results/2026-10-01_mutant_parity_flashgen_i2v_r2v_finish.md).
         g["15"] = {"class_type": "LoadImage", "inputs": {"image": I2V_IMAGE}}
+        g["14"] = {"class_type": "H3KeyframeCanvas", "inputs": {"first_frame": ["15", 0]}}
         g["5"]["inputs"].update(prompt=pack_prompt(I2V_GRAPH, "MiniMaxH3Conditioning"),
-                                first_frame=["15", 0])
+                                width=["14", 0], height=["14", 1], first_frame=["14", 2])
     elif task == "r2v":
         g["15"] = {"class_type": "LoadImage", "inputs": {"image": R2V_IMAGES[0]}}
         g["16"] = {"class_type": "LoadImage", "inputs": {"image": R2V_IMAGES[1]}}
@@ -277,8 +281,8 @@ RECIPES = {
         "interesting, not as a recommendation.")),
     "h3_i2v_pdd8": (i2v_pdd8, (
         "## PDD8 alone (image to video)\n\n"
-        "PDD8's 8 steps from a first frame. Load your own image, and set width and "
-        "height to its aspect: the node stretches the image to the canvas.\n\n"
+        "PDD8's 8 steps from a first frame. Load your own image: H3 Keyframe Canvas "
+        "sizes the video to its aspect, so it is never stretched.\n\n"
         "Why: the pick for i2v. The FlashGen finish brightened the frame at once, "
         "so PDD8 alone won on the one image judged.")),
     "h3_r2v_pdd8": (r2v_pdd8, (
@@ -299,14 +303,11 @@ RECIPES = {
     "h3_i2v_flashgen": (i2v_flashgen, (
         "## FlashGen alone (image to video), an untrained transfer\n\n"
         "FlashGen's 4 steps on the fl2va checkpoint from a first frame. Load your own "
-        "image, and set width and height to its aspect: the node stretches the image to "
-        "the canvas. Same prompt as the PDD8 image-to-video workflow.\n\n"
+        "image: H3 Keyframe Canvas sizes the video to its aspect. Same prompt as the "
+        "PDD8 image-to-video workflow.\n\n"
         "Why: FlashGen was trained for text to video only. One render held the first "
         "frame's subject, lighting and framing, and the face stayed coherent, by eye. It "
-        "has not been compared against PDD8, which is the pick for i2v.\n\n"
-        "Set the aspect: a square keyframe stretched to 1344x768 drifted in the one run "
-        "that tried it (a pair of glasses appeared mid-clip), and at its own 768x768 the "
-        "same seed held.")),
+        "has not been compared against PDD8, which is the pick for i2v.")),
     "h3_r2v_pdd8_flashgen_finish": (r2v_pdd8_flashgen_finish, (
         "## PDD8, then a FlashGen finish (reference to video)\n\n"
         "The text-to-video finish on the ref2va checkpoint: 6 PDD8 steps from sigma 1.0 to "

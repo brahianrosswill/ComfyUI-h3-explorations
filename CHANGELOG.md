@@ -4,6 +4,18 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.183.0
+
+### Added
+
+- h3-mutant-distill 0.4.0: `H3KeyframeCanvas` (`standalone/h3_mutant_distill/keyframe_canvas.py`), a
+  trimmed port of this pack's retired `MiniMaxH3KeyframeCanvas`: the canvas from the first frame by
+  core's `adapt_canvas`, the image scaled to it, an aspect outside 1:4 to 4:1 refused. The two mutant
+  i2v examples wire it before core's `MiniMaxH3ImageToVideo`, so a first frame is no longer stretched
+  onto 1344x768 (owner, 2026-10-01). Checked end to end:
+  `bench/results/2026-10-01_mutant_keyframe_canvas.md`. This pack's own i2v graphs need nothing:
+  `MiniMaxH3Conditioning`'s `canvas=from_keyframe` already runs the same geometry.
+
 ## 0.182.6
 
 ### Added

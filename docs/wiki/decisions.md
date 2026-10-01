@@ -17,6 +17,11 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-01
 
+- **h3-mutant-distill gains a second node, `H3KeyframeCanvas`** (owner, 2026-10-01: "I agree with
+  your auto resize approaches"), so its i2v examples size the canvas from the first frame instead of
+  stretching it. The pack's README no longer reads as one node only; `H3ExactLoRA` still loads every
+  adapter. Keyframes are not sized like references: the 2048 short edge is ref2va's alone (0.183.0).
+
 - **comfy-kitchen's build branch moved to upstream main `3f7210f`** (owner: merge what upstream has).
   `h3-frontier` took seven upstream commits by merge (`aade8d5`); the build is
   `0.2.36+sol.aade8d5.up.3f7210f`. Outputs are bit-identical on every layer and render checked, and
