@@ -4,38 +4,6 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
-## 0.180.1
-
-A review of 0.179.0 to 0.180.0 (the clip-to-graph coverage and the two new
-mutant examples) reproduced their results and found the following.
-
-### Fixed
-
-- `bench/clip_recipe_coverage.py` now tells apart what it used to merge. A PDD
-  node whose SIGMAS output is wired adds `pdd:N` from its `steps` (read through
-  the PrimitiveInt the shipped graphs wire it from), so an 8-step clip no longer
-  matches the `_pdd_4step` graphs. Any PDD or branch input moved off its inert
-  value (`LORA_KNOBS`: `patch_heads`, `backbone_apply`, `nfe`, the head and
-  unmerged knobs, the branch's `modules` and percent window) is now part of the
-  recipe. `LoraLoaderModelOnly`'s strength is read from `strength_model`, not a
-  `strength` it does not have. Rerun over the same clips:
-  `bench/results/2026-10-01_r2v_i2v_graph_coverage_rerun.txt`. The conclusion
-  stands.
-- `bench/check_audio_freeze.py` had failed at import since 0.139.0
-  (2026-09-25): `audio_freeze.py`'s `from .audio_resample import` has no parent
-  package under a bare import. It now loads the module inside a stand-in
-  package, as `check_node_ids.py` loads `nodes`, and is green.
-- `bench/check_doc_links.py`: the two citations in `docs/h3_audio_freeze.md`
-  into `ComfyUI-H3-Motion-Context-MultiRef`, a sibling pack no longer installed,
-  are declared absent in `docs/checks.md`, and the doc says so where it cites them.
-- `bench/results/2026-10-01_mutant_parity_flashgen_i2v_r2v_finish.md` said the
-  i2v drift "came with the stretch". One render at each canvas cannot separate
-  that from any other change of trajectory; corrected in place, with the old
-  wording kept.
-- The mutant READMEs (GitHub and the HF card source): the ref2va finish's
-  "experimental" row sat below the "maybe crap" rows; it moves up with its tier.
-- This file: the 0.177.2 entry sat above 0.178.x; it moves below 0.178.0.
-
 ## 0.181.0
 
 One registry of the nodes that carry prompt text, and the song node's prompts are
@@ -83,6 +51,38 @@ the checked-in graphs for every graph it writes.
 - `bench/check_prompt_lists.py`: the grader's copy of the template grammar (`prompts.py`
   cannot import ComfyUI) is pinned against `prompt_lists.py` and `loop_plan.py`, red on
   each of three corrupted copies.
+
+## 0.180.1
+
+A review of 0.179.0 to 0.180.0 (the clip-to-graph coverage and the two new
+mutant examples) reproduced their results and found the following.
+
+### Fixed
+
+- `bench/clip_recipe_coverage.py` now tells apart what it used to merge. A PDD
+  node whose SIGMAS output is wired adds `pdd:N` from its `steps` (read through
+  the PrimitiveInt the shipped graphs wire it from), so an 8-step clip no longer
+  matches the `_pdd_4step` graphs. Any PDD or branch input moved off its inert
+  value (`LORA_KNOBS`: `patch_heads`, `backbone_apply`, `nfe`, the head and
+  unmerged knobs, the branch's `modules` and percent window) is now part of the
+  recipe. `LoraLoaderModelOnly`'s strength is read from `strength_model`, not a
+  `strength` it does not have. Rerun over the same clips:
+  `bench/results/2026-10-01_r2v_i2v_graph_coverage_rerun.txt`. The conclusion
+  stands.
+- `bench/check_audio_freeze.py` had failed at import since 0.139.0
+  (2026-09-25): `audio_freeze.py`'s `from .audio_resample import` has no parent
+  package under a bare import. It now loads the module inside a stand-in
+  package, as `check_node_ids.py` loads `nodes`, and is green.
+- `bench/check_doc_links.py`: the two citations in `docs/h3_audio_freeze.md`
+  into `ComfyUI-H3-Motion-Context-MultiRef`, a sibling pack no longer installed,
+  are declared absent in `docs/checks.md`, and the doc says so where it cites them.
+- `bench/results/2026-10-01_mutant_parity_flashgen_i2v_r2v_finish.md` said the
+  i2v drift "came with the stretch". One render at each canvas cannot separate
+  that from any other change of trajectory; corrected in place, with the old
+  wording kept.
+- The mutant READMEs (GitHub and the HF card source): the ref2va finish's
+  "experimental" row sat below the "maybe crap" rows; it moves up with its tier.
+- This file: the 0.177.2 entry sat above 0.178.x; it moves below 0.178.0.
 
 ## 0.180.0
 
