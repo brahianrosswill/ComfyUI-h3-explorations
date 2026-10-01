@@ -4,6 +4,16 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.184.3
+
+### Changed
+
+- **FlashGen and PDMD Sol nodes are back at `start_percent` 0.2** (owner, 2026-10-01, reverting
+  0.184.1's unmeasured extension). `h3_config.SOL_DISTILL_LORA_OVERRIDES` is empty again; PDD stays at
+  0.0, which the owner's blind panel measured (0.184.0). The 32 graphs 0.184.1 changed are rebuilt,
+  validated against the live server, and byte-identical to their state before it.
+  `docs/SOLATTN.md`'s knob table and the `h3_config.py` comments say so.
+
 ## 0.184.2
 
 ### Changed

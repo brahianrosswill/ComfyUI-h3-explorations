@@ -17,6 +17,10 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-01
 
+- **FlashGen and PDMD keep `start_percent` 0.2** (owner, 2026-10-01: "change it back", scoped to
+  the FlashGen/PDMD extension). 0.184.1 had extended the PDD result to them without a measurement;
+  0.184.3 reverts it. PDD stays at 0.0.
+
 - **Sol's `start_percent` is 0.0 on FlashGen and PDMD graphs too** (owner, 2026-10-01: "flashgen
   should change i think"; PDMD: "may as well"). This extends the PDD decision below to the distill LoRAs
   applied at the call, through `h3_config.SOL_DISTILL_LORA_OVERRIDES`, kept apart from
