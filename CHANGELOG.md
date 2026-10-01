@@ -4,6 +4,25 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.184.6
+
+### Changed
+
+- **PDMD is parked, on kijai's resized files** (owner, 2026-10-01). `h3_config.PDMD_LORA` and
+  `PDMD_2STEP_LORA` name kijai's files. These reverse 0.182.6's full-rank default: blind, the two were
+  "same" on every scene. `h3_text_to_video_pdmd` and the i2v, ref2va and 2-step PDMD probes were
+  rebuilt and validated, with `lora_name` as the only change. `docs/roadmap.md` lists PDMD under
+  "Closed lanes", with what would reopen it.
+
+### Removed
+
+- `bench/convert_pdmd_lora.py` and the full-rank conversions it wrote (the owner deleted the files and
+  the downloaded weights). Its `*_rank128_conversion.json` records stay.
+- The four `*_pdmd_kijai_*` probes, now duplicates of the default PDMD graphs.
+  `bench/pdmd_vs_flashgen_arms.json` says the run's graphs were retired or repointed.
+- `check_distill_settings.py`'s read of a PDMD file's `sampler_steps` header, which only the full-rank
+  conversions carried.
+
 ## 0.184.5
 
 ### Added

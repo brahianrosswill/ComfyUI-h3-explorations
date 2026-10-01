@@ -1252,25 +1252,23 @@ FLASHGEN_MANUAL_SIGMAS = "1.0, 0.965517, 0.888889, 0.679245, 0.0"
 # a rank-128 LoRA on the release's diffusers `transformer/`, which is the fl2va
 # partition bit for bit. T2VA only. What it is and every setting's source:
 # docs/research/pdmd/2026-10-01_what_pdmd_is.md.
-#: The published LoRAs at full rank, converted here by `bench/convert_pdmd_lora.py`
-#: (`bench/results/2026-10-01_pdmd_{4,2}step_rank128_conversion.json`): every
-#: module's delta is the published one exactly. The default a PDMD graph loads.
-PDMD_LORA = "h3/minimax_h3_pdmd_4step_rank128_comfy.safetensors"
-PDMD_2STEP_LORA = "h3/minimax_h3_pdmd_2step_rank128_comfy.safetensors"
-#: kijai's dynamic rank resizes of the same files (HF `Kijai/MiniMax-H3-experimental`,
-#: 2026-10-01; sv_fro 0.97, capped at rank 128). The arm that says whether the
-#: resize shows: each keeps a fixed share of every delta and less where q/k/v
-#: hit the cap (`bench/results/2026-10-01_pdmd_{4,2}step_lora_conversion.json`).
-PDMD_KIJAI_LORA = "h3/minimax_h3_pdmd_4step_lora_avg_rank_57_bf16.safetensors"
-PDMD_2STEP_KIJAI_LORA = "h3/minimax_h3_pdmd_2step_lora_avg_rank_38_bf16.safetensors"
+#: kijai's dynamic rank resizes (HF `Kijai/MiniMax-H3-experimental`,
+#: 2026-10-01; sv_fro 0.97, capped at rank 128). **Measured, owner decision
+#: 2026-10-01:** blind, they were "same" as our exact full-rank conversion on
+#: every scene of the first look and render a little faster
+#: (`bench/results/2026-10-01_2026-10-01_pdmd_vs_flashgen_verdict.json`), so they
+#: are the default and the full-rank files were deleted. What the resize keeps:
+#: `bench/results/2026-10-01_pdmd_{4,2}step_lora_conversion.json`.
+PDMD_LORA = "h3/minimax_h3_pdmd_4step_lora_avg_rank_57_bf16.safetensors"
+PDMD_2STEP_LORA = "h3/minimax_h3_pdmd_2step_lora_avg_rank_38_bf16.safetensors"
 #: **Inherited:** the step count each file was trained for (the model cards; the
 #: sidecar `tag`). The trainer samples `steps + 1` grid points of
 #: `shift(linspace(1, 0, N + 1))` at 12/3 on Euler, which is ComfyUI's
 #: `simple` at these counts bit for bit, so PDMD runs on `DISTILL_SAMPLING`
 #: and `SIGMA_SHIFT` with no ManualSigmas.
-PDMD_STEPS = {PDMD_LORA: 4, PDMD_KIJAI_LORA: 4, PDMD_2STEP_LORA: 2, PDMD_2STEP_KIJAI_LORA: 2}
+PDMD_STEPS = {PDMD_LORA: 4, PDMD_2STEP_LORA: 2}
 #: **Inherited:** the published `lora_scale` 1.0 (alpha / rank = 128 / 128);
-#: every file here carries alpha = rank so that 1.0 is that scale.
+#: kijai's files carry alpha = rank in every module so that 1.0 is that scale.
 PDMD_STRENGTH = 1.0
 
 #: The distill LoRAs applied at the call whose Sol nodes take

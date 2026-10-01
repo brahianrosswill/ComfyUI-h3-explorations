@@ -241,6 +241,22 @@ not compare PDD, FlashGen or FastH3.
   there, but the paper's scores do not cover it. FlashGen has the same
   length gap.
 
+## Outcome, 2026-10-01: parked
+
+- **Judged once, blind, against FlashGen:** FlashGen was preferred over PDMD on
+  more scenes. PDMD won the radio scene on its muted grade, ghosts at shot
+  transitions, and cut away from the i2va first frame (`../../h3_distills.md`,
+  "PDMD").
+- **Kijai's resize is the default file** (owner, 2026-10-01). It was "same" as
+  our exact full-rank conversion on every scene, and it renders a little
+  faster. The full-rank files and `bench/convert_pdmd_lora.py` were deleted;
+  git and the `*_rank128_conversion.json` records keep how they were made. The
+  measurement of what the resize keeps still stands
+  (`bench/results/2026-10-01_pdmd_{4,2}step_lora_conversion.json`).
+- **Parked** (owner: "nothing else to do with it"). The graphs stay buildable on
+  kijai's files. `../../roadmap.md`, "Closed lanes", says what would reopen it.
+  The open list below is kept as the plan that was followed, not as work owed.
+
 ## Open, in order
 
 1. **The graphs: built the same day, and rendered once for the first look (item 3).**

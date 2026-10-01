@@ -46,6 +46,7 @@ session logs) is deliberate and is not drift to clean up.
 | our `MiniMaxH3VSAAttention` (FastVideo VSA as our own block-forward replacement) and its two probe graphs | 2026-09-29 (owner agreed with retiring it) | core's `BlockSparseAttention` in `vsa` mode, which every FastH3 graph uses. The node was parked and refused since 0.157.1; `docs/research/vsa/` is the record |
 | `bench/restart_comfy.sh` | disabled 2026-09-02 | restart by hand, `docs/comfy_notes.md` |
 | a hook that blocks pattern kills (`pkill`, `killall`) | tried and removed 2026-09-03 | kill one pid, found from the port owner |
+| PDMD (pdmd2026's 4-step and 2-step LoRAs, through kijai's resizes) | 2026-10-01 (owner: "nothing else to do with it") | Parked after one blind look, not refuted: FlashGen was preferred, and PDMD ghosts at shot transitions (`docs/h3_distills.md`, "PDMD"). `h3_text_to_video_pdmd` and its i2v, ref2va and 2-step probes stay buildable on kijai's files (`h3_config.PDMD_*`). The full-rank files and their converter were deleted. Reopens if pdmd2026 publishes a new checkpoint, or a shot wants PDMD's muted grade |
 
 ## Current forward plan — 2026-09-04
 

@@ -364,7 +364,8 @@ muted" against FlashGen's saturated grade.
 every scene ("same clip to me, both ghost at the same time"). Kijai's file
 drops part of each layer's change
 (`../bench/results/2026-10-01_pdmd_4step_lora_conversion.json`), and on these
-scenes that was invisible.
+scenes that was invisible. So kijai's file is the default (`h3_config.PDMD_LORA`),
+and the lane is parked (`roadmap.md`, "Closed lanes").
 
 **Why.**
 - **Inference:** the muted grade fits the paper's claim that PDMD saturates

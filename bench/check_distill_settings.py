@@ -211,21 +211,8 @@ def classify_flashgen(lora_name):
 
 
 def classify_pdmd(lora_name):
-    """A PDMD LoRA (h3_config.PDMD_*): ours at full rank or kijai's resizes."""
+    """A PDMD LoRA (h3_config.PDMD_*): kijai's resizes since 2026-10-01."""
     return "pdmd" in lora_name.lower()
-
-
-def _pdmd_header_steps(lora_name):
-    """`sampler_steps` from one of our converted PDMD files' headers, or None
-    (kijai's files carry no such field; a missing file is
-    `check_model_files.py`'s)."""
-    path = lora_path(lora_name)
-    if path is None:
-        return None
-    from safetensors import safe_open
-    with safe_open(str(path), "pt") as f:
-        got = (f.metadata() or {}).get("sampler_steps")
-    return int(got) if got else None
 
 
 def _flashgen_header_sigmas():
@@ -505,9 +492,6 @@ def main():
                 assert effective == BASE_SHIFT, (
                     f"{path.name}: PDMD samples at the base {BASE_SHIFT}, has {effective}")
                 want = cfg.PDMD_STEPS[lora]
-                header = _pdmd_header_steps(lora)
-                assert header is None or header == want, (
-                    f"{path.name}: {lora}'s header says {header} steps, PDMD_STEPS says {want}")
                 assert (found.scheduler, found.steps) == ("simple", want), (
                     f"{path.name}: PDMD's grid is `simple` at {want} steps (the trainer's own, "
                     f"bit for bit); graph has {found.scheduler!r}/{found.steps}")

@@ -287,19 +287,12 @@ none tried:
 
 The owner's other half is written: `../h3_distills.md` (2026-09-26, one seed; revised when the second seed lands).
 
-**2026-10-01 (PDMD, FlashGen's closest sibling).** Kijai's PDMD LoRAs are
-researched, converted at full rank and wired (0.182.3 to 0.183.1). What they are
-and where each setting comes from: `../research/pdmd/2026-10-01_what_pdmd_is.md`.
-The board's `pdmd-lora` direction tracks it.
-- **The owner's scores:** the first look is rendered and blinded (session
-  `2026-10-01_pdmd_vs_flashgen`, pairs-only page on the output share). It
-  covers five scenes with full-rank PDMD, kijai's PDMD and FlashGen. Then
-  `bench/score_session.py` writes the verdict.
-- **Then:**
-  - the 2-step probe;
-  - length, starting from the trainer's own example job at our canvas
-    (`coderef/pdmd/jobs/giant_cat_harbor_768p_4nfe.json`);
-  - the at-call cost of the fused q/k/v branch, which is unmeasured.
+**2026-10-01 (PDMD, FlashGen's closest sibling): parked.** Kijai's PDMD LoRAs
+were researched, wired, and judged once, blind, against FlashGen
+(`../h3_distills.md`, "PDMD"). FlashGen was preferred. Kijai's resize was
+indistinguishable from full rank, so it is the default file. The owner parked the
+lane ("nothing else to do with it"); `../roadmap.md`, "Closed lanes", says what
+would reopen it. Nothing is owed.
 
 **2026-09-26 (the prompt bank fix, 0.151.1 and 0.151.2).** Every flagged prompt is
 fixed (`../../CHANGELOG.md`, 0.151.2). One gap is still open:

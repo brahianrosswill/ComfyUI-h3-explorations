@@ -17,6 +17,14 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-01
 
+- **PDMD is parked, on kijai's resized files** (owner, 2026-10-01: "just keep kijais and note it.
+  nothing else to do with it"). The blind first look preferred FlashGen, and kijai's resize was
+  "same" as full rank on every scene (`docs/h3_distills.md`, "PDMD"). `h3_config.PDMD_LORA` and
+  `PDMD_2STEP_LORA` name kijai's files. The full-rank conversions, their converter and the four
+  kijai-arm probes are retired; the owner deleted the downloaded weights. This reverses 0.182.6's
+  choice of full rank as the default (below). `docs/roadmap.md`, "Closed lanes", says what reopens it
+  (0.184.6).
+
 - **FlashGen and PDMD keep `start_percent` 0.2** (owner, 2026-10-01: "change it back", scoped to
   the FlashGen/PDMD extension). 0.184.1 had extended the PDD result to them without a measurement;
   0.184.3 reverts it. PDD stays at 0.0.

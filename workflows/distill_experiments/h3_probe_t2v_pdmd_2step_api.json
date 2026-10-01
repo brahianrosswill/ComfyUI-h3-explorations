@@ -178,7 +178,7 @@
         "1",
         0
       ],
-      "lora_name": "h3/minimax_h3_pdmd_2step_rank128_comfy.safetensors",
+      "lora_name": "h3/minimax_h3_pdmd_2step_lora_avg_rank_38_bf16.safetensors",
       "strength": 1.0,
       "modules": "all",
       "blocks": "all",

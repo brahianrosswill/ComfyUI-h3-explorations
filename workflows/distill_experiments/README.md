@@ -14,8 +14,9 @@ rule is `build_workflows._is_distill_experiment`:
 The everyday distill graphs stay at `workflows/`: `h3_text_to_video_pdd`,
 `h3_text_to_video_pdd8_flashgen_finish` (PDD8 then a FlashGen finish, the
 owner's t2v pick on 2026-09-27), `h3_text_to_video_flashgen`,
-`h3_text_to_video_pdmd` (PDMD 4-step at full rank, added 2026-10-01, rendered once for the first look (`../../bench/results/2026-10-01_pdmd_vs_flashgen.jsonl`), unjudged; its 2-step and kijai-resize arms are the `h3_probe_t2v_pdmd_*`
-graphs here),
+`h3_text_to_video_pdmd` (PDMD 4-step on kijai's resized file, added 2026-10-01,
+judged once against FlashGen and parked: `../../docs/h3_distills.md`, "PDMD"; its
+2-step, i2v and ref2va probes are the `h3_probe_*_pdmd_*` graphs here),
 `h3_text_to_video_pdd_manual_sigmas` (PDD6), `h3_first_frame_to_video_pdd`
 (the owner's i2v pick, moved to the root on 2026-10-01), and the PDD ref and
 first/last-frame graphs.
