@@ -4,6 +4,14 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.182.4
+
+### Changed
+
+- The kitchen fork's `h3-frontier` is pushed to `origin` and to `nas`, both at `aade8d5` (the owner's
+  word, 2026-10-01); 0.182.1's "Not pushed" was true when written. Nothing went to Comfy-Org's
+  upstream. The record and `docs/wiki/decisions.md` carry a dated note in place.
+
 ## 0.182.3
 
 ### Added

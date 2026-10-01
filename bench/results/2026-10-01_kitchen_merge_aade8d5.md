@@ -19,6 +19,9 @@ sampler is faster on the two graphs timed.**
   13.4; the earlier build's toolkit was not recorded, so this is not known to be the same.
 - **Not pushed.** The local `origin/h3-frontier` and `nas/h3-frontier` refs still sit at `a4e0dd8`; pushing
   is the owner's say.
+  *Pushed 2026-10-01, the same day, at the owner's word: `h3-frontier` is at `aade8d5` on `origin` (the
+  fork) and on `nas`, both fast-forwards from `a4e0dd8`. Nothing went to Comfy-Org's upstream, whose push
+  URL in the clone is disabled.*
 - **Rollback:** the old wheel is still in the clone's `dist/`. Reinstall it with
   `uv pip install --python <comfy venv python> --force-reinstall --no-deps <wheel>`, then rebuild the
   record from a worktree of `a4e0dd8` (`SRC=<worktree> vendor/rebuild_kernel.sh`) so the record and the
@@ -96,7 +99,7 @@ only `H3_*` key), rows `2026-10-01_kitchen_merge_ab.jsonl`. No row has an error 
 
 ## Open
 
-- Push `h3-frontier` to `origin` and `nas`: the owner's say.
+- ~~Push `h3-frontier` to `origin` and `nas`: the owner's say.~~ Done 2026-10-01 (above).
 - The clone's in-tree `_C.abi3.so` (gitignored, 2026-09-28) is stale. Anything run from the clone that
   imports `comfy_kitchen` gets it, not the installed wheel. Deleting it is the owner's call.
 - Two upstream edge-case tests fail on the CUDA backend (above) and one of ours fails before and after.
