@@ -4,6 +4,15 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.181.4
+
+### Added
+
+- `bench/build_mutant_examples.py` refuses a mutant example that carries an audio refine
+  stage (`AUDIO_REFINE_CLASSES`) unless its stem says `audio_refine`. Owner: audio refine is
+  usually not worth its cost, so it is a workflow of its own, never a default stage. No
+  example had one; nothing is rebuilt.
+
 ## 0.181.3
 
 Docs and skills only: what 0.181.0 and 0.181.1 left stale.

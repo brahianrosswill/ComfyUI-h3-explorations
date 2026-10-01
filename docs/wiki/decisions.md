@@ -17,6 +17,11 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-01
 
+- **Audio refine is never a stage of a mutant example** (owner, 2026-10-01: "usually not
+  worth the extra cost"). It belongs in a workflow of its own, named `*_audio_refine`.
+  None of the nine examples had one; `bench/build_mutant_examples.py` now refuses an
+  example carrying `AUDIO_REFINE_CLASSES` under any other stem (0.181.4).
+
 - **`h3_config.py`'s `end_percent` note said "sage still takes the steps before
   `start_percent`"**; since 2026-09-15 the default graphs run those steps on
   `DENSE_BACKEND_NODE` (kitchen int8, as the server log's `[h3-sol]` line says), with

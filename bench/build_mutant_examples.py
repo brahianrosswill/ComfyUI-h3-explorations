@@ -457,11 +457,26 @@ def diff(want: dict, got: dict) -> list[str]:
     return probs
 
 
+#: The nodes an audio refine pass is built from: the pack's own, and the noise
+#: masks a core-only refine would need. Owner, 2026-10-01: audio refine is
+#: usually not worth its cost, so it is never a stage of an example; it goes in
+#: a workflow of its own, whose stem says `audio_refine`. Inherited from the
+#: pack's refine graphs (`distill_experiments/h3_probe_t2v_*_audio_refine*`).
+AUDIO_REFINE_CLASSES = ("MiniMaxH3AudioRefineMask", "MiniMaxH3FrozenVideoCache",
+                        "SetLatentNoiseMask")
+
+
 async def run(check: bool) -> int:
     fails = 0
     async with Frontend() as fe:
         for stem, (build, note) in RECIPES.items():
             api = build()
+            refine = sorted({n["class_type"] for n in api.values()} & set(AUDIO_REFINE_CLASSES))
+            if refine and "audio_refine" not in stem:
+                print(f"  RED   {stem}: carries an audio refine stage ({refine}); give it a workflow "
+                      "of its own named *_audio_refine")
+                fails += 1
+                continue
             missing = await fe.missing_nodes(api)
             if missing:
                 print(f"  RED   {stem}: the frontend has no {missing}; is h3-mutant-distill loaded?")
