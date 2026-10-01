@@ -1,0 +1,34 @@
+{
+ "what": "PDMD 4-step at full rank against FlashGen, the first look at PDMD (docs/research/pdmd/2026-10-01_what_pdmd_is.md). The owner's scenes, 2026-10-01: three t2va bank scenes (radio drama, stairwell dialogue, covered market), ref2va with the old man (1-man.png) in the mountain landscape (2-mountain_landscape.png), and i2va with the old man as the first frame.",
+ "why": "FlashGen is PDMD's closest sibling: same objective family, a 4-step LoRA at the call, Euler at 12/3. The pair differs only in the LoRA and its schedule (PDMD on `simple`, FlashGen on its own ManualSigmas); images, prompt, checkpoint, canvas, sampler and Sol match per scene. i2va and ref2va are untrained transfers for both distills, and ref2va also runs PDMD on the Ref2VA checkpoint. Seed-matched clips from two distills are different samples (docs/h3_distills.md, the box at the top), so the owner judges blind pairs over the scenes.",
+ "arms": {
+  "radio_drama__pdmd": "workflows/h3_text_to_video_pdmd_api.json",
+  "radio_drama__flashgen": "workflows/h3_text_to_video_flashgen_api.json",
+  "stairwell_dialogue__pdmd": "workflows/h3_text_to_video_pdmd_api.json",
+  "stairwell_dialogue__flashgen": "workflows/h3_text_to_video_flashgen_api.json",
+  "covered_market__pdmd": "workflows/h3_text_to_video_pdmd_api.json",
+  "covered_market__flashgen": "workflows/h3_text_to_video_flashgen_api.json",
+  "ref2va_old_man_mountains__pdmd": "workflows/distill_experiments/h3_probe_r2v_pdmd_4step_api.json",
+  "ref2va_old_man_mountains__flashgen": "workflows/distill_experiments/h3_probe_r2v_flashgen_4step_api.json",
+  "i2va_old_man__pdmd": "workflows/distill_experiments/h3_probe_i2v_pdmd_4step_api.json",
+  "i2va_old_man__flashgen": "workflows/distill_experiments/h3_probe_i2v_flashgen_4step_api.json"
+ },
+ "patches": [
+  "radio_drama__pdmd:MiniMaxH3Conditioning.prompt=@bank:t2va_radio_drama",
+  "radio_drama__flashgen:MiniMaxH3Conditioning.prompt=@bank:t2va_radio_drama",
+  "radio_drama__pdmd:MiniMaxH3Resolution.length=243",
+  "radio_drama__flashgen:MiniMaxH3Resolution.length=243",
+  "stairwell_dialogue__pdmd:MiniMaxH3Conditioning.prompt=@bank:t2va_stairwell_dialogue",
+  "stairwell_dialogue__flashgen:MiniMaxH3Conditioning.prompt=@bank:t2va_stairwell_dialogue",
+  "covered_market__pdmd:MiniMaxH3Conditioning.prompt=@bank:t2va_covered_market",
+  "covered_market__flashgen:MiniMaxH3Conditioning.prompt=@bank:t2va_covered_market"
+ ],
+ "seeds": {
+  "first": 730451892,
+  "note": "held: one seed per scene, the pair differs only in the distill"
+ },
+ "run": "run_graph_arms.py --manifest bench/pdmd_vs_flashgen_arms.json --runs 1 --seed 730451892 --hold-seed --no-alternate --warmup radio_drama__pdmd --out bench/results/2026-10-01_pdmd_vs_flashgen.jsonl",
+ "blind": "blind_batch.py --pairs pdmd,flashgen over the rows, then the lean pairs-only page (docs/eval_comparison.md, 'The lean pairs-only session')",
+ "order": "per scene, PDMD then FlashGen, so the second arm reuses the scene's text encode. The two LoRAs share no sampler cache.",
+ "next": "If PDMD holds up, kijai's resize arm (h3_probe_t2v_pdmd_kijai_4step) on the same t2va scenes; the 2-step probe after that."
+}
