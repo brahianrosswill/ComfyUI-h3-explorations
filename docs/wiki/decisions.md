@@ -17,6 +17,14 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-01
 
+- **Sol's `start_percent` is 0.0 on FlashGen and PDMD graphs too** (owner, 2026-10-01: "flashgen
+  should change i think"; PDMD: "may as well"). This extends the PDD decision below to the distill LoRAs
+  applied at the call, through `h3_config.SOL_DISTILL_LORA_OVERRIDES`, kept apart from
+  `SOL_PDD_OVERRIDES`. **Not measured on them:** the panel's FlashGen pass starts at sigma 0.8, below
+  the window, so no FlashGen or PDMD render from noise has been judged at 0.0. 32 graphs rebuilt,
+  `start_percent` the only change. The first PDMD-against-FlashGen renders
+  (`bench/results/2026-10-01_pdmd_vs_flashgen.jsonl`) ran before it, at 0.2 on every arm (0.184.1).
+
 - **The at-call LoRA branch stays as it is** (owner, 2026-10-01: neither fix). Fusing swiglu into
   fc2's projection or folding the add into kitchen's int8 matmul would recover part of the branch's
   cost, at the price of exact parity with the published `H3ExactLoRA` and, for the kitchen route, a

@@ -100,7 +100,7 @@ from h3_config import (  # noqa: E402
     DIALOGUE_REF_IMAGES, REFVIEW2_SCENES,
     PDD_MANUAL_EVALS,
     PDD_MANUAL_SIGMAS,
-    sol_for_graph,
+    sol_for_graph, SOL_DISTILL_LORA_FILES,
     PDD_FL2VA_LORA, PDD_REF2VA_LORA, PDD_STEPS, PDD_STEPS_FAST,
     PDD_STRENGTH, PDD_FL2VA_STRIPPED_LORA,
     AUDIO_REFINE, FROZEN_VIDEO_CACHE, FROZEN_VIDEO_CACHE_NODE, FLASHGEN_LORA,
@@ -480,8 +480,10 @@ def _sol_with_overrides(extra: dict) -> dict:
     `bench/check_attention_defaults.py::DEVIATIONS`, which also asserts the
     deviation is real; an override that matches the recipe is refused here
     so a stale one cannot ride along as a no-op."""
+    lora = (extra.get("lora") or (None,))[0]
     base = sol_for_graph(bool(extra.get("pdd", False)),
-                         extra.get("steps", SAMPLING["steps"]))
+                         extra.get("steps", SAMPLING["steps"]),
+                         distill_lora=lora in SOL_DISTILL_LORA_FILES)
     over = extra.get("sol_overrides") or {}
     unknown = sorted(set(over) - set(base))
     if unknown:
@@ -2243,7 +2245,8 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
                 raise SystemExit("step_switch_to='flashgen' needs step_switch_sigmas (h3_config.STEP_SWITCH_REV)")
             pass2_sigmas = step_switch_sigmas
             g2 = build_api(task, sage=sage, prompt=prompt, length=length, seed=seed,
-                           sol=(sol_for_graph(False, FLASHGEN_STEPS) if sol is not None else None),
+                           sol=(sol_for_graph(False, FLASHGEN_STEPS, distill_lora=True)
+                                if sol is not None else None),
                            sol_impl=sol_impl, dense_backend=dense_backend,
                            lora=(FLASHGEN_R64_REF2VA_LORA if task == "r2v" else FLASHGEN_R64_LORA,
                                  FLASHGEN_STRENGTH), lora_branch=True,

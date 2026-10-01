@@ -563,6 +563,8 @@ SOL_RECOMMENDED_CUDA = dict(
     # was measured at.
     tau=1.0,
     # **0.2 here; 0.0 on every PDD graph since 2026-10-01** (SOL_PDD_OVERRIDES,
+    # and on every FlashGen and PDMD graph the same day by the owner's extension,
+    # SOL_DISTILL_LORA_OVERRIDES, unmeasured there;
     # owner decision, measured). On the t2v PDD8-to-FlashGen finish the owner
     # could not tell 0.0 from 0.2 in five blind pairs, and 0.0 cut the sampler
     # by roughly a fifth (bench/results/2026-10-01_start_percent_panel.md).
@@ -767,8 +769,21 @@ SOL_PDD_OVERRIDES = dict(start_percent=0.0)
 
 SOL_PDD_CUDA = dict(SOL_RECOMMENDED_CUDA, **SOL_PDD_OVERRIDES)
 
+# start_percent 0.0 on the distill LoRAs applied at the call (FlashGen, PDMD):
+# **owner decision 2026-10-01, extended from the PDD measurement, not measured
+# on these.** The owner: "flashgen should change i think", and for PDMD "may as
+# well". The panel behind SOL_PDD_OVERRIDES rendered the PDD8-to-FlashGen
+# finish, whose FlashGen pass starts at sigma 0.8, below the window's edge, so
+# no FlashGen or PDMD render from pure noise has been judged at 0.0. Kept apart
+# from SOL_PDD_CUDA so that a PDD-only override never reaches these.
+# `SOL_DISTILL_LORA_FILES` (beside the FlashGen and PDMD constants) says which
+# files take it.
+SOL_DISTILL_LORA_OVERRIDES = dict(start_percent=0.0)
 
-def sol_for_graph(pdd, steps):
+SOL_DISTILL_LORA_CUDA = dict(SOL_RECOMMENDED_CUDA, **SOL_DISTILL_LORA_OVERRIDES)
+
+
+def sol_for_graph(pdd, steps, distill_lora=False):
     """The Sol config one graph should carry, from what the graph IS.
 
     The single resolver for both halves of the question, because they were
@@ -782,9 +797,15 @@ def sol_for_graph(pdd, steps):
     lowered per SOL_END_PERCENT_BY_STEPS. The table is empty since
     2026-09-11; SOL_PDD_OVERRIDES carries `start_percent` 0.0 since
     2026-10-01, so the PDD branch is the one that differs.
+
+    `distill_lora` -- the model carries a FlashGen or PDMD LoRA
+    (`SOL_DISTILL_LORA_FILES`) and no PDD -- takes SOL_DISTILL_LORA_CUDA
+    whole, the same way, since 2026-10-01. PDD wins when both are set.
     """
     if pdd:
         return dict(SOL_PDD_CUDA)
+    if distill_lora:
+        return dict(SOL_DISTILL_LORA_CUDA)
     end = SOL_END_PERCENT_BY_STEPS.get(steps)
     sol = dict(SOL_RECOMMENDED_CUDA)
     if end is not None:
@@ -1251,6 +1272,12 @@ PDMD_STEPS = {PDMD_LORA: 4, PDMD_KIJAI_LORA: 4, PDMD_2STEP_LORA: 2, PDMD_2STEP_K
 #: **Inherited:** the published `lora_scale` 1.0 (alpha / rank = 128 / 128);
 #: every file here carries alpha = rank so that 1.0 is that scale.
 PDMD_STRENGTH = 1.0
+
+#: The distill LoRAs applied at the call whose Sol nodes take
+#: SOL_DISTILL_LORA_CUDA (`sol_for_graph(..., distill_lora=True)`): every
+#: FlashGen and PDMD file. Owner decision 2026-10-01; see that constant.
+SOL_DISTILL_LORA_FILES = frozenset({FLASHGEN_LORA, FLASHGEN_R64_LORA, FLASHGEN_R64_REF2VA_LORA,
+                                    *PDMD_STEPS})
 
 #: Route 3 of the distill-routing idea (docs/research/2026-09-26_distill_routing.md;
 #: the design is in docs/wiki/next_steps.md, agreed by two sessions and the

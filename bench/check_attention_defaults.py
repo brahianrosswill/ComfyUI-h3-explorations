@@ -410,6 +410,29 @@ def sol_model_loads_pdd(graph: dict, nid: str) -> bool:
     return False
 
 
+def sol_model_loads_distill_lora(graph: dict, nid: str) -> bool:
+    """Whether the model feeding Sol node `nid` carries a FlashGen or PDMD LoRA
+    (`h3_config.SOL_DISTILL_LORA_FILES`), walked upstream like
+    `sol_model_loads_pdd`. Those nodes take SOL_DISTILL_LORA_CUDA since
+    2026-10-01, the generator's rule (`_sol_with_overrides`, and the FlashGen
+    pass of a step switch)."""
+    seen, stack = set(), [str(nid)]
+    while stack:
+        cur = stack.pop()
+        if cur in seen or cur not in graph:
+            continue
+        seen.add(cur)
+        node = graph[cur]
+        inputs = node.get("inputs", {})
+        if (node.get("class_type") in h3_config.LORA_LOADER_CLASSES
+                and inputs.get("lora_name") in h3_config.SOL_DISTILL_LORA_FILES):
+            return True
+        src = inputs.get("model")
+        if isinstance(src, list) and len(src) == 2:
+            stack.append(str(src[0]))
+    return False
+
+
 def main() -> int:
     # API form only: this reads `class_type`/`inputs`, and a graph in another
     # form would read as one with no Sol at all.
@@ -556,8 +579,10 @@ def main() -> int:
                 continue
             # Per Sol node since 2026-10-01 (`sol_model_loads_pdd`), the generator's rule.
             graph_pdd = sol_model_loads_pdd(g, nid)
-            expected = h3_config.sol_for_graph(graph_pdd, graph_steps)
-            source = "SOL_PDD_CUDA" if graph_pdd else "SOL_RECOMMENDED_CUDA"
+            graph_distill = not graph_pdd and sol_model_loads_distill_lora(g, nid)
+            expected = h3_config.sol_for_graph(graph_pdd, graph_steps, distill_lora=graph_distill)
+            source = ("SOL_PDD_CUDA" if graph_pdd else
+                      "SOL_DISTILL_LORA_CUDA" if graph_distill else "SOL_RECOMMENDED_CUDA")
             for k, want in expected.items():
                 if k in dev_fields:
                     if k in vals and vals[k] != want:

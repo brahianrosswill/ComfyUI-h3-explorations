@@ -4,6 +4,26 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.184.1
+
+### Changed
+
+- **Sol `start_percent` 0.0 on every FlashGen and PDMD graph** (owner, 2026-10-01), extending
+  0.184.0's PDD decision to the distill LoRAs applied at the call. `h3_config.SOL_DISTILL_LORA_OVERRIDES`
+  and `SOL_DISTILL_LORA_FILES` carry it, kept apart from `SOL_PDD_OVERRIDES`. `sol_for_graph` takes
+  `distill_lora`, which the generator sets from the graph's LoRA and from a step switch's FlashGen
+  pass. `check_attention_defaults.py` grades each Sol node by what its model loads. 32 graphs were
+  rebuilt with `start_percent` as the only change. On the PDD8-then-FlashGen finish graphs the
+  FlashGen pass starts at sigma 0.8, so the new value changes nothing there at run time. Unmeasured
+  on FlashGen and PDMD alone.
+
+### Added
+
+- The first PDMD look, rendered and blinded: `bench/results/2026-10-01_pdmd_vs_flashgen.jsonl` (15
+  judged renders plus a warm-up, every arm at the old 0.2), and the brief
+  `bench/briefs/2026-10-01_pdmd_vs_flashgen.md`. Ten pairs wait on the owner's pairs-only scoring,
+  with the key sealed.
+
 ## 0.184.0
 
 ### Changed
