@@ -4498,6 +4498,17 @@ def main():
          dict(lora=(PDMD_LORA, PDMD_STRENGTH), lora_branch=True, steps=PDMD_STEPS[PDMD_LORA],
               out_prefix="Video/h3_probe_r2v_pdmd_4step"),
          "image references -> video + audio at 4 steps via PDMD on ref2va, an untrained transfer"),
+        # The same two with kijai's resized 4-step file: the resize arm on the
+        # owner's i2va and ref2va scenes (owner, 2026-10-01: "add kijai's
+        # though - for each one").
+        ("h3_probe_i2v_pdmd_kijai_4step.json", "i2v-pdmd-kijai-4step", "i2v", None,
+         dict(lora=(PDMD_KIJAI_LORA, PDMD_STRENGTH), lora_branch=True, steps=PDMD_STEPS[PDMD_KIJAI_LORA],
+              out_prefix="Video/h3_probe_i2v_pdmd_kijai_4step"),
+         "first frame + text -> video + audio at 4 steps via PDMD as kijai resized it, an untrained task"),
+        ("h3_probe_r2v_pdmd_kijai_4step.json", "r2v-pdmd-kijai-4step", "r2v", _ref_prompt(images=True),
+         dict(lora=(PDMD_KIJAI_LORA, PDMD_STRENGTH), lora_branch=True, steps=PDMD_STEPS[PDMD_KIJAI_LORA],
+              out_prefix="Video/h3_probe_r2v_pdmd_kijai_4step"),
+         "image references -> video + audio at 4 steps via PDMD as kijai resized it, on ref2va"),
 
         ("h3_text_to_video_pdd_4step.json", "texttovideopdd4step", "t2v", LONG_T2V_PROMPT,
          dict(pdd=True, sampler_name="euler",

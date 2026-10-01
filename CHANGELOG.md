@@ -4,6 +4,16 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.183.4
+
+### Added
+
+- `distill_experiments/h3_probe_i2v_pdmd_kijai_4step` and `h3_probe_r2v_pdmd_kijai_4step`: the i2va
+  and ref2va PDMD probes with kijai's resized 4-step file, applied at the call like the full-rank
+  arm. `bench/pdmd_vs_flashgen_arms.json` now runs three arms per scene (full-rank PDMD, kijai's
+  PDMD, FlashGen) and blinds two contests per scene (owner, 2026-10-01: "add kijai's though - for
+  each one").
+
 ## 0.183.3
 
 ### Added
