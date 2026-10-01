@@ -4,6 +4,19 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.182.0
+
+### Added
+
+- Three manifests for the owner-approved speed work of 2026-10-01, not yet rendered:
+  `bench/start_percent_panel_arms.json` (Sol `start_percent` 0.2 against 0.0 on the t2v finish,
+  five scenes, blind pairs), `bench/sage_floor_timing_arms.json` (sage fp8++ rotated against
+  kitchen int8 as Sol's dense fallback, timed) and `bench/sage_floor_capture_arms.json` (captures
+  of the finish's two dense steps across depth, for `grade_dense_kernels_on_captures.py`).
+- `bench/profile_lora_branch.py`: times a LoRA applied at the call per module on real A and B
+  (the copy, the branch as it runs, the branch with A and B resident, fc2's swiglu), to say
+  where the at-call cost goes before anything is changed. Not yet run.
+
 ## 0.181.4
 
 ### Added

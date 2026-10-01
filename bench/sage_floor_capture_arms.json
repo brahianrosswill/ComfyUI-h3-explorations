@@ -1,0 +1,13 @@
+{
+ "what": "Captures of the t2v finish's two dense steps (0 and 1, sigma 1.0 and 0.988) across depth, for bench/grade_dense_kernels_on_captures.py: kitchen int8 against sage fp8++ rotated against bf16 SDPA, fp32 dense as the referent.",
+ "why": "Every dense-kernel grade so far is inside Sol's window or at the last step (bench/results/2026-09-27_sol_redesign_test2.md captured steps 2 and 6). The sage-as-floor question is decided on the steps the floor actually serves: the ones before start_percent, on every block, plus the dense tail.",
+ "arms": {
+  "t2v_slapstick_early_capture": "workflows/h3_text_to_video_pdd8_flashgen_finish_api.json"
+ },
+ "patches": [
+  "t2v_slapstick_early_capture:MiniMaxH3Conditioning.prompt=@bank:t2va_slapstick_moving_piano"
+ ],
+ "server_env": "H3_CAPTURE=dir=$H3_CAPTURE_ROOT/2026-10-01_dense_early_steps,blocks=0:8:24:40:45:48:49,steps=0:1,cycle=8 (reasoned: the finish is 6 PDD8 plus 2 FlashGen evaluations, 8 in all; steps 0 and 1 are the two before Sol's window). The slapstick scene and seed match test 2, so its cells sit beside these.",
+ "run": "run_graph_arms.py --manifest bench/sage_floor_capture_arms.json --runs 1 --seed 730451892 --hold-seed --no-alternate --out bench/results/2026-10-01_sage_floor_capture.jsonl",
+ "grade": "grade_dense_kernels_on_captures.py <capture dir> --heads 56 --json bench/results/2026-10-01_dense_early_steps_grade.json"
+}
