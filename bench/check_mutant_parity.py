@@ -61,6 +61,10 @@ RECIPES = {
     "i2v_pdd8": "workflows/distill_experiments/h3_first_frame_to_video_pdd_savelat_api.json",
     "r2v_pdd8": "workflows/h3_image_ref_plus_text_to_video_pdd_api.json",
     "r2v_flashgen": "workflows/distill_experiments/h3_probe_r2v_flashgen_4step_api.json",
+    "i2v_flashgen": "workflows/distill_experiments/h3_probe_i2v_flashgen_4step_api.json",
+    # The pack graph is the market scene with one reference; the example shares the
+    # recipe and takes the other ref2va examples' prompt and two references.
+    "r2v_pdd8_flashgen_finish": "workflows/distill_experiments/h3_probe_r2v_step_switch_pdd8_flashgen_h080_api.json",
 }
 
 #: The files `static` compares, per checkpoint partition: (PDD sidecar,

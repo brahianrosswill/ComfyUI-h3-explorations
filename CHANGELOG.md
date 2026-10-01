@@ -4,6 +4,27 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.180.0
+
+### Added
+
+- Two h3-mutant-distill example workflows, the owner's go (2026-10-01): `h3_i2v_flashgen`
+  (FlashGen alone from a first frame) and `h3_r2v_pdd8_flashgen_finish` (PDD8 to sigma 0.8, then
+  FlashGen, on ref2va with the other ref2va examples' prompt and two references). Each is held to its
+  pack graph by `bench/check_mutant_parity.py` (two new recipes in its map): the final video and audio
+  latents are `torch.equal` on both, and each example's own graph ran once end to end
+  (`bench/results/2026-10-01_mutant_parity_flashgen_i2v_r2v_finish.md`, with the two `.jsonl` row files).
+  The i2v run on a square keyframe stretched to 1344x768 drifted (a pair of glasses appeared); at the
+  keyframe's own aspect the same seed held, and the example's note says to set the aspect.
+- `standalone/h3_mutant_distill/README.md` and the HF card source
+  (`standalone/h3_mutant_distill_hf/README.md`) carry the new rows. Nothing was uploaded or pushed;
+  publishing both is the owner's action.
+
+### Not added, on purpose
+
+- The FastH3 finishers (parked 2026-09-29, and the FastH3 mutant is on hold) and the i2v FlashGen
+  finish (rejected 2026-09-27). One recipe each if the owner wants them.
+
 ## 0.179.3
 
 ### Removed

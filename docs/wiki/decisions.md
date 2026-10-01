@@ -17,6 +17,18 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-01
 
+- **The i2v PDD8 pick is promoted to `workflows/`, and two recipes the mutant repos did
+  not ship become examples there** (owner, 2026-10-01, "ok to both" to the two calls in
+  `bench/results/2026-10-01_r2v_i2v_graph_coverage.md`). `h3_first_frame_to_video_pdd`
+  left `distill_experiments/` for the root (0.179.2). `h3_i2v_flashgen` and
+  `h3_r2v_pdd8_flashgen_finish` join h3-mutant-distill's example workflows (0.180.0), each
+  held to its pack graph by `bench/check_mutant_parity.py`. The second call named no
+  rows, so this reads it as the unshipped rows with positive evidence. Left out: the
+  FastH3 finishers (parked 2026-09-29, and the FastH3 mutant is on hold) and the i2v
+  FlashGen finish (rejected 2026-09-27). Say so and they are one recipe each. Nothing was
+  pushed or uploaded: the GitHub README and the HF card here carry the new rows, and
+  publishing them is the owner's action.
+
 - **The wiki's prompting page is folded into `docs/prompting.md` and removed**
   (owner: resolve any redundancy so there is one source of truth). It was a
   router that also restated rules, and the restatements had drifted. What it

@@ -48,6 +48,8 @@ max, on an RTX 4090 at 1344x768 and 345 frames.
 | experimental | PDD8 on a 6-step schedule | text to video | Close-ups and low motion only, and iffy even there |
 | maybe crap | FlashGen on DiT blocks 34-49 only | text to video | More natural on one figure; people and objects fall apart in busy scenes. A curiosity |
 | maybe crap | FlashGen for ref2va | reference to video | Untested transfer: FlashGen was trained for text to video only. One render held its references |
+| experimental | PDD8, then FlashGen for the last 2 steps | reference to video | The t2v pick carried to ref2va. One scene, one reference, and the reference held by eye; not compared against PDD8 alone on ref2va |
+| maybe crap | FlashGen for i2v | image to video | Untested transfer: FlashGen was trained for text to video only. One render held the first frame's subject and lighting; not compared against PDD8, the i2v pick |
 
 ## Files
 
@@ -83,7 +85,8 @@ them with the pack's `H3 Exact LoRA` node, not `LoraLoaderModelOnly`.
   parts.
 - **Taken from the checkpoint:** ref2va's own time basis and fingerprints.
   The node refuses a PDD file on the other partition.
-- **The gist:** PDD8 for reference to video.
+- **The gist:** PDD8 for reference to video. The recipes use it alone, and
+  for PDD8's first 6 steps before a FlashGen finish on ref2va.
 
 Both PDD8 files were converted by
 [`bench/convert_pdd_lora.py`](https://github.com/fblissjr/ComfyUI-h3-explorations/blob/main/bench/convert_pdd_lora.py):
@@ -105,7 +108,8 @@ checkpoint's time basis. They are byte-identical to the copies on
 - **The gist:** FlashGen is a 4-step distill of H3 for text to video, trained
   by distribution matching (VSD, data-free). It renders in 4 steps alone. In
   the recipes it also finishes PDD8's last two steps, where it fixed sign
-  text PDD8 garbled.
+  text PDD8 garbled, and it runs alone from a first frame, an untested
+  transfer.
 
 ### FlashGen for ref2va (reference to video)
 
@@ -117,7 +121,8 @@ checkpoint's time basis. They are byte-identical to the copies on
   ref2va's differ, so the two files are not interchangeable.
 - **The gist:** an untested transfer. FlashGen was trained only for text to
   video on fl2va. One render held both references and the likeness by eye;
-  it has not been compared against PDD8.
+  it has not been compared against PDD8. It also finishes PDD8's last two
+  steps in the ref2va finish recipe.
 
 ### How both FlashGen files were converted
 

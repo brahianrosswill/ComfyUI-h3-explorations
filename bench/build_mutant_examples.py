@@ -217,6 +217,23 @@ def r2v_flashgen() -> dict:
     return g
 
 
+def i2v_flashgen() -> dict:
+    g = base(C.MODELS["unet_fl2va"], "i2v")
+    sampler(g, "20", lora(g, "10", FLASHGEN), C.FLASHGEN_MANUAL_SIGMAS, ["5", 1])
+    decode(g, ["22", 0], "h3_i2v_flashgen")
+    return g
+
+
+def r2v_pdd8_flashgen_finish() -> dict:
+    g = base(C.MODELS["unet_ref2va"], "r2v")
+    pdd, fg = C.STEP_SWITCH_REV["h080"]
+    sampler(g, "20", lora(g, "10", PDD_R2V), pdd, ["5", 1])
+    g["30"] = {"class_type": "DisableNoise", "inputs": {}}
+    sampler(g, "40", lora(g, "12", FLASHGEN_R2V), fg, ["22", 0], noise=("30", 0))
+    decode(g, ["42", 0], "h3_r2v_pdd8_flashgen_finish")
+    return g
+
+
 def fasth3_contract() -> dict:
     g = base(C.MODELS["unet_fasth3_v2"])
     g["10"] = {"class_type": "MiniMaxH3SigmaShift",
@@ -279,6 +296,25 @@ RECIPES = {
         "Why: an untested transfer. FlashGen was trained for text to video only. "
         "One render held both references and the likeness by eye; it has not been "
         "compared against PDD8.")),
+    "h3_i2v_flashgen": (i2v_flashgen, (
+        "## FlashGen alone (image to video), an untrained transfer\n\n"
+        "FlashGen's 4 steps on the fl2va checkpoint from a first frame. Load your own "
+        "image, and set width and height to its aspect: the node stretches the image to "
+        "the canvas. Same prompt as the PDD8 image-to-video workflow.\n\n"
+        "Why: FlashGen was trained for text to video only. One render held the first "
+        "frame's subject, lighting and framing, and the face stayed coherent, by eye. It "
+        "has not been compared against PDD8, which is the pick for i2v.\n\n"
+        "Set the aspect: a square keyframe stretched to 1344x768 drifted in the one run "
+        "that tried it (a pair of glasses appeared mid-clip), and at its own 768x768 the "
+        "same seed held.")),
+    "h3_r2v_pdd8_flashgen_finish": (r2v_pdd8_flashgen_finish, (
+        "## PDD8, then a FlashGen finish (reference to video)\n\n"
+        "The text-to-video finish on the ref2va checkpoint: 6 PDD8 steps from sigma 1.0 to "
+        "0.8, then 2 FlashGen steps, 8 model evaluations like PDD8 alone. Same prompt and "
+        "references as the other ref2va workflows, so the three can be compared.\n\n"
+        "Why: the finish is the t2v pick. On ref2va it ran once, on one scene with one "
+        "reference, and the reference held by eye. It has not been compared against "
+        "PDD8 alone on ref2va.")),
     "h3_t2v_fasth3_contract": (fasth3_contract, (
         "## FastH3 on FastVideo's own sampling settings (t2v)\n\n"
         "FastVideo's FastH3 8-step V2 run the way FastVideo runs it: shift 10/3, its own "

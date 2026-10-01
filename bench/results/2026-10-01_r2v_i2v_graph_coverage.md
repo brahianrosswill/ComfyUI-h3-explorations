@@ -90,6 +90,10 @@ prompt from the prompt bank), because that is what the blind session rendered.
 - Which of the unshipped rows should become mutant example workflows. The
   `mutant-packaging` board row already names the ref2va PDD8 against FlashGen
   blind pair as what would give those two rows a verdict.
+  *Resolved 2026-10-01: the owner said ok. It was read as the unshipped rows with
+  positive evidence, so `h3_i2v_flashgen` and `h3_r2v_pdd8_flashgen_finish` were added
+  (0.180.0, `2026-10-01_mutant_parity_flashgen_i2v_r2v_finish.md`). The FastH3 finishers
+  (parked) and the i2v FlashGen finish (rejected) were left out.*
 
 ## A prose error found on the way
 
