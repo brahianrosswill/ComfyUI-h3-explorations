@@ -2,16 +2,17 @@
 """Grade a graph's prompt and price its sequence, BEFORE you press Queue.
 
     python bench/preflight_graph.py internal/refs/test.json
-    python bench/preflight_graph.py workflows/*_api.json
+    python bench/preflight_graph.py workflows/*_api.json workflows/distill_experiments/*_api.json
 
 **One glob per graph directory, and that is not a style choice.**
 `workflows/*_api.json` is non-recursive, so it prices exactly the graphs sitting
-directly in `workflows/` and silently skips any subdirectory. That currently
-misses nothing -- `h3_config.GRAPH_DIRS` is `("",)` since the single-frame lane
-was parked on 2026-08-27 -- and it missed the image graphs for the eleven days
-`workflows/image/` existed before that: a one-directory invocation priced a
+directly in `workflows/` and silently skips any subdirectory. It missed the image
+graphs for the eleven days `workflows/image/` existed (until 2026-08-27), and it
+has missed every graph in `workflows/distill_experiments/` since that directory
+joined `h3_config.GRAPH_DIRS` (2026-09-27): a one-directory invocation prices a
 subset with no error, no warning, just a smaller number nobody had a prior for.
-Check `GRAPH_DIRS` before trusting a single glob, or pass the paths explicitly.
+Pass one glob per entry of `GRAPH_DIRS`, as in the usage above, or the paths
+explicitly.
 
 This script takes paths from `sys.argv` and never globs on its own, so it is
 explicit rather than blind. If it ever grows a default corpus, route that

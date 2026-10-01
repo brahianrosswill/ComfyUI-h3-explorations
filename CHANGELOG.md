@@ -4,6 +4,33 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.179.0
+
+### Added
+
+- `bench/clip_recipe_coverage.py`: groups rendered clips by recipe, read from the
+  graph in each clip's first-frame PNG, and says which graph under
+  `h3_config.graph_paths(include_bench=True)` carries the same recipe, or that
+  none does and which graphs share its checkpoint and LoRAs. The recipe is the
+  task, checkpoints, LoRAs with strength and blocks, sigma schedules, sigma shift
+  and VSA's keep percent; Sol-Attn is shown, not matched.
+- `bench/results/2026-10-01_r2v_i2v_graph_coverage.md` (and its `.txt` output): the
+  owner asked whether the ref2va and i2v FlashGen and FastH3 experiments of
+  2026-09-24 to 2026-09-29 are kept as workflows. They are: every recipe rendered
+  has a graph, so none was added. The record maps each approach to its graph, its
+  clips, its verdict and whether h3-mutant-distill ships it, and lists what was
+  never built (FastH3 alone on i2v or ref2va, the FastH3 finish on i2v).
+- `workflows/distill_experiments/README.md`: a table of the i2v and ref2va graphs,
+  one row per approach, with the status of each and a pointer to the record.
+
+### Fixed
+
+- `bench/preflight_graph.py` and `bench/check_graph_discovery.py` docstrings said
+  a bare `workflows/*_api.json` glob misses nothing, because `GRAPH_DIRS` was
+  `("",)`. It has gained `distill_experiments` since 2026-09-27, so that glob
+  skipped every distill graph. Both are corrected, and `preflight_graph.py`'s
+  usage line now carries both globs (`docs/wiki/decisions.md`, 2026-10-01).
+
 ## 0.177.2
 
 ### Fixed

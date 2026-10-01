@@ -7,13 +7,13 @@ guards: `workflows/*.json` is non-recursive, so it misses every directory
 `GRAPH_DIRS` routes to, and a check that globs reports success over part of the
 set and looks identical to one that passed over all of it.
 
-**This holds while `GRAPH_DIRS` is `("",)` and a glob happens to see everything,
-which it is since the single-frame lane was parked on 2026-08-27.** The
-demonstrated instance was `workflows/image/` (2026-08-16 to 2026-08-27), and it
-is precisely the state of "the convention is currently satisfied by accident"
-that this file exists for: the next subdirectory reintroduces the hole silently,
-and a glob written today would be wrong the day it appears rather than the day
-it is written.
+**A glob over `workflows/` stopped seeing everything on 2026-09-27, when
+`GRAPH_DIRS` gained `distill_experiments`.** Before that it held by accident: the
+single-frame lane was parked on 2026-08-27 and `GRAPH_DIRS` was `("",)`. The
+demonstrated instance was `workflows/image/` (2026-08-16 to 2026-08-27), and
+`distill_experiments/` is the second: the state of "the convention is satisfied
+by accident" that this file exists for ended the day a subdirectory was added,
+and a glob written then was wrong from the day it was written.
 
 **The convention currently holds across every graph-walking check.** That is
 exactly when it is cheapest to lock in, and exactly when nothing would notice
