@@ -95,7 +95,9 @@ the frozen latent need not be the track you ship.
 Read 2026-09-12. The two packs are installed as siblings of this repo under
 ComfyUI's `custom_nodes/`, live in the render server, and are not under
 `coderef/` on this date; [`wiki/references.md`](wiki/references.md) does not
-yet map them.
+yet map them. *(2026-10-01: `ComfyUI-H3-Motion-Context-MultiRef` is no longer
+installed, so its two paths below no longer resolve; they are declared absent
+in `docs/checks.md`.)*
 
 - **Core**: the mask path above; `MiniMaxH3AddGuide` for guide audio;
   nested-latent noise and mask packing. Core's `_encode_ref_audio` still

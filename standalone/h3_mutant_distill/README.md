@@ -63,9 +63,9 @@ max, on an RTX 4090 at 1344x768 and 345 frames.
 | worth a try | FlashGen alone, 4 steps | text to video | Fastest. Coherent motion and detail; loses track of who does what in busy multi-person scenes |
 | worth a try | PDD8 alone | reference to video | The ref2va PDD8 we run; not compared against the alternatives |
 | experimental | PDD8 on a 6-step schedule | text to video | Close-ups and low motion only, and iffy even there |
+| experimental | PDD8, then FlashGen for the last 2 steps | reference to video | The t2v pick carried to ref2va. One scene, one reference, and the reference held by eye; not compared against PDD8 alone on ref2va |
 | maybe crap | FlashGen on DiT blocks 34-49 only | text to video | More natural on one figure; people and objects fall apart in busy scenes. A curiosity |
 | maybe crap | FlashGen for ref2va | reference to video | Untested transfer: FlashGen was trained for text to video only. One render held its references |
-| experimental | PDD8, then FlashGen for the last 2 steps | reference to video | The t2v pick carried to ref2va. One scene, one reference, and the reference held by eye; not compared against PDD8 alone on ref2va |
 | maybe crap | FlashGen for i2v | image to video | Untested transfer: FlashGen was trained for text to video only. One render held the first frame's subject and lighting; not compared against PDD8, the i2v pick |
 
 ## Files

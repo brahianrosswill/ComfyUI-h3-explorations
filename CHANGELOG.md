@@ -4,6 +4,38 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.180.1
+
+A review of 0.179.0 to 0.180.0 (the clip-to-graph coverage and the two new
+mutant examples) reproduced their results and found the following.
+
+### Fixed
+
+- `bench/clip_recipe_coverage.py` now tells apart what it used to merge. A PDD
+  node whose SIGMAS output is wired adds `pdd:N` from its `steps` (read through
+  the PrimitiveInt the shipped graphs wire it from), so an 8-step clip no longer
+  matches the `_pdd_4step` graphs. Any PDD or branch input moved off its inert
+  value (`LORA_KNOBS`: `patch_heads`, `backbone_apply`, `nfe`, the head and
+  unmerged knobs, the branch's `modules` and percent window) is now part of the
+  recipe. `LoraLoaderModelOnly`'s strength is read from `strength_model`, not a
+  `strength` it does not have. Rerun over the same clips:
+  `bench/results/2026-10-01_r2v_i2v_graph_coverage_rerun.txt`. The conclusion
+  stands.
+- `bench/check_audio_freeze.py` had failed at import since 0.139.0
+  (2026-09-25): `audio_freeze.py`'s `from .audio_resample import` has no parent
+  package under a bare import. It now loads the module inside a stand-in
+  package, as `check_node_ids.py` loads `nodes`, and is green.
+- `bench/check_doc_links.py`: the two citations in `docs/h3_audio_freeze.md`
+  into `ComfyUI-H3-Motion-Context-MultiRef`, a sibling pack no longer installed,
+  are declared absent in `docs/checks.md`, and the doc says so where it cites them.
+- `bench/results/2026-10-01_mutant_parity_flashgen_i2v_r2v_finish.md` said the
+  i2v drift "came with the stretch". One render at each canvas cannot separate
+  that from any other change of trajectory; corrected in place, with the old
+  wording kept.
+- The mutant READMEs (GitHub and the HF card source): the ref2va finish's
+  "experimental" row sat below the "maybe crap" rows; it moves up with its tier.
+- This file: the 0.177.2 entry sat above 0.178.x; it moves below 0.178.0.
+
 ## 0.180.0
 
 ### Added
@@ -156,17 +188,6 @@ checked-in graphs, and the code edits are comments and docstrings.
   skipped every distill graph. Both are corrected, and `preflight_graph.py`'s
   usage line now carries both globs (`docs/wiki/decisions.md`, 2026-10-01).
 
-## 0.177.2
-
-### Fixed
-
-- `bench/map_partition_delta.py` computes its norms in float64 and seeds its
-  randomized SVD; `bench/results/2026-09-29_partition_delta_map.jsonl` is
-  regenerated (the old file had `cos` above 1 in about half its rows and
-  `rel_delta` a few percent low on the largest adaln weights). The three ref2va
-  records carry dated correction notes from `mrblue`'s verification
-  (`2026-09-29_ref2va_partition_delta_verify.md`, `2026-09-29_ref2va_block49_verify.md`).
-
 ## 0.178.2
 
 ### Added
@@ -216,6 +237,17 @@ checked-in graphs, and the code edits are comments and docstrings.
   errors, no cache hits; sampler about 202 s on the 345-frame scenes and about
   122 s on `radio_drama`. Blinded as the session `fasth3_late_blocks` (six pairs,
   nine clips), not yet scored.
+
+## 0.177.2
+
+### Fixed
+
+- `bench/map_partition_delta.py` computes its norms in float64 and seeds its
+  randomized SVD; `bench/results/2026-09-29_partition_delta_map.jsonl` is
+  regenerated (the old file had `cos` above 1 in about half its rows and
+  `rel_delta` a few percent low on the largest adaln weights). The three ref2va
+  records carry dated correction notes from `mrblue`'s verification
+  (`2026-09-29_ref2va_partition_delta_verify.md`, `2026-09-29_ref2va_block49_verify.md`).
 
 ## 0.177.1
 

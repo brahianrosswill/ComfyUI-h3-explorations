@@ -12,8 +12,10 @@ no match prints its nearest graphs, the ones that share the checkpoint and the
 LoRAs, so the difference is one line to read.
 
 **The recipe is what decides the output, not how the graph was built.** It is
-the task, the checkpoints, each LoRA with its strength and block selection, the
-sigma schedules, the sigma shift, and VSA's keep percent. It leaves out the
+the task, the checkpoints, each LoRA with its strength, block selection and any
+other input moved off its inert value (`LORA_KNOBS`), the sigma schedules
+(including `pdd:N`, the schedule a PDD node emits at `steps=N` when its SIGMAS
+output is wired), the sigma shift, and VSA's keep percent. It leaves out the
 seed, the prompt, the images, the canvas and every filename, which are inputs
 and not recipes, and it leaves out Sol-Attn and the attention chain. The last is
 deliberate: Sol became the default in every video graph after the first
@@ -22,7 +24,9 @@ matches except for attention, and the tool prints `sol`/`nosol` beside each
 group so that difference is visible and does not hide a match.
 
 **Limits.** It compares what the graph says, not what the code did with it (see
-`diff_clip_graphs.py`). A group that matches on recipe but whose graph was built
+`diff_clip_graphs.py`). A schedule is compared as written, so `pdd:8` and
+PDD8's own sigmas pinned in a `ManualSigmas` node read as two recipes though
+they sample the same points. A group that matches on recipe but whose graph was built
 for another scene (the market-scene reference graphs, for one) is a match here;
 the prompt and images are not part of the recipe. A clip with no readable
 sidecar is counted and skipped, never guessed at. The H3ExactLoRA graphs of
@@ -51,11 +55,26 @@ sys.path.insert(0, str(REPO / "workflows"))
 import h3_config as C  # noqa: E402
 from diff_clip_graphs import graph_of  # noqa: E402
 
-#: Node classes that apply a LoRA to the DiT, with the widget that names the file.
-#: Provenance: read from the node schemas, inherited. `H3ExactLoRA` is the
+#: Node classes that apply a LoRA to the DiT, each with the widget that holds
+#: its strength. Provenance: read from the node schemas, inherited (core's
+#: `LoraLoaderModelOnly` calls it `strength_model`). `H3ExactLoRA` is the
 #: mutant repo's node and is listed so its graphs, if one is passed in, reduce
 #: to the same recipe as the pack node it was parity checked against.
-LORA_CLASSES = ("MiniMaxH3PDDLoRA", "MiniMaxH3LoRABranch", "H3ExactLoRA", "LoraLoaderModelOnly")
+LORA_CLASSES = {"MiniMaxH3PDDLoRA": "strength", "MiniMaxH3LoRABranch": "strength",
+                "H3ExactLoRA": "strength", "LoraLoaderModelOnly": "strength_model"}
+
+#: Inputs that change the output, beyond file, strength and blocks, with the
+#: value that leaves them inert. A LoRA whose input differs carries `name=value`
+#: in its recipe. Provenance: the defaults in `pdd_lora.py` and `lora_branch.py`
+#: `define_schema`, inherited. `H3ExactLoRA` takes none of them and computes
+#: what `MiniMaxH3PDDLoRA` computes at these defaults (`check_mutant_parity.py`),
+#: so the two reduce alike. The PDD node's `steps` is not here: it decides the
+#: schedule only through the node's SIGMAS output, so it lands in `sigmas`.
+LORA_KNOBS = {
+    "MiniMaxH3PDDLoRA": {"patch_heads": True, "nfe": 0, "head_strength": -1.0, "unmerged_blocks": "",
+                         "unmerged_strength": -1.0, "unmerged_window": "", "backbone_apply": "exact branch"},
+    "MiniMaxH3LoRABranch": {"modules": "all", "start_percent": 0.0, "end_percent": 1.0},
+}
 
 REF_CONDITIONING = ("MiniMaxH3ReferenceConditioning", "MiniMaxH3ReferenceToVideo")
 FRAME_CONDITIONING = ("MiniMaxH3Conditioning", "MiniMaxH3ImageToVideo")
@@ -66,6 +85,24 @@ def _sigmas(text: str) -> tuple:
         return tuple(round(float(x), 6) for x in str(text).split(",") if x.strip())
     except ValueError:
         return (str(text),)
+
+
+def _value(graph: dict, v):
+    """A widget value, read through a link to a primitive node (the shipped PDD graphs
+    wire `steps` from a PrimitiveInt). A link to anything else is kept as `link`."""
+    if isinstance(v, list) and len(v) == 2:
+        src = graph.get(str(v[0]), {}).get("inputs", {})
+        return src["value"] if "value" in src and not isinstance(src["value"], list) else "link"
+    return v
+
+
+def _lora(graph: dict, cls: str, i: dict) -> str:
+    strength = _value(graph, i.get(LORA_CLASSES[cls], 1.0))
+    strength = f"{strength:g}" if isinstance(strength, (int, float)) else str(strength)
+    knobs = [f"{k}={_value(graph, i[k])}" for k, inert in LORA_KNOBS.get(cls, {}).items()
+             if k in i and _value(graph, i[k]) != inert]
+    extra = f"{{{','.join(knobs)}}}" if knobs else ""
+    return f"{Path(str(i.get('lora_name'))).name}@{strength}[{i.get('blocks') or 'all'}]{extra}"
 
 
 def recipe(graph: dict) -> dict:
@@ -79,14 +116,22 @@ def recipe(graph: dict) -> dict:
         task = "i2v"
     else:
         task = "t2v"
-    loras = sorted(
-        f"{Path(str(i.get('lora_name'))).name}@{i.get('strength', 1.0)}[{i.get('blocks') or 'all'}]"
-        for cls in LORA_CLASSES for i in by_class.get(cls, []))
+    loras = sorted(_lora(graph, cls, i) for cls in LORA_CLASSES for i in by_class.get(cls, []))
+    # A PDD node whose SIGMAS output (index 1) feeds a node emits the schedule
+    # from its `steps`; it is named, not computed, since computing it needs the
+    # file's metadata. `pdd:8` and PDD8's sigmas pinned in a ManualSigmas node
+    # are the same schedule and still read as different recipes.
+    consumed = {str(v[0]) for n in graph.values() for v in n.get("inputs", {}).values()
+                if isinstance(v, list) and len(v) == 2 and v[1] == 1}
+    pdd_sigmas = [(f"pdd:{_value(graph, n.get('inputs', {}).get('steps', 8))}",)
+                  for nid, n in graph.items()
+                  if n["class_type"] == "MiniMaxH3PDDLoRA" and nid in consumed]
     return {
         "task": task,
         "unets": tuple(sorted(i.get("unet_name", "") for i in by_class.get("UNETLoader", []))),
         "loras": tuple(loras),
-        "sigmas": tuple(sorted(_sigmas(i.get("sigmas", "")) for i in by_class.get("ManualSigmas", []))),
+        "sigmas": tuple(sorted([_sigmas(i.get("sigmas", "")) for i in by_class.get("ManualSigmas", [])]
+                               + pdd_sigmas, key=str)),
         "shift": tuple(sorted(f"{i.get('shift_video')}/{i.get('shift_audio')}"
                               for i in by_class.get("MiniMaxH3SigmaShift", []))),
         "vsa_keep": tuple(sorted(str(i.get("selection.keep_percent"))
@@ -173,7 +218,8 @@ def main() -> int:
         print(f"{r['task']}  {len(members)} clip(s)  {day(members[0][0])}..{day(members[-1][0])}  {r['sol']}  "
               f"e.g. {members[0][1]}")
         print(f"    unet {[_short(u) for u in r['unets']]}  lora {[_short(x) for x in r['loras']]}")
-        print(f"    sigmas {[','.join(f'{v:g}' for v in s) for s in r['sigmas']]}  shift {list(r['shift'])}  "
+        print(f"    sigmas {[','.join(f'{v:g}' if isinstance(v, float) else str(v) for v in s) for s in r['sigmas']]}"
+              f"  shift {list(r['shift'])}  "
               f"vsa keep {list(r['vsa_keep'])}")
         if exact:
             covered += 1

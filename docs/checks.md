@@ -438,6 +438,15 @@ WHY: the layer-50 capture tool for the W4 artifacts, deleted 2026-09-13.
 PATH: measure_still_policy_token_cost.py
 WHY: swept the AWQ snapshot's still bounds against core's; deleted with the
      snapshot it read. Its record under docs/research/ stands.
+
+PATH: custom_nodes/ComfyUI-H3-Motion-Context-MultiRef/h3_song_audio_context.py
+WHY: seitanism's sibling pack, read 2026-09-12 and no longer installed under
+     ComfyUI's custom_nodes/ (found 2026-10-01). docs/h3_audio_freeze.md cites
+     it as what the audio-freeze lane was compared against.
+
+PATH: custom_nodes/ComfyUI-H3-Motion-Context-MultiRef/existing_video_extension.py
+WHY: the same sibling pack's extension node, cited beside it in
+     docs/h3_audio_freeze.md; gone with the pack.
 ```
 
 

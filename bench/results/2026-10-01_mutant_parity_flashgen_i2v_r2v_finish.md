@@ -64,5 +64,9 @@ error or a cache hit, and each clip is 345 frames with a soundtrack.
   read).
 - **`h3_i2v_flashgen`, second run:** the same seed at 768x768, the keyframe's own aspect, which is
   the canvas the 2026-09-26 clip of the pack graph used. No glasses, and the five frames read alike to
-  that clip's. So the drift came with the stretch, as the example's note already says to avoid; the
-  note now carries this case. One render each, and the two runs differ only in canvas.
+  that clip's. One render each, and the two runs differ only in canvas, but a canvas change moves the
+  whole trajectory from the first step, so this does not separate the stretch from what any other
+  seed or canvas might do. The example's note already said to set the aspect; it now carries this case
+  as the one run that tried a stretch.
+  *(Corrected 2026-10-01, the same day: this said "so the drift came with the stretch", which one pair
+  of renders cannot establish.)*

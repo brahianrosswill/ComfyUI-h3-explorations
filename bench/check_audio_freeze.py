@@ -69,7 +69,27 @@ comfy.cli_args.args.cpu = True  # no CUDA context for a shape check; the sibling
 import comfy.nested_tensor  # noqa: E402
 import comfy.utils  # noqa: E402
 import h3_config  # noqa: E402
-import audio_freeze as af  # noqa: E402
+
+
+def _load_audio_freeze():
+    """`audio_freeze` as a module of a stand-in package, the way `check_node_ids.py`
+    loads `nodes`: its `from .audio_resample import` (0.139.0) has no parent
+    package under a bare import, which left this check failing at import from
+    2026-09-25 until 2026-10-01."""
+    import importlib.util
+    import types
+    pkg = types.ModuleType("_h3pack")
+    pkg.__path__ = [str(REPO)]
+    sys.modules.setdefault("_h3pack", pkg)
+    spec = importlib.util.spec_from_file_location("_h3pack.audio_freeze", REPO / "audio_freeze.py")
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["_h3pack.audio_freeze"] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+af = _load_audio_freeze()
 
 FREEZE = "MiniMaxH3FreezeAudio"
 WINDOW = "MiniMaxH3FreezeAudioWindow"

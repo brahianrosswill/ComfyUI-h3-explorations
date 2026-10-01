@@ -27,6 +27,16 @@ folder whose name starts with `private`, and the clips of an unrelated side job.
 The two clips the tool reports with no readable sidecar are codec comparison
 images, not renders.
 
+*Rerun 2026-10-01, the same day, after a review found two blind spots in the
+tool: the PDD node's `steps` was not part of a recipe, so the PDD8 clips also
+matched the `_pdd_4step` graphs, and `LoraLoaderModelOnly`'s strength was read
+from the wrong input. The recipe now carries `pdd:N` and any PDD or branch
+input moved off its inert value. Output:
+`2026-10-01_r2v_i2v_graph_coverage_rerun.txt`. The conclusion is unchanged: the
+same two parity-harness groups have no graph, and every PDD8 group now matches
+only 8-step graphs. It also reads clips rendered after the first run (today's
+parity arms) and the promoted path.*
+
 ## What the output says
 
 - Every group of clips has a graph except two.
