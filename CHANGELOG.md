@@ -4,6 +4,14 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.184.2
+
+### Changed
+
+- The PDMD prose no longer says "not yet rendered": the research note, its visual page,
+  `docs/wiki/next_steps.md` and `workflows/distill_experiments/README.md` now point at the first
+  look's rows and its blind session, which waits on the owner's scores.
+
 ## 0.184.1
 
 ### Changed

@@ -291,10 +291,10 @@ The owner's other half is written: `../h3_distills.md` (2026-09-26, one seed; re
 researched, converted at full rank and wired (0.182.3 to 0.183.1). What they are
 and where each setting comes from: `../research/pdmd/2026-10-01_what_pdmd_is.md`.
 The board's `pdmd-lora` direction tracks it.
-- **The owner's call:** when to render, and on which scenes. The planned
-  first look is PDMD 4-step (`h3_text_to_video_pdmd`) against FlashGen,
-  through the `h3-ab-session` process. Kijai's 4-step joins as a third arm if
-  the resize question is worth a render.
+- **The owner's scores:** the first look is rendered and blinded (session
+  `2026-10-01_pdmd_vs_flashgen`, pairs-only page on the output share). It
+  covers five scenes with full-rank PDMD, kijai's PDMD and FlashGen. Then
+  `bench/score_session.py` writes the verdict.
 - **Then:**
   - the 2-step probe;
   - length, starting from the trainer's own example job at our canvas

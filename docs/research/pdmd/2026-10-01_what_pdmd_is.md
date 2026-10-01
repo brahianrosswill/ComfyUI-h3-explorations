@@ -243,7 +243,7 @@ not compare PDD, FlashGen or FastH3.
 
 ## Open, in order
 
-1. **The graphs: built the same day, not yet rendered.**
+1. **The graphs: built the same day, and rendered once for the first look (item 3).**
    `workflows/h3_text_to_video_pdmd_api.json` (4-step, full rank) ships at
    the root. `distill_experiments/h3_probe_t2v_pdmd_2step` and the two
    `h3_probe_t2v_pdmd_kijai_*` resize arms are probes. The constants are
@@ -274,6 +274,16 @@ not compare PDD, FlashGen or FastH3.
 3. **A blind comparison against FlashGen**, the sibling, through the
    `h3-ab-session` process. It must be judged on content-independent axes:
    seed-matched clips from two distills are different scenes
-   (`docs/h3_distills.md`, the box at the top).
+   (`docs/h3_distills.md`, the box at the top). **Rendered and blinded
+   2026-10-01, waiting on the owner's scores.**
+   - Five owner-picked scenes: three t2va, ref2va and i2va. Each scene has
+     three arms: full-rank PDMD, kijai's resize and FlashGen. Every arm ran at
+     Sol `start_percent` 0.2.
+   - Manifest: `bench/pdmd_vs_flashgen_arms.json`. Rows:
+     `bench/results/2026-10-01_pdmd_vs_flashgen.jsonl`.
+   - Blind session `2026-10-01_pdmd_vs_flashgen`, scored on the pairs-only
+     page, with the key sealed.
+   - Since 0.184.1, FlashGen and PDMD graphs start Sol at 0.0, so a later
+     render is not a repeat of this one.
 4. **Length.** The README's 14 s example at our canvas is a ready first scene
    (`coderef/pdmd/jobs/giant_cat_harbor_768p_4nfe.json`).
