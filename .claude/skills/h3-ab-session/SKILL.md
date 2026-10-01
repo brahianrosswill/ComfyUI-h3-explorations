@@ -1,7 +1,7 @@
 ---
 name: h3-ab-session
 description: Route any rendered comparison in this repo -- "compare these", "A/B", "which LoRA / checkpoint / sampler / knob is better", "blind session", "score the clips", "judge the pair" -- to the one documented process (render with matched seeds, blind, score before unblinding, record the aggregate). Points at the authority; restates nothing that could drift.
-reviewed: 69f3ccf
+reviewed: edc3ab03
 ---
 
 # A rendered comparison in this repo
@@ -20,7 +20,9 @@ is its contract:
    were each read as a real difference between arms in September 2026.
 2. `bench/blind_batch.py` blinds them and seals the key under
    `internal/blind_keys/`.
-3. The owner scores in the app `bench/blind_score_app.py` generates.
+3. The owner scores in the app `bench/blind_score_app.py` generates. For a
+   question of preference over pairs there is a lean form of this page:
+   `docs/eval_comparison.md`, "The lean pairs-only session".
 4. `bench/score_session.py` opens the key and writes the verdict record
    under `bench/results/`.
 

@@ -4,6 +4,27 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.181.3
+
+Docs and skills only: what 0.181.0 and 0.181.1 left stale.
+
+### Changed
+
+- The `h3-prompt` skill names `bench/check_prompt_rule_controls.py` and
+  `bench/check_prompt_guide_conformance.py` among the checks to run, and says a node that carries
+  a prompt belongs in `h3_config.PROMPT_INPUTS`. The `h3-ab-session` skill points at the lean
+  pairs-only form of the scoring page, which 0.178.0 added; its process is unchanged. Both review
+  stamps are bumped (`check_skill_routes.py` listed nine routes behind for the first and two for
+  the second).
+- `docs/wiki/decisions.md` logs what the prose that was corrected used to claim: the registry and
+  the header test (0.181.0 and 0.181.1), the portable copies, the `internal/` guide claim in
+  `docs/checks.md`, and the `CLAUDE.md` citations.
+- `docs/checks.md`: the sync check's row said prose "is not checked" immediately before the
+  sentence saying twelve rule sentences are.
+- The audit record's "Still red" section carries a dated note (`check_doc_links.py` is clean again,
+  and the count it quoted moves with whether a GPU is visible), and `docs/wiki/next_steps.md` points
+  at what is still open instead of at items that are done.
+
 ## 0.181.2
 
 ### Fixed

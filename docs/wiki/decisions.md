@@ -82,6 +82,42 @@ Older history lives elsewhere and is not copied here:
   session's external writer craft (2026-09-11). It is now an OPEN line in
   `docs/prompting.md` §9.11, and the skill names sections and restates no rule.
 
+- **Prompt-carrying nodes have one registry, and prose that said otherwise is
+  corrected** (the owner asked for the song-node gap to be redesigned; 0.181.0).
+  `workflows/prompts.py` said the catalogue "keys on the same set" of nodes
+  (it did not), and `bench/preflight_graph.py` called its list "every node that
+  carries a prompt" (true until the song node, which it never knew). Both lists
+  are now `h3_config.PROMPT_INPUTS`. The manual's section 3.1 said a malformed shot
+  header makes the shot list empty and "the grader is removed rather than reddened",
+  and its section 11 said such a header "takes the shot rules inert"; preflight now
+  FAILs it (0.181.1), and the same pass made the stamped-header test catch
+  every spelling and the retention-line speaker-id test read compound ids.
+
+- **The portable copies' prose is synced to the manual** (0.181.1). What they used
+  to say: the HTML labelled the timestamp rule House (the manual says OWNER), gave
+  the un-narrowed "every on-screen character not given an explicit 'produces no
+  vocal sound'", said "cut timestamps picked by vibe overrun the clip", and carried
+  a 2026-09-01 date line. The writer prompt tagged the `N/A` habit warning
+  `[guide]` (it is house), gave a turn count that disagreed with the bank, carried an
+  undated count of outputs graded clean, and told the writer never to write an
+  absence while the bank's own cast-count fixes state one. Both now carry the
+  specificity rules, and twelve rule sentences are pinned across the manual and the
+  copies (`RULE_PINS` in `bench/check_prompt_docs_sync.py`). The published claude.ai
+  copy is still the 2026-09-01 snapshot.
+
+- **`docs/checks.md` said the vendor guide lives in gitignored `internal/`**, in the
+  conformance row's needs cell and the camera row's allowlist note. The guides are
+  `vendor_guides/`, tracked and hash-pinned, and the camera check parses the one it
+  needs. Code comments carried the same claim, and cited `base-en.txt` and
+  `ref-en.txt` (not our files) with line numbers off by one or two; all corrected.
+
+- **Prompting-related comments cited `CLAUDE.md` for rules it no longer holds**:
+  "cite one before building", the one-implementation trap, the second-reader finding,
+  "a default is not a decision", "when something gains an off state", and the
+  numbers-in-prose rule. They now point at `docs/rules_history.md`, `docs/checks.md`,
+  `docs/evidence.md` and `docs/prose_measurements.md`. Bench scripts that are not
+  about prompts still cite it: `grep -rn "CLAUDE.md" bench --include=*.py`.
+
 - **Two docstrings said a bare `workflows/*_api.json` glob misses nothing; it has
   missed `distill_experiments/` since 2026-09-27.** `bench/preflight_graph.py`
   said its single glob "currently misses nothing" because `GRAPH_DIRS` was

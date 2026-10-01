@@ -1,7 +1,7 @@
 ---
 name: h3-prompt
 description: Route any work on an H3 prompt in this repo -- "write a prompt", "edit this prompt", "improve this scene", "adapt it", "convert this t2v prompt to ref2va", "why did this render badly", "is this prompt correct", "what should the speaker tags be" -- to the file that owns each answer, and to the command that verifies the result. Points at them; restates nothing that could drift.
-reviewed: 7ef51eb9
+reviewed: edc3ab03
 ---
 
 # Working on an H3 prompt
@@ -56,7 +56,11 @@ snapshot of whatever it was published from.
 ## Before you believe your own edit
 
 - Rebuild, then run `bench/build_prompt_bank.py --check`,
-  `bench/check_prompt_docs_sync.py` and `bench/check_ref_prompt_labels.py`.
+  `bench/check_prompt_docs_sync.py`, `bench/check_prompt_guide_conformance.py`,
+  `bench/check_prompt_rule_controls.py` and `bench/check_ref_prompt_labels.py`.
+- A node that carries a prompt belongs in `h3_config.PROMPT_INPUTS`, the one
+  list graders read; `bench/check_prompt_guide_conformance.py` fails on one that
+  is not there.
 - A rendered clip cannot A/B a prompt change: `docs/eval_comparison.md`
   owns what a perceptual claim needs.
 - Cite the observable, never a sentence that describes it (`CLAUDE.md`).

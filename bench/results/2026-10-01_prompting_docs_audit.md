@@ -138,6 +138,12 @@ is still the 2026-09-01 snapshot.
 
 ## Still red, and not from this pass
 
+*2026-10-01, later: `check_doc_links.py` is clean again (the two `docs/h3_audio_freeze.md` citations
+were corrected by another session), and "fourteen" below was a count that moves with whether a GPU
+is visible to the sweep. Read the non-zero exits of `for f in bench/check_*.py` instead of this list;
+what follows is what it said when written.*
+
+
 - `check_doc_links.py`: two citations in `docs/h3_audio_freeze.md` to a sister pack
   path that is not on this machine. Red at `HEAD` too.
 - Fourteen other `bench/check_*.py` exit non-zero from the environment: no `comfy`

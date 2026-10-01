@@ -1026,10 +1026,10 @@ length every arm above rendered on this card without it.
 ## Now
 
 - **Prompting docs, 2026-10-01.** `../prompting.md` is the only home of a prompting
-  rule and its section 16 is specificity. What the audit found and left for the
-  owner (dead code, a broken converter, the song node missing from three prompt
-  lists, the stale published portable page) is
-  `../../bench/results/2026-10-01_prompting_docs_audit.md`.
+  rule and its section 16 is specificity. The dead code is removed and the song node's
+  prompts are graded. What is still open for the owner (the song prompt's mood word,
+  the closed-record scripts, the stale published portable copy, and fixes no render has
+  confirmed) is in `../../bench/results/2026-10-01_prompting_docs_audit.md`.
 - **Distill weights and routes, from the 2026-09-26 overnight batch.** The
   summary is fastdude's `../../bench/results/2026-09-27_followup_summary.md`;
   the ranked takeaways are in
