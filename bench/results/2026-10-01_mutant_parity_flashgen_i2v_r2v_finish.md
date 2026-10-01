@@ -70,3 +70,8 @@ error or a cache hit, and each clip is 345 frames with a soundtrack.
   as the one run that tried a stretch.
   *(Corrected 2026-10-01, the same day: this said "so the drift came with the stretch", which one pair
   of renders cannot establish.)*
+
+*2026-10-01, later the same day: the twelve `latents/mutant_parity_*` files on the output share
+(both recipes, pack and ours, plus the `_newkitchen` pack re-renders from
+`2026-10-01_kitchen_merge_aade8d5.md`) were deleted at the owner's word. Re-running `compare`
+means rendering the arms again with `check_mutant_parity.py graphs`.*
