@@ -222,9 +222,10 @@ def sol_api_inputs(sol):
 
 
 # Prompts for the long presets (362 frames, 15.083s). A 15s request needs a
-# shot timeline, not one continuous beat -- the guide wants numbered shots with
-# explicit cut times past a few seconds, and a 15s request against a 6s prompt
-# leaves the model twelve seconds it was never told about.
+# shot timeline, not one continuous beat -- numbered shots (the guide's format
+# puts a time on every later shot header; the house writes none, `docs/prompting.md`
+# section 3.1), and a 15s request against a 6s prompt leaves the model twelve
+# seconds it was never told about.
 #
 # Laid out per the owner's v6 t2v conditioning format (2026-08-20): each field
 # name alone on its line, content on the next, one empty line between fields,
@@ -264,53 +265,16 @@ def sol_api_inputs(sol):
 # `<d>` blocks, `<|caption_start|>`/`<|caption_end|>` and `<|cutoff|>` in the
 # clinic scene. Patterns follow `bench/audit_h3_marker_tokenization.py`'s
 # scenes, which are the only worked examples of the five the guide omits.
-# **What the shipped market prompt actually broke, checked against base_en
-# 4.3/4.4/4.6 verbatim on 2026-08-27** -- and `bench/preflight_graph.py` graded
-# it GREEN throughout. Nothing mechanical checks any of this.
-#
-# **Each item says whether the guide STATES it or whether it is a reading of the
-# guide's examples.** A first pass here listed five "rules"; two of them are not
-# in the guide at all, and a rules list you cannot find in the document it cites
-# is worse than no list. Statuses below were read off the source, not recalled.
-#
-#   1. STATED RULE -- camera motion comes from 4.3's table. `Zoom`, `Push`,
-#      `Pull`, `Pan`, `Truck`, `Tilt`, `Pedestal`, `Arc Shot`, `Tracking Shot`,
-#      `Static Shot`, `Shake`, `POV`, `Roll`. **`whip pan` is not in it.** The
-#      shipped line also conflated a cut with a move -- a `[Shot N]` carrying a
-#      timestamp IS the cut, so write the cut, then the move.
-#   2. STATED RULE, PLUS SOFT GUIDANCE, and the two are easy to confuse.
-#      4.3's only amplitude values are `with small amplitude` / `with large
-#      amplitude` and its only speeds are `at slow speed` / `at fast speed`, so
-#      "at medium amplitude and moderate speed" is OUT OF VOCABULARY, and
-#      "tracks left" conflates the `Truck Left` motion type with the separate
-#      `Tracking Shot` entry. Those are the rule. The soft part, and only this
-#      part, is 4.3's "medium amplitude and normal speed are usually omitted".
-#   3. STATED RULE -- 4.4: "When a speaker first appears, provide enough
-#      information from the visual and audio context to establish a stable
-#      identity." S2 entered in Shot 1 as "a young porter (S2)" and was not
-#      described until Shot 2.
-#   4. NOT A RULE. 4.6 asks for "1-4 English sentences in one continuous
-#      paragraph" and nothing else about their shape. The shipped soundscape is
-#      one sentence in one paragraph and CONFORMS. Sequenced prose appears in
-#      every worked example and is stated nowhere -- an inference from examples,
-#      recorded here as one so nobody goes looking for it in the text.
-#   5. NOT A VIOLATION, and close to backwards. 4.6 puts "physical action
-#      sounds" IN the soundscape by name, and its "should not be repeated here"
-#      covers dialogue, singing and diegetic music only. Coins belong there.
-#
-# So the escaped instance is ONE decidable rule with no checker -- 4.3's motion
-# vocabulary -- plus one that is not mechanizable at all (is this speaker
-# identified where he first appears). See the row in `docs/checks.md`.
-#
-# **This prompt was disqualified as a SAMPLE by the owner on 2026-08-27** after
-# it rendered badly at 4 evaluations -- "maybe the prompt just sucked. anyway you
-# can not use that one". Four mechanisms were fitted to that render and all four
-# were refuted the same evening; `docs/research/pdd/queued_arms.md` records them
-# and why none is written down as a finding. A conformant rewrite holding the
-# scene constant is under test as the `F_market_v2` arms; since three of its
-# five changes turn out to be stylistic, the guide-backed candidates if it
-# renders well are the motion phrasing and the speaker identity. **Do not read a
-# render of this prompt as evidence about anything but this prompt.**
+# `t2va_covered_market` is the long preset's scene. An earlier text of it broke
+# the guide's camera vocabulary and its identity-at-first-appearance rule and
+# graded GREEN, because nothing then checked them; the rules, and which
+# readings of the guide are NOT rules, are `docs/prompting.md` sections 4, 5.2
+# and 8, and the escape that led to `bench/check_camera_vocabulary.py` is the
+# row in `docs/checks.md`. The owner disqualified that text as a SAMPLE on
+# 2026-08-27 (`docs/research/pdd/queued_arms.md`): a render of it is evidence
+# about that text only, and clips of this scene rendered before 2026-08-28 are
+# not matched-seed comparable with later ones. This block used to restate the
+# rules item by item and was a second copy of the manual.
 
 LONG_T2V_PROMPT = _bank_prompt("t2va_covered_market")
 # The bench pair's scene (see the bench block near the end of main).
@@ -1010,8 +974,8 @@ def resolve_default_prompt(task: str, prompt: str | None, *,
 #: description length among other things, and nothing isolated it.
 #:
 #: **Everything is held except word count.** Same scene, same three shots, same
-#: cut times (00:04.500 and 00:09.000, matching the market arms so the
-#: structure is comparable), same two speakers, same four lines of dialogue
+#: cuts (the arms carried header times, 00:04.500 and 00:09.000, when this was
+#: written; the bank text carries none, `docs/prompting.md` section 3.1), same two speakers, same four lines of dialogue
 #: verbatim, same three camera moves verbatim, same subjects, same actions.
 #: The long version ELABORATES existing content -- materials, surfaces, light,
 #: position -- and introduces no new subject, action, camera move or line.
@@ -1051,7 +1015,7 @@ T2V_AISLE_LONG = _bank_prompt("t2va_hardware_aisle_long")
 #: The belt also supplies continuous independent object motion, which the aisle
 #: does not, so the pairs differ on that axis deliberately.
 #:
-#: Same discipline as the aisle: identical dialogue, camera moves, cut times,
+#: Same discipline as the aisle: identical dialogue, camera moves, cuts,
 #: shot structure and subjects across the two lengths. The long arm elaborates
 #: and does not extend.
 T2V_SORTLINE_SHORT = _bank_prompt("t2va_sortline_short")
@@ -2871,7 +2835,7 @@ def _scene_description(scene: str, image_roles, defs) -> str:
 #: constant is not what produced them.
 DIALOGUE_T2V_PROMPT = _bank_prompt("t2va_stairwell_dialogue")
 
-#: The ref2va twin. **Same eight lines, same three shots, same cut times, same
+#: The ref2va twin. **Same eight lines, same three shots, same cuts, same
 #: pacing language** -- the only thing that changes is where the two people come
 #: from, which is the axis this arm is for.
 #:
@@ -3170,19 +3134,19 @@ def _ref_prompt(*, images: bool | tuple[str, ...] = True,
     if audio and audio_role == "music":
         music = f"A slow instrumental score follows the tempo and instrumentation of <Audio {audio_n}>."
 
-    # Guide 3.2's task-type vocabulary. This is NOT cosmetic: it is the only
+    # ref guide section 3's task-type vocabulary (ref_en has no 3.2; base_en's 3.2 is FL2VA). This is NOT cosmetic: it is the only
     # place the prompt states what relationship the references stand in, and
     # every arm shipped `[reference generation]` regardless of role, which
     # collapsed the exact axis these arms exist to vary.
     #
-    # 3.2 is explicit that presence does not imply a type -- "if a reference
+    # ref section 3 is explicit that presence does not imply a type -- "if a reference
     # video provides only camera movement, cuts, or rhythm, it normally
     # belongs to `reference generation`" -- so motion and structure stay
     # reference generation and only edit/continue get their own type.
     types = []
     if video and video_role in ("edit", "swap"):
         # A character swap IS a direct modification of the source video, so
-        # 3.2 puts it here and not under `reference generation`. Community
+        # ref section 3 puts it here and not under `reference generation`. Community
         # write-ups of this scenario often stop at a bare `[video editing]`;
         # 3.2 is explicit that reused audible audio adds `audio reuse` too,
         # which the block below supplies.
@@ -3192,7 +3156,7 @@ def _ref_prompt(*, images: bool | tuple[str, ...] = True,
     if images or (video and video_role in ("motion", "structure")):
         types.append("reference generation")
     # 4.2's markers decide the audio type: fully_copy/partially_copy are a
-    # reuse of the signal, `reference` is not. 3.2: "when editing a source
+    # reuse of the signal, `reference` is not. Ref section 3: "when editing a source
     # video, use `audio reuse` as well if its original audio remains audible."
     if video_audio or (audio and audio_role == "copy"):
         types.append("audio reuse")
@@ -4693,19 +4657,13 @@ def main():
         # `<|lyrics_end|>` appeared in this generator and in zero shipped
         # graphs. Wiring them is what makes the marker path reachable at all.
         #
-        # They close a second gap at the same time. `docs/prompting.md` 9.10
+        # They close a second gap at the same time: `docs/prompting.md` 9.10
         # records the guide's 350-500 word budget for a generation
-        # `detailed_description` and says every generated ref2va prompt here
-        # runs one shot at 42-68 words. These run FOUR shots at 349 (subway
-        # 373) words, so they are the first ref2va arms in the shipped set
-        # that sit in the guide's range rather than an order of magnitude
-        # under it. `kitchen` lands one word below 350; the guide says
-        # "normally", and adding the `environment` role takes it to 360 if
-        # that matters more than the style risk noted at SCENE_REF_IMAGES.
-        #
-        # **Unrendered.** Nothing here has been through the card, so treat the
-        # word counts and the marker coverage as properties of the TEXT and
-        # not as a claim about what the model does with either.
+        # `detailed_description`, and these are written inside it (the current
+        # counts are `bench/build_prompt_bank.py`'s, not a number here). They have
+        # since been rendered, and `docs/scene_arm_renders.md` reads those renders;
+        # the marker coverage is a property of the TEXT and not a claim about what
+        # the model does with it.
         *[
             (f"h3_ref2v_scene_{sc}.json", f"r2v-scene-{sc}", "r2v",
              _ref_prompt(images=("character",), scene=sc),
@@ -4748,15 +4706,16 @@ def main():
         # separates them is the reference conditioning and not the script.
         #
         # 362 frames, which is the longest length H3 was trained on and the
-        # last shot needs it: shot 3 starts at 00:11.000.
+        # last shot needs it.
         # **These three carried `length=362` as a literal until 2026-08-30**,
         # so the owner's move of the long default to 345 did not reach them and
         # they were the only graphs left off the audio clock. Now on
         # LONG_LENGTH like everything else.
         #
-        # Safe for their prompts, checked rather than assumed: the shot cuts
-        # are at 00:06.000 and 00:11.000, both inside 345 frames (14.375s) as
-        # they were inside 362 (15.083s). What changes is the final shot, from
+        # Safe for their prompts, checked rather than assumed on 2026-08-30,
+        # when the shot headers carried times (00:06.000 and 00:11.000, inside
+        # 345 frames as they were inside 362); they carry none now
+        # (`docs/prompting.md` section 3.1). What changes is the final shot, from
         # 4.08s to 3.38s, and its direction is "holds still until the final
         # frame", which does not name a duration.
         ("h3_text_to_video_dialogue.json", "t2v-dialogue", "t2v",
@@ -4864,9 +4823,8 @@ def main():
         # **The description-length pair.** Same PDD 4-step settings as the other
         # t2v PDD arms, so length is the only thing that differs from each
         # other AND the configuration is the one artifacts show up in. See the
-        # constants for what is held; the short arm is 294 words and the long
-        # 513, a 1.74x ratio, with identical dialogue, camera moves, cut times
-        # and shot structure.
+        # constants for what is held (word counts: `docs/prompt_bank.md`), with
+        # identical dialogue, camera moves, cuts and shot structure.
         *[
             (f"h3_text_to_video_aisle_{tag}.json", f"t2v-aisle-{tag}", "t2v",
              prompt,

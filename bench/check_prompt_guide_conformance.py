@@ -35,7 +35,7 @@ Claims, i.e. what breaks if a case is deleted:
                       case was named "in order" and compared against a list
                       built by iterating the guide's own sections, so it could
                       only ever detect a missing one
-  legal task types    the `[...]` prefix uses only types from section 3.2's
+  legal task types    the `[...]` prefix uses only types from ref section 3's
                       table, combined with ` + `, with no type repeated --
                       the guide states both rules explicitly
   keyframe type       `keyframe completion` appears only in a graph that can
@@ -166,8 +166,8 @@ GUIDE_NODE = "MiniMaxH3AddGuide"
 # pair this file exists to keep apart.
 #
 # An entry naming a graph that no longer ships is rot, not a safe leftover: it
-# waives nothing while reading as coverage. `probes_are_necessary` below asserts
-# that, so restoring one and then dropping its graph goes red.
+# waives nothing while reading as coverage. The "every structure probe still
+# ships" case below asserts that, so restoring one and then dropping its graph goes red.
 _STRUCTURE_PROBES: set[str] = set()
 
 

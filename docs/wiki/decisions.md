@@ -15,6 +15,67 @@ Older history lives elsewhere and is not copied here:
   decisions" and forward-plan sections.
 - `bench/results/`: the verdict records, each with its conditions.
 
+## 2026-10-01
+
+- **The wiki's prompting page is folded into `docs/prompting.md` and removed**
+  (owner: resolve any redundancy so there is one source of truth). It was a
+  router that also restated rules, and the restatements had drifted. What it
+  used to claim that was wrong:
+  - the shot-header timestamp rule "is not yet measured in either direction"
+    (measured once on 2026-09-18; the 2026-09-26 correction below missed this
+    page);
+  - turns per shot "open in base format" (§14.3 closed it on 2026-09-01);
+  - "sources 1 to 3 are gitignored" (the guides in `vendor_guides/` are
+    tracked);
+  - the bank's `adapt` column as which prompts "can take another frame count
+    without a rewrite" (the bank preamble says it is not a permission);
+  - that the portable files' every quotation is checked (the check pins the
+    Part One strings and the camera table in the system prompt, and more in the
+    HTML, never their prose rules).
+  `docs/wiki/index.md` had also described it as ranking five sources with at
+  least five worked examples per mode; it ranked four and carried none. Its two
+  routing tables moved into the opening of `docs/prompting.md` and into its §11.
+- **`docs/prompting.md` corrected where it disagreed with itself or the code.**
+  - §5.6 said every line takes a mouth-closing cue and every on-screen
+    non-speaker "produces no vocal sound"; §14.3 and §15.3 item 5 had narrowed
+    both. The cue is positional and the phrase is for a character who never
+    vocalises.
+  - §9.10 repeated the withdrawn "42-68 words" and said the two scene arms were
+    never rendered. Both gone; the preflight command stands in for the count.
+  - §15.2 said nothing is stripped. Core's tokenizer strips nothing; our
+    conditioning nodes strip both ends (0.160.0).
+  - The owner's ruling of 2026-09-01, that cinematography wording outside base
+    §4.3's table is acceptable, lived only in the portable copies and in a code
+    comment that cited "section 8". It is now §4, and the camera warnings are
+    informational.
+  - The no-header-timestamps rule is labelled OWNER, as the layer table defines
+    it; §3.1 and §11 said HOUSE.
+  - §13's `workflows/*.json` glob skipped `workflows/distill_experiments/`; the
+    command now walks `h3_config.graph_paths`.
+  - "All five sources" in the header and the index: four are live.
+- **Specificity is written down (`docs/prompting.md` §16)** from the owner's
+  statement on 2026-10-01: pin what matters where the scene is ambiguous, and
+  because only so much can be controlled, pick the few that matter and let the
+  model carry the rest. The records behind it were scattered across the
+  changelog, `bench/results/` and two research notes; §16 indexes them. It
+  records that nothing measures the second half, and that the bank's
+  "specificity ladder" is a different experiment.
+- **The `h3-prompt` skill carried one rule found nowhere else**, to introduce a
+  likeness as `[Name] (played by [Actor] in [Show])`. It came from another
+  session's external writer craft (2026-09-11). It is now an OPEN line in
+  `docs/prompting.md` §9.11, and the skill names sections and restates no rule.
+
+- **Two docstrings said a bare `workflows/*_api.json` glob misses nothing; it has
+  missed `distill_experiments/` since 2026-09-27.** `bench/preflight_graph.py`
+  said its single glob "currently misses nothing" because `GRAPH_DIRS` was
+  `("",)`, and `bench/check_graph_discovery.py` said its rule held "while
+  `GRAPH_DIRS` is `("",)`". `GRAPH_DIRS` gained `distill_experiments` on
+  2026-09-27, so the first command skipped every distill graph, the ref2va and i2v
+  ones included. Both docstrings are corrected and `preflight_graph.py`'s usage
+  line carries both globs. Found while checking that those graphs are kept
+  (`bench/results/2026-10-01_r2v_i2v_graph_coverage.md`: they are, and
+  `bench/clip_recipe_coverage.py` now asks the question).
+
 ## 2026-09-29
 
 - **Two ref2va findings re-checked by a second pass; details corrected**
@@ -1135,7 +1196,7 @@ Older history lives elsewhere and is not copied here:
 - **"A perceptual claim needs a distribution of seeds judged blind, never a
   pair" is withdrawn** (owner; CHANGELOG 0.99.72) from `VISION.md`,
   `CLAUDE.md`, the `h3-experiment` skill, `docs/open_experiments.md` and
-  [`prompting.md`](prompting.md), under the tinkering-repo rule.
+  [`docs/prompting.md`](../prompting.md), under the tinkering-repo rule.
   `docs/eval_comparison.md` still describes the blind process for when one
   is wanted.
 - **Where the Sol-Attn kernel comes from.** `CLAUDE.md` said it was

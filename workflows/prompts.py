@@ -13,8 +13,8 @@ exact prompt in every record.
 
 So: `prompt_bank/<id>.txt` is the text, `prompt_bank/bank.json` is the
 manifest (mode, frames, donor, brief), and the generator's constants are
-now `text("<id>")`. The constant NAMES stay, because five bench scripts and
-the catalogue import them; only the literal moved. A prompt that is not in
+now `text("<id>")`. The constant NAMES stay, because the bench scripts and
+the catalogue read them; only the literal moved. A prompt that is not in
 the bank cannot be shipped, which is the invariant this module exists for.
 
 **That invariant covers COMPOSED prompts since later the same day.** The
@@ -45,8 +45,13 @@ REPO = Path(__file__).resolve().parent.parent
 BANK = REPO / "prompt_bank"
 MANIFEST = BANK / "bank.json"
 
-# Node class -> the input carrying the prompt text, for `describe`. The
-# catalogue keys on the same set (`bench/build_prompt_catalogue.py::CONDITIONERS`).
+# Node class -> the input carrying the prompt text, for `describe`. This is NOT
+# the one list of prompt-carrying nodes: `bench/build_prompt_catalogue.py` and
+# `bench/check_camera_vocabulary.py` each keep their own, and
+# `bench/check_prompt_guide_conformance.py` and `bench/check_ref_prompt_labels.py`
+# name `MiniMaxH3AudioFreezeSong`, which carries the prompt of every song graph
+# and is in none of those three, so those graphs describe no bank id and the
+# catalogue and camera check never read their prompt.
 CONDITIONERS = {"MiniMaxH3Conditioning": "prompt",
                 "MiniMaxH3ReferenceConditioning": "prompt"}
 

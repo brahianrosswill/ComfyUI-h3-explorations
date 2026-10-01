@@ -870,7 +870,7 @@ their two posts they switched from flat prose to the guide's structure** with
 the audio sections dropped. They had rendered a couple of thousand images by
 then. But neither post held the scene or the references fixed, so it is a
 practitioner's revealed preference and not a measurement -- the same grade of
-evidence as the Custom-GPT kit in `internal/PROMPTING.md` section 4.2.
+evidence as the third-party kit in [`prompting.md`](prompting.md) section 15.4.
 
 **The arms exist and are unrendered.** `h3_image_style.json` (four sections,
 the shipped default), `h3_image_probe_format_av.json` (all six, audio ones

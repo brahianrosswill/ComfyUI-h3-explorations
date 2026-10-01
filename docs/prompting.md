@@ -1,22 +1,42 @@
 # How to write an H3 prompt
 
-last updated: 2026-09-20
+last updated: 2026-10-01
 
 **The single source of truth for writing an H3 prompt, in any mode.** Everything
 needed is restated here: the closed vocabularies in full, the exact Part One
 templates, the section layouts, all seven markers, graded worked examples
-per mode, what the model actually receives, and where every source that
-claims to govern a prompt disagrees with the others. **You do not need
-`internal/` and you should not need any other file.**
+per mode, what the model actually receives, what to pin and what to leave to
+the model (§16), and where every source that claims to govern a prompt
+disagrees with the others. **You do not need `internal/` and you should not
+need any other file for a rule.**
 
 `internal/PROMPTING.md` was superseded and is now DELETED (2026-09-01); §14.5
-says where its content went. §14 is the reconciliation across all five
-sources — read it before citing any of them, because two are not authorities.
+says where its content went. §14 is the reconciliation across the sources that
+claim to govern a prompt — read it before citing any of them, because two are
+not authorities.
 
-Companions, neither of which is a source for the rules themselves:
-[`prompt_catalogue.md`](prompt_catalogue.md) is what we currently render
-(generated from the graphs); [`prompt_audit.md`](prompt_audit.md) is whether
-those follow these rules.
+**Writing one now?** Read in this order: §1 the mode, §2 its structure, §3
+shots and timing, §4 to §8 camera, speakers, text, markers and the audio
+fields, §9 if it has references, §16 what to pin. Grade the draft with
+`bench/grade_prompt_text.py` (§10).
+
+## Where everything else lives
+
+This file owns the rules and the rest of the repo points here, so a rule is
+edited in one place. Where another document restates a rule and disagrees,
+this file is right and the other is stale.
+
+| question | go to |
+|---|---|
+| Where does prompt text live, and where do I start from? | [`prompt_bank/`](../prompt_bank/), one file per prompt; every prompt a graph renders is there. [`prompt_bank.md`](prompt_bank.md) is its generated table: `ships` says which graphs render an entry, `adapt` is mechanical and not a permission to render at another length, `tests` says what a scene is a test of. An experiment names a prompt by bank id: `bench/run_graph_arms.py` takes `@bank:<id>`, and `workflows/prompts.py::describe` is what every render row records |
+| What does the repo render? | [`prompt_catalogue.md`](prompt_catalogue.md), generated from the graphs |
+| Is a shipped prompt any good? | [`prompt_audit.md`](prompt_audit.md), one hand-written verdict per scene |
+| Reference sizing and the runtime label order | [`h3_references.md`](h3_references.md) |
+| Legal canvases and lengths | [`h3_resolutions.md`](h3_resolutions.md), [`h3_geometry_and_nodes.md`](h3_geometry_and_nodes.md) |
+| Comparing two prompts fairly | [`eval_comparison.md`](eval_comparison.md). The one measured length pair is [`prompt_length_experiment.md`](prompt_length_experiment.md) |
+| Why a rule was added, reversed or withdrawn | [`wiki/decisions.md`](wiki/decisions.md) |
+| Handing the rules to someone outside the repo | [`portable/h3_prompt_standard.html`](portable/h3_prompt_standard.html), and a writer-model version at [`portable/h3_system_prompt.md`](portable/h3_system_prompt.md). Both are copies of this file; `portable/snapshots.json` pins the frozen dated ones, and a copy published elsewhere is a snapshot of whatever it was published from |
+| An agent routing by task | `.claude/skills/h3-prompt` |
 
 ## Four layers, and every rule says which one it is
 
@@ -189,7 +209,7 @@ and do not "correct" a prompt on this axis. What *is* stated: entries inside
 
 ### 3.1 Shot headers
 
-> **HOUSE RULE since 2026-09-18 (the owner): shot headers carry NO timestamps.**
+> **OWNER RULE since 2026-09-18: shot headers carry NO timestamps.**
 > Write `[Shot 2] The shot cuts to ...`, never `[Shot 2] At 00:05.200, the shot
 > cuts to ...`. "The only time you should use timestamps in prompts is if you
 > break stuff up mid-shot", that is, a time that splits action INSIDE one shot,
@@ -342,7 +362,18 @@ frame) but not these.
 ## 4. Camera motion: the closed vocabulary
 
 base §4.3, *stated*. A complete expression has three dimensions and **all three
-draw from closed sets**. Anything outside them is off-distribution.
+draw from closed sets**. Anything outside them is something the guide does not
+attest.
+
+**OWNER ruling, 2026-09-01: camera wording that aligns with common
+cinematography is acceptable.** The table is the attested vocabulary, not a
+closed set to police, and a `dolly` on a shot built around a rail dolly is the
+honest description of it. So a motion type outside the table is not a defect
+by itself: `bench/check_camera_vocabulary.py` warns on one and never fails on
+one, the amplitude and speed phrases are the part it fails on, and a warned
+term is not fixed without a rendering reason. The table is still what keeps a
+prompt in-distribution, which is why the warning stays. Revisit only if output
+quality gives a reason. [OWNER]
 
 | dimension | value | meaning |
 |---|---|---|
@@ -532,14 +563,24 @@ treat `<scenetrans>` as ordinary prose that matches the guide's wording.
 ### 5.6 Closing the mouth
 
 Not in either guide as a general rule, but present in the vendor's own worked
-material and worth doing on every line: at the moment a line ends, describe the
-lips closing and the jaw ceasing to move, or the mouth keeps moving past the
-audio. [HOUSE, from a vendor example]
+material: at the moment a line ends, describe the lips closing and the jaw
+ceasing to move, or the mouth keeps moving past the audio. [HOUSE, from a
+vendor example]
+
+**The pattern is positional.** Write the cue after a line the shot continues
+past, and none after a line that is the last thing in its shot, because the cut
+ends it; the one exception is the L2VA endpoint rule below. §14.3 has the
+cross-tab and says how weak its provenance is: a third-party corpus pattern
+that ours happens to satisfy, not vendor practice. The worked examples in §10
+write the cue at a shot's end as well; they are conformant, because nothing
+enforces either reading. [HOUSE]
 
 Companions, all HOUSE:
 
-- Every on-screen character who does **not** speak gets an explicit "produces no
-  vocal sound", or the model may voice them.
+- Every on-screen character who **never vocalises in the clip** gets an explicit
+  "produces no vocal sound", or the model may voice them. Someone silent only
+  for now is written as what they do instead ("does not answer"). §15.3 item 5
+  owns the rule and the reason.
 - **L2VA endpoint rule**: if the final picture shows a closed-mouth expression,
   finish the dialogue early enough for the mouth to return to that expression
   before the endpoint. A closed-mouth expression cannot remain physically
@@ -807,6 +848,17 @@ dialogue, singing and diegetic music only.
 non_diegetic_music: Sparse piano notes at a slow tempo, joined by sustained low strings that gradually increase in volume before fading out.
 ```
 
+**Whether a scene has a score is a decision about that scene, not a default.**
+Reaching for `N/A` by reflex claims every clip you write is unscored, and
+inventing a score claims something nobody asked for. Base §4.7 says only that
+`N/A` is right when there is no non-diegetic music; the habit warning is ours,
+and the examples in §10 write `N/A` to keep attention on the other fields.
+[HOUSE]
+
+**Mood words in this line are a recurring slip**, found across the bank on
+2026-09-03 and recorded in [`prompt_audit.md`](prompt_audit.md). The guide
+sentence is stated and nothing checks it (§11).
+
 ### ref2va additions — ref §6, *stated*
 
 State a copy or reference relationship **only in the section that matches the
@@ -1067,20 +1119,28 @@ it deliberately. [OWNER decision territory; the guide reading is GUIDE]
   reducing the description to a plot summary or a list of reference
   relationships.**
 
-This budget was the systematic gap in this repo. Every ref2va prompt that
-`_ref_prompt` generates without a scene still runs one shot at 42-68 words —
-an order of magnitude under the range — and that is most of the shipped ref2va
-set. The two scene arms added 2026-08-28 (`h3_ref2v_scene_subway`,
-`h3_ref2v_scene_kitchen`) are the first that sit inside it, at four shots and
-373-375 words, so the gap is now demonstrated-closable rather than universal.
-Neither has been rendered, so nothing here says the budget improves output.
+This budget is the one ref2va rule most of the composed ref2va arms still miss,
+and it is `preflight_graph.py`'s recurring WARN (§13 has the command that lists
+them; a count here would be a cache). The two scene arms
+(`h3_ref2v_scene_subway`, `h3_ref2v_scene_kitchen`) are written inside it, and
+[`scene_arm_renders.md`](scene_arm_renders.md) says what their renders can and
+cannot show.
+
+**Nothing licenses "more words are better".** The one measured length pair,
+[`prompt_length_experiment.md`](prompt_length_experiment.md), is one seed, one
+scene and has no working control. What it does license is §9.11's "silence is
+not neutral": a long description beat a short one because the short one left a
+defective definition in charge, not because it was long.
 
 ### 9.11 Reference-writing craft, not in the guide
 
 All HOUSE, all worth having.
 
 - **Treat limiting words such as "only" as strict exclusions.** An explicit
-  exclusion always blocks incidental transfer:
+  exclusion blocks incidental transfer. [external writer prompt; the guide
+  states what a reference provides and never what it does not, and
+  [`h3_references.md`](h3_references.md) calls the negative clauses open, as
+  §15.6 does negative constraints in general]
 
   | phrase | transfers | not |
   |---|---|---|
@@ -1116,9 +1176,23 @@ All HOUSE, all worth having.
   reuse the **same noun phrase verbatim** on every later mention. H3 renders what
   is described, not what is named: a bare proper noun comes back as a
   plausible-adjacent stranger. Naming a source property as a *style* anchor is
-  worth doing; naming it as a substitute for description is not.
-- **Conditioning, not instruction.** The prompt is passed to the encoder
-  verbatim; nothing on the other side decides whether to comply, and there is no
+  worth doing; naming it as a substitute for description is not. A likeness of
+  an actor's character has also been introduced once, in shot 1, as `[Name]
+  (played by [Actor] in [Show])`, with the vocal timbre in the prose outside
+  `<d>`: external writer craft that the `h3-prompt` skill carried until
+  2026-10-01, unmeasured here, and it does not replace the description. [OPEN]
+- **Silence is not neutral.** Two observed results, one render each, neither in
+  any guide: `subject_definitions` beat `retention_analysis` (a brunette
+  reference defined as blonde rendered blonde under `fully_preserved`), and a
+  specific `detailed_description` beat `subject_definitions` (a definition that
+  claimed architecture for a lakeside reference drove the render only where the
+  description said nothing about the environment). So **describe the
+  environment in `detailed_description` even when a reference supplies it**, and
+  do not assert an attribute you have not looked at. The same mechanism is §16.
+  [HOUSE, observed; [`h3_references.md`](h3_references.md) "A label is a bare
+  ordinal" and [`prompt_length_experiment.md`](prompt_length_experiment.md)]
+- **Conditioning, not instruction.** The prompt reaches the encoder as written
+  (§15.2); nothing on the other side decides whether to comply, and there is no
   negative prompt field. "Make it feel tense" conditions on the words "make it
   feel tense". "Her knuckles whiten on the railing" conditions on an image.
 - **A change of medium keeps the assigned design.** "Make it real" or "render
@@ -1446,7 +1520,26 @@ red/green. "nothing" means exactly that.
 **To grade a prompt that is not in a graph yet** — anything in §10, or a draft —
 use `bench/grade_prompt_text.py`, which wraps the text in a shipped graph of the
 requested mode and runs `preflight_graph.grade` against it. It adds no rules of
-its own, so this table describes it too. It exits nonzero on FAIL only.
+its own, so this table describes it too. It exits nonzero on FAIL only. A prompt
+already in a graph goes through `python bench/preflight_graph.py <graph.json>`,
+which also prices the sequence, and a bank entry through
+`python bench/build_prompt_bank.py --check`.
+
+### What keeps each link true
+
+| link | what holds it |
+|---|---|
+| guides → the graders' templates and camera vocabulary | parsed from the guide files at load; a missing guide is a loud error |
+| `prompt_bank/` → the generator | `workflows/prompts.py` loads every shipped prompt by id and the generator refuses a missing entry; the two keyframe defaults are re-timed at the graph's length and checked at the declared one |
+| `prompt_bank/` → `prompt_bank.md` | `build_prompt_bank.py --check` regrades every entry, fails on edge whitespace and on a stale table; a `recorded_findings` entry is reported, not gated |
+| generator → `workflows/*.json` | generated; nothing is true of a graph until rebuilt |
+| graphs → `prompt_catalogue.md` | `build_prompt_catalogue.py --check`, and nothing runs it for you: run it before trusting the table (§13) |
+| catalogue → `prompt_audit.md` | `check_prompt_docs_sync.py` fails on a scene with no verdict |
+| this file → its copies | the same check re-grades every §10 example at the duration its heading names and compares the Part One strings and the camera table with the guide. Its docstring says exactly what is pinned for each portable copy; a prose rule in a copy is not |
+| shipped prompts → vendor practice | `bench/diff_prompt_corpus.py`, a report |
+| the prose of this file | nothing |
+
+### The rules
 
 | rule | layer | checked by |
 |---|---|---|
@@ -1459,19 +1552,19 @@ its own, so this table describes it too. It exits nonzero on FAIL only.
 | `<Picture N>` bracket convention inside the body | GUIDE base §3.1-§3.3, *shown* | `preflight_graph.py` accepts bare `Picture N` only on a two-keyframe graph |
 | the prompt names exactly the labels the graph wires | HOUSE (runtime) | `check_ref_prompt_labels.py`, `preflight_graph.py`, both directions |
 | label ordinals follow append-chain order; a soundtrack's `<Audio j>` precedes its own `<Video k>`; `<Audio>` is one counter | HOUSE (runtime) | `check_reference_order.py` |
-| NO shot header carries a timestamp; a time only splits action inside a shot | HOUSE (the owner, 2026-09-18); departs from GUIDE base §4.2, ref §5.1 | `preflight_graph.py` (FAIL), and through it `build_prompt_bank.py --check` and `check_prompt_docs_sync.py` |
+| NO shot header carries a timestamp; a time only splits action inside a shot | OWNER (2026-09-18); departs from GUIDE base §4.2, ref §5.1 | `preflight_graph.py` (FAIL), and through it `build_prompt_bank.py --check` and `check_prompt_docs_sync.py`. The test is a header that opens `At` and a digit, so a lowercase `at`, a time elsewhere in the header and a malformed `[Shot 2, 00:05]` header pass, the last by emptying the shot list (§3.1) |
 | mid-shot times strictly increasing | GUIDE base §4.2, applied to the times the house still allows | `preflight_graph.py` |
 | mid-shot times fall inside the video duration | GUIDE base §4.2, likewise | `preflight_graph.py` |
 | `[Shot N]` header format, sequential numbers | GUIDE ref §5.1, base §4.2, minus their cut time | nothing — a malformed header makes preflight's shot list empty and takes the shot rules inert |
 | the five cut phrasings; dissolve/fade/wipe on request only | GUIDE base §4.2 | nothing |
-| camera motion type from the twelve-row table | GUIDE base §4.3 | `check_camera_vocabulary.py`, partially: `vocab_matches_guide` pins the check's own motion list to §4.3 (red/green) and `denied_motion` reports known-bad phrases as WARN and never goes red, so a novel out-of-table phrase is caught by neither. This was the escaped instance: a shipped prompt carried `whip pan`, `tracks left` and `at medium amplitude and moderate speed` and every gate passed it. The check has run since 2026-08-28 and this row said "nothing" until 2026-09-01 |
+| camera motion type from the twelve-row table | GUIDE base §4.3 | `check_camera_vocabulary.py`, partially: `vocab_matches_guide` pins the check's own motion list to §4.3 (red/green) and `denied_motion` reports known-bad phrases as WARN and never goes red, so a novel out-of-table phrase is caught by neither. By the owner's ruling (§4) those warnings are informational, not defects. This was the escaped instance: a shipped prompt carried `whip pan`, `tracks left` and `at medium amplitude and moderate speed` and every gate passed it. The check has run since 2026-08-28 and this row said "nothing" until 2026-09-01 |
 | amplitude only `with small/large amplitude` | GUIDE base §4.3 | `check_camera_vocabulary.py` (`modifiers_in_set`, red/green over every shipped prompt since 2026-08-28; this row said "nothing" until 2026-09-01) |
 | speed only `at slow/fast speed` | GUIDE base §4.3 | `check_camera_vocabulary.py` (`modifiers_in_set`, same case as amplitude) |
 | motion written as natural English inside the shot | GUIDE base §4.3 | nothing |
 | style and initial composition open `[Shot 1]` (base) | GUIDE base §4.1 | nothing |
 | style stated in one or two sentences **before** `[Shot 1]` (ref2va) | GUIDE ref §5.2 | nothing |
 | speaker ids `(S1)`, `(S2)`, stable across shots, unconditional | GUIDE base §4.4 | nothing |
-| **ref2va: the id is reused at every vocal event** | GUIDE ref §5.4, *stated* | `bench/preflight_graph.py::speaker_id_rules` (FAIL), and through it `build_prompt_bank.py --check` and `grade_prompt_text.py`. `bench/check_speaker_id_control.py` is its control: red on the bank at `4bd7b429^`, green on the same entries now, green on the soundtrack exemption, and a note and never a FAIL in the base modes |
+| **ref2va: the id is reused at every vocal event** | GUIDE ref §5.4, *stated* | `bench/preflight_graph.py::speaker_id_rules` (FAIL), and through it `build_prompt_bank.py --check` and `grade_prompt_text.py`. It is scoped per shot and deliberately conservative: two speakers alternating inside one shot where only the first is attributed read clean, so the rule is stronger than its check (`docs/wiki/next_steps.md` records the gap). `bench/check_speaker_id_control.py` is its control: red on the bank at `4bd7b429^`, green on the same entries now, green on the soundtrack exemption, and a note and never a FAIL in the base modes |
 | **a verbal cue inside a reused soundtrack takes `<Audio N>` and no new `(Sx)`** | GUIDE ref §5.4, *stated* as a prohibition | same rule, as its exemption; `ref2va_soundtrack_fully_copy` is the entry that exercises it |
 | the base modes reuse the id per vocal event | **NOT A RULE** in base_en — it states the id and its stability only; ref states the reuse. §12.13 | `speaker_id_rules` reports it as a note and grades nothing |
 | non-vocalising characters get no id | GUIDE base §4.4 | nothing |
@@ -1479,6 +1572,10 @@ its own, so this table describes it too. It exits nonzero on FAIL only.
 | the voice descriptor does not contradict the identity the same sentence establishes | GUIDE base §4.4 for "stable identity"; HOUSE for resolving it by moving the range | nothing |
 | every action has a stated agent | HOUSE, observed — neither guide states it | nothing |
 | a count is consistent with what the shot shows | HOUSE, observed — neither guide states it | nothing |
+| the cast count is stated, and where a test counts people, nobody else appears | HOUSE, observed (§16) — neither guide states it | nothing, and not mechanizable |
+| each shot says who is in it, and an exit when someone leaves | HOUSE, observed (§16) — neither guide states it | nothing |
+| one geography: places, paths and directions agree across the shots | HOUSE, observed (§16) — neither guide states it | nothing |
+| bank text has no whitespace at either end | HOUSE | `build_prompt_bank.py --check` (FAIL); our conditioning nodes strip both ends too (§15.2) |
 | "produces no vocal sound" is reserved for a character who never vocalises | HOUSE — the phrase is in neither guide; the category is base §4.4's | nothing |
 | compound `(S1,S2)` only for already-numbered speakers | GUIDE base §4.4 | nothing |
 | identity established where the speaker first **appears** | GUIDE base §4.4 | **nothing**, and not mechanizable |
@@ -1628,18 +1725,20 @@ already know, and a corrected count would rot the same way.
 - **"No shipped graph carries any marker but `<d>`."** False. The markers each
   scene carries are a column in `prompt_catalogue.md`, derived from the graphs.
 - **"Every generated ref2va prompt is one shot at 42-68 words."** False as a
-  universal. For the current distribution:
+  universal. For the current distribution, over every graph
+  `h3_config.graph_paths` yields (a literal `workflows/*.json` glob skips
+  `workflows/distill_experiments/`):
 
-      python bench/preflight_graph.py workflows/*.json | grep 'the guide asks 350-500'
+      python bench/preflight_graph.py $(python -c "import sys; sys.path.insert(0, 'workflows'); from pathlib import Path; import h3_config; print(*h3_config.graph_paths(Path('workflows')))") | grep 'the guide asks 350-500'
 
 ### Still open
 
 - **Camera-motion vocabulary has live WARNINGS, and is not unenforced.**
   `bench/check_camera_vocabulary.py` has graded every shipped prompt's motion
-  phrases against base §4.3's closed sets since 2026-08-28. As of 2026-09-01 it
-  reports three out-of-vocabulary terms: `tracks right` and `whip pan` in the
-  two ref2v scene arms, and `dolly` in `T2V_RAIL_LONG`. Run it; do not restate
-  its findings here.
+  phrases against base §4.3's sets since 2026-08-28. Run it; do not restate its
+  findings here. A warned term is informational by the owner's ruling of
+  2026-09-01 (§4), so the warnings are left standing on purpose and a prompt is
+  not rewritten to clear one without a rendering reason.
 
   > **WITHDRAWN 2026-09-01: this bullet previously read "Camera-motion
   > vocabulary is enforced by nothing", and carried a same-day
@@ -1850,10 +1949,8 @@ lesson the vendor guides taught this morning, and the same day proved it twice.
 **Removed and restored the same day.** `a52999d` (2026-09-01), whose message
 describes a rewrite of §14.5 and the striking of two ranking rows, also dropped
 this whole section, while the §14.5 it wrote says the migrated content "is
-§15". Restored verbatim from that commit's parent later the same day. If the
-removal was meant, record the reason here and repoint §14.5,
-`docs/wiki/prompting.md` and `docs/portable/h3_system_prompt.md`, which all
-route readers here.
+§15". Restored verbatim from that commit's parent later the same day, and it
+has stood since; `docs/portable/h3_system_prompt.md` routes readers here.
 
 Migrated from `internal/PROMPTING.md` §§1-6 on 2026-09-01 so that file can be
 retired. **Everything checkable here was re-derived against source on that date
@@ -1894,9 +1991,16 @@ draft.)*
   converted checkpoint is truncated there (`comfy/text_encoders/minimax.py:15`).
 - The presentation is **not chat-templated** — raw token ids, no system or user
   roles, vision blocks spliced inline (`comfy/text_encoders/minimax.py:3`).
-- **Your prompt is passed through verbatim.** `tokenize_with_weights` ends with
+- **Core passes your prompt through verbatim.** `tokenize_with_weights` ends with
   `add_text(text)` (`comfy/text_encoders/minimax.py:197`) after every label; nothing is stripped,
   parsed, reformatted, or reordered.
+- **Our conditioning nodes strip the two ends first**, through
+  `h3_rules.normalize_prompt` (`MiniMaxH3Conditioning`,
+  `MiniMaxH3ReferenceConditioning`; checked 2026-10-01 against that file). A
+  trailing newline is one more token and one more token is a different sample at
+  the same seed, so a prompt pasted into the UI with one now tokenizes like the
+  graph that ships it. Interior newlines are kept, because they carry the
+  prompt's structure. Core's own H3 nodes do not strip.
 - **Nothing injects a duration, an alignment line, or shot scaffolding.** What
   ComfyUI prepends is only the `"<Picture i>: "` / `"<Video k>: "` /
   `"<Audio j>: "` label per reference, plus a `"<%.1f seconds>"` marker before
@@ -1963,6 +2067,10 @@ both carry a HOUSE tag and an arm that rendered the defect.
    Write the number you want to see, then check it against what the shot
    actually shows. Neither guide states anything about quantities. [HOUSE,
    observed; CHANGELOG 0.126.1 and 0.128.0]
+
+Items 6 and 7 are two members of one class, a slot the prompt left open that the
+model filled. §16 lists the rest (the cast count, who is in each shot, one
+geography) and says how to choose which slots to pin.
 
 ### 15.4 The speech budget, and why its shape is unsettled
 
@@ -2045,3 +2153,160 @@ this repo has neither confirmed nor refuted them. [3rd]
 - **Animation on twos.** At 24 fps, animation on twos targets about 12 unique
   states per second; the external writer prompts state the exposure cadence as
   a target rather than leaving it to the style word.
+
+---
+
+## 16. Specificity: what to pin, and what to leave to the model
+
+Added 2026-10-01. **Layer: OWNER for the principle, HOUSE for everything derived
+from it; neither guide states any of it** apart from §5.2's placement, which
+base §4.1 does. The owner's statement of it: specificity is something to be
+graded and evaluated and documented as important, so "specify what matters and
+whats important if its ambiguous", but "you can only control so many things in a
+prompt / scene - pick the most important ones and let the model guide the rest".
+
+**How much this rests on.** This repo is not research-grade (`CLAUDE.md`, "A
+tinkering repo"). Every case below is one clip at one seed, watched by the
+owner, and one has a before-and-after render. A rendered clip cannot A/B a
+prompt change (`eval_comparison.md`), so read them as observed failures and not
+as measurements. The first half of the principle has a long record. **The second
+half, what to leave, has none: no record measures that over-specifying hurts**,
+and §16.3 says what it does and does not stand on.
+
+### 16.1 Silence is a decision the model makes
+
+The prompt is conditioning, not instruction (§15.1, §15.2). What it leaves open
+the model fills with the likeliest thing, and different samples fill it
+differently.
+
+| the open slot | what rendered | record |
+|---|---|---|
+| who drops the coins into the tin (market) | coins from the middle of a crate, from nowhere, or from a hand, depending on the arm | `bench/results/2026-09-15_block49_community_chain.md`, `bench/results/2026-09-18_sol_reorder_panel.md`. The fixed text names the stallholder; no scored render of the fixed text is recorded |
+| how many hamburgers (cafe) | two on each plate where the prompt said "a plate of hamburgers" | `sol_reorder_panel.md`; the same panel reported no burger problem on the fixed text, the only before-and-after pair in this section |
+| where a speaker sits (cafe) | the speaker staged out of frame and the line given to a character declared silent | `sol_reorder_panel.md`, fixed and confirmed the same way |
+| how many people are in the station (subway) | a pursuer cloned, a third person from nowhere, an escalator the text never placed | `bench/results/2026-09-26_distill_compare_s1.md`, `2026-09-26_subway_v2_s1.md`, `2026-09-27_clone_base_control.md` |
+| who is silent (radio drama) | every actor's lips moving at the start, because nothing said the listeners were silent | `bench/results/2026-09-27_render_dataset/findings.jsonl` (`ow-fd-04`); the fix is not confirmed |
+| what a reference's definition claims, where the description is silent | the defective definition drove the render | [`prompt_length_experiment.md`](prompt_length_experiment.md) |
+| what the script does once it has ended | undeclared people and motion | `eval_comparison.md` ("A stress scene is not a typical scene"), `bench/results/2026-09-18_off_length_prompts.md` |
+
+**Ambiguity costs the evaluation as well as the clip.** An unnamed agent carried
+a kitchen-versus-sage kernel question for two days on a hand that did not
+reproduce (`eval_comparison.md`), and the owner counts a composition difference
+as a prompt-adherence loss (`eval_comparison.md`, 2026-09-05). So pin whatever an
+A/B has to hold constant.
+
+### 16.2 What to pin
+
+Each class has one owner. The first six are written up elsewhere; the last four
+are written here.
+
+| class | owner | grader |
+|---|---|---|
+| who causes each event or sound | §15.3 item 6 | nothing |
+| how many of each thing | §15.3 item 7 | nothing |
+| where each speaker is, identity at first appearance, a voice that fits | §5.2 | nothing |
+| who is silent | §5.6, §15.3 item 5 | nothing |
+| how many words fit the shot | §5.10 | nothing |
+| the literal on-screen string | §6 | nothing |
+| the cast count | below | nothing |
+| who is in each shot | below | nothing |
+| one geography | below | nothing |
+| what the scene is a test of | below | nothing |
+
+**The cast count.** Say how many people are in the scene, and where a test
+counts people, say that nobody else appears: "only two people in the whole
+station: a fleeing suspect and the agent chasing him" (`t2va_subway_chase`),
+"No one else appears at the counter or on the street behind."
+(`t2va_noodle_bar`). Prefer the positive count to a bare absence. The portable
+writer prompts say a model cannot render an absence ("no logo", "nobody else is
+there") and to write the visible evidence instead; the bank's own cast fixes
+state the exclusion beside the count; nothing here separates the two, and §15.6
+records negative constraints as contested. [HOUSE, observed]
+
+**Who is in each shot.** Say who is in frame in each shot and how anyone leaves.
+A character present in one shot and absent from the next with no exit rendered
+as an empty corridor. [HOUSE, observed on the old subway text, read from the
+text in other prompts]
+
+**One geography.** The places, paths and directions the text sets up agree
+across the shots, and one path is stated once. A text that contradicts itself,
+an "empty" cart that sprays oranges, a gate that hangs open beside its cut
+padlock, an "extreme close medium shot", hands the model a coin toss. Prefer
+screen-space words ("enters from the left edge of frame") to body-relative or
+vague ones. [HOUSE, observed; the screen-space advice is from an external writer
+prompt]
+
+**What the scene is a test of.** A prompt written to test something has to make
+that thing countable or visible: a mirror wall doubles every dancer on purpose,
+so a clone could not be told apart, and the wall is matte black now. The `tests`
+field of [`prompt_bank.md`](prompt_bank.md) says what each scene is a test of.
+[OWNER, 2026-09-26: "certain about how specific and well written that prompt is
+for testing what u wanna test"]
+
+### 16.3 What to leave to the model, and how to choose
+
+**A pin is necessary and not sufficient.** On the fully pinned subway text the
+base model followed it, and the distills still cloned a person, swapped roles or
+added an escalator the text never names (`2026-09-26_subway_v2_s1.md`,
+[`h3_distills.md`](h3_distills.md)). How much a pin binds depends on the model,
+so the prompt is not the only lever and cannot carry every detail.
+
+**Choosing the pins.** Rank a candidate by what breaks the scene if the model
+guesses it wrong: who is on screen and how many; who causes each event the scene
+turns on; what a test or an A/B has to hold constant; what the viewer will
+count, read or hear literally, such as a number, a string or a spoken line.
+Pin those. [HOUSE reasoning from §16.1, not measured]
+
+**Leaving the rest.** Texture, minor props, the exact framing between cuts and
+the timing of cuts are left to the model. Cut times are the owner's deliberate
+case (§3.1): the one pair measured cut at nearly the same points with and
+without them. [OWNER]
+
+**Two things are not left.** Who is on screen, and how long the script runs. A
+script that ends before the clip does is filled with undeclared people and
+motion (§15.2), so the beats are fitted to the declared frames (§3.3, §5.10).
+
+**What is not known.** Whether over-specifying hurts. The pair built to ask,
+the aisle and sortline prompts at two lengths, was never judged, and the owner's
+one remark in that vein concerns shots per second on one distill, not words
+(`docs/research/pdd/2026-08-28_scene_complexity.md`). "One primary change per
+beat" (§15.6) is third-party and unmeasured. Do not read this section as "less
+is more" or as "more is better".
+
+**A name collision.** The bank's "specificity ladder" (`t2va_spec_typical`,
+`_specific`, `_unusual`) tests how a distill behaves as detail and unusualness
+rise (`bench/results/2026-09-27_spec_ladder.md`). It is not evidence for or
+against anything here.
+
+### 16.4 How specificity is graded today
+
+- **Mechanically, nothing.** The graders in §11 decide form. The bank-wide fix
+  for these classes left every edited prompt grading as it had before (CHANGELOG
+  0.151.1), which is the demonstration that the graders cannot see them.
+- **By the owner's eye**, against `bench/adherence_checklists.json`: per-scene
+  beats (cast, geography, count, role) drafted from each prompt's own text and
+  marked with `bench/rubrics/distill_run.json`. No script reads the checklist
+  and no score is recorded. Because it is drafted from the prompt it can grade
+  only what the prompt pinned, and the scenes that taught these classes (market,
+  cafe_kids, diner) have none.
+- **By a fitness read**, as in CHANGELOG 0.154.6: is the prompt specific enough
+  for what it tests. One-off, with no standing record.
+- **`prompt_audit.md`** judges guide conformance from the source text. It is not
+  a specificity grade.
+- **On the render**, only the cut count (`bench/measure_clip_tone.py`) and the
+  Whisper dialogue error (`bench/measure_dialogue_transcription.py`). Nothing
+  counts people or checks a direction.
+
+**A reading pass before rendering** [HOUSE; a reading aid, not a gate]:
+
+1. How many people are in the scene, and does anyone else appear?
+2. Who is in each shot, and how does each one leave?
+3. For every action, who does it? For every sound, what makes it?
+4. For every number, is it the number the shot shows?
+5. Is every speaker placed, identified at first appearance, and voiced to fit?
+6. Is every character who does not speak stated silent?
+7. Do the places, paths and directions agree across the shots?
+8. What is this scene a test of, and is that countable or visible?
+9. What did I leave open on purpose, and am I content for the model to decide it?
+
+The last question is the half of the principle that is easy to forget.

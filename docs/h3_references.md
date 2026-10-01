@@ -1013,7 +1013,7 @@ stream, and the render dies at execution having validated cleanly.
 ## A label is a bare ordinal. You have to say what it is.
 
 **Measured 2026-08-16**, paired render, one variable —
-`docs/prompt_length_experiment.md` for the full pre-registration and verdict.
+[`prompt_length_experiment.md`](prompt_length_experiment.md) for the full pre-registration and verdict.
 
 The tokenizer emits `<Picture 1>`, `<Picture 2>`, `<Video 1>` and nothing else.
 There is no socket, flag or payload field carrying what a reference *is*, what
@@ -1047,18 +1047,13 @@ not neutral — it leaves the definition in charge.
 
 ### What follows for writing one
 
-- **Say what each reference is**, at least at the level of a noun and its
-  salient attributes. "the environment in `<Picture 2>`" is thin; the model has
-  to infer everything from the pixels and whatever adjectives you supplied.
-- **Do not assert an attribute you have not looked at.** The generic template
-  that shipped on every image-reference arm until 2026-08-16 said "architecture,
-  palette, and lighting" for whatever image happened to be wired. It now says
-  "setting", which is true of any environment. `_ref_prompt()` cannot see the
-  image; a person writing by hand can and should.
-- **Describe the environment in `detailed_description` even when a reference
-  supplies it.** This is the counter-intuitive one. It feels redundant — the
-  reference is *right there* — and it is the difference between the two clips
-  above.
+- **The writing rules that follow** (say what each reference is, do not assert
+  an attribute you have not looked at, describe the environment even when a
+  reference supplies it) are [`prompting.md`](prompting.md) section 9.11, "Silence
+  is not neutral". The template that shipped on every image-reference arm until
+  2026-08-16 said "architecture, palette, and lighting" for whatever image was
+  wired; it now says "setting", which is true of any environment, because
+  `_ref_prompt()` cannot see the image.
 - **A reference wired but never described costs its rows on every step and
   says nothing.** `bench/check_ref_prompt_labels.py` catches the unnamed case;
   `bench/preflight_graph.py` also warns when a defined label is never cited in
@@ -1078,62 +1073,14 @@ binary rather than aesthetic) and the magnitude is not bounded.
 
 ## Prompt structure
 
-**These six sections are the reference format only, and that is not obvious.**
-Found 2026-08-21. The guide ships two output formats and this page had only
-ever described one. `coderef/MiniMax-H3/skills/h3-prompt-writing/references/ref-en.txt:311-337` is the six-section format below,
-for ref2va. `coderef/MiniMax-H3/skills/h3-prompt-writing/references/base-en.txt:39-43` is what t2va, i2va, fl2va and l2va use, and
-it is **three** fields:
-
-```
-integrated_multimodal_description: [Shot 1] ...
-
-overall_soundscape: ...
-
-non_diegetic_music: ...
-```
-
-No `subject_definitions`, no `summary`, no `retention_analysis`, and
-`integrated_multimodal_description` where the reference format says
-`detailed_description`. `<Subject N>` labels are reference-format too -- the
-base guide describes people inline and carries only the `(S1)` speaker ids.
-Keyframe tasks prepend one optional line above the three fields saying how each
-`<Picture N>` maps to a second mark in the target.
-
-Both prompt instruments now select the guide from the graph itself and support
-native sockets plus typed append chains. `bench/preflight_graph.py` and
-`bench/check_prompt_guide_conformance.py` grade ref2va against this six-section
-format and base/keyframe tasks against base-en's three fields.
-
-Six sections, in this order:
-
-```
-subject_definitions:
-summary:
-retention_analysis:
-detailed_description:
-overall_soundscape:
-non_diegetic_music:
-```
-
-`<Subject N>` is reusable visible **content**. `<Picture N>` / `<Video N>` /
-`<Audio N>` identify the **assets**. If a person, object, scene or action from
-a reference video is reused as visible content, **it still belongs under
-`<Subject N>`** — `<Video N>` identifies the source and does not replace
-subject labels. One subject may be defined by several assets, naming what each
-provides.
-
-### Markers, and they do not interchange
-
-| visible content | audio |
-|---|---|
-| `fully_preserved` | `fully_copy` |
-| `partially_preserved` | `partially_copy` |
-| `attribute_transfer` | `reference` |
-| `weak_reference` | `weak_reference` |
-
-Only `weak_reference` appears in both sets. The label check verifies labels
-exist; **it does not verify you picked a sensible marker**, so that part is on
-you.
+The reference format's six sections, the base format's three fields (and the
+alignment line the keyframe modes always use), what each of the four labels
+means, and the two marker sets, which share `weak_reference` and nothing else,
+are owned by [`prompting.md`](prompting.md): sections 2.1 and 2.2, 9.1 to 9.4
+and 9.8. Both prompt instruments select the guide from the graph itself and
+support native sockets plus typed append chains (`bench/preflight_graph.py`,
+`bench/check_prompt_guide_conformance.py`). The label check verifies that labels
+exist; it does not verify that you picked a sensible marker.
 
 ---
 

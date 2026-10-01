@@ -241,16 +241,20 @@ def main() -> int:
         if label not in arms or not node_key or not raw:
             raise SystemExit(f"--set wants LABEL:NODE.FIELD=VALUE, got {spec!r}")
         value = _parse_value(raw)
-        # The bank's files end in a newline and `@bank:` hands the text over
-        # verbatim; stripped is the convention (below), so the shortcut strips
-        # unless the unstripped bytes are asked for by flag.
+        # Bank files carry no edge whitespace and `prompts.text` strips, so this
+        # strip is a no-op for a bank value today (it was not before 0.160.0, when
+        # the files ended in a newline); stripped is the convention (below), so
+        # the shortcut strips unless the unstripped bytes are asked for by flag.
         if raw.startswith("@bank:") and isinstance(value, str) and not args.allow_unstripped_prompt:
             value = value.strip()
         # One character in a prompt is a different sample. On 2026-09-17 prompt
         # files were passed with their trailing newline while an earlier batch
         # had stripped it, and stacks then compared different samples as if
         # they were one. Convention: stripped. The flag is for reproducing a
-        # clip that was rendered from the unstripped bytes.
+        # clip that was rendered from the unstripped bytes. Since 0.160.0 our
+        # conditioning nodes strip both ends themselves (`h3_rules.normalize_prompt`),
+        # so the different-sample risk now stands only for core's own H3 nodes,
+        # as in the stamped graphs under `workflows/bench/`.
         if (isinstance(value, str) and field.split(".")[-1] == "prompt"
                 and value != value.strip() and not args.allow_unstripped_prompt):
             raise SystemExit(

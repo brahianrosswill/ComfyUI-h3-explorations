@@ -4,6 +4,74 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.179.1
+
+`docs/prompting.md` is now the only home of a prompting rule. Docs and comments
+only: the generator rebuilt to a scratch directory is byte-identical to the
+checked-in graphs, and the code edits are comments and docstrings.
+
+### Added
+
+- **`docs/prompting.md` section 16, specificity**: what to pin where a scene is
+  ambiguous, what to leave to the model, and how specificity is graded today. The
+  principle is the owner's (2026-10-01). It indexes the records that were
+  scattered across the changelog, `bench/results/` and two research notes, says
+  that nothing measures the "leave the rest" half, and that the bank's
+  "specificity ladder" is a different experiment. The nine-question reading pass
+  in 16.4 is a reading aid, not a gate.
+- `bench/results/2026-10-01_prompting_docs_audit.md`: what the audit found and did
+  not change, by who has to decide (dead code, a broken converter, the song node
+  missing from three prompt lists, holes in the stamped-header FAIL, the stale
+  published portable page).
+
+### Changed
+
+- The manual's opening table says where the rest of the prompt documents live, and
+  its section 11 carries the chain of what keeps each link true. Both came from the
+  wiki's prompting page.
+- **Corrected where the manual disagreed with itself or the code**
+  (`docs/wiki/decisions.md`, 2026-10-01, has what each used to say): 5.6 (the
+  closing cue is positional; the "produces no vocal sound" phrase is for a character
+  who never vocalises), 9.10 (the withdrawn word count and the "not rendered"
+  claim), 15.2 (our conditioning nodes strip both ends), 13 (a glob that skipped
+  `distill_experiments`), the "five sources" header, and the no-timestamps rule's
+  label, OWNER where it said HOUSE. The owner's 2026-09-01 ruling on camera
+  wording, which lived only in the portable copies and a code comment that cited
+  the wrong section, is section 4. The `N/A` music caution, the mood-word slip,
+  "silence is not neutral" (from `h3_references.md` and the length experiment),
+  the `(played by ...)` form the skill carried, and the contested standing of
+  exclusions are in 8 and 9.11, each with its layer.
+- `docs/h3_references.md`: its restated prompt structure is a pointer into the
+  manual, which also removes a false "optional" Part One line.
+- The `h3-prompt` skill names sections and restates no rule; its route to the
+  removed page is gone and `reviewed` is bumped.
+- `docs/prompt_audit.md`: the authorities table no longer lists a deleted file as a
+  live authority, and a dated note marks four passages that no longer hold.
+  `docs/scene_arm_renders.md`: a dated note says its measurements describe the
+  old, timestamped text.
+- `docs/prompt_bank.md` and `docs/prompt_catalogue.md` regenerated (both failed
+  `--check`), and the bank preamble no longer reads "has never been rendered" off the
+  `ships` column.
+- Pointers: `vendor_guides/README.md` (14.2b to 14.2), `docs/h3_audio_freeze.md`,
+  `docs/checks.md` and `docs/open_experiments.md` (deleted-file and wrong-section
+  citations), `docs/eval_comparison.md` (section numbers, and a link to
+  `docs/research/pdd/2026-08-28_scene_complexity.md`), and a real link to
+  `docs/prompt_length_experiment.md`, so the wiki now reaches both.
+- Comments and docstrings only: `workflows/build_workflows.py` (a block that
+  restated the manual's rules and described text since replaced, and cut-time prose
+  about prompts that no longer carry times), `workflows/prompts.py`,
+  `bench/check_camera_vocabulary.py` (the ruling's pointer and the claim that the
+  guide is gitignored), `bench/run_graph_arms.py`, `bench/bench_e2e_h3.py`,
+  `bench/check_prompt_guide_conformance.py` and the `bench/build_prompt_bank.py`
+  preamble sentence.
+
+### Removed
+
+- `docs/wiki/prompting.md`. It was a router that also restated rules, and the
+  restatements had drifted: one said the no-timestamps rule was unmeasured, one
+  said turns per shot were open, one gave the wrong count of sources. Its routing
+  tables moved into the manual.
+
 ## 0.179.0
 
 ### Added

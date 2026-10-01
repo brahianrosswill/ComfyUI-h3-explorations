@@ -82,6 +82,10 @@ ghosted fruit reads as low detail. A wide market shot demands each orange be
 resolved in one or two latent cells where a stairwell closeup gives a face
 hundreds, and fewer steps means less refinement at exactly that scale.
 
+The arms, their outcomes and the duration control that confounded one of them
+are written up in
+[`research/pdd/2026-08-28_scene_complexity.md`](research/pdd/2026-08-28_scene_complexity.md).
+
 **Pre-registered predictions, written before the arms rendered.**
 
 | arms | demand predicts | the account it beats |
@@ -181,7 +185,7 @@ visible in `prompt_bank/t2va_noodle_bar.txt`:
 - *It scripts a few seconds of action for a clip several times that long.* One
   customer steps up, gestures, says one line and lowers a hand; one cook nods
   and lifts a ladle. Nothing injects the duration into the model
-  (`docs/prompting.md`, the duration trap), so the rest of the clip is the
+  (`docs/prompting.md` section 15.2, and 3.3 for the frame grid), so the rest of the clip is the
   model's to fill, and what it fills with is undeclared people and motion.
 - *Its hardest moment is structural.* A slow zoom-out keeps opening the bottom
   of the frame while a person has to arrive from off frame. Someone entering

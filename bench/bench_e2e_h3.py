@@ -288,9 +288,8 @@ def pick_prompt(cfg):
 
     The threshold is where PROMPT's single shot stops covering the runtime:
     it describes one continuous ~6 s beat, so anything past roughly twice
-    that is asking the model to fill time the prompt never mentions. Cut
-    times in PROMPT_LONG run to 00:11.500, so it needs at least that much
-    clip to make sense.
+    that is asking the model to fill time the prompt never mentions.
+    PROMPT_LONG is a timing fixture, not a bank prompt, so no gate reads it.
     """
     seconds = cfg["length"] / cfg["fps"]
     return PROMPT_LONG if seconds >= 12.0 else PROMPT

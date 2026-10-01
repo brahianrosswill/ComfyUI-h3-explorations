@@ -40,6 +40,6 @@ is here. **Revising a guide is a deliberate, visible event**: replace the file,
 update `sha256.json`, and expect the downstream checks to report what moved.
 
 **A third-party fork exists and is easy to mistake for the original** — see
-`docs/prompting.md` §14.2b. One of its two guides is byte-identical to the
+`docs/prompting.md` §14.2. One of its two guides is byte-identical to the
 vendor's and the other is not, so hashing one and generalising gets the wrong
 answer.

@@ -9,6 +9,14 @@ answer and how to read them. Nothing here is a claim about output — that is
 what the render is for. If the intent below is not what you wanted from them,
 the arms are wrong, not the guide.
 
+> **2026-10-01: the prompts these renders used are not the prompts in the bank
+> now.** They carried header times (`00:03.500` and the like); the house rule
+> since 2026-09-18 is that shot headers carry none (`prompting.md` section 3.1),
+> so the cut-time measurements below describe the old text, and the word counts
+> quoted below are the old text's. The current counts are what
+> `prompting.md` section 13's preflight command reports. The measurements are
+> real and stay as written; read them as being about the text they name.
+
 ---
 
 ## 1. What is actually being rendered

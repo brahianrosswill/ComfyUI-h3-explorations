@@ -1,25 +1,27 @@
 # Prompt audit: what follows the guides, and what to do about it
 
-last updated: 2026-09-01
+last updated: 2026-10-01
 
 The judgement half of [`prompt_catalogue.md`](prompt_catalogue.md), which is
 generated and states no opinion. This one is written by hand, keyed to the scene
 names that file emits, and carries a verdict per scene: **keep**, **revise**,
 **rewrite**, or **discard**.
 
-## Three authorities, never merged
+## Authorities, never merged
 
 A defect means nothing until you know which authority it breaks, and these are
-not interchangeable:
+not interchangeable. [`prompting.md`](prompting.md) section 14.1 ranks the
+sources and its "Four layers" say what a violation of each means: the official
+guides (`vendor_guides/`) are the only authority, and breaking one is
+**off-distribution** from what the model was trained on; an OWNER or HOUSE rule
+is a decision or an inference, so breaking it may mean the rule is wrong; an
+OPEN item is not a defect. `internal/PROMPTING.md`, which this table listed as
+the house rules until 2026-10-01, was deleted on 2026-09-01 (`prompting.md`
+section 14.5), so the findings below that cite it cite a file that is gone. The
+STATED RULE / NOT A RULE notes above `LONG_T2V_PROMPT` in the generator are a
+second copy of `prompting.md` sections 4, 5.2 and 8, which own them.
 
-| | what it is | what a violation means |
-|---|---|---|
-| the official guides | the vendor's own text, `vendor_guides/` (base and ref) | the prompt is **off-distribution** from what the model was trained on |
-| `internal/PROMPTING.md` | house rules, derived from the guides plus experience on this box | the prompt deviates from **what we decided**, which may mean the rule is wrong |
-| the STATED RULE / NOT A RULE notes above `LONG_T2V_PROMPT` | the existing adjudication of which guide sentences are rules at all | a NOT A RULE finding is not a defect |
-
-Both `internal/` paths are gitignored and do not ship, which is why they are
-named in backticks rather than linked. **Two rules have already been invented
+**Two rules have already been invented
 here by reading guide *examples* rather than guide *statements*, and retracted**
 — so where the guide is ambiguous this file says ambiguous rather than picking a
 reading.
@@ -36,6 +38,17 @@ reading.
 > that every catalogue scene *has* a verdict, not that the verdict is current,
 > so its green is not evidence about this note. Re-reading the table is owed;
 > the scenes `4bd7b429` touched are its `git show --stat`.
+
+> **2026-10-01: four passages below no longer hold, and are left as written.**
+> The "enforced by nothing" remark on motion vocabulary: it has been checked by
+> `check_camera_vocabulary.py` since 2026-08-28, and by the owner's ruling its
+> warnings are informational (`prompting.md` section 4). "`REF_SCENE_SHOTS`
+> exists and is unreachable": `_ref_prompt` takes `scene=` at a call site in the
+> generator, and the two scene arms are wired. "Nothing has been rendered
+> through" the marker arms: they were rendered, and
+> [`scene_arm_renders.md`](scene_arm_renders.md) reads them; what is still true
+> is that no marker verdict has been recorded. And the citations of
+> `PROMPTING.md` sections 7F, 7H and the like: that file is deleted.
 
 ---
 

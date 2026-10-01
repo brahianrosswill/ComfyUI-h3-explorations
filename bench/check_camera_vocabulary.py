@@ -28,12 +28,14 @@ file does not pretend to prove the absence of the rest.
 
 ## The allowlist, and where it comes from
 
-`VOCAB` is vendored rather than parsed, because the guide lives in `internal/`
-which is gitignored -- a check that needs it cannot run on a fresh checkout.
-But a vendored copy of somebody else's table is exactly the drift this repo
-keeps paying for, so **when the guide IS present it is parsed and the vendored
-copy is graded against it**. That case fails on any divergence, which makes the
-constant a cache rather than a second source.
+`MOTION` is vendored rather than parsed, so the rules run without reading the
+guide. The guide is `vendor_guides/base_en.md`, tracked and hash-pinned (it
+lived in gitignored `internal/` until 2026-09-01, when this paragraph said a
+check needing it could not run on a fresh checkout). A vendored copy of
+somebody else's table is exactly the drift this repo keeps paying for, so
+**when the guide is on disk it is parsed and the vendored copy is graded
+against it**. That case fails on any divergence, which makes the constant a
+cache rather than a second source.
 
 A third encoding exists and agrees: a sibling project of the owner's
 independently encoded the same table from the same guide, verified
@@ -134,8 +136,8 @@ def prompts() -> dict[str, set[str]]:
 def case_vocab_matches_guide() -> list[str]:
     """The vendored table IS the guide's, when the guide is on disk."""
     if not GUIDE.exists():
-        print("  skip  vocab_matches_guide  guide not on disk (internal/ is "
-              "gitignored); the vendored table is unverified on this checkout")
+        print("  skip  vocab_matches_guide  vendor_guides/base_en.md is not on "
+              "disk; the vendored table is unverified on this checkout")
         return []
     text = GUIDE.read_text(encoding="utf-8")
     found = set()
@@ -314,7 +316,7 @@ def case_no_denied_motion(corpus) -> list[str]:
 # in-distribution, and a reader deciding between `Truck Right` and a phrase the
 # vendor never uses should see the difference. **Do not "fix" a warned term
 # without a rendering reason, and do not re-open the question from this output
-# alone** -- `docs/prompting.md` section 8 carries the ruling.
+# alone** -- `docs/prompting.md` section 4 carries the ruling.
 #
 # Revisit only if output quality gives a reason to. Recorded here so the next
 # reader meets the adjudication where the warnings are, not three files away.

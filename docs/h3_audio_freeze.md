@@ -77,7 +77,7 @@ implementations treat this as inpainting.
 | mechanism | where the audio sits | final track | model | trained? |
 |---|---|---|---|---|
 | **mask freeze** | target audio rows, mask zero | yours, exact if the original waveform is muxed at output | fl2va or ref2va | adjacent: conditioning-row semantics on target rows |
-| **reference audio** | reference segment, `<Audio N>: fully_copy` in the prompt ([`prompting.md`](prompting.md) §4.2 vocabulary) | regenerated; sglang derives the target duration from it (`duration_from_audio_reference` in the same task table) | ref2va only; an audio reference cannot stand alone and the budgets cap it ([`h3_references.md`](h3_references.md), the budgets paragraph) | yes, the release's path |
+| **reference audio** | reference segment, `<Audio N>: fully_copy` in the prompt ([`prompting.md`](prompting.md) §9.8 vocabulary) | regenerated; sglang derives the target duration from it (`duration_from_audio_reference` in the same task table) | ref2va only; an audio reference cannot stand alone and the budgets cap it ([`h3_references.md`](h3_references.md), the budgets paragraph) | yes, the release's path |
 | **guide audio** | keyframe conditioning rows anchored at a frame index (`comfy_extras/nodes_minimax_h3.py::MiniMaxH3AddGuide`, the `audio` input) | regenerated | fl2va | no: a ComfyUI extension with no counterpart in sglang or the release |
 | **hybrid** | reference audio *and* the same track frozen in the target rows | yours | ref2va | the reference says what the track is, the mask guarantees it |
 
