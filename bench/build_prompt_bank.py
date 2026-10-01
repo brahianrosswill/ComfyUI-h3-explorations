@@ -241,8 +241,7 @@ def shape_problems(rows: list[dict]) -> list[str]:
         if not f["motions"]:
             out.append(f"{r['id']}: no camera motion recognised -- either the prompt "
                        f"names none or MOTION_PROSE cannot read its phrasing")
-        if not f["styles"] and r["mode"] != "ref2va":
-            pass  # off-list styles are legal; recorded, not failed
+        # an off-list style is legal: it is recorded in the table, never failed
         if f["music"] == "absent":
             out.append(f"{r['id']}: non_diegetic_music is missing")
         if r["mode"] == "ref2va" and not f["task_types"]:

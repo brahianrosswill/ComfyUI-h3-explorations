@@ -1719,9 +1719,9 @@ already know, and a corrected count would rot the same way.
 
       python bench/grade_prompt_text.py --list-donors
 
-  The `scene_prompt()` defect was fixed on 2026-08-28 and that function's own
-  comment records it; the function remains uncalled, so it never reached a
-  graph.
+  The `scene_prompt()` defect was fixed on 2026-08-28, and the function, which
+  nothing ever called, was deleted on 2026-10-01 as dead code, so it never
+  reached a graph.
 - **"No shipped graph carries any marker but `<d>`."** False. The markers each
   scene carries are a column in `prompt_catalogue.md`, derived from the graphs.
 - **"Every generated ref2va prompt is one shot at 42-68 words."** False as a

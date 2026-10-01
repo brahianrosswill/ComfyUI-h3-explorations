@@ -6,6 +6,21 @@ Method: three read-only passes (code and comments, documents, the specificity
 records), each claim re-checked against the file before it was acted on. Where
 a finding was not re-checked it says so.
 
+## Done later the same day (the owner: "Remove dead code")
+
+Removed, with the rebuilt graphs byte-identical to the checked-in ones: `scene_prompt()`
+and the image-lane block (`IMAGE_FORMATS`, `_IMAGE_SCENES`, `_MARKER_PROSE`) from
+`workflows/build_workflows.py`; the retired `MiniMaxH3ReferenceFit` id from
+`_REF_IMAGE_NODES` and its four call sites; `bench/convert_t2va_to_ref2va.py`; the
+unreachable ref2va branch in `bench/check_prompt_docs_sync.py::page_examples_grade`
+and the no-op branch in `bench/build_prompt_bank.py::shape_problems`. The first two
+bullets of the next section describe what was there and are kept as the record.
+
+Left, on purpose: the CLOSED RECORD experiment scripts (dated records came from them,
+and one is imported by a live check), and `bench/prompts/hf_fl2va_robecouch.txt` and
+`hf_reference_sushi_cat_gothic_hall.txt`, which nothing reads but are data from the
+closed AWQ lane and not code.
+
 ## Needs the owner's decision (it deletes code or changes what ships)
 
 - **Dead generator code.** `scene_prompt()` in `workflows/build_workflows.py`

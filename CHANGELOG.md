@@ -4,6 +4,31 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.179.3
+
+### Removed
+
+Dead code the 0.179.1 audit found (owner: "Remove dead code"). The generator, rebuilt
+to a scratch directory, is byte-identical to the checked-in graphs for every graph it
+writes, so nothing that ships changed.
+
+- `scene_prompt()` in `workflows/build_workflows.py`: nothing ever called it, and it
+  held a third copy of the three Part One strings.
+- The image-lane prompt block there (`IMAGE_FORMATS`, `_IMAGE_SCENES`,
+  `_MARKER_PROSE` and their comments): referenced nowhere since the single-frame lane
+  was parked, and prompt text living outside the bank.
+- The retired `MiniMaxH3ReferenceFit` id carried in every `_REF_IMAGE_NODES` slot. The
+  slot table is now the loader ids, `_ref_image_slots` returns `(load_id, filename)`,
+  and its four call sites stopped discarding a second element.
+- `bench/convert_t2va_to_ref2va.py`: named by no document or script, it parsed a form
+  that is in no bank file and crashed on the bank it defaulted to.
+- An unreachable ref2va branch in `bench/check_prompt_docs_sync.py::page_examples_grade`
+  and a no-op branch in `bench/build_prompt_bank.py::shape_problems`. The page carries no
+  ref2va example, so none is graded, and the comment in the check now says so.
+
+Left on purpose, and why, in `bench/results/2026-10-01_prompting_docs_audit.md`: the
+CLOSED RECORD experiment scripts, and two unread prompt files from the closed AWQ lane.
+
 ## 0.179.2
 
 ### Changed

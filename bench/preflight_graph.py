@@ -1315,7 +1315,8 @@ def grade(node: dict, graph: dict, stem: str = "") -> list[tuple[str, str]]:
     # its N and S.SS placeholders are resolved from this graph. Presence alone
     # was not a control: an FL2VA graph carrying I2VA's sentence still named a
     # Picture and passed. That wrong sentence existed in `scene_prompt()` on
-    # 2026-08-23, staged for the first caller that would have used it.
+    # 2026-08-23, staged for the first caller that would have used it (the
+    # function never had one and was deleted on 2026-10-01).
     if guide == "base" and main_field in sec:
         preamble = prompt[:prompt.index(main_field + ":")].strip()
         kf = [k for k in KEYFRAME_SOCKETS if ins.get(k) is not None]

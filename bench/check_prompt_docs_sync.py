@@ -368,15 +368,18 @@ def page_examples_grade(page: str) -> int:
     graded = 0
     for tag, block in pairs:
         mode = next((m for m in ("t2va", "i2va", "fl2va", "l2va", "ref2va")
-                     if m in tag.lower().replace("ref2va", "ref2va")), None)
+                     if m in tag.lower()), None)
         frames = re.search(r"(\d+) frames", tag)
         body = html.unescape(block).strip()
+        # Only base-mode examples (a three-field prompt) are graded here. A ref2va
+        # example carries `detailed_description` and would be skipped, and the
+        # page carries none today; grading one needs a donor graph that wires
+        # the references it declares (`grade_prompt_text.py --like`).
         if not mode or not frames or "integrated_multimodal_description" not in body:
             continue
         graded += 1
         try:
-            like = "h3_ref_image_audio_api" if mode == "ref2va" else None
-            path, nid = g.pick(mode if like is None else None, like)
+            path, nid = g.pick(mode, None)
             graph = json.loads(path.read_text(encoding="utf-8"))
             node = graph[nid]
             node["inputs"]["prompt"] = body
