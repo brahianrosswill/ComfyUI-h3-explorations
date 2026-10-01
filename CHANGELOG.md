@@ -4,19 +4,20 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
-## 0.183.0
+## 0.183.2
 
-### Added
+### Changed
 
-- h3-mutant-distill 0.4.0: `H3KeyframeCanvas` (`standalone/h3_mutant_distill/keyframe_canvas.py`), a
-  trimmed port of this pack's retired `MiniMaxH3KeyframeCanvas`: the canvas from the first frame by
-  core's `adapt_canvas`, the image scaled to it, an aspect outside 1:4 to 4:1 refused. The two mutant
-  i2v examples wire it before core's `MiniMaxH3ImageToVideo`, so a first frame is no longer stretched
-  onto 1344x768 (owner, 2026-10-01). Checked end to end:
-  `bench/results/2026-10-01_mutant_keyframe_canvas.md`. This pack's own i2v graphs need nothing:
-  `MiniMaxH3Conditioning`'s `canvas=from_keyframe` already runs the same geometry.
+- `docs/wiki/`: PDMD recorded where a session looks first.
+  - `references.md` lists `coderef/pdmd` and adds a trainer's inference script, with the scheduler it
+    pins, to what counts as a distill's contract.
+  - `decisions.md` logs the owner's two PDMD calls from 2026-10-01: full rank is the default, and the
+    4-step graph ships unrendered.
+  - `next_steps.md` names the first render as the owner's call.
 
-## 0.182.7
+## 0.183.1
+
+Committed as `30b82bb6` under the subject "0.182.7"; renumbered because 0.183.0 had landed first.
 
 ### Added
 
@@ -30,6 +31,18 @@ artifact.
 - `bench/check_distill_settings.py` grades every PDMD graph: one PDMD file on fl2va, applied at the
   call, base shift, `simple` at the file's step count (read from the header where it has one), no
   ManualSigmas, Euler, strength 1.0. A mutation control (the step count set to 5) goes red.
+
+## 0.183.0
+
+### Added
+
+- h3-mutant-distill 0.4.0: `H3KeyframeCanvas` (`standalone/h3_mutant_distill/keyframe_canvas.py`), a
+  trimmed port of this pack's retired `MiniMaxH3KeyframeCanvas`: the canvas from the first frame by
+  core's `adapt_canvas`, the image scaled to it, an aspect outside 1:4 to 4:1 refused. The two mutant
+  i2v examples wire it before core's `MiniMaxH3ImageToVideo`, so a first frame is no longer stretched
+  onto 1344x768 (owner, 2026-10-01). Checked end to end:
+  `bench/results/2026-10-01_mutant_keyframe_canvas.md`. This pack's own i2v graphs need nothing:
+  `MiniMaxH3Conditioning`'s `canvas=from_keyframe` already runs the same geometry.
 
 ## 0.182.6
 

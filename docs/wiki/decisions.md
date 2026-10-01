@@ -17,6 +17,19 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-01
 
+- **PDMD ships as `h3_text_to_video_pdmd`, unrendered** (owner, 2026-10-01: "Go for it"). It is PDMD
+  4-step on its trainer's contract: the full-rank file at the call, Euler on `simple` at 12/3, the
+  repo's Sol default. The 2-step file and kijai's two resizes are `distill_experiments/` probes, and
+  `check_distill_settings.py` grades all four. The first render is the owner's call (`30b82bb6`,
+  0.183.1).
+
+- **PDMD runs our full-rank conversion; kijai's rank-reduced files are the arm** (owner,
+  2026-10-01: "Sounds like we both agree"). Kijai's resize keeps a fixed share of each delta and less
+  where q/k/v hit his rank cap (`bench/results/2026-10-01_pdmd_{4,2}step_lora_conversion.json`).
+  Applied at the call, rank buys little speed (`bench/results/2026-10-01_lora_branch_profile.md`).
+  So the default carries the published delta exactly, as `FLASHGEN_R64_LORA` does for FlashGen
+  (`bench/convert_pdmd_lora.py`, `12cd81ad`, 0.182.6).
+
 - **h3-mutant-distill gains a second node, `H3KeyframeCanvas`** (owner, 2026-10-01: "I agree with
   your auto resize approaches"), so its i2v examples size the canvas from the first frame instead of
   stretching it. The pack's README no longer reads as one node only; `H3ExactLoRA` still loads every
