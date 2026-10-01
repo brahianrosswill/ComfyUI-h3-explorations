@@ -4,6 +4,14 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.184.4
+
+### Changed
+
+- The PDMD research note no longer says the first look's key is sealed, or that FlashGen and PDMD
+  graphs start Sol at 0.0. It now names the partial verdict record (eight of ten pairs scored) and
+  says that 0.2, the arms' setting, is the default again since 0.184.3.
+
 ## 0.184.3
 
 ### Changed

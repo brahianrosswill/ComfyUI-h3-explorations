@@ -282,8 +282,11 @@ not compare PDD, FlashGen or FastH3.
    - Manifest: `bench/pdmd_vs_flashgen_arms.json`. Rows:
      `bench/results/2026-10-01_pdmd_vs_flashgen.jsonl`.
    - Blind session `2026-10-01_pdmd_vs_flashgen`, scored on the pairs-only
-     page, with the key sealed.
-   - Since 0.184.1, FlashGen and PDMD graphs start Sol at 0.0, so a later
-     render is not a repeat of this one.
+     page. Eight of ten pairs were scored and joined with `--partial`
+     (`bench/results/2026-10-01_2026-10-01_pdmd_vs_flashgen_verdict.json`). The
+     owner's reading of the other two is pending.
+   - Sol `start_percent` 0.2 on every arm is the FlashGen and PDMD default
+     again since 0.184.3 (0.184.1 had moved it to 0.0 and was reverted), so a
+     later render at today's defaults repeats these settings.
 4. **Length.** The README's 14 s example at our canvas is a ready first scene
    (`coderef/pdmd/jobs/giant_cat_harbor_768p_4nfe.json`).
