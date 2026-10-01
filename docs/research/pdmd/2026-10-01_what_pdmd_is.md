@@ -15,7 +15,10 @@ Sources read:
   LFS sha256.
 
 Nothing was rendered. Every number lives in a record under `bench/results/`
-or in the paper, and is pointed at, not copied.
+or in the paper, and is pointed at, not copied. The visual version,
+[`pdmd_on_h3.html`](pdmd_on_h3.html), is published as a claude.ai artifact and
+charts the records directly. The board's `pdmd-lora` direction and findings
+`mo-01` to `mo-07` track the work.
 
 ## In one paragraph
 
@@ -149,6 +152,18 @@ the probe's own `LAYERS`.
   found").
 - **PDMD needs `MiniMaxH3LoRABranch`**, the route `h3_text_to_video_flashgen`
   already uses.
+- **Both at-the-call loaders take the files as they are.** `lora_branch.py`'s
+  `MiniMaxH3LoRABranch` and the mutant pack's `H3ExactLoRA`
+  (`standalone/h3_mutant_distill/exact_lora.py`) were each run on both files,
+  on CPU. Each loader's `parse_lora` places every module on a module of the
+  pruned fl2va checkpoint, at scale alpha / rank = 1, with no `diff_b`. `fc2`
+  takes the MLP path, as FlashGen's does. This is a parse and placement check,
+  not a render.
+- `MiniMaxH3OverlayLoader` (`overlay_loader.py`) is not a LoRA loader. It
+  loads a full research checkpoint stored as per-piece diffs on the released
+  one, which is how FastH3 V2 ships here. It would matter for PDMD only if
+  `pdmd_4NFE_full` became an overlay. Its backbone diff is stored as int8
+  codes, so the same requantisation question would apply to it.
 
 The probe measured kijai's reduced deltas, which are slightly smaller than the
 published ones, so the full-rank files would fare no better.

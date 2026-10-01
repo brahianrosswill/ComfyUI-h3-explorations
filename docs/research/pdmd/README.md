@@ -9,6 +9,9 @@ conversions are the files that brought it here.
   LoRAs are, how they were trained, their sampling contract in ComfyUI terms,
   whether kijai's conversion is faithful, why they load at the call, and why
   FlashGen is the closest sibling. Ends with the open work, in order.
+- [`pdmd_on_h3.html`](pdmd_on_h3.html): the same note as a visual page. It is
+  published as a claude.ai artifact with the three records as its data files,
+  so its charts read the records and carry no copies of the numbers.
 
 Sources:
 - the paper: `internal/refs/pdmd/2609.35768v1.pdf`, gitignored;

@@ -4,6 +4,21 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.182.5
+
+### Added
+
+- `docs/research/pdmd/pdmd_on_h3.html`: the PDMD note as a visual page, published as a claude.ai
+  artifact. The three 2026-10-01 PDMD records are its data files, so its charts read the records.
+  The H3 Distill Board gained a `pdmd` topic, the `pdmd-lora` direction and findings `mo-01` to
+  `mo-07`.
+
+### Changed
+
+- `docs/research/pdmd/2026-10-01_what_pdmd_is.md`: both at-the-call loaders, `MiniMaxH3LoRABranch`
+  and the mutant pack's `H3ExactLoRA`, take both PDMD files as they are (a CPU parse and placement
+  check, not a render). `MiniMaxH3OverlayLoader` is for checkpoint overlays, not LoRAs.
+
 ## 0.182.4
 
 ### Changed

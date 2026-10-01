@@ -1,0 +1,377 @@
+<title>PDMD on H3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column with full-width figures; a facts strip up top answers the four
+   questions before any prose. Colour carries identity: teal is PDMD (4-step solid, 2-step light),
+   amber is FlashGen, violet is PDD. */
+:root {
+  --paper: #F2F4F5;
+  --sheet: #FFFFFF;
+  --ink: #16212B;
+  --muted: #56636F;
+  --rule: #D5DCE1;
+  --pdmd: #0B7480;
+  --pdmd-2: #5FB3BA;
+  --flash: #B26B12;
+  --pdd: #6A55A8;
+  --ok: #2E7A4B;
+  --warn: #A3441F;
+  --tint: #E4F0F1;
+  --display: "Familjen Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --body: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0F151A; --sheet: #161E25; --ink: #E3E9EE; --muted: #97A5B1; --rule: #2A3540;
+    --pdmd: #4FC1CC; --pdmd-2: #2E7F87; --flash: #E3A050; --pdd: #A897E6; --ok: #6CC28E; --warn: #EE8A63; --tint: #17303A;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0F151A; --sheet: #161E25; --ink: #E3E9EE; --muted: #97A5B1; --rule: #2A3540;
+  --pdmd: #4FC1CC; --pdmd-2: #2E7F87; --flash: #E3A050; --pdd: #A897E6; --ok: #6CC28E; --warn: #EE8A63; --tint: #17303A;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 17px; line-height: 1.6; }
+.wrap { max-width: 980px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 72px; display: grid; gap: 40px; }
+h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; line-height: 1.15; }
+h1 { font-size: clamp(34px, 6vw, 52px); font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: 26px; font-weight: 600; }
+h3 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+p { margin: 0; max-width: 68ch; }
+code { font-family: var(--mono); font-size: 0.8em; background: var(--tint); border-radius: 3px; padding: 0 4px; overflow-wrap: anywhere; }
+a { color: var(--pdmd); }
+:focus-visible { outline: 2px solid var(--pdmd); outline-offset: 2px; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em; color: var(--muted); }
+header { display: grid; gap: 12px; }
+.dek { font-size: 20px; color: var(--muted); max-width: 60ch; }
+
+.facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 3px solid var(--ink); border-bottom: 1px solid var(--rule); }
+.fact { padding: 12px 14px 14px 0; display: grid; gap: 4px; align-content: start; min-width: 0; }
+.fact + .fact { padding-left: 14px; border-left: 1px solid var(--rule); }
+.fact b { font-family: var(--display); font-size: 19px; font-weight: 600; line-height: 1.2; }
+.fact span { font-size: 14px; color: var(--muted); line-height: 1.4; }
+
+section { display: grid; gap: 14px; }
+.sec-head { display: grid; gap: 4px; }
+figure { margin: 0; background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; padding: 16px; display: grid; gap: 10px; min-width: 0; }
+figcaption { font-size: 14px; color: var(--muted); line-height: 1.45; max-width: 80ch; }
+.chart { width: 100%; overflow-x: auto; }
+.chart svg { display: block; width: 100%; height: auto; min-width: 560px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 18px; height: 3px; vertical-align: middle; margin-right: 6px; border-radius: 2px; }
+.legend i.dot { width: 9px; height: 9px; border-radius: 50%; }
+
+.two { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.eq { font-family: var(--mono); font-size: 15px; background: var(--tint); border-left: 3px solid var(--pdmd); padding: 10px 14px; overflow-x: auto; white-space: nowrap; }
+dl.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 18px; margin: 0; font-size: 16px; }
+dl.kv dt { font-family: var(--mono); font-size: 12px; color: var(--muted); padding-top: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+dl.kv dd { margin: 0; min-width: 0; }
+
+.checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.checks li { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 8px; align-items: start; }
+.mark { font-family: var(--mono); font-size: 12px; font-weight: 500; text-align: center; border-radius: 3px; padding: 1px 0; }
+.mark.ok { color: var(--ok); border: 1px solid var(--ok); }
+.mark.no { color: var(--warn); border: 1px solid var(--warn); }
+
+.tbl { overflow-x: auto; border: 1px solid var(--rule); border-radius: 6px; background: var(--sheet); }
+table { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 15px; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-family: var(--display); font-weight: 600; font-size: 15px; }
+thead th { font-family: var(--mono); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+tr:last-child td, tr:last-child th { border-bottom: 0; }
+td.hl, th.hl { background: var(--tint); }
+.same { color: var(--ok); }
+.diff { color: var(--warn); }
+
+ol.steps { margin: 0; padding-left: 22px; display: grid; gap: 8px; max-width: 70ch; }
+ul.plain { margin: 0; padding-left: 20px; display: grid; gap: 8px; max-width: 70ch; }
+.note { font-size: 14px; color: var(--muted); }
+footer { border-top: 1px solid var(--rule); padding-top: 16px; display: grid; gap: 6px; font-size: 14px; color: var(--muted); }
+
+@media (max-width: 760px) {
+  body { font-size: 16px; }
+  .facts { grid-template-columns: 1fr 1fr; }
+  .fact:nth-child(3) { padding-left: 0; border-left: 0; }
+  .fact:nth-child(n+3) { border-top: 1px solid var(--rule); }
+  .two { grid-template-columns: 1fr; }
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Research note · 2026-10-01 · docs/research/pdmd/</span>
+    <h1>PDMD on H3</h1>
+    <p class="dek">Kijai's two rank-reduced distill LoRAs: what they are, how they were made, whether the conversion is faithful, and which of our distills they sit next to.</p>
+  </header>
+
+  <div class="facts" role="list">
+    <div class="fact" role="listitem"><span>Base</span><b>fl2va, bit for bit</b><span>trained on the release's <code>transformer/</code></span></div>
+    <div class="fact" role="listitem"><span>Sampling</span><b>Euler · simple · 12/3</b><span>4 or 2 steps, no CFG, no ManualSigmas</span></div>
+    <div class="fact" role="listitem"><span>Loading</span><b>At the call</b><span>a merge into int8 loses most of it</span></div>
+    <div class="fact" role="listitem"><span>Closest sibling</span><b>FlashGen</b><span>same family, form, sampler and loader</span></div>
+  </div>
+
+  <section id="method">
+    <div class="sec-head"><h3>The method</h3><h2>DMD, with one line changed</h2></div>
+    <div class="two">
+      <div style="display:grid;gap:12px">
+        <p>DMD trains a few-step student by pushing its outputs along the difference between two scores: an online critic trained on the student's own re-noised outputs, and the frozen teacher. PDMD keeps all of that. It removes the part of the update that points along <em>r</em>, the gap between the critic's and the student's clean-image estimates, which the paper argues is an unbiased estimate of the critic's own error.</p>
+        <div class="eq">d ← d − (⟨d, r⟩ / ‖r‖²) · r</div>
+        <p class="note">Paper Sec 3.2, Eq. 4 and Algorithm 1. No GAN, no regression loss, no extra network or model pass. On H3 it is applied per sample, to the video and audio latents separately (App. C.2).</p>
+      </div>
+      <figure aria-label="Vector diagram of the projection">
+        <svg viewBox="0 0 320 210" role="img" aria-label="The update d split into a part along r, which is removed, and the perpendicular part that is kept">
+          <defs>
+            <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill: context-stroke"></path></marker>
+          </defs>
+          <line x1="40" y1="170" x2="290" y2="170" style="stroke: var(--rule); stroke-width: 1"></line>
+          <line x1="40" y1="170" x2="250" y2="170" style="stroke: var(--muted); stroke-width: 2.5" marker-end="url(#ah)"></line>
+          <text x="256" y="190" style="fill: var(--muted); font: 500 13px var(--mono)">r</text>
+          <line x1="40" y1="170" x2="190" y2="50" style="stroke: var(--ink); stroke-width: 2.5" marker-end="url(#ah)"></line>
+          <text x="104" y="96" style="fill: var(--ink); font: 500 13px var(--mono)">d</text>
+          <line x1="190" y1="50" x2="190" y2="170" style="stroke: var(--rule); stroke-width: 1.5; stroke-dasharray: 4 4"></line>
+          <line x1="40" y1="170" x2="190" y2="170" style="stroke: var(--warn); stroke-width: 4; opacity: 0.55"></line>
+          <text x="80" y="160" style="fill: var(--warn); font: 500 12px var(--mono)">removed</text>
+          <line x1="40" y1="170" x2="40" y2="54" style="stroke: var(--pdmd); stroke-width: 3" marker-end="url(#ah)"></line>
+          <text x="48" y="44" style="fill: var(--pdmd); font: 600 13px var(--mono)">d⊥ (kept)</text>
+        </svg>
+        <figcaption>The kept update is the part of d perpendicular to r.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section id="training">
+    <div class="sec-head"><h3>How the H3 students were trained</h3><h2>A LoRA on the base, from prompts alone</h2></div>
+    <dl class="kv">
+      <dt>Teacher</dt><dd>Frozen H3, sampled without CFG because it is guidance-distilled (App. C.2; Table C1).</dd>
+      <dt>Student</dt><dd>A LoRA on every block's and token-refiner block's attention projections and both FFN layers. No adaLN, no proj_in or proj_out. The critic is a LoRA too.</dd>
+      <dt>Data</dt><dd>VidProM prompts only, no real video (Table C1).</dd>
+      <dt>Clip</dt><dd>5 s at 544p, in training and in the paper's evaluation.</dd>
+      <dt>4-step file</dt><dd><code>global_step_3500</code> of run <code>pdmd-zwang000</code>: the checkpoint the paper scores.</dd>
+      <dt>2-step file</dt><dd>Step 4000, extracted from a three-role fp32 checkpoint. Its <code>base_check</code> shows the base was frozen, so this LoRA was trained directly, not extracted from a full finetune.</dd>
+      <dt>Full weights</dt><dd><code>pdmd_4NFE_full</code>, a 66 GB drop-in <code>transformer/</code>, is the same 4-step model. Not downloaded.</dd>
+    </dl>
+  </section>
+
+  <section id="contract">
+    <div class="sec-head"><h3>The sampling contract</h3><h2>ComfyUI's own schedule, exactly</h2></div>
+    <p>The trainer runs diffusers' <code>MiniMaxH3Scheduler</code>: Euler with no re-noising, a grid of <code>shift(linspace(1, 0, N+1))</code> at the base shifts, no guidance. ComfyUI's <code>simple</code> scheduler at shift 12 gives the same sigmas bit for bit at 4 and at 2 steps. So a PDMD graph is <code>DISTILL_SAMPLING</code> plus <code>SIGMA_SHIFT</code> and a step count. FlashGen is the one distill here that needs its own list.</p>
+    <figure>
+      <div class="legend" id="sig-legend"></div>
+      <div class="chart" id="sig-chart"></div>
+      <figcaption>Video sigmas each schedule evaluates, on the noise axis (1 is pure noise). Every distill spends most of its steps near 1, so the final jump decides the most. PDMD and PDD8 are computed here from the scheduler's formula. FlashGen is <code>h3_config.FLASHGEN_MANUAL_SIGMAS</code>. PDMD's 4-step grid is the PDD4 grid.</figcaption>
+    </figure>
+  </section>
+
+  <section id="conversion">
+    <div class="sec-head"><h3>Kijai's conversion</h3><h2>The right layout, a fixed share of each delta</h2></div>
+    <p>Kijai fused q, k and v block-diagonally into <code>qkv_proj</code>, swapped the SwiGLU halves of <code>fc1</code>, folded alpha into B, then resized every module by SVD. The resize keeps the share of energy his <code>sv_fro</code> setting asks for and caps the rank at 128. <code>bench/measure_pdmd_lora_conversion.py</code> checks it against the published files, which we downloaded and matched against Hugging Face's checksums.</p>
+    <ul class="checks">
+      <li><span class="mark ok">yes</span><span>The release's <code>transformer/</code> equals <code>FL2VA/transformer</code> exactly and differs from <code>Ref2VA/transformer</code>.</span></li>
+      <li><span class="mark ok">yes</span><span>q, k and v concatenated, and <code>fc1</code> swapped, match the pruned fl2va checkpoint row for row at int8 noise.</span></li>
+      <li><span class="mark no">no</span><span>Control: <code>fc1</code> unswapped matches neither the base weights nor kijai's delta, so the check can tell the two apart.</span></li>
+      <li><span class="mark ok">yes</span><span>Kijai's delta is a strict part of the published one: its norm ratio equals its cosine. What is dropped is the tail; nothing is rotated.</span></li>
+    </ul>
+    <figure>
+      <div class="legend" id="fid-legend"></div>
+      <div class="chart" id="fid-chart"><p class="note">Loading the records…</p></div>
+      <figcaption>Cosine between kijai's delta and the published one, per DiT block. Off the rank cap, every module sits at the share <code>sv_fro</code> asks for (the dashed line). The q/k/v modules that hit the rank-128 cap (filled dots) lose more; the 4-step file has more of them. The band covers out_proj, fc1 and fc2 in both files. Read from <code>bench/results/2026-10-01_pdmd_{4,2}step_lora_conversion.json</code>.</figcaption>
+    </figure>
+  </section>
+
+  <section id="loading">
+    <div class="sec-head"><h3>Loading on our checkpoint</h3><h2>Apply it at the call</h2></div>
+    <p>On the int8 convrot checkpoint, <code>LoraLoaderModelOnly</code> merges a LoRA by dequantising, adding and requantising. A delta smaller than one int8 step survives only as rounding noise. PDMD's deltas are larger than FlashGen's but still under one step everywhere sampled, so PDMD needs <code>MiniMaxH3LoRABranch</code>, the loader <code>h3_text_to_video_flashgen</code> uses. Both it and the mutant pack's <code>H3ExactLoRA</code> parse both files as they are: every module finds its target, at scale 1.0. There's no adaLN in the LoRA, so the pruned checkpoint's adaLN basis trap does not come up.</p>
+    <figure>
+      <div class="legend" id="rq-legend"></div>
+      <div class="chart" id="rq-chart"><p class="note">Loading the record…</p></div>
+      <figcaption>Each LoRA's mean delta, in units of the layer's int8 step, at the layers the probe samples (log scale). Right of the line, a merge would keep the delta. Read from <code>bench/results/2026-10-01_pdmd_int8_lora_requant.json</code> (<code>bench/probe_int8_lora_requant.py</code>, CPU).</figcaption>
+    </figure>
+  </section>
+
+  <section id="sibling">
+    <div class="sec-head"><h3>Closest sibling</h3><h2>FlashGen</h2></div>
+    <p>FlashGen matches PDMD on everything that decides how a distill is run and loaded. The real differences are the schedule, adaLN and the training canvas. FastH3 V2 shares the DMD name but differs on five axes. The paper's own nearest relative is its DMD† baseline, PDMD without the projection.</p>
+    <div class="tbl">
+      <table>
+        <thead><tr><th></th><th class="hl">PDMD</th><th>FlashGen</th><th>FastH3 V2</th><th>PDD</th></tr></thead>
+        <tbody>
+          <tr><th>objective</th><td class="hl">DMD + projection, no GAN</td><td class="same">VSD, no GAN</td><td>DMD2 with VSA</td><td class="diff">trajectory heads</td></tr>
+          <tr><th>target</th><td class="hl">distribution</td><td class="same">distribution</td><td class="same">distribution</td><td class="diff">teacher's path</td></tr>
+          <tr><th>data</th><td class="hl">prompts only</td><td class="same">data-free</td><td>per FastVideo</td><td>per alibaba-pai</td></tr>
+          <tr><th>form</th><td class="hl">LoRA, attn + FFN</td><td>LoRA, attn + FFN + adaLN</td><td class="diff">full weights</td><td>LoRA + heads + adaLN</td></tr>
+          <tr><th>steps</th><td class="hl">4 or 2</td><td class="same">4</td><td class="diff">8</td><td>8, 6 or 4</td></tr>
+          <tr><th>schedule</th><td class="hl"><code>simple</code> at 12/3</td><td>own list at 12/3</td><td class="diff">own list at shift 10</td><td>fused 32-point grid</td></tr>
+          <tr><th>sampler</th><td class="hl">Euler</td><td class="same">Euler</td><td class="same">Euler</td><td class="same">Euler</td></tr>
+          <tr><th>training clip</th><td class="hl">544p, 5 s</td><td>1344x768, 5.2 s</td><td>per FastVideo</td><td>per alibaba-pai</td></tr>
+          <tr><th>loads here</th><td class="hl">at the call</td><td class="same">at the call</td><td class="diff">checkpoint</td><td class="diff">MiniMaxH3PDDLoRA</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Green: same as PDMD. Orange: a difference that changes how it is run. The paper compares the larryvrh Turbo LoRA, which is our retired <code>turbo_v4_step600_ema</code> (history only), and not PDD, FlashGen or FastH3.</p>
+  </section>
+
+  <section id="mismatches">
+    <div class="sec-head"><h3>What does not line up</h3><h2>Four things to keep in mind</h2></div>
+    <ul class="plain">
+      <li><b>The released 2-step is not the one the paper scored.</b> Table D2 reports an earlier iteration than the file's step 4000.</li>
+      <li><b>Critic updates per student update.</b> The 2-step model card says 6:1, but the paper's H3 setup gives a different count. Perhaps the same schedule counted two ways; this is unverified.</li>
+      <li><b>Partition.</b> The paper never names one. The README says FL2VA/T2VA, and the bit check confirms it.</li>
+      <li><b>Canvas and length.</b> Trained and scored at 544p and 5 s. We render 1344x768 at 345 frames. The trainer's own example jobs use our canvas, but the paper's scores don't cover it. FlashGen has the same length gap.</li>
+    </ul>
+  </section>
+
+  <section id="next">
+    <div class="sec-head"><h3>Open work, in order</h3><h2>Nothing is rendered yet</h2></div>
+    <ol class="steps">
+      <li><b>A graph.</b> <code>h3_text_to_video_pdmd</code> and a 2-step twin from the generator: the FlashGen t2v graph with the LoRA swapped and <code>simple</code> at 4 or 2 steps, <code>MiniMaxH3LoRABranch</code> at 1.0. <code>check_distill_settings.py</code> taught the files.</li>
+      <li><b>Full-rank conversions</b>, the arm that says whether kijai's resize shows in a render.</li>
+      <li><b>A blind comparison against FlashGen</b>, judged on content-independent axes, because seed-matched clips from two distills are different scenes.</li>
+      <li><b>Length.</b> The trainer's 14 s harbour-cat job at our canvas is a ready first scene.</li>
+    </ol>
+  </section>
+
+  <footer>
+    <span>Sources: the paper (arXiv 2609.35768v1), the trainer's repo <code>coderef/pdmd</code>, the pdmd2026 model cards and sidecars, and the published LoRA files.</span>
+    <span>Write-up: <code>docs/research/pdmd/2026-10-01_what_pdmd_is.md</code>. Board: the <code>pdmd-lora</code> direction, findings <code>mo-01</code> to <code>mo-07</code>.</span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var NS = "http://www.w3.org/2000/svg";
+  function el(tag, attrs, text) {
+    var n = document.createElementNS(NS, tag);
+    for (var k in attrs) n.setAttribute(k, attrs[k]);
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function legend(id, items) {
+    document.getElementById(id).innerHTML = items.map(function (it) {
+      return '<span><i class="' + (it.dot ? "dot" : "") + '" style="background:var(' + it.c + ')' + (it.dash ? ';background:repeating-linear-gradient(90deg,var(' + it.c + ') 0 4px,transparent 4px 7px)' : "") + '"></i>' + it.t + "</span>";
+    }).join("");
+  }
+  var TXT = "fill: var(--muted); font: 400 12px var(--mono)";
+
+  // ---------- sigma schedules ----------
+  function shifted(n, s) {
+    var out = [];
+    for (var i = 0; i <= n; i++) { var b = 1 - i / n; out.push(s * b / (1 + (s - 1) * b)); }
+    return out;
+  }
+  var SCHED = [
+    { name: "PDMD 4-step", c: "--pdmd", v: shifted(4, 12) },
+    { name: "PDMD 2-step", c: "--pdmd-2", v: shifted(2, 12) },
+    { name: "FlashGen", c: "--flash", v: [1.0, 0.965517, 0.888889, 0.679245, 0.0] },
+    { name: "PDD8", c: "--pdd", v: shifted(8, 12) }
+  ];
+  (function () {
+    var W = 860, L = 120, R = 24, T = 18, rowH = 44, H = T + SCHED.length * rowH + 34;
+    var x = function (s) { return L + (1 - s) * (W - L - R); };
+    var svg = el("svg", { viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": "Sigma grids for PDMD 4 and 2 step, FlashGen and PDD8" });
+    [1, 0.8, 0.6, 0.4, 0.2, 0].forEach(function (t) {
+      svg.appendChild(el("line", { x1: x(t), x2: x(t), y1: T - 6, y2: H - 28, style: "stroke: var(--rule); stroke-width: 1" }));
+      svg.appendChild(el("text", { x: x(t), y: H - 10, "text-anchor": "middle", style: TXT }, t.toFixed(1)));
+    });
+    SCHED.forEach(function (sc, i) {
+      var y = T + i * rowH + rowH / 2;
+      svg.appendChild(el("text", { x: 0, y: y + 4, style: "fill: var(--ink); font: 500 13px var(--mono)" }, sc.name));
+      for (var j = 0; j < sc.v.length - 1; j++) {
+        svg.appendChild(el("line", { x1: x(sc.v[j]), x2: x(sc.v[j + 1]), y1: y, y2: y, style: "stroke: var(" + sc.c + "); stroke-width: 6; stroke-linecap: butt; opacity: " + (j % 2 ? 0.55 : 1) }));
+      }
+      sc.v.forEach(function (s, j) {
+        if (j === sc.v.length - 1) return;
+        svg.appendChild(el("circle", { cx: x(s), cy: y, r: 4.5, style: "fill: var(--sheet); stroke: var(" + sc.c + "); stroke-width: 2" }));
+      });
+      svg.appendChild(el("circle", { cx: x(0), cy: y, r: 3, style: "fill: var(--muted)" }));
+    });
+    svg.appendChild(el("text", { x: W - R, y: T - 8 + 0, "text-anchor": "end", style: TXT }, "clean →"));
+    svg.appendChild(el("text", { x: L, y: T - 8, style: TXT }, "← noise"));
+    document.getElementById("sig-chart").appendChild(svg);
+    legend("sig-legend", [{ c: "--pdmd", t: "PDMD 4-step" }, { c: "--pdmd-2", t: "PDMD 2-step" }, { c: "--flash", t: "FlashGen" }, { c: "--pdd", t: "PDD8" }]);
+  })();
+
+  // ---------- conversion fidelity ----------
+  function fidelity(r4, r2) {
+    var W = 860, L = 56, R = 18, T = 14, H = 300, B = 36;
+    var y0 = 0.93, y1 = 0.98;
+    var x = function (b) { return L + b / 49 * (W - L - R); };
+    var y = function (v) { return T + (y1 - Math.max(y0, Math.min(y1, v))) / (y1 - y0) * (H - T - B); };
+    var svg = el("svg", { viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": "Per-block cosine of kijai's delta against the published one" });
+    for (var t = 0.93; t <= 0.9801; t += 0.01) {
+      svg.appendChild(el("line", { x1: L, x2: W - R, y1: y(t), y2: y(t), style: "stroke: var(--rule); stroke-width: 1" }));
+      svg.appendChild(el("text", { x: L - 8, y: y(t) + 4, "text-anchor": "end", style: TXT }, t.toFixed(2)));
+    }
+    [0, 10, 20, 30, 40, 49].forEach(function (b) { svg.appendChild(el("text", { x: x(b), y: H - 14, "text-anchor": "middle", style: TXT }, b)); });
+    svg.appendChild(el("text", { x: W - R, y: H - 0, "text-anchor": "end", style: TXT }, "DiT block"));
+    var lo = [], hi = [];
+    for (var b = 0; b < 50; b++) {
+      var vals = [];
+      [r4, r2].forEach(function (r) { ["attn.out_proj", "mlp.fc1", "mlp.fc2"].forEach(function (k) { var m = r.fidelity_per_module["blocks." + b + "." + k]; if (m) vals.push(m.cosine); }); });
+      lo.push(Math.min.apply(null, vals)); hi.push(Math.max.apply(null, vals));
+    }
+    var band = hi.map(function (v, b) { return x(b) + "," + y(v); }).concat(lo.slice().reverse().map(function (v, i) { return x(49 - i) + "," + y(v); }));
+    svg.appendChild(el("polygon", { points: band.join(" "), style: "fill: var(--muted); opacity: 0.18" }));
+    svg.appendChild(el("line", { x1: L, x2: W - R, y1: y(0.97), y2: y(0.97), style: "stroke: var(--ink); stroke-width: 1; stroke-dasharray: 5 4" }));
+    svg.appendChild(el("text", { x: L + 6, y: y(0.97) - 6, style: "fill: var(--ink); font: 500 12px var(--mono)" }, "sv_fro"));
+    [[r2, "--pdmd-2"], [r4, "--pdmd"]].forEach(function (pair) {
+      var r = pair[0], c = pair[1], pts = [];
+      for (var b = 0; b < 50; b++) { var m = r.fidelity_per_module["blocks." + b + ".attn.qkv_proj"]; if (m) pts.push([b, m]); }
+      svg.appendChild(el("polyline", { points: pts.map(function (p) { return x(p[0]) + "," + y(p[1].cosine); }).join(" "), style: "fill: none; stroke: var(" + c + "); stroke-width: 2" }));
+      pts.forEach(function (p) {
+        var cap = p[1].kijai_rank >= 128;
+        var dot = el("circle", { cx: x(p[0]), cy: y(p[1].cosine), r: cap ? 4.5 : 3, style: cap ? "fill: var(" + c + ")" : "fill: var(--sheet); stroke: var(" + c + "); stroke-width: 1.5" });
+        dot.appendChild(el("title", {}, "block " + p[0] + " qkv: cosine " + p[1].cosine.toFixed(4) + ", rank " + p[1].kijai_rank));
+        svg.appendChild(dot);
+      });
+    });
+    var box = document.getElementById("fid-chart"); box.innerHTML = ""; box.appendChild(svg);
+    legend("fid-legend", [{ c: "--pdmd", t: "4-step q/k/v" }, { c: "--pdmd-2", t: "2-step q/k/v" }, { c: "--pdmd", t: "at rank cap", dot: true }, { c: "--muted", t: "other modules (band)" }, { c: "--ink", t: "sv_fro", dash: true }]);
+  }
+
+  // ---------- int8 requant ----------
+  function requant(rq) {
+    var LORAS = [["pdmd_4step", "--pdmd", "PDMD 4-step"], ["pdmd_2step", "--pdmd-2", "PDMD 2-step"], ["flashgen", "--flash", "FlashGen"]];
+    var layers = []; rq.rows.forEach(function (r) { if (layers.indexOf(r.layer) < 0) layers.push(r.layer); });
+    var W = 860, L = 190, R = 24, T = 14, rowH = 24, H = T + layers.length * rowH + 40;
+    var lmin = Math.log10(0.002), lmax = Math.log10(2);
+    var x = function (v) { return L + (Math.log10(Math.max(v, 0.002)) - lmin) / (lmax - lmin) * (W - L - R); };
+    var svg = el("svg", { viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": "LoRA delta over int8 step per layer, log scale" });
+    [0.003, 0.01, 0.03, 0.1, 0.3, 1].forEach(function (t) {
+      svg.appendChild(el("line", { x1: x(t), x2: x(t), y1: T - 4, y2: H - 30, style: "stroke: var(--rule); stroke-width: 1" }));
+      svg.appendChild(el("text", { x: x(t), y: H - 12, "text-anchor": "middle", style: TXT }, t));
+    });
+    svg.appendChild(el("line", { x1: x(1), x2: x(1), y1: T - 4, y2: H - 30, style: "stroke: var(--warn); stroke-width: 2" }));
+    svg.appendChild(el("text", { x: x(1) + 6, y: T + 8, style: "fill: var(--warn); font: 500 12px var(--mono)" }, "one step"));
+    layers.forEach(function (ly, i) {
+      var yy = T + i * rowH + rowH / 2;
+      if (i % 4 === 0 && i) svg.appendChild(el("line", { x1: 0, x2: W - R, y1: yy - rowH / 2, y2: yy - rowH / 2, style: "stroke: var(--rule); stroke-width: 1" }));
+      svg.appendChild(el("text", { x: 0, y: yy + 4, style: "fill: var(--ink); font: 400 12px var(--mono)" }, ly));
+      LORAS.forEach(function (lo) {
+        rq.rows.forEach(function (r) {
+          if (r.layer !== ly || r.lora.indexOf(lo[0] === "flashgen" ? "flashgen" : lo[0].replace("_", "_")) < 0) return;
+          if (lo[0] === "pdmd_4step" && r.lora.indexOf("pdmd_4step") < 0) return;
+          if (lo[0] === "pdmd_2step" && r.lora.indexOf("pdmd_2step") < 0) return;
+          var dot = el("circle", { cx: x(r.delta_over_step), cy: yy, r: 5, style: "fill: var(" + lo[1] + "); stroke: var(--sheet); stroke-width: 1.5" });
+          dot.appendChild(el("title", {}, lo[2] + " " + ly + ": " + r.delta_over_step + " of a step"));
+          svg.appendChild(dot);
+        });
+      });
+    });
+    var box = document.getElementById("rq-chart"); box.innerHTML = ""; box.appendChild(svg);
+    legend("rq-legend", LORAS.map(function (l) { return { c: l[1], t: l[2], dot: true }; }));
+  }
+
+  function get(u) { return fetch(u).then(function (r) { if (!r.ok) throw new Error(u); return r.json(); }); }
+  Promise.all([get("data/pdmd_4step_lora_conversion.json"), get("data/pdmd_2step_lora_conversion.json")])
+    .then(function (a) { fidelity(a[0], a[1]); }, function () { document.getElementById("fid-chart").innerHTML = '<p class="note">The conversion records did not load. Reload the page.</p>'; });
+  get("data/pdmd_int8_lora_requant.json")
+    .then(requant, function () { document.getElementById("rq-chart").innerHTML = '<p class="note">The requant record did not load. Reload the page.</p>'; });
+})();
+</script>
