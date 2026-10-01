@@ -4,6 +4,23 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.182.3
+
+### Added
+
+- `docs/research/pdmd/`: what kijai's two PDMD LoRAs (4-step and 2-step) are. They are DMD with a
+  one-line projection, trained as a LoRA on the base `transformer/`, which is the fl2va partition
+  bit for bit. Their contract is plain Euler on ComfyUI's `simple` schedule at the base shifts, no
+  CFG. They must be applied at the call, and FlashGen is the closest sibling. No graph yet.
+- `bench/measure_pdmd_lora_conversion.py`: checks a ComfyUI-layout PDMD LoRA against the published
+  file. It verifies the q/k/v fuse and the `fc1` swap on the base weights, with unswapped and ref2va
+  controls, and measures each module's delta against the published one. Records:
+  `bench/results/2026-10-01_pdmd_{4,2}step_lora_conversion.json`. Kijai's layout is right, and the
+  resize keeps the fraction its `sv_fro` asks for, except where q/k/v hit the rank cap.
+- `bench/results/2026-10-01_pdmd_int8_lora_requant.json`: `bench/probe_int8_lora_requant.py` on both
+  PDMD files and FlashGen's. The PDMD deltas are larger than FlashGen's but still sub-step, so a
+  merge would lose most of them.
+
 ## 0.182.2
 
 ### Added
