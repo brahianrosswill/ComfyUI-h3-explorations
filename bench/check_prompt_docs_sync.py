@@ -111,7 +111,7 @@ def text_of(page: str) -> str:
 # fence that moved -- every downstream comparison would agree with the wrong
 # parse and stay green forever. Derivation cannot catch a MISREADING.
 #
-# So these three are transcribed BY HAND from base_en.md lines 16, 22 and 28,
+# So these three are transcribed BY HAND from base_en.md lines 19, 25 and 31 (the fenced strings under each "always uses"),
 # read directly rather than copied from the parser's output, and asserted equal
 # to what the parser produces. Two independent readings that can disagree.
 # Borrowed from a sister project whose reference contract states the principle:
@@ -534,6 +534,94 @@ def snapshots() -> int:
     return bad
 
 
+
+# THE RULES A COPY CAN INVERT WITHOUT GOING RED.
+#
+# Everything above pins the copies' exact-match strings: the Part One lines, the
+# camera table, the worked examples, three guide quotations. None of that sees a
+# PROSE rule. An in-memory mutation on 2026-10-01 inverted the timestamp rule,
+# flipped the unison rule and reversed "characters who never vocalise receive no
+# ID" in both copies, and every one stayed green. Prose is not checkable in
+# general, and this does not pretend to check it. It pins the load-bearing
+# SENTENCE of each rule that has been wrong, mislabelled or contested, in the
+# manual and in both copies, so that rewording or inverting one fails here and
+# a maintainer re-syncs all three on purpose. Matching is on lowercased,
+# whitespace-collapsed text. A rule belongs in this table when a copy of it has
+# drifted once; it does not need to cover the whole standard.
+RULE_PINS = [
+    ("no timestamp on a shot header",
+     {"manual": "shot headers carry no timestamps",
+      "system": "no shot header carries a timestamp",
+      "page": "no shot header carries a timestamp"}),
+    ("that rule is the owner's, dated",
+     {"manual": "owner rule since 2026-09-18",
+      "system": "[owner, 2026-09-18]",
+      "page": "owner \u00b7 2026-09-18"}),
+    ("a compound id is a line said in unison",
+     {"manual": "say the line in unison",
+      "system": "speak the line in unison",
+      "page": "say the line in unison"}),
+    ("a character who never vocalises gets no id",
+     {"manual": "characters who never vocalise receive no speaker id",
+      "system": "characters who never vocalise get no id",
+      "page": "characters who never vocalise receive no id"}),
+    ("the silent-character phrase is for one who never vocalises in the clip",
+     {"manual": "never vocalises in the clip",
+      "system": "never vocalises in the clip",
+      "page": "never vocalises in the clip"}),
+    ("the mouth-closing cue is positional",
+     {"manual": "the pattern is positional",
+      "system": "do not do this when the line is the last thing in the shot",
+      "page": "never when the line ends the shot"}),
+    ("N/A is a decision about the scene, not a default",
+     {"manual": "is a decision about that scene, not a default",
+      "system": "that is a judgement about this video, not a habit",
+      "page": "it is a statement about the scene, not a default"}),
+    ("ordinary cinematography wording is acceptable (the owner's ruling)",
+     {"manual": "camera wording that aligns with common cinematography is acceptable",
+      "system": "ordinary cinematography vocabulary outside that list is acceptable",
+      "page": "terms outside the table are fine"}),
+    ("a listener takes no speaker id",
+     {"manual": "a listener never takes a speaker id",
+      "system": "a listener never takes a speaker id",
+      "page": "give the listener no id"}),
+    ("every action has an agent",
+     {"manual": "an action with no agent",
+      "system": "give every action an agent",
+      "page": "say who does each event"}),
+    ("pin what the scene turns on and leave the rest to the model",
+     {"manual": "pick the most important ones and let the model guide the rest",
+      "system": "pin what the scene turns on",
+      "page": "pick what the scene turns on and let the model carry the rest"}),
+    ("who is on screen and how long the script runs are not left open",
+     {"manual": "who is on screen, and how long the script runs",
+      "system": "do not leave open who is on screen or how long the script runs",
+      "page": "not who is on screen and not how long the script runs"}),
+]
+
+
+def pin_failures(texts: dict[str, str], pins=RULE_PINS) -> list[str]:
+    """Which pinned sentences are missing from which document. `texts` maps
+    "manual", "system" and "page" to their text; a pure function so the check
+    can be shown red on a mutated copy."""
+    low = {k: flat(v).lower() for k, v in texts.items()}
+    out = []
+    for label, phrases in pins:
+        for doc, phrase in phrases.items():
+            if flat(phrase).lower() not in low[doc]:
+                out.append(f"{label}: the {doc} no longer says {phrase!r}")
+    return out
+
+
+def rule_pins(manual: str, prose: str, system: str) -> int:
+    missing = pin_failures({"manual": manual, "system": system, "page": prose})
+    for m in missing:
+        print(f"  FAIL  pinned rule: {m}")
+    if not missing:
+        print(f"  ok    {len(RULE_PINS)} pinned rule sentence(s) present in the manual and both copies")
+    return len(missing)
+
+
 def main() -> int:
     for p in (PAGE, MANUAL, GUIDE):
         if not p.exists():
@@ -590,6 +678,7 @@ def main() -> int:
     fails += examples_still_grade(manual)
     fails += page_examples_grade(page)
     fails += derived_portables(guide)
+    fails += rule_pins(manual, prose, (REPO / "docs" / "portable" / "h3_system_prompt.md").read_text(encoding="utf-8"))
     fails += audit_covers_catalogue()
     fails += snapshots()
 

@@ -55,14 +55,14 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "workflows"))
 import prompts as _prompts  # noqa: E402  -- workflows/prompts.py, the bank join
+sys.path.insert(0, str(REPO / "bench"))
+import preflight_graph as _pf  # noqa: E402  -- the one definition of the shot and speaker patterns
 OUT = REPO / "docs" / "prompt_catalogue.md"
 
 # Markers whose presence is a mechanical fact worth recording per scene.
 MARKERS = ("<d>", "<|lyrics_start|>", "<|caption_start|>", "<|cutoff|>",
            "<scenetrans>")
 
-SHOT = re.compile(r"\[Shot\s+(\d+)")
-SPEAKER = re.compile(r"\(S(\d+)\)")
 
 
 def constant_names() -> dict[str, str]:
@@ -122,8 +122,8 @@ def scan_graphs() -> dict[str, set[str]]:
 
 
 def facts(text: str) -> dict:
-    shots = sorted({int(n) for n in SHOT.findall(text)})
-    speakers = sorted({int(n) for n in SPEAKER.findall(text)})
+    shots = sorted({int(n) for n, _ in re.findall(_pf.SHOT_HEADER_RE, text)})
+    speakers = _pf.speaker_numbers(text)
     return {
         "words": len(text.split()),
         "shots": len(shots),

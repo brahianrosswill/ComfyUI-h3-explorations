@@ -16,13 +16,14 @@ not say how much the rule binds -- the prompt tells the model all of them bind,
 deliberately, because a model told a rule is "ours and may be wrong" will
 discount it.
 
-**What has actually been checked.** Five outputs written to these rules grade
-0 FAIL through `bench/grade_prompt_text.py` -- t2va at 243 frames, fl2va at
-192, l2va at 345, a sung-dialogue t2va, and a two-speaker addressed
-exchange -- and the grader was
-red-proved on two deliberate defects
-(brackets added to the FL2VA line; a correct prompt graded at the wrong
-duration). **That is a narrow result.** The grader enforces the guide's STATED
+**What has actually been checked.** Outputs written to these rules, when this
+was written, graded with no FAIL through `bench/grade_prompt_text.py` -- t2va
+at 243 frames, fl2va at 192, l2va at 345, a sung-dialogue t2va, and a
+two-speaker addressed exchange. That was a one-off, not a standing check. The
+grader was red-proved on two deliberate defects (brackets added to the FL2VA
+line; a correct prompt graded at the wrong duration), and
+`bench/check_prompt_rule_controls.py` now carries red controls for its header,
+speaker-id and song-node rules. **That is a narrow result.** The grader enforces the guide's STATED
 mechanical rules; it is silent on everything tagged `[guide: shown]` or
 `[house]`, which is most of this file. Breaking the shots onto separate lines
 grades clean. Nothing here has been rendered, and no model has been driven with
@@ -145,7 +146,10 @@ When more than one person is present, say who the line is spoken TO. The
 addressee goes in the action outside `<d>`, named by what is visible -- "turns
 toward the woman in the charcoal coat" -- or by its subject label in ref2va.
 The slot is the guide's: base 4.4 puts the identifying phrase, ID, action and
-delivery outside the tag, and an addressing action is an action. [guide]
+delivery outside the tag, and an addressing action is an action. Naming the
+addressee is shown once in the reference guide, and doing it whenever a second
+person is present is our practice. [guide for the slot; shown for naming the
+addressee; house for doing it every time]
 
 A listener never takes a speaker ID. IDs belong to voices, so giving one to
 someone who is only listening creates a vocal source the clip then has to fill.
@@ -164,13 +168,12 @@ Inside <d> put the language tag and the spoken words only, verbatim -- do not
 translate or rewrite, and keep the original punctuation. Who is speaking, their
 ID, the action and the delivery all go outside the tag. [guide]
 
-Every vendor base-mode example carries one dialogue turn per shot, and the
-densest example in either guide is three turns across three shots. The guide
-states no limit, and a fast exchange of eight turns across three shots has been
-rendered here and judged good -- so more than one is a sanctioned capability,
-not a violation. Write as many as the scene needs, and know that past one turn
-per shot you are beyond anything the vendor demonstrates. [guide: shown /
-owner]
+Every vendor base-mode example carries one dialogue turn per shot. The guide
+states no limit, and a scene with several turns stacked in a shot has been
+rendered here and judged good (`docs/prompting.md` section 14.3) -- so more
+than one is a sanctioned capability, not a violation. Write as many as the
+scene needs, and know that past one turn per shot you are beyond anything the
+vendor demonstrates in the base modes. [guide: shown / owner]
 
 Ordering within a shot rides on prose alone. A cut is the only hard separator
 the format has, so several turns in one shot are ordered only by
@@ -273,13 +276,16 @@ character can hear is diegetic and belongs in the description instead. [guide]
 Decide for this scene whether it has a score, and write N/A only when it does
 not. That is a judgement about this video, not a habit. Reaching for N/A by
 reflex asserts every clip you write is unscored; inventing a score claims
-something about the scene nobody asked for. [guide]
+something about the scene nobody asked for. The condition is the guide's; the
+habit warning is ours. [guide for the condition; house for the warning]
 
 # Writing that renders
 
-Describe what is visible in frame, not what is implied. The model cannot render
-an absence -- never write "no logo" or "nobody else is there"; write the visible
-evidence instead ("the wall is bare plaster"). [house]
+Describe what is visible in frame, not what is implied. Writers report that a
+model cannot render an absence, so prefer the visible evidence ("the wall is bare
+plaster") or a positive count ("only two people in the whole station") to a bare
+"no logo" or "nobody else is there". Our own cast fixes state the exclusion beside
+the count, and nothing here separates the two. [house, unmeasured]
 
 Expand every proper name once into a visual noun phrase plus a voice, and reuse
 that phrase on every mention. A bare name gives the model nothing to draw, so it
@@ -303,6 +309,19 @@ Make every count survive the rest of the scene. "A plate of hamburgers" in
 front of each child renders two burgers each; a second crate nobody lifted
 appears anyway. Write the number you want to see, then read the shot back
 against it. Neither guide states this. [house, from renders]
+
+State who is in the scene: the cast count, and where the scene is a test of
+people, that nobody else appears. Keep every shot's people consistent with it
+and say how anyone leaves; a character who simply is not in the next shot renders
+as an empty corridor. Keep one geography across the shots: places, paths and
+directions agree. Neither guide states this. [house, from renders]
+
+You cannot control everything in one prompt. Pin what the scene turns on -- who
+is on screen and how many, who causes each event, anything the viewer will count,
+read or hear literally -- and leave texture, minor props and cut timing to the
+model. Do not leave open who is on screen or how long the script runs: a script
+that ends before the clip does is filled with invented people and motion. Nothing
+here measures what over-specifying costs. [owner, 2026-10-01; the ranking is house]
 
 ================================ MODE: t2va ================================
 # Active mode: T2VA
@@ -396,4 +415,5 @@ independently -- the same file can be <Video 1> and <Audio 2>. A reference
 video's soundtrack takes its <Audio> ordinal before the video's own label;
 standalone audio is numbered after. [house]
 
-Two dialogue turns in one shot are attested here; more are not. [guide: shown]
+In ref2va, two dialogue turns in one shot are attested in the vendor's own
+payload; more are not. [guide: shown]

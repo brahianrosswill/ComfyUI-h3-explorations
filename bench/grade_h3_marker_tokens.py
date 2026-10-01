@@ -115,8 +115,8 @@ def _unpatched(clip):
     so that arm would silently become a second copy of `vendor` and this file
     would report near-zero deltas -- reading as a retraction of its own earlier
     numbers rather than as the arm having changed meaning underneath it. That
-    is `CLAUDE.md`'s "when something gains an off state, revisit every
-    assertion about it", applied to this harness.
+    is the rule in `docs/rules_history.md`, "when something gains an off state,
+    revisit every assertion about it", applied to this harness.
 
     One implementation: the reconstruction lives in the tokenization audit and
     is imported rather than copied.

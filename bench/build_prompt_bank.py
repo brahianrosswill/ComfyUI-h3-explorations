@@ -109,7 +109,7 @@ def field(text: str, name: str) -> str:
 
 def facts(text: str, mode: str) -> dict:
     main = field(text, MAIN.get(mode, "integrated_multimodal_description"))
-    ids = re.findall(r"\((S\d+(?:,S\d+)*)\)", main)
+    ids = [m[1:-1] for m in pf.SPEAKER_ID.findall(main)]
     speakers = sorted({s for grp in ids for s in grp.split(",")},
                       key=lambda s: int(s[1:]))
     if mode == "ref2va":
@@ -204,7 +204,7 @@ def grade_all(entries: list[dict]) -> list[dict]:
     return rows
 
 
-_TIMED = re.compile(r"\bAt \d\d:\d\d(?:\.\d+)?\b|\b\d+(?:\.\d+)?\s*(?:s|sec|secs|seconds?)\b"
+_TIMED = re.compile(pf.CLOCK_STAMP.pattern + r"|\b\d+(?:\.\d+)?\s*(?:s|sec|secs|seconds?)\b"
                     r"|\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|"
                     r"thirteen|fourteen|fifteen)-second\b", re.I)
 

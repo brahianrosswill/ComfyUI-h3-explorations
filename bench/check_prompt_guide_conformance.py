@@ -420,7 +420,7 @@ def main() -> int:
         return 1
 
     sections_for = {"ref": g["sections"], "base": base_sections}
-    # ref-en.txt:229 names the pair: "Main field |
+    # vendor_guides/ref_en.md:229 names the pair: "Main field |
     # integrated_multimodal_description | detailed_description".
     main_field = {"ref": "detailed_description",
                   "base": base_sections[0]}

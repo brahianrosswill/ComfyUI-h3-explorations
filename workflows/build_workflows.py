@@ -43,8 +43,8 @@ graph until it is rebuilt") had been enforced by remembering to run it.
 The file COUNT is deliberately not quoted here. The first version said 157,
 which is neither the 156 at the top level nor the 159 including `bench/`, and
 no reader's next action changes on the number -- the command's own output is
-the answer. `CLAUDE.md`'s rule: substitute a different plausible value, and if
-nothing changes, the number is decorative.
+the answer. The rule (`docs/prose_measurements.md`): substitute a different plausible
+value, and if nothing changes, the number is decorative.
 
 Deliberately NOT a check in `bench/`. The state it catches -- generator edited,
 graphs not rebuilt -- is real, and it happened on 2026-08-31 when this file
@@ -144,7 +144,7 @@ def _retimed_from_bank(prompt_id: str, alignment, length: int) -> str:
     """A keyframe prompt from the bank with its Part One line re-resolved.
 
     The two keyframe defaults are the one place a shipped prompt is
-    genuinely parametric: `base_en.md:14-32` puts the effective duration in
+    genuinely parametric: `base_en.md:14-31` puts the effective duration in
     the alignment sentence to two decimals, so the text a graph carries is a
     function of its frame count. Typing the duration into the bank file and
     stopping there would make the bank right for one length and silently
@@ -702,7 +702,7 @@ def fl2v_prompt(length: int) -> str:
     """The fl2va prompt, with the alignment line resolved against `length`.
 
     **A function, not a constant, because the FL2VA alignment sentence carries
-    two placeholders the other two modes do not.** `base_en.md:24` gives the
+    two placeholders the other two modes do not.** `base_en.md:25` gives the
     string with `Shot N` and `S.SS` in it; N is the index of the actual final
     shot and S.SS is the effective duration to exactly two decimals. Typing a
     duration here would be a number that silently disagrees with the graph the
@@ -712,12 +712,12 @@ def fl2v_prompt(length: int) -> str:
     **Note the punctuation.** FL2VA is the one alignment sentence of the three
     that carries no angle brackets and no square brackets: `Picture 1 (from
     Shot 1)`, not `<Picture 1> (from [Shot 1])`. I2VA and L2VA both bracket.
-    `base_en.md:14-32` gives all three and this differs from its neighbours by
+    `base_en.md:14-31` gives all three and this differs from its neighbours by
     exactly that, which is how a writer borrowing the I2VA form gets it wrong
     and nothing goes red -- preflight checks that the preamble names a Picture,
     not that it is the right sentence for the mode.
 
-    One shot, deliberately. `base_en.md:60` says FL2VA "generally favors a
+    One shot, deliberately. `base_en.md:62` says FL2VA "generally favors a
     single shot so the model can interpolate continuously from the first frame
     to the last", and that multiple shots are for when they are explicitly
     specified. So N is 1 here, and stays 1 unless the body grows a cut.
@@ -825,7 +825,7 @@ def resolve_default_prompt(task: str, prompt: str | None, *,
 
     **THE DEFAULT PROMPT FOLLOWS THE SOCKETS, NOT THE TASK STRING.** `i2v`
     covers both keyframe modes -- one wired frame or two -- and they take
-    DIFFERENT alignment sentences (`base_en.md:14-32`), so keying this on
+    DIFFERENT alignment sentences (`base_en.md:14-31`), so keying this on
     `task` alone hands an fl2va graph the I2VA line. Nothing downstream would
     catch it: preflight checks that the preamble names a Picture, not that it
     is the right sentence for the mode.
@@ -2509,12 +2509,12 @@ def _env_label(image_roles):
 #:
 #: `{character}` and `{environment}` are filled with the labels the arm
 #: actually wires. Every wired `<Subject N>` MUST appear in the result --
-#: ref-en.txt:231, and `bench/preflight_graph.py` warns when one is defined and
+#: ref_en.md:231, and `bench/preflight_graph.py` warns when one is defined and
 #: never cited -- so a scene that cannot cite a role is refused rather than
 #: emitted with the label missing.
 #:
 #: Speaker ids stay OUT of retention_analysis; a `(Sx)` there is a hard fail
-#: (ref-en.txt:278). They belong here, in the description.
+#: (ref_en.md:278). They belong here, in the description.
 REF_SCENE_SHOTS = {
     "subway": [
         "[Shot 1] Handheld with fast reframing under cool platform fluorescents. "
@@ -2658,7 +2658,7 @@ def _scene_description(scene: str, image_roles, defs) -> str:
     otherwise have the busker played by a coat.
 
     **Refuses rather than under-cites.** Every defined `<Subject N>` has to
-    appear in `detailed_description` (ref-en.txt:231); a subject that carries a
+    appear in `detailed_description` (ref_en.md:231); a subject that carries a
     retention marker and is never mentioned asks the model to transfer
     something onto nothing, and `bench/preflight_graph.py` warns about it after
     the fact. A scene that cannot cite every role this arm defines is a

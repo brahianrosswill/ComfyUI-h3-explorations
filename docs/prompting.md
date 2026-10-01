@@ -264,9 +264,10 @@ specified. When it does cut, the last frame is reached by the final `[Shot N]`
 at the end of the video.
 
 A malformed header such as `[Shot 1, 00:00.000-00:06.000]` is not merely
-non-conformant: `bench/preflight_graph.py` requires a literal `]` after the
-digits, so its shot list comes back empty and **three shot rules go inert
-silently**. The grader is removed rather than reddened.
+non-conformant: the shot rules need a literal `]` after the digits, so the shot
+list used to come back empty and **three shot rules went inert silently**. Since
+2026-10-01 `bench/preflight_graph.py` FAILs it (`header_problems`) instead of
+dropping the shot.
 
 ### 3.2 Cuts
 
@@ -1536,7 +1537,7 @@ which also prices the sequence, and a bank entry through
 | graphs → the graders | `h3_config.PROMPT_INPUTS` is the one list of nodes that carry a prompt, and `check_prompt_guide_conformance.py` fails on a graph or a node that declares a `prompt` input outside it. A song node's template is read as the texts its Prompt Lists expand to (`workflows/prompts.py::carriers`) |
 | graphs → `prompt_catalogue.md` | `build_prompt_catalogue.py --check`, and nothing runs it for you: run it before trusting the table (§13) |
 | catalogue → `prompt_audit.md` | `check_prompt_docs_sync.py` fails on a scene with no verdict |
-| this file → its copies | the same check re-grades every §10 example at the duration its heading names and compares the Part One strings and the camera table with the guide. Its docstring says exactly what is pinned for each portable copy; a prose rule in a copy is not |
+| this file → its copies | the same check re-grades every §10 example at the duration its heading names and compares the Part One strings and the camera table with the guide. Its docstring says exactly what is pinned for each portable copy. A prose rule in a copy is pinned only where `RULE_PINS` names its load-bearing sentence, in the manual and both copies: the rules that have drifted once, not the whole standard |
 | shipped prompts → vendor practice | `bench/diff_prompt_corpus.py`, a report |
 | the prose of this file | nothing |
 
@@ -1553,10 +1554,10 @@ which also prices the sequence, and a bank entry through
 | `<Picture N>` bracket convention inside the body | GUIDE base §3.1-§3.3, *shown* | `preflight_graph.py` accepts bare `Picture N` only on a two-keyframe graph |
 | the prompt names exactly the labels the graph wires | HOUSE (runtime) | `check_ref_prompt_labels.py`, `preflight_graph.py`, both directions |
 | label ordinals follow append-chain order; a soundtrack's `<Audio j>` precedes its own `<Video k>`; `<Audio>` is one counter | HOUSE (runtime) | `check_reference_order.py` |
-| NO shot header carries a timestamp; a time only splits action inside a shot | OWNER (2026-09-18); departs from GUIDE base §4.2, ref §5.1 | `preflight_graph.py` (FAIL), and through it `build_prompt_bank.py --check` and `check_prompt_docs_sync.py`. The test is a header that opens `At` and a digit, so a lowercase `at`, a time elsewhere in the header and a malformed `[Shot 2, 00:05]` header pass, the last by emptying the shot list (§3.1) |
+| NO shot header carries a timestamp; a time only splits action inside a shot | OWNER (2026-09-18); departs from GUIDE base §4.2, ref §5.1 | `bench/preflight_graph.py::header_problems` (FAIL), and through it `build_prompt_bank.py --check` and `check_prompt_docs_sync.py`. It fails a body that opens with `At` and a digit in any case, a MM:SS.mmm in a shot's opening sentence outside double quotes, and a header that is not `[Shot N]`; it passes a mid-shot time in a later sentence, a quoted on-screen clock and a time of day. `bench/check_prompt_rule_controls.py` carries each spelling as a case, red-proved |
 | mid-shot times strictly increasing | GUIDE base §4.2, applied to the times the house still allows | `preflight_graph.py` |
 | mid-shot times fall inside the video duration | GUIDE base §4.2, likewise | `preflight_graph.py` |
-| `[Shot N]` header format, sequential numbers | GUIDE ref §5.1, base §4.2, minus their cut time | nothing — a malformed header makes preflight's shot list empty and takes the shot rules inert |
+| `[Shot N]` header format, sequential numbers | GUIDE ref §5.1, base §4.2, minus their cut time | `bench/preflight_graph.py::header_problems` FAILs a header that is not `[Shot N]` (since 2026-10-01; it used to empty the shot list silently); sequential numbering is checked by nothing |
 | the five cut phrasings; dissolve/fade/wipe on request only | GUIDE base §4.2 | nothing |
 | camera motion type from the twelve-row table | GUIDE base §4.3 | `check_camera_vocabulary.py`, partially: `vocab_matches_guide` pins the check's own motion list to §4.3 (red/green) and `denied_motion` reports known-bad phrases as WARN and never goes red, so a novel out-of-table phrase is caught by neither. By the owner's ruling (§4) those warnings are informational, not defects. This was the escaped instance: a shipped prompt carried `whip pan`, `tracks left` and `at medium amplitude and moderate speed` and every gate passed it. The check has run since 2026-08-28 and this row said "nothing" until 2026-09-01 |
 | amplitude only `with small/large amplitude` | GUIDE base §4.3 | `check_camera_vocabulary.py` (`modifiers_in_set`, red/green over every shipped prompt since 2026-08-28; this row said "nothing" until 2026-09-01) |

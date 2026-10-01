@@ -14,7 +14,7 @@ a full read of the bank; nothing in the repo could have found them, because
 `docs/prompting.md` section 11's speaker-id row read `nothing` in its
 checked-by column. A check whose only evidence is that it passes today would
 be indistinguishable from one that cannot fire, which is the rule in
-CLAUDE.md, so the input it was built against is reconstructed from git rather
+`docs/rules_history.md`, so the input it was built against is reconstructed from git rather
 than described in prose.
 
 Cases, all offline and in seconds -- no GPU, no server, no fixture files:

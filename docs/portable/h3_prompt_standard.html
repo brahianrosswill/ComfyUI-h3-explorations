@@ -107,7 +107,7 @@ a{color:var(--accent)}
 <header>
   <h1>H3 Prompt Standard</h1>
   <p class="sub">What a correct MiniMax H3 prompt looks like, for every mode — and which rules are the vendor's, which are ours, and which are still open. Every rule carries its source, because collapsing that distinction is how two invented rules shipped and were retracted.</p>
-  <p class="meta">Portable extract · 2026-09-01 · self-contained, cites no external paths</p>
+  <p class="meta">Portable extract · last synced 2026-10-01 · self-contained, cites no external paths</p>
 </header>
 
 <nav>
@@ -196,7 +196,7 @@ non_diegetic_music: ...</pre>
 
 <section id="shots">
   <h2><span class="num">04</span>Shots and timing</h2>
-  <div class="rule"><h4><span class="chip c-house">House · 2026-09-18</span>No shot header carries a timestamp</h4>
+  <div class="rule"><h4><span class="chip c-owner">Owner · 2026-09-18</span>No shot header carries a timestamp</h4>
     <p>Write <code>[Shot 2] The shot cuts to…</code>. A time is used only to split action <em>inside</em> one shot: shot 2 opens, and two seconds later the camera cuts to something else before shot 3, as in <code>[Shot 2] The shot cuts to a medium shot of the agent on the landing. … At 00:07.500, the camera cuts to a close-up of his hand on the rail. …</code> Cutting from shot 1 to 2 to 3 takes no time at all. The vendor guides open later shots with a cut time (<code>[Shot 2] At 00:03.500, the camera cuts to…</code>); this house departs from them, on the owner's judgement that fixed cut times cause trouble on a model that is never told the clip's duration. Measured once, unblinded: in one same-seed pair both versions cut at nearly the same points, and the owner judged the timestamped take slightly the better scene. The rule stands on judgement, not on that pair. A cut should introduce new information; if only distance or angle changes, prefer camera motion over a cut.</p></div>
   <div class="rule"><h4><span class="chip c-house">House</span>Ordering rides on prose and on cuts, not on clock times</h4>
     <p>With no timestamps in the headers, nothing in the prompt tells the model WHEN something happens; a cut still separates what comes before from what comes after. If two speakers must share a shot, the ordering has to be carried in prose instead — and prose ordering is weaker than a cut.</p></div>
@@ -229,7 +229,7 @@ non_diegetic_music: ...</pre>
     <p>The addressee goes in the <strong>action outside</strong> <code>&lt;d&gt;</code> — the same slot 4.4 names when it says to place the identifying phrase, ID, action and delivery outside the tag. An addressing action is an action.</p>
     <pre><code>&lt;Subject 2&gt; (S1) turns toward the woman and says, &lt;d&gt;[English] …&lt;/d&gt;</code></pre>
     <p>Note what the guide's own instance does with the listener: it names her by <strong>visible description</strong> and gives her <strong>no speaker ID</strong>, because she is not speaking. IDs belong to voices. Giving one to someone who is only listening creates a vocal source the clip then has to fill.</p>
-    <p class="note">The slot is stated; the guides show it once. How reliably a model follows an addressing cue is unmeasured — write it, and do not assume it lands.</p></div>
+    <p class="note">The slot and the no-ID rule are stated. Naming the addressee is shown once in the reference guide, and doing it whenever a second person is present is our practice. How reliably a model follows an addressing cue is unmeasured — write it, and do not assume it lands.</p></div>
   <div class="rule"><h4><span class="chip c-shown">Guide · shown</span>One dialogue turn per shot, in base modes</h4>
     <p>Every base-format vendor specimen carries exactly one <code>&lt;d&gt;</code> per shot; a large third-party corpus does the same in every dialogue-carrying shot without exception. <strong>In Ref2VA the vendor is split</strong> — its own reference payload puts two turns in one shot — so two is attested there.</p></div>
   <div class="rule"><h4><span class="chip c-owner">Owner</span>Stacking several turns in one shot works, and is sanctioned here</h4>
@@ -268,7 +268,7 @@ and sings: &lt;d&gt;[English] I left the light on down the hall.&lt;/d&gt;</code
   <div class="rule"><h4><span class="chip c-house">House</span>Close the mouth when the shot continues past the line</h4>
     <p>The pattern in the corpora that have been counted: a mouth-closing cue follows a dialogue line when the shot <strong>continues</strong>, and never when the line <strong>ends</strong> the shot — a cut or the field end does that job instead. <strong>The vendor corpus does not corroborate this</strong>; it comes from a third-party corpus. The only stated vendor rule here is narrower: after a <em>voiceover</em> block, state that the on-screen character's lips remain closed.</p></div>
   <div class="rule"><h4><span class="chip c-house">House</span>Silent characters must be marked silent</h4>
-    <p>Every on-screen character not given an explicit "produces no vocal sound" is a candidate for the model to voice anyway.</p></div>
+    <p>Every on-screen character who <strong>never vocalises in the clip</strong> gets an explicit "produces no vocal sound", or the model may voice them anyway. Someone silent only for now is written as what they do instead — "does not answer" — because the phrase read literally contradicts the line you give them later.</p></div>
 </section>
 
 <section id="style">
@@ -304,7 +304,7 @@ and sings: &lt;d&gt;[English] I left the light on down the hall.&lt;/d&gt;</code
     <p>One to four English sentences, in <strong>one continuous paragraph</strong>: ambient sound, physical action sounds, non-verbal human sounds. <strong>Dialogue, singing and diegetic music do not belong here</strong> — they are already in the description and must not be repeated.</p></div>
   <div class="rule"><h4><span class="chip c-stated">Guide · stated</span><code>non_diegetic_music</code></h4>
     <p>One to three sentences on instrumentation, speed, rhythm and dynamic change. <strong>Not mood words, and not the emotional function of the score.</strong> Music the characters can hear — singing, radio, TV, a phone — is diegetic and belongs in the description instead.</p>
-    <p>Write <code>N/A</code> <strong>when there is no non-diegetic music</strong>. Note the condition: it is a statement about the scene, not a default. Reaching for <code>N/A</code> by habit asserts that every video you make is unscored.</p></div>
+    <p>Write <code>N/A</code> <strong>when there is no non-diegetic music</strong>. Note the condition: it is a statement about the scene, not a default. Reaching for <code>N/A</code> by habit asserts that every video you make is unscored. The condition is the guide's; the habit warning is ours.</p></div>
 </section>
 
 <section id="refs">
@@ -408,9 +408,11 @@ non_diegetic_music: N/A</pre>
   <div class="bad"><span class="tag">Dialogue in the soundscape</span>
     <p><code>overall_soundscape</code> is ambience, physical action and non-verbal human sound. Speech, singing and diegetic music belong in the description and must not be repeated here.</p></div>
   <div class="bad"><span class="tag">Timing written by feel</span>
-    <p>Nothing in the prompt tells the writer how long the clip is — duration is a generation parameter, not a prompt field. Cut timestamps picked by vibe overrun the clip, and the last beat is the one that gets squeezed. Fix the frame count first, then write to it.</p></div>
+    <p>Nothing in the prompt tells the writer how long the clip is — duration is a generation parameter, not a prompt field. Beats and dialogue written by feel overrun the clip, and the last beat is the one that gets squeezed. Fix the frame count first, then write to it.</p></div>
   <div class="bad"><span class="tag">Reaching for <code>N/A</code> by habit</span>
     <p>Legal, and it means "this video has no non-diegetic music". Writing it into every prompt is a creative decision made by default rather than on purpose.</p></div>
+  <div class="bad"><span class="tag">Leaving open what the scene turns on</span>
+    <p>What a prompt leaves silent the model decides, and different samples decide it differently: coins that fall into a tin with nobody dropping them, a plate of hamburgers that renders as two, a speaker staged out of frame, a station with an unstated cast that grows a clone. Say who does each event and how many of each thing there are, place every speaker, state the cast count and keep one geography across the shots. You cannot pin everything: pick what the scene turns on and let the model carry the rest, but not who is on screen and not how long the script runs. This is house practice, seen on one clip each; nothing measures what over-specifying costs.</p></div>
 </section>
 
 <footer>

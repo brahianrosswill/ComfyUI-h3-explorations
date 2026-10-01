@@ -4,6 +4,49 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.181.1
+
+The remaining prompt-grader gaps from the 0.179.1 audit (owner: fix 2 and 3 and the minor
+ones). No graph changed: the generator rebuilt to a scratch directory is byte-identical to the
+checked-in graphs for every graph it writes.
+
+### Changed
+
+- **The stamped-header FAIL catches every spelling.** `bench/preflight_graph.py::header_problems`
+  fails a shot body that opens with `At` and a digit in any case, a MM:SS.mmm in a shot's
+  opening sentence outside double quotes, and a header that is not `[Shot N]`. That last case
+  used to match nothing, empty the shot list and switch off every rule that reads shots, with
+  no message. A mid-shot time in a later sentence, a quoted on-screen clock and a time of day
+  still pass, and the whole bank still grades with no FAIL.
+- **The retention-line speaker-id test reads compound ids**, as `speaker_id_rules` did.
+- **One definition each of the shot-header, speaker-id and clock-time patterns**, in
+  `bench/preflight_graph.py`. The catalogue and the bank's facts import them (they kept copies
+  that disagreed on compound ids, on a malformed header and on decimals), and
+  `loop_plan.CUT_TIME` is pinned to `CLOCK_STAMP` in `bench/check_prompt_lists.py`.
+- **Guide citations in code are the real ones.** `base-en.txt` and `ref-en.txt`, which are not
+  our files, printed in FAIL messages and comments; they now read `vendor_guides/base_en.md` and
+  `ref_en.md`, and the line numbers that were off by one or two (the three Part One strings are
+  on lines 19, 25 and 31, the single-shot FL2VA sentence on 62) are corrected.
+- **The prompting-related comments that cited a rule `CLAUDE.md` no longer holds** point at
+  `docs/rules_history.md`, `docs/checks.md`, `docs/evidence.md` and `docs/prose_measurements.md`,
+  where each rule now lives.
+- **The portable copies agree with the manual**: the timestamp rule is labelled Owner, the
+  silent-character phrase is the narrowed one, the `N/A` habit warning is tagged house, an
+  undated count and a turn count that disagreed with the bank are gone, an absolute "never write
+  an absence" is softened to what the repo's own fixes do, and both carry the specificity rules
+  of `docs/prompting.md` section 16. The published claude.ai copy is still the 2026-09-01 snapshot.
+
+### Added
+
+- `bench/check_prompt_rule_controls.py`: a red control for each stamped-header spelling and the
+  three legal forms, the compound id in `retention_analysis`, and each way a song graph's grading
+  can fail; and the sections, marker sets, task types, amplitude, speed, cut phrases and marker
+  strings that the grader, the bank, the catalogue and the camera check copy, each pinned to the
+  guide or the release's declared tokens. Red-proved by reverting each fix and corrupting each copy.
+- `bench/check_prompt_docs_sync.py`: twelve pinned rule sentences (`RULE_PINS`) that must be in the
+  manual and in both portable copies. An in-memory mutation had inverted three rules in both copies
+  and every one stayed green. It pins wording, not meaning, and says so; red-proved by ten inversions.
+
 ## 0.181.0
 
 One registry of the nodes that carry prompt text, and the song node's prompts are

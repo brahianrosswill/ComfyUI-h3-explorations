@@ -129,8 +129,8 @@ LOAD_IMAGE = "LoadImage"
 # came back `sections absent: subject_definitions, summary, retention_analysis,
 # detailed_description` -- four failures for obeying the guide that applies.
 #
-#   base-en.txt:39-48  T2VA / I2VA / FL2VA / L2VA -- "the three core fields"
-#   ref-en.txt:12-22   full-reference mode -- "six sections in the following
+#   vendor_guides/base_en.md:39-48  T2VA / I2VA / FL2VA / L2VA -- "the three core fields"
+#   vendor_guides/ref_en.md:12-22   full-reference mode -- "six sections in the following
 #                      order"
 #
 # Which one applies is READ OFF THE GRAPH, never off a filename: full-reference
@@ -144,7 +144,7 @@ REF_SECTIONS = ["subject_definitions", "summary", "retention_analysis",
                 "detailed_description", "overall_soundscape",
                 "non_diegetic_music"]
 
-# The field the shot, cut-timing and dialogue rules read. ref-en.txt:229 names
+# The field the shot, cut-timing and dialogue rules read. vendor_guides/ref_en.md:229 names
 # the pair outright: "Main field | integrated_multimodal_description |
 # detailed_description".
 MAIN_FIELD = {"base": "integrated_multimodal_description",
@@ -191,7 +191,7 @@ BASE_ALIGNMENT = _base_alignment_templates()
 # refuses to assert anything the guide does not state, and it is right to.
 #
 # The escaped instance, which is what earns a new check at all
-# (CLAUDE.md: cite one before building). On 2026-08-22 a prompt written
+# (`docs/checks.md`: a new check needs one). On 2026-08-22 a prompt written
 # elsewhere came through with three caption pairs on their own lines, one
 # padded with spaces, one spoken line split across two adjacent pairs, and a
 # trailing space inside a `<d>`. Run through this file as it stood, it scored
@@ -202,8 +202,8 @@ BASE_ALIGNMENT = _base_alignment_templates()
 # has been seen. They are here because the same day
 # `internal/PROMPTING.md` (retired 2026-09-01, migrated into
 # `docs/prompting.md`) gained a "must" stating the nesting rule, and
-# CLAUDE.md's standing rule is that a "must" with no assertion behind it is an
-# uncontrolled requirement. This is that assertion.
+# the rule in `docs/rules_history.md` is that a "must" with no assertion behind
+# it is an uncontrolled requirement. This is that assertion.
 #
 # What these deliberately do NOT decide: whether a caption is on the RIGHT
 # content. A caption is burned-in on-screen text, so its string may legitimately
@@ -224,6 +224,54 @@ ALL_MARKERS = tuple(m for pair in MARKER_PAIRS for m in pair) + ("<|cutoff|>",)
 # expectation and had drifted to the pre-fix copy while its comment claimed
 # they matched.
 SHOT_HEADER_RE = r"\[Shot (\d+)\]((?:(?!\[Shot \d+\])[^\n])*)"
+
+# The patterns that read a prompt's shots, speaker ids and times, defined ONCE
+# here. The catalogue and the bank's facts import them. They kept copies until
+# 2026-10-01 and the copies disagreed: one counted a shot on a malformed header
+# that this file silently dropped, one read only a single speaker id, one wanted
+# decimals in a time and one did not. `loop_plan.CUT_TIME` is the runtime's copy
+# of CLOCK_STAMP, and `bench/check_prompt_lists.py` pins it.
+SHOT_TOKEN_RE = re.compile(r"\[Shot\b[^\]\n]*\]")       # any `[Shot ...]`, well formed or not
+CLOCK_STAMP = re.compile(r"\bAt (\d+):(\d{2}(?:\.\d+)?)")  # `At MM:SS` or `At MM:SS.mmm`
+HEADER_CLOCK = re.compile(r"\b\d{1,2}:\d{2}\.\d+")        # a MM:SS.mmm; a time of day like 4:30 has no decimals
+SPEAKER_ID = re.compile(r"\(S\d+(?:,S\d+)*\)")           # `(S1)` or the compound `(S1,S2)`
+
+
+def speaker_numbers(text: str) -> list[int]:
+    """The distinct speaker numbers a prompt uses, a compound id counted per speaker."""
+    return sorted({int(n) for m in SPEAKER_ID.findall(text) for n in re.findall(r"S(\d+)", m)})
+
+
+def header_problems(main_body: str) -> list[str]:
+    """What is wrong with the shot headers of a main field, as messages.
+
+    Three things the owner's rule (2026-09-18: shot headers carry no timestamps,
+    a time only splits action inside one shot) needs decided, and an earlier
+    version decided only the first spelling:
+
+    - a header that is not `[Shot N]` at all (`[Shot 2, 00:05.200]`). It used to
+      match nothing, which emptied the shot list and switched off every rule that
+      reads shots, with no message.
+    - a shot whose body opens with `At <digit>` in any case.
+    - a MM:SS.mmm anywhere in the shot's opening sentence, outside double quotes
+      (a clock on a sign is on-screen text and stays). A time in a LATER sentence
+      is the mid-shot time the rule allows. Decimals are required, so a time of
+      day such as "4:30" is not read as a cut time.
+    """
+    out = []
+    bad = [t for t in SHOT_TOKEN_RE.findall(main_body) if not re.fullmatch(r"\[Shot \d+\]", t)]
+    if bad:
+        out.append(f"{bad[0]} is not a shot header: the form is `[Shot N]` with nothing inside "
+                   "the brackets, and every rule that reads shots sees none here")
+    for n, body in re.findall(SHOT_HEADER_RE, main_body):
+        opening = re.split(r"(?<=[.!?])\s+", body.strip(), maxsplit=1)[0]
+        opening = re.sub(r'"[^"]*"', "", opening)
+        if re.match(r"\s*at\s+\d", body, re.I) or HEADER_CLOCK.search(opening):
+            out.append(f"[Shot {n}] carries a time in its header; shot headers carry none "
+                       "(owner rule 2026-09-18): write `[Shot N] The shot cuts to ...`, "
+                       "and use a time only to split action inside one shot")
+            break
+    return out
 
 
 def marker_rules(prompt: str, main_body: str) -> list[tuple[str, str]]:
@@ -285,7 +333,7 @@ def marker_rules(prompt: str, main_body: str) -> list[tuple[str, str]]:
 def speaker_id_rules(main_body: str, guide: str) -> list[tuple[str, str]]:
     """Is every vocal event attributed to a speaker id?
 
-    ref-en.txt:278 (ref 5.4) STATES it: "Assign `(Sx)` once according to the
+    vendor_guides/ref_en.md:278 (ref 5.4) STATES it: "Assign `(Sx)` once according to the
     order of actual vocal events in the target video. Reuse the corresponding
     ID at every actual vocal event in `detailed_description`." The same
     paragraph states the one exemption, and states it as a prohibition: verbal
@@ -319,7 +367,7 @@ def speaker_id_rules(main_body: str, guide: str) -> list[tuple[str, str]]:
         prev_end = 0
         for d in re.finditer(r"<d>", seg):
             before = seg[:d.start()]
-            if re.search(r"\(S\d+(?:,S\d+)*\)", before):
+            if SPEAKER_ID.search(before):
                 prev_end = d.end()
                 continue
             # the guide's exemption, scoped to this line's own attribution
@@ -333,7 +381,7 @@ def speaker_id_rules(main_body: str, guide: str) -> list[tuple[str, str]]:
                 out.append(("FAIL", f"a <d> block has no (Sx) earlier in its "
                                     f"shot, and cites no <Audio N> as its "
                                     f"source: reuse the id at every vocal "
-                                    f"event (ref-en.txt:278) ...{head}"))
+                                    f"event (vendor_guides/ref_en.md:278) ...{head}"))
             else:
                 out.append(("note", f"a <d> block has no (Sx) earlier in its "
                                     f"shot. base-en states the id and its "
@@ -1188,13 +1236,13 @@ def grade(node: dict, graph: dict, stem: str = "") -> list[tuple[str, str]]:
     named = set(re.findall(r"<(?:Picture|Video|Audio) \d+>", prompt))
 
     # FL2VA NAMES ITS PICTURES WITHOUT BRACKETS, AND THE GUIDE IS EXPLICIT.
-    # `base_en.md:14-32` gives one alignment sentence per task and FL2VA's is
+    # `base_en.md:14-31` gives one alignment sentence per task and FL2VA's is
     # the only one of the three that carries no angle brackets and no square
     # brackets: "Picture 1 (from Shot 1) ... Picture 2 (from Shot N)". I2VA and
     # L2VA both bracket, so a rule that demands `<Picture N>` is correct for
     # every keyframe graph EXCEPT the two-frame one.
     #
-    # This is the one-implementation trap from CLAUDE.md, caught by a second
+    # This is the one-implementation trap (`docs/rules_history.md`), caught by a second
     # implementation rather than by reasoning: the rule was written when i2v was
     # the only keyframe graph in the repo, it was right about that graph, and it
     # would have failed the first correct fl2va prompt anybody wrote -- pushing
@@ -1222,14 +1270,14 @@ def grade(node: dict, graph: dict, stem: str = "") -> list[tuple[str, str]]:
     for lab in defined:
         if lab not in retention:
             out.append(("FAIL", f"{lab} is defined but has no retention line"))
-    if re.search(r"\(S\d+\)", retention):
-        out.append(("FAIL", "(Sx) speaker id in retention_analysis (ref-en.txt:278)"))
+    if SPEAKER_ID.search(retention):
+        out.append(("FAIL", "(Sx) speaker id in retention_analysis (vendor_guides/ref_en.md:278)"))
 
     dd = sec.get(main_field, "")
     for lab in defined:
         if lab.startswith("<Subject") and lab not in dd:
             out.append(("WARN", f"{lab} never cited in {main_field} "
-                                f"(ref-en.txt:231)"))
+                                f"(vendor_guides/ref_en.md:231)"))
 
     for m in re.finditer(r"<d>(.*?)</d>", prompt, re.S):
         if not re.match(r"\s*\[[A-Z][a-z]+\]", m.group(1)):
@@ -1254,18 +1302,13 @@ def grade(node: dict, graph: dict, stem: str = "") -> list[tuple[str, str]]:
     # shot, and the t2va path returns before reading `shots` at all. Found
     # 2026-09-01 writing the first multi-shot keyframe examples.
     shots = re.findall(SHOT_HEADER_RE, dd)
-    # HOUSE RULE since 2026-09-18 (the owner): NO shot header carries a
-    # timestamp; a time is written only to split action INSIDE one shot. The
-    # vendor guides open later shots with `At MM:SS.mmm,` and until that date
-    # this only refused one on `[Shot 1]`. The three rules below it still run
-    # on whatever stamps a prompt has, so they now guard the mid-shot times.
-    stamped = [n for n, body in shots if re.match(r"\s*At \d", body)]
-    if stamped:
-        out.append(("FAIL", f"[Shot {stamped[0]}] opens with a timestamp; shot headers carry "
-                            "none (house rule 2026-09-18): write `[Shot N] The shot cuts to ...`, "
-                            "and use a time only to split action inside one shot"))
-    stamps = [int(a) * 60 + float(b)
-              for a, b in re.findall(r"At (\d+):(\d+\.\d+)", dd)]
+    # OWNER RULE since 2026-09-18: NO shot header carries a timestamp; a time is
+    # written only to split action INSIDE one shot. `header_problems` decides it
+    # (and a malformed header). The rules below still run on whatever stamps a
+    # prompt has, so they guard the mid-shot times.
+    for msg in header_problems(dd):
+        out.append(("FAIL", msg))
+    stamps = [int(a) * 60 + float(b) for a, b in CLOCK_STAMP.findall(dd)]
     if stamps != sorted(stamps):
         out.append(("FAIL", "cut timestamps are not strictly increasing"))
     length = node["inputs"].get("length")
@@ -1285,7 +1328,7 @@ def grade(node: dict, graph: dict, stem: str = "") -> list[tuple[str, str]]:
             if not is_audio and k not in VISUAL_MARKERS:
                 out.append(("FAIL", f"audio marker '{k}' on a visual label"))
 
-    # The 350-500 budget is ref-en.txt:242 and has no counterpart in base-en,
+    # The 350-500 budget is vendor_guides/ref_en.md:242 and has no counterpart in base-en,
     # so it is NOT applied to a base-format prompt. Applying it there would be
     # inventing a rule -- the mirror image of inventing an exemption, and the
     # same defect.
@@ -1295,7 +1338,7 @@ def grade(node: dict, graph: dict, stem: str = "") -> list[tuple[str, str]]:
         if not editing and not (350 <= n <= 500):
             out.append(("WARN", f"detailed_description is {n} words; the guide "
                                 f"asks 350-500 for generation tasks "
-                                f"(ref-en.txt:242)"))
+                                f"(vendor_guides/ref_en.md:242)"))
             # A single frame deviates from that deliberately, and the warning
             # STAYS -- annotated, not suppressed. The distinction matters and
             # is worth keeping straight: the audio sections are exempted above
@@ -1326,15 +1369,15 @@ def grade(node: dict, graph: dict, stem: str = "") -> list[tuple[str, str]]:
         if kf and not preamble:
             out.append(("FAIL", f"{'/'.join(kf)} wired but the prompt has no "
                                 f"alignment instruction before "
-                                f"{main_field} (base-en.txt:19-29)"))
+                                f"{main_field} (vendor_guides/base_en.md:19-31)"))
         elif kf and "Picture" not in preamble:
             out.append(("FAIL", "the opening instruction names no Picture "
-                                "(base-en.txt:19-29)"))
+                                "(vendor_guides/base_en.md:19-31)"))
         elif not kf and preamble:
             out.append(("FAIL", "T2VA begins directly with the core fields, "
                                 "but this prompt opens with "
                                 f"{preamble.splitlines()[0][:60]!r} "
-                                "(base-en.txt:14)"))
+                                "(vendor_guides/base_en.md:14)"))
         else:
             expected_alignment, mode = _expected_base_alignment(
                 node, graph, shots)

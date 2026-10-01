@@ -244,7 +244,7 @@ def main():
         cites neither. Six of the eight image graphs shipped that way on
         2026-08-16 and every check here was green; `bench/preflight_graph.py`,
         written in another session, caught it on first contact. That is
-        CLAUDE.md's second-reader finding, and the fix is to make the check
+        the second-reader finding in `docs/evidence.md`, and the fix is to make the check
         able to see it rather than to rely on the second reader.
 
         Scoped to `detailed_description` because that is where the guide puts

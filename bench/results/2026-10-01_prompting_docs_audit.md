@@ -21,6 +21,24 @@ and one is imported by a live check), and `bench/prompts/hf_fl2va_robecouch.txt`
 `hf_reference_sushi_cat_gothic_hall.txt`, which nothing reads but are data from the
 closed AWQ lane and not code.
 
+## Done after the owner asked for the code gaps (0.181.0 and 0.181.1)
+
+The song node's prompts are graded, catalogued and named through one registry
+(`h3_config.PROMPT_INPUTS`) and `workflows/prompts.py::carriers`, with a completeness case
+and a pin of the template grammar. The stamped-header FAIL now catches every spelling and a
+malformed header, the retention-line test reads compound ids, and
+`bench/check_prompt_rule_controls.py` holds the red controls and pins the closed-set copies
+to the guide. The shot, speaker and clock patterns have one definition in
+`bench/preflight_graph.py`, and `loop_plan.CUT_TIME` is pinned to it. The guide file names
+and line numbers in code are the real ones, and the prompting-related comments that cited a
+rule `CLAUDE.md` no longer holds point at `docs/rules_history.md`. The portable copies agree
+with the manual and twelve of their rule sentences are pinned. What those items described is
+kept below as the record.
+
+Still open from the code gaps: the repo-wide `CLAUDE.md` citations in bench scripts that are
+not about prompts (`grep -rn "CLAUDE.md" bench --include=*.py`; some still hold), and the published claude.ai copy, which
+is still the 2026-09-01 snapshot.
+
 ## Needs the owner's decision (it deletes code or changes what ships)
 
 - **Dead generator code.** `scene_prompt()` in `workflows/build_workflows.py`

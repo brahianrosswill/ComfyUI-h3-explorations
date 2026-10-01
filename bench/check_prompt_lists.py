@@ -323,6 +323,13 @@ def check_carrier_grammar(problems):
     except Exception as exc:  # the pin is the point; a skipped pin is a silent drift
         _fail(problems, f"carrier grammar: loop_plan did not import ({type(exc).__name__}: {exc})")
         return
+    # the clock-time pattern: the song planner reads `At MM:SS` from a window's text to
+    # guard a mid-shot time against the window, and preflight reads the same text for
+    # ordering and bounds; they kept separate patterns that disagreed on decimals
+    sys.path.insert(0, str(HERE))
+    import preflight_graph as pf
+    if lp.CUT_TIME.pattern != pf.CLOCK_STAMP.pattern:
+        _fail(problems, "carrier grammar: loop_plan.CUT_TIME differs from preflight_graph.CLOCK_STAMP")
     if pr.PLACEHOLDER.pattern != pl.PLACEHOLDER.pattern:
         _fail(problems, "carrier grammar: prompts.PLACEHOLDER differs from prompt_lists.PLACEHOLDER")
     if pr.BLOCK_LINE.pattern != lp.BLOCK_LINE.pattern:
