@@ -562,11 +562,13 @@ SOL_RECOMMENDED_CUDA = dict(
     # reversal condition. 1.3 was the value every Sol number before that date
     # was measured at.
     tau=1.0,
-    # **`start_percent` has never been measured, at any value, ever.**
-    # `docs/SOLATTN.md` says so in its knob table and again in its
-    # open-experiments table ("zero measurements, ever"); the node's own tooltip
-    # justifies it only as "the paper uses 0.2". It has been 0.2 in every graph
-    # this repo has ever shipped.
+    # **0.2 here; 0.0 on every PDD graph since 2026-10-01** (SOL_PDD_OVERRIDES,
+    # owner decision, measured). On the t2v PDD8-to-FlashGen finish the owner
+    # could not tell 0.0 from 0.2 in five blind pairs, and 0.0 cut the sampler
+    # by roughly a fifth (bench/results/2026-10-01_start_percent_panel.md).
+    # Still unmeasured for the base graphs, which keep 0.2: the node's tooltip
+    # justifies it only as "the paper uses 0.2". Until 2026-10-01 this said it
+    # had never been measured at any value, which was true then.
     #
     # Priced 2026-08-27, arithmetic not measurement: it forces the top of the
     # trajectory dense and that costs a FLAT 25% of evaluations at every step
@@ -747,7 +749,7 @@ SOL_RECOMMENDED_CUDA = dict(
 #     "0-5,48-49"      from a three-point decay and is withdrawn.
 #
 # Everything else is shared with SOL_RECOMMENDED_CUDA and reaches here through
-# it: selection, tau 1.0, start_percent 0.2, sink_conditioning, morton off,
+# it: selection, tau 1.0, sink_conditioning, morton off,
 # centroid_tail, reuse_qkv_memory. Spelled as an override dict rather than a
 # second full literal, because a full copy is the second copy this file forbids.
 #
@@ -756,7 +758,12 @@ SOL_RECOMMENDED_CUDA = dict(
 # that temporarily installed `0-2,32` did not establish that result either, so
 # both configurations inherit the empty default while the instrumentation lane
 # gathers the missing all-block evidence.
-SOL_PDD_OVERRIDES = dict()  # retired 2026-09-11; was end_percent=0.74
+# start_percent 0.0 on PDD graphs: measured, owner decision 2026-10-01
+# (bench/results/2026-10-01_start_percent_panel.md). The dense warm-up before
+# Sol's window cost two of the finish's eight evaluations and showed no
+# difference the owner could see or hear. Was empty from 2026-09-11 (retired
+# end_percent=0.74) to 2026-10-01.
+SOL_PDD_OVERRIDES = dict(start_percent=0.0)
 
 SOL_PDD_CUDA = dict(SOL_RECOMMENDED_CUDA, **SOL_PDD_OVERRIDES)
 
@@ -772,9 +779,9 @@ def sol_for_graph(pdd, steps):
     `pdd` -- the graph loads a Parallel Decoding Distillation LoRA -- takes
     SOL_PDD_CUDA whole, at every step count, so `steps` is ignored on that
     branch. Everything else takes SOL_RECOMMENDED_CUDA with `end_percent`
-    lowered per SOL_END_PERCENT_BY_STEPS. Since 2026-09-11 both the table and
-    SOL_PDD_OVERRIDES are empty, so every graph gets SOL_RECOMMENDED_CUDA as
-    it is; the branches stay so a future per-kind knob has one place to go.
+    lowered per SOL_END_PERCENT_BY_STEPS. The table is empty since
+    2026-09-11; SOL_PDD_OVERRIDES carries `start_percent` 0.0 since
+    2026-10-01, so the PDD branch is the one that differs.
     """
     if pdd:
         return dict(SOL_PDD_CUDA)

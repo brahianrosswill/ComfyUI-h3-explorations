@@ -17,6 +17,12 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-01
 
+- **Sol's `start_percent` is 0.0 on PDD graphs, 0.2 elsewhere** (owner, 2026-10-01, option A of two:
+  the distill graphs only, not every Sol graph). Five blind pairs on the t2v finish showed no
+  difference and 0.0 is much faster; the base graphs were not tested, so they keep 0.2. Upstreams
+  disagree (core 0.2, sglang a fixed dense step count), so the adopt-upstream rule did not decide it.
+  `docs/SOLATTN.md` and `h3_config.py` used to say the knob had never been measured (0.184.0).
+
 - **Kitchen int8 stays Sol's dense fallback** (the owner reopened sage fp8++ rotated for it on
   2026-10-01). Measured the same day: kitchen is more accurate on every dense cell, the steps before
   Sol's window included, and sage saves about one percent of the sampler. `next_steps.md` used to

@@ -388,6 +388,28 @@ def loads_pdd(graph) -> bool:
                for n in graph.values())
 
 
+def sol_model_loads_pdd(graph: dict, nid: str) -> bool:
+    """Whether the model feeding Sol node `nid` carries a PDD LoRA, by walking its
+    `model` inputs upstream. Per node, not per graph: a step-switch graph runs a PDD
+    pass and a second pass on another model, each under its own Sol node, and
+    `build_workflows.py` resolves each pass's Sol config from its own model. Graded
+    per graph, the second pass's node was held to the PDD config, which made no
+    difference until SOL_PDD_OVERRIDES stopped being empty (2026-10-01)."""
+    seen, stack = set(), [str(nid)]
+    while stack:
+        cur = stack.pop()
+        if cur in seen or cur not in graph:
+            continue
+        seen.add(cur)
+        node = graph[cur]
+        if node.get("class_type") == "MiniMaxH3PDDLoRA":
+            return True
+        src = node.get("inputs", {}).get("model")
+        if isinstance(src, list) and len(src) == 2:
+            stack.append(str(src[0]))
+    return False
+
+
 def main() -> int:
     # API form only: this reads `class_type`/`inputs`, and a graph in another
     # form would read as one with no Sol at all.
@@ -522,18 +544,20 @@ def main() -> int:
         #                resolver.
         #   PDD          a distilled arm takes h3_config.SOL_PDD_CUDA whole,
         #                owner decision 2026-08-29, at every step count.
-        #                Decided by `loads_pdd`, the same MECHANISM the
-        #                exemption above uses, so a new PDD arm is graded on
-        #                the right recipe the moment it exists.
+        #                Decided per Sol node by `sol_model_loads_pdd` (the
+        #                model that node patches carries a PDD LoRA), the
+        #                generator's rule, so a new PDD arm is graded on the
+        #                right recipe the moment it exists.
         graph_steps = _steps_of(g)
-        graph_pdd = loads_pdd(g)
-        expected = h3_config.sol_for_graph(graph_pdd, graph_steps)
-        source = "SOL_PDD_CUDA" if graph_pdd else "SOL_RECOMMENDED_CUDA"
         dev_fields, _dev_why = DEVIATIONS.get(stem, ((), None))
         deviated = set()
         for nid, vals, state in sol:
             if state != "live":
                 continue
+            # Per Sol node since 2026-10-01 (`sol_model_loads_pdd`), the generator's rule.
+            graph_pdd = sol_model_loads_pdd(g, nid)
+            expected = h3_config.sol_for_graph(graph_pdd, graph_steps)
+            source = "SOL_PDD_CUDA" if graph_pdd else "SOL_RECOMMENDED_CUDA"
             for k, want in expected.items():
                 if k in dev_fields:
                     if k in vals and vals[k] != want:

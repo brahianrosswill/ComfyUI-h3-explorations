@@ -4,6 +4,30 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.184.0
+
+### Changed
+
+- **Sol's `start_percent` is 0.0 on every PDD graph** (owner, 2026-10-01; it replaces 0.2 there).
+  `h3_config.SOL_PDD_OVERRIDES` carries it, so `sol_for_graph` gives it to each Sol node whose model
+  loads a PDD LoRA. On the t2v PDD8-to-FlashGen finish the owner could not tell 0.0 from 0.2 in five
+  blind pairs with audio, and 0.0 cut the sampler by roughly a fifth
+  (`bench/results/2026-10-01_start_percent_panel.md`). 61 graphs rebuilt, validated against the
+  live server; the only change in any of them is `start_percent` on the PDD pass's Sol node. Base,
+  FlashGen-alone and FastH3 Sol nodes keep 0.2, and a step-switch graph's second pass keeps it too
+  (it starts at sigma 0.8 or below, where 0.2 is inert). **Every PDD render changes output from
+  this version:** pin `MiniMaxH3Sol.start_percent=0.2` to compare with an earlier one.
+- `docs/SOLATTN.md`'s knob table and `h3_config.py`'s comments no longer say `start_percent` was
+  never measured.
+
+### Fixed
+
+- `bench/check_attention_defaults.py` graded every Sol node in a graph that loads PDD anywhere against
+  the PDD config, while the generator resolves each pass's Sol node from its own model. Identical until
+  `SOL_PDD_OVERRIDES` stopped being empty; with it set, 19 step-switch graphs read red. The check now
+  walks each Sol node's `model` input for a PDD LoRA (`sol_model_loads_pdd`). Control: setting the
+  finish's PDD-pass node back to 0.2 reads red.
+
 ## 0.183.5
 
 ### Measured
