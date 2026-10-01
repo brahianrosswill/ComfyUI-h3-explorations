@@ -4,6 +4,15 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.183.3
+
+### Added
+
+- `distill_experiments/h3_probe_i2v_pdmd_4step` and `h3_probe_r2v_pdmd_4step`: FlashGen's i2v and
+  ref2va probes with PDMD's full-rank file and its `simple` schedule in place, for the owner's first
+  PDMD-against-FlashGen look. Both are untrained transfers. ref2va also runs PDMD on the Ref2VA
+  checkpoint, and `check_distill_settings.py` now allows that for a reference graph only.
+
 ## 0.183.2
 
 ### Changed

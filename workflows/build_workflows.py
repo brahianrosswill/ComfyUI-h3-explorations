@@ -4484,6 +4484,20 @@ def main():
               manual_sigmas=FLASHGEN_MANUAL_SIGMAS,
               out_prefix="Video/h3_probe_r2v_flashgen_4step"),
          "image references -> video + audio at 4 steps via FlashGen on ref2va, an untrained transfer"),
+        # PDMD beyond T2VA, 2026-10-01, the owner's scene list for the first
+        # PDMD-against-FlashGen look: the two FlashGen probes above with PDMD's
+        # file and contract (`simple` at 12/3) in its place. PDMD was trained
+        # on T2VA only and the trainer's scripts refuse anything else; ref2va
+        # also runs it on the Ref2VA checkpoint, a partition it was not trained
+        # on. It carries no adaln, so the same file applies there unchanged.
+        ("h3_probe_i2v_pdmd_4step.json", "i2v-pdmd-4step", "i2v", None,
+         dict(lora=(PDMD_LORA, PDMD_STRENGTH), lora_branch=True, steps=PDMD_STEPS[PDMD_LORA],
+              out_prefix="Video/h3_probe_i2v_pdmd_4step"),
+         "first frame + text -> video + audio at 4 steps via PDMD, an untrained task"),
+        ("h3_probe_r2v_pdmd_4step.json", "r2v-pdmd-4step", "r2v", _ref_prompt(images=True),
+         dict(lora=(PDMD_LORA, PDMD_STRENGTH), lora_branch=True, steps=PDMD_STEPS[PDMD_LORA],
+              out_prefix="Video/h3_probe_r2v_pdmd_4step"),
+         "image references -> video + audio at 4 steps via PDMD on ref2va, an untrained transfer"),
 
         ("h3_text_to_video_pdd_4step.json", "texttovideopdd4step", "t2v", LONG_T2V_PROMPT,
          dict(pdd=True, sampler_name="euler",

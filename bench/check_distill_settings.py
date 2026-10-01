@@ -493,9 +493,14 @@ def main():
                     f"{path.name}: PDMD is applied at the call ({cfg.LORA_BRANCH_NODE}); a merge "
                     f"into int8 keeps little of it. Has {sorted(map(str, loaders))}")
                 unets = {n["inputs"].get("unet_name") for n in nodes if n.get("class_type") == "UNETLoader"}
-                assert unets == {cfg.MODELS["unet_fl2va"]}, (
-                    f"{path.name}: PDMD was trained on the fl2va partition, so it loads on "
-                    f"{cfg.MODELS['unet_fl2va']}, has {sorted(map(str, unets))}")
+                # Trained on fl2va. A reference graph needs the Ref2VA partition,
+                # so there PDMD is an untrained transfer by design
+                # (h3_probe_r2v_pdmd_4step); every other graph stays on fl2va.
+                is_ref = any(n.get("class_type") == "MiniMaxH3ReferenceConditioning" for n in nodes)
+                want_unet = cfg.MODELS["unet_ref2va" if is_ref else "unet_fl2va"]
+                assert unets == {want_unet}, (
+                    f"{path.name}: PDMD loads on {want_unet} here (fl2va, where it was trained, "
+                    f"or ref2va for a reference graph), has {sorted(map(str, unets))}")
                 effective = BASE_SHIFT if found.shift is None else found.shift
                 assert effective == BASE_SHIFT, (
                     f"{path.name}: PDMD samples at the base {BASE_SHIFT}, has {effective}")
