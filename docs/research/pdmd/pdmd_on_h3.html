@@ -227,11 +227,11 @@ footer { border-top: 1px solid var(--rule); padding-top: 16px; display: grid; ga
   </section>
 
   <section id="next">
-    <div class="sec-head"><h3>Open work, in order</h3><h2>Rendered once, waiting on the blind scores</h2></div>
+    <div class="sec-head"><h3>Open work, in order</h3><h2>First look scored</h2></div>
     <ol class="steps">
       <li><b>The graphs: built, and rendered for the first look.</b> <code>h3_text_to_video_pdmd</code> (4-step, full rank) ships at the root. The 2-step graph and kijai's two resize arms are probes in <code>distill_experiments/</code>. All run Euler on <code>simple</code> at 12/3 with <code>MiniMaxH3LoRABranch</code> at 1.0, and <code>check_distill_settings.py</code> grades them against the contract.</li>
       <li><b>Full-rank conversions: done.</b> <code>bench/convert_pdmd_lora.py</code> writes <code>minimax_h3_pdmd_{4,2}step_rank128_comfy</code>. Every module's change is an exact copy of the published one, and both loaders place them at scale 1.0. They are what a PDMD graph will load; kijai's files become the comparison arm.</li>
-      <li><b>A blind comparison against FlashGen: rendered and blinded, waiting on the owner's scores.</b> Five scenes (three t2va, one ref2va, one i2va), each with full-rank PDMD, kijai's PDMD and FlashGen, all at Sol <code>start_percent</code> 0.2. It is judged on content-independent axes, because seed-matched clips from two distills are different scenes. Rows: <code>bench/results/2026-10-01_pdmd_vs_flashgen.jsonl</code>.</li>
+      <li><b>A blind comparison against FlashGen: scored.</b> Over five scenes, FlashGen was preferred more often than PDMD, and PDMD won the radio scene on its muted, cinematic grade. PDMD ghosts at shot transitions and cut away from the i2va first frame. Kijai's resize was indistinguishable from full rank on every scene. Verdict: <code>bench/results/2026-10-01_2026-10-01_pdmd_vs_flashgen_verdict.json</code>; reading: <code>docs/h3_distills.md</code>, "PDMD".</li>
       <li><b>Length.</b> The trainer's 14 s harbour-cat job at our canvas is a ready first scene.</li>
     </ol>
   </section>

@@ -1,16 +1,13 @@
 {
  "measured": "2026-10-01",
  "session": "2026-10-01_pdmd_vs_flashgen",
- "produced_by": "bench/score_session.py joining scores_2026-10-01_pdmd_vs_flashgen.json with internal/blind_keys/2026-10-01_pdmd_vs_flashgen.json",
+ "produced_by": "bench/score_session.py joining scores_2026-10-01_pdmd_vs_flashgen_completed.json with internal/blind_keys/2026-10-01_pdmd_vs_flashgen.json",
  "scored_at": "2026-10-01T21:05:22Z",
  "jsonl": "bench/results/2026-10-01_pdmd_vs_flashgen.jsonl",
  "shuffle_seed": 1001,
  "pairs_only": true,
- "partial": true,
- "not_covered": [
-  "pair_05.mp4: blank verdict",
-  "pair_09.mp4: blank verdict"
- ],
+ "partial": false,
+ "not_covered": [],
  "rubric": [
   {
    "id": "note",
@@ -213,7 +210,7 @@
     "n_scored": 1,
     "reading": "a preference over distributions, not a per-pair verdict: each stack presents two different samples",
     "tally": {
-     "covered_market__flashgen": 0,
+     "covered_market__flashgen": 1,
      "covered_market__pdmd": 0
     },
     "tags_by_arm": {},
@@ -221,7 +218,7 @@
      {
       "pair": "pair_05.mp4",
       "question": "why",
-      "text": "colors brighter in clip 1 and better framing. muted in clip 2 but doesnt work for this scene where bright colors seem better",
+      "text": "colors brighter in clip 1 and better framing. muted in clip 2 but doesnt work for this scene where bright colors seem better [verdict set 2026-10-01 after the key was opened, by the owner, from this note: FlashGen]",
       "clip_1_arm": "covered_market__flashgen",
       "clip_1_seed": 730451892,
       "clip_2_arm": "covered_market__pdmd",
@@ -336,7 +333,7 @@
     "n_scored": 1,
     "reading": "a preference over distributions, not a per-pair verdict: each stack presents two different samples",
     "tally": {
-     "i2va_old_man__flashgen": 0,
+     "i2va_old_man__flashgen": 1,
      "i2va_old_man__pdmd": 0
     },
     "tags_by_arm": {},
@@ -344,7 +341,7 @@
      {
       "pair": "pair_09.mp4",
       "question": "why",
-      "text": "clip 1 transitions to him at a desk, clip 2 zooms in on him - so whatever followed the prompt better is the right one IMO",
+      "text": "clip 1 transitions to him at a desk, clip 2 zooms in on him - so whatever followed the prompt better is the right one IMO [verdict set 2026-10-01 after the key was opened, by the owner, from this note: FlashGen] (the i2va prompt has no desk and asks for one continuous push-in)",
       "clip_1_arm": "i2va_old_man__pdmd",
       "clip_1_seed": 730451892,
       "clip_2_arm": "i2va_old_man__flashgen",
@@ -546,6 +543,8 @@
      "row": 7,
      "seed": 730451892
     },
+    "verdict": "Clip 1 better",
+    "preferred_arm": "covered_market__flashgen",
     "choices": {
      "audio": {
       "answer": "same",
@@ -553,7 +552,7 @@
      }
     },
     "text": {
-     "why": "colors brighter in clip 1 and better framing. muted in clip 2 but doesnt work for this scene where bright colors seem better"
+     "why": "colors brighter in clip 1 and better framing. muted in clip 2 but doesnt work for this scene where bright colors seem better [verdict set 2026-10-01 after the key was opened, by the owner, from this note: FlashGen]"
     },
     "heard": [
      "Clip 1",
@@ -683,6 +682,8 @@
      "row": 15,
      "seed": 730451892
     },
+    "verdict": "Clip 2 better",
+    "preferred_arm": "i2va_old_man__flashgen",
     "choices": {
      "audio": {
       "answer": "same",
@@ -690,7 +691,7 @@
      }
     },
     "text": {
-     "why": "clip 1 transitions to him at a desk, clip 2 zooms in on him - so whatever followed the prompt better is the right one IMO"
+     "why": "clip 1 transitions to him at a desk, clip 2 zooms in on him - so whatever followed the prompt better is the right one IMO [verdict set 2026-10-01 after the key was opened, by the owner, from this note: FlashGen] (the i2va prompt has no desk and asks for one continuous push-in)"
     },
     "heard": [
      "Clip 1"

@@ -4,6 +4,20 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.184.5
+
+### Added
+
+- The first PDMD look is scored. Verdict record:
+  `bench/results/2026-10-01_2026-10-01_pdmd_vs_flashgen_verdict.json`.
+  - Eight pairs were scored blind. The owner set the other two (market, i2va) from their own notes
+    after the key was opened, and each pair's note says so.
+  - FlashGen was preferred over PDMD on more scenes, and PDMD won the radio scene on its muted grade.
+    PDMD ghosts at shot transitions and cut away from the i2va first frame.
+  - Kijai's resize was "same" as full rank on every scene.
+- `docs/h3_distills.md` gains a PDMD row and section. The research note and its visual page point at
+  the verdict.
+
 ## 0.184.4
 
 ### Changed

@@ -282,9 +282,13 @@ not compare PDD, FlashGen or FastH3.
    - Manifest: `bench/pdmd_vs_flashgen_arms.json`. Rows:
      `bench/results/2026-10-01_pdmd_vs_flashgen.jsonl`.
    - Blind session `2026-10-01_pdmd_vs_flashgen`, scored on the pairs-only
-     page. Eight of ten pairs were scored and joined with `--partial`
-     (`bench/results/2026-10-01_2026-10-01_pdmd_vs_flashgen_verdict.json`). The
-     owner's reading of the other two is pending.
+     page. Verdict: `bench/results/2026-10-01_2026-10-01_pdmd_vs_flashgen_verdict.json`.
+     Eight pairs were scored blind. The owner set the other two from their own
+     notes after the key was opened, and the record says so on each.
+   - **What it found** (`../../h3_distills.md`, "PDMD"): FlashGen was preferred
+     over PDMD on more scenes, and PDMD won the radio scene on its muted grade.
+     PDMD ghosts at shot transitions and cut away from the i2va first frame.
+     Kijai's resize was indistinguishable from full rank on every scene.
    - Sol `start_percent` 0.2 on every arm is the FlashGen and PDMD default
      again since 0.184.3 (0.184.1 had moved it to 0.0 and was reverted), so a
      later render at today's defaults repeats these settings.
