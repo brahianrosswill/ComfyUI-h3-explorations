@@ -28,6 +28,14 @@ import torch
 _REPO = Path(__file__).resolve().parent.parent
 if str(_REPO) not in sys.path:
     sys.path.insert(0, str(_REPO))
+
+
+def _jsonable(o):
+    """A set as a sorted list. Records stamped by a server running `h3_capture.py` before
+    2026-10-01 carry `comfy_args.fast` as a set when the launcher passed no `--fast`."""
+    if isinstance(o, (set, frozenset)):
+        return sorted(str(x) for x in o)
+    raise TypeError(f"Object of type {type(o).__name__} is not JSON serializable")
 # reference_geometry imports comfy_extras, so ComfyUI's root has to be importable too
 if str(_REPO.parents[1]) not in sys.path:
     sys.path.insert(0, str(_REPO.parents[1]))
@@ -842,7 +850,7 @@ def main():
             "size_bytes": size_bytes,
             "sha256": f_hash,
         })
-        stamps.append(json.dumps(meta.get("server"), sort_keys=True))
+        stamps.append(json.dumps(meta.get("server"), sort_keys=True, default=_jsonable))
     # One capture is one process. Mixed stamps (two servers wrote into one
     # directory) or a mix of stamped and unstamped records are refused rather
     # than described by whichever file sorted first.
@@ -961,7 +969,7 @@ def main():
     }
 
     manifest_path = cap_dir / "manifest.json"
-    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+    manifest_path.write_text(json.dumps(manifest, indent=2, default=_jsonable) + "\n")
     print(f"[generate_manifest] Wrote dynamic capture manifest: {manifest_path}")
     print(f"  Indexed {len(captured_tensors)} tensor files ({sum(t['size_bytes'] for t in captured_tensors) / 1e9:.2f} GB total)")
     print(f"  Indexed {len(references)} reference images")

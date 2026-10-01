@@ -17,6 +17,11 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-01
 
+- **Kitchen int8 stays Sol's dense fallback** (the owner reopened sage fp8++ rotated for it on
+  2026-10-01). Measured the same day: kitchen is more accurate on every dense cell, the steps before
+  Sol's window included, and sage saves about one percent of the sampler. `next_steps.md` used to
+  list the lane as parked pending exactly this (0.183.5).
+
 - **PDMD ships as `h3_text_to_video_pdmd`, unrendered** (owner, 2026-10-01: "Go for it"). It is PDMD
   4-step on its trainer's contract: the full-rank file at the call, Euler on `simple` at 12/3, the
   repo's Sol default. The 2-step file and kijai's two resizes are `distill_experiments/` probes, and

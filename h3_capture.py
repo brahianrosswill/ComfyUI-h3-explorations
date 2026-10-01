@@ -700,7 +700,10 @@ def _server_stamp() -> dict:
         out["comfy_args"] = {k: v for k, v in sorted(vars(_args).items())
                              if isinstance(v, (bool, int, float, str, type(None)))}
         fast = getattr(_args, "fast", None)
-        out["comfy_args"]["fast"] = sorted(str(x) for x in fast) if fast else fast
+        # A set always becomes a list, an empty one too: `if fast` returned the
+        # empty set itself, which JSON cannot hold, from the day the launcher
+        # stopped passing `--fast` (2026-09-28) until 2026-10-01.
+        out["comfy_args"]["fast"] = sorted(str(x) for x in fast) if fast is not None else None
     except Exception as exc:                           # noqa: BLE001
         out["comfy_args"] = {"error": str(exc)}
     # Sage decides the dense trajectory a capture holds, so its build identity

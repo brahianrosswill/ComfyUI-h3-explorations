@@ -69,9 +69,11 @@ stays the shipped default.
   - Next: test 3, the token-routing re-grade on the fixed kernel, including
     whether "all blocks" still needs the balance. It runs on the test 2
     captures (keep until 2026-10-31), with no render.
-  - Parked by the owner: our sage attention in place of kitchen int8 as
-    Sol's dense fallback. On the dense tail, kitchen is the more accurate
-    of the two, so a sage case would rest on speed or the early steps.
+  - Our sage attention in place of kitchen int8 as Sol's dense fallback:
+    reopened and settled 2026-10-01. Kitchen is the more accurate kernel on
+    every dense cell graded, the two steps before Sol's window included, and
+    sage wins about one percent of the sampler, so kitchen stays
+    (`../../bench/results/2026-10-01_sage_floor_early_steps.md`).
 - **Approved and queued** (owner, 2026-09-27 night, relayed by fastdude:
   "ok to 4 and 5"):
   - #40, a second seed on the finalists: the t2v finish

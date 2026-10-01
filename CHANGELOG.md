@@ -4,6 +4,22 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.183.5
+
+### Measured
+
+- Sage fp8++ rotated against kitchen int8 as Sol's dense fallback, the lane the owner reopened today:
+  kitchen is closer to exact on all 14 cells of a new capture of the t2v finish's two steps before
+  Sol's window (blocks 0 to 40 and the 45/48/49 tail), and sage is only about one percent faster on
+  the sampler. Kitchen stays; nothing changes
+  (`bench/results/2026-10-01_sage_floor_early_steps.md`, `2026-10-01_sage_floor_timing.md`).
+
+### Fixed
+
+- `h3_capture.py` stamped `comfy_args.fast` as a set whenever the launcher passed no `--fast`
+  (true since 2026-09-28), so `bench/generate_capture_manifest.py` could not write a manifest for any
+  capture since. The stamp now writes a list, and the generator reads the older stamps.
+
 ## 0.183.4
 
 ### Added
