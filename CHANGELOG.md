@@ -4,6 +4,14 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.181.2
+
+### Fixed
+
+- `workflows/h3_config.py`: the note beside `end_percent` said sage takes the steps
+  before `start_percent`. They go to `DENSE_BACKEND_NODE` on the default graphs, and to sage
+  only on the `FLOOR_STEMS` arms. Comment only; no graph changes (`docs/wiki/decisions.md`).
+
 ## 0.181.1
 
 The remaining prompt-grader gaps from the 0.179.1 audit (owner: fix 2 and 3 and the minor

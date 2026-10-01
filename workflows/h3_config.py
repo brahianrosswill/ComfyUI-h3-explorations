@@ -585,7 +585,9 @@ SOL_RECOMMENDED_CUDA = dict(
     # no end cutoff and core's `BlockSparseAttention` defaults to 1.0. It was
     # 0.9, which kept the last step dense at 16 steps; SOL_END_PERCENT_BY_STEPS
     # records why that tail existed. Sol now runs through the last step, and
-    # sage still takes the steps before `start_percent`.
+    # the steps before `start_percent` go to the dense backend under Sol:
+    # `DENSE_BACKEND_NODE` on the default graphs, sage only on the arms
+    # `bench/check_attention_defaults.py::FLOOR_STEMS` names.
     end_percent=1.0,
     # 4096 against the node's own 12288. Both are no-ops **at the lengths this
     # repo renders** -- every DiT call is at the full packed length, 31k-128k

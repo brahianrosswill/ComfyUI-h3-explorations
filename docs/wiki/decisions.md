@@ -17,6 +17,11 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-01
 
+- **`h3_config.py`'s `end_percent` note said "sage still takes the steps before
+  `start_percent`"**; since 2026-09-15 the default graphs run those steps on
+  `DENSE_BACKEND_NODE` (kitchen int8, as the server log's `[h3-sol]` line says), with
+  sage only on the `FLOOR_STEMS` arms. Corrected in place (0.181.2).
+
 - **The i2v PDD8 pick is promoted to `workflows/`, and two recipes the mutant repos did
   not ship become examples there** (owner, 2026-10-01, "ok to both" to the two calls in
   `bench/results/2026-10-01_r2v_i2v_graph_coverage.md`). `h3_first_frame_to_video_pdd`
