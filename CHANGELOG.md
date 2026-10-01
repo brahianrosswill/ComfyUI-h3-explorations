@@ -4,6 +4,18 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.182.6
+
+### Added
+
+- `bench/convert_pdmd_lora.py`: converts a published PDMD LoRA to ComfyUI's H3 layout at full rank.
+  It imports its mapping from `bench/measure_pdmd_lora_conversion.py` and refuses any module whose
+  change is not an exact copy of the published one. Its outputs,
+  `minimax_h3_pdmd_{4,2}step_rank128_comfy`, replace kijai's rank-reduced files as what a PDMD graph
+  will load; kijai's become the comparison arm. Records:
+  `bench/results/2026-10-01_pdmd_{4,2}step_rank128_conversion.json`. Both at-the-call loaders place
+  them at scale 1.0. Not rendered.
+
 ## 0.182.5
 
 ### Added

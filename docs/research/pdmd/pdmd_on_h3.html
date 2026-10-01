@@ -230,7 +230,7 @@ footer { border-top: 1px solid var(--rule); padding-top: 16px; display: grid; ga
     <div class="sec-head"><h3>Open work, in order</h3><h2>Nothing is rendered yet</h2></div>
     <ol class="steps">
       <li><b>A graph.</b> <code>h3_text_to_video_pdmd</code> and a 2-step twin from the generator: the FlashGen t2v graph with the LoRA swapped and <code>simple</code> at 4 or 2 steps, <code>MiniMaxH3LoRABranch</code> at 1.0. <code>check_distill_settings.py</code> taught the files.</li>
-      <li><b>Full-rank conversions</b>, the arm that says whether kijai's resize shows in a render.</li>
+      <li><b>Full-rank conversions: done.</b> <code>bench/convert_pdmd_lora.py</code> writes <code>minimax_h3_pdmd_{4,2}step_rank128_comfy</code>. Every module's change is an exact copy of the published one, and both loaders place them at scale 1.0. They are what a PDMD graph will load; kijai's files become the comparison arm.</li>
       <li><b>A blind comparison against FlashGen</b>, judged on content-independent axes, because seed-matched clips from two distills are different scenes.</li>
       <li><b>Length.</b> The trainer's 14 s harbour-cat job at our canvas is a ready first scene.</li>
     </ol>

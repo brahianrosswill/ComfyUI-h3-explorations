@@ -253,9 +253,20 @@ not compare PDD, FlashGen or FastH3.
    provenance. `bench/check_distill_settings.py` must recognise the files,
    as `classify_flashgen` does FlashGen's, so that a graph at the wrong shift
    or step count goes red.
-2. **Full-rank ComfyUI conversions**, as `FLASHGEN_R64_LORA` is for FlashGen.
-   The mapping this note verified, without the resize. That gives the arm that
-   says whether the resize's loss shows.
+2. **Full-rank ComfyUI conversions: built the same day.**
+   `bench/convert_pdmd_lora.py` writes `minimax_h3_pdmd_{4,2}step_rank128_comfy`
+   from the published files, with the mapping this note verified and no
+   resize, as `FLASHGEN_R64_LORA` is for FlashGen.
+   - Every module's change equals the published one, and the converter
+     refuses anything less (records:
+     `bench/results/2026-10-01_pdmd_{4,2}step_rank128_conversion.json`).
+   - Both at-the-call loaders place them at scale 1.0.
+   - The fused q/k/v is block-diagonal at three times the published rank, so
+     its branch does more arithmetic than kijai's. Per
+     `bench/results/2026-10-01_lora_branch_profile.md` the branch is mostly
+     memory traffic, so the cost should be small, but it is unmeasured.
+   - These are the default for a PDMD graph. Kijai's files are the arm that
+     says whether the resize shows.
 3. **A blind comparison against FlashGen**, the sibling, through the
    `h3-ab-session` process. It must be judged on content-independent axes:
    seed-matched clips from two distills are different scenes
