@@ -4754,11 +4754,6 @@ def main():
               out_prefix="Video/h3_candidate_t2v_sol_only"),
          "CANDIDATE text -> video + audio: Sol only, every step but the last"),
 
-        ("h3_candidate_t2v_sol_allrows.json", "t2v-candidate-sol-allrows", "t2v", LONG_T2V_PROMPT,
-         dict(sol_overrides={"sink_conditioning": "exact_kv_and_all_rows"},
-              out_prefix="Video/h3_candidate_t2v_sol_allrows"),
-         "CANDIDATE text -> video + audio: kitchen dense + Sol, text rows dense too"),
-
         ("h3_candidate_t2v_pdd8_sol_narrow.json", "t2v-candidate-pdd8-sol-narrow", "t2v", LONG_T2V_PROMPT,
          dict(pdd=True, sampler_name="euler",
               lora=(PDD_FL2VA_LORA, PDD_STRENGTH), steps=PDD_STEPS,

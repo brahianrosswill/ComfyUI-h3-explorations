@@ -1,9 +1,12 @@
-# Sol dense_blocks panel on the ref2va finish (2026-10-02, interim)
+# Sol dense_blocks panel on the ref2va finish (2026-10-02)
 
-**Status: interim.** Two of four scenes, one of two seeds, scored and
-judged. The panel is still rendering. This record is rewritten when it
-finishes; the questions at the end are what the rest of it, and the next
-runs, should answer.
+**Status: stopped early by the owner, and decided.** Two of four scenes at
+one of two seeds were rendered, scored and judged, plus the dancer scene's
+dense arm, before the owner stopped the panel on 2026-10-02: "so i guess we
+found what doesnt work. and it doesnt buy enough time to be worth it. so lets
+stop all the renders and just decide on a good solid general default".
+The decision is at the end. The open questions stay open; nothing renders
+them now.
 
 **Why.** `bench/results/2026-10-02_sol_campaign_reanalysis.md` found that
 Options A, B and C were adopted on local probe error alone: unfixed seeds,
@@ -132,3 +135,27 @@ second seed decides that.
   distant frames, which block-sparse selection is most likely to drop. A
   probe capture of the market scene, comparing routed density on
   video-to-video blocks far apart in time, would test it.
+
+## Decision (owner, 2026-10-02)
+
+The owner asked for "a good solid general default" from what this panel
+showed. Set in 0.185.0:
+
+- **`sink_conditioning` becomes `exact_kv_and_all_rows`**
+  (`sol_attn_h3.py::SOL_SINK_DEFAULT`, mirrored in
+  `workflows/h3_config.py`). It is the one Sol setting the owner rated fine
+  on the dialogue scene, where every `exact_kv_and_rows` arm ran louder than
+  dense, and it lost on no scene: the condition the roadmap's 2026-09-10 plan
+  set for this flip. Its price is extra sampler time against plain Option C
+  (the table above).
+- **`dense_blocks` stays Option C.** The choice did not move the verdict,
+  and C is what `all_rows` was judged with; the cheaper lists were never
+  rendered with `all_rows`.
+- **Sol stays on.** On the action scene no Sol setting held up, so a render
+  where the action matters most can still run with Sol off (every block
+  dense); that is a per-render choice, not the default.
+- **Applied to every graph, video references included.** The roadmap's plan
+  kept ref2va on `exact_kv_and_rows` because `all_rows` also runs a
+  reference video's rows exact, which costs most of Sol's saving on those
+  graphs. The owner asked for one general default, so it is one; the video
+  reference graphs are where that costs time, unmeasured here.

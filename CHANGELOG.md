@@ -4,6 +4,43 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.185.0
+
+### Changed
+
+- **Sol's `sink_conditioning` default is `exact_kv_and_all_rows`** (owner
+  decision, 2026-10-02): every conditioning query row (text, references,
+  target audio) runs exact, where `exact_kv_and_rows` ran only the target
+  audio rows exact. One constant, `sol_attn_h3.py::SOL_SINK_DEFAULT`,
+  mirrored in `workflows/h3_config.py` and held together by
+  `bench/check_attention_defaults.py`. Every Sol render's output changes from
+  this version. On graphs with a video reference it also runs the
+  reference's rows exact, which costs most of Sol's saving there. Evidence:
+  `bench/results/2026-10-02_sol_dense_blocks_panel.md`.
+- **`dense_blocks` stays Option C**, kept by owner decision rather than on
+  the campaign's claim; the comments that said Test 9A proved it now say so.
+- All workflow graphs rebuilt.
+
+### Removed
+
+- `h3_candidate_t2v_sol_allrows`, the all-rows candidate graph: it is now
+  the same as its base. Its `DEVIATIONS` entry went with it, and the prompt
+  catalogue and bank pages are regenerated.
+
+### Added
+
+- The dense_blocks panel's rows,
+  `bench/results/2026-10-02_sol_dense_blocks_panel.jsonl` (13 renders plus
+  the warmup; the panel was stopped early by the owner).
+
+### Fixed
+
+- `bench/check_sol_node_equivalence.py` compared the combo's default to the
+  literal `"exact_kv_and_rows"`; it now reads `SOL_SINK_DEFAULT` from the
+  node. `bench/check_attention_defaults.py` now also holds the node's and
+  the config's `SOL_SINK_DEFAULT` together. `bench/check_widget_deviations.py`
+  loses its `sink_conditioning` row, which no graph deviates on any more.
+
 ## 0.184.14
 
 ### Added

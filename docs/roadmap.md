@@ -135,7 +135,11 @@ not restated here.
    segment permutation (text and audio dense, references sparse;
    `docs/SOLATTN.md`, "What Sana's newer H3 packages offer this card") is
    built. Not flipped before that session renders, because its "ours as
-   shipped" arm is defined as today's default. Two external corroborations
+   shipped" arm is defined as today's default. *(2026-10-02: flipped
+   (0.185.0), for every graph, video references included, by owner decision
+   on the output-level panel `bench/results/2026-10-02_sol_dense_blocks_panel.md`,
+   where all-rows lost on no scene. The ref2va exception above was not kept:
+   the owner asked for one general default.)* Two external corroborations
    beside the probe: Sana's Sol-H3 T2V `prefix` sink is this mode
    (`docs/sol_upstream.md`), and sglang's dropped "sink block" is a
    different mechanism, a reserved block inside a fixed budget, so it says

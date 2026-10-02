@@ -561,12 +561,19 @@ SOL_DENSE_RIDGE_SHIELD = SOL_DENSE_OPTION_C
 #: Historical 2026-09-25 tail default (from unrotated INT8 K-norm outliers):
 SOL_DENSE_HISTORICAL_TAIL = "45,48,49"
 
-#: The Sol node's `dense_blocks` default. Set to SOL_DENSE_OPTION_C ("38,39,40,41,42,49")
-#: on 2026-10-02 after Test 9A empirical telemetry proved it suppresses
-#: peak network error from 22.09% down to 17.73% by shielding block 38.
-#: Mirrors `sol_attn_h3.py::SOL_DENSE_TAIL`; `bench/check_attention_defaults.py`
+#: The Sol node's `dense_blocks` default, SOL_DENSE_OPTION_C. Adopted
+#: 2026-10-02 on local probe error and kept the same night by owner decision:
+#: the output-level panel found the dense_blocks choice does not move the
+#: verdict, and C is the list SOL_SINK_DEFAULT was judged with
+#: (`bench/results/2026-10-02_sol_dense_blocks_panel.md`). Mirrors
+#: `sol_attn_h3.py::SOL_DENSE_TAIL`; `bench/check_attention_defaults.py`
 #: holds the two together.
 SOL_DENSE_TAIL = SOL_DENSE_OPTION_C
+
+#: The Sol node's `sink_conditioning` default; mirrors
+#: `sol_attn_h3.py::SOL_SINK_DEFAULT`, whose comment carries the evidence
+#: (owner decision 2026-10-02, measured; `exact_kv_and_rows` before).
+SOL_SINK_DEFAULT = "exact_kv_and_all_rows"
 
 SOL_RECOMMENDED_CUDA = dict(
     # Keyed to `MiniMaxH3Sol`'s inputs since the redesign (2026-09-27,
@@ -653,7 +660,11 @@ SOL_RECOMMENDED_CUDA = dict(
     # overturns it: measuring the actual Sol-against-sage crossover here. That
     # measurement would beat both values, including this one.
     min_tokens=12288,
-    sink_conditioning="exact_kv_and_rows",
+    # `exact_kv_and_all_rows` since 2026-10-02 (SOL_SINK_DEFAULT above):
+    # every conditioning query row exact. The roadmap's 2026-09 plan made
+    # this the flip "if all-rows loses on no scene"; on the 2026-10-02 panel
+    # it lost on none and was the one Sol arm rated fine on dialogue.
+    sink_conditioning=SOL_SINK_DEFAULT,
     verbose=True,
     # Empty again by owner decision on 2026-09-02. `0-2,32` shipped from
     # 2026-08-29 until this correction, but it came from an EXPERIMENT rather
@@ -839,7 +850,7 @@ def sol_for_graph(pdd, steps, distill_lora=False):
 # every key here against what the node declares.
 SOL_CUDA_DEFAULTS = dict(
     tau=1.0, quantizer="rotated", dense_blocks=SOL_DENSE_TAIL,
-    sink_conditioning="exact_kv_and_rows", token_routing="off",
+    sink_conditioning=SOL_SINK_DEFAULT, token_routing="off",
     start_percent=0.2, end_percent=1.0, min_tokens=12288, verbose=True,
 )
 

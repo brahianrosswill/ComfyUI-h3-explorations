@@ -238,11 +238,6 @@ DECLARED: dict[tuple[str, str], tuple] = {
                 "recipe's 0.2 elsewhere. Declared per graph in "
                 "bench/check_attention_defaults.py::DEVIATIONS, which grades "
                 "the deviation as real"),
-    ("MiniMaxH3Sol", "sink_conditioning"):
-        ("ARM", "exact_kv_and_all_rows on the all-rows candidate (2026-09-05), "
-                "every conditioning query row dense; the recipe's "
-                "exact_kv_and_rows elsewhere. Declared per graph in "
-                "bench/check_attention_defaults.py::DEVIATIONS"),
     ("ManualSigmas", "sigmas"):
         ("RESOLVED", "h3_config.PDD_MANUAL_SIGMAS, the six-block tail-weighted "
                      "partition; its 6dp rounding is load-bearing and "

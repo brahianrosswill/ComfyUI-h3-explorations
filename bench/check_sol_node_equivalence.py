@@ -204,8 +204,10 @@ def sink_cases(node, check):
     except Exception as exc:                                  # noqa: BLE001
         print(f"  SKIP the combo's options   define_schema not readable here: {exc}")
     else:
+        # The default is read from the node's constant, not spelled here: the
+        # literal "exact_kv_and_rows" this case held went stale on 2026-10-02.
         check("the combo lists exactly the modes the function accepts, default among them",
-              options == list(modes) and default in modes and default == "exact_kv_and_rows",
+              options == list(modes) and default in modes and default == node.SOL_SINK_DEFAULT,
               f"{options}, default {default}")
 
 

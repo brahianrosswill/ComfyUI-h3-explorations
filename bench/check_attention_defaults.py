@@ -130,10 +130,6 @@ DEVIATIONS = {
                                   "candidate graph (2026-09-05): Sol from the first "
                                   "step, no sage; the widened window IS the arm, "
                                   "blinded as sol_nosage_2026-09-04"),
-    "h3_candidate_t2v_sol_allrows": (("sink_conditioning",),
-                                     "candidate graph (2026-09-05): every conditioning "
-                                     "query row dense; the sink mode IS the arm, "
-                                     "measured on the 2026-09-04 subway probe pair"),
     "h3_candidate_t2v_pdd8_sol_narrow": (("start_percent", "end_percent"),
                                          "candidate graph (2026-09-05): Sol on two of "
                                          "the eight PDD steps; the window IS the arm, "
@@ -172,8 +168,9 @@ DEVIATIONS = {
 #: Graphs that legitimately ship without live Sol, by MECHANISM. The
 #: single-frame class is not listed here -- it is derived from GRAPH_DIRS below.
 def _dense_tail_constants_agree() -> list[str]:
-    """The node's `dense_blocks` default and the recipe's are one value held in
-    two places (the node must not import the generator's config)."""
+    """The node's `dense_blocks` and `sink_conditioning` defaults and the
+    recipe's are one value each, held in two places (the node must not import
+    the generator's config)."""
     sys.path.insert(0, str(_REPO.parent)); sys.path.insert(0, str(_REPO.parents[1]))
     import comfy.cli_args
     comfy.cli_args.args.cpu = True
@@ -184,6 +181,9 @@ def _dense_tail_constants_agree() -> list[str]:
     if node.SOL_DENSE_TAIL != h3_config.SOL_DENSE_TAIL:
         return [f"sol_attn_h3.SOL_DENSE_TAIL {node.SOL_DENSE_TAIL!r} != "
                 f"h3_config.SOL_DENSE_TAIL {h3_config.SOL_DENSE_TAIL!r}"]
+    if node.SOL_SINK_DEFAULT != h3_config.SOL_SINK_DEFAULT:
+        return [f"sol_attn_h3.SOL_SINK_DEFAULT {node.SOL_SINK_DEFAULT!r} != "
+                f"h3_config.SOL_SINK_DEFAULT {h3_config.SOL_SINK_DEFAULT!r}"]
     return []
 
 

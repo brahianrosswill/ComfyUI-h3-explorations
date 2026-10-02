@@ -8,11 +8,11 @@ Scenes are ordered by how many graphs carry them, so the defaults that reach the
 
 | scene | bank id | graphs | words | shots | speakers | markers |
 |---|---|---|---|---|---|---|
-| [`LONG_T2V_PROMPT`](#long-t2v-prompt) | `t2va_covered_market` | 82 | 290 | 3 | 2 | `<d>` |
-| [`ref2va_role_character_environment`](#ref2va-role-character-environment) | `ref2va_role_character_environment` | 10 | 135 | 1 | 0 | — |
+| [`LONG_T2V_PROMPT`](#long-t2v-prompt) | `t2va_covered_market` | 83 | 290 | 3 | 2 | `<d>` |
+| [`ref2va_role_character_environment`](#ref2va-role-character-environment) | `ref2va_role_character_environment` | 11 | 135 | 1 | 0 | — |
+| [`I2V_PROMPT`](#i2v-prompt) | `i2va_lighthouse_keyframe` | 9 | 90 | 1 | 0 | — |
 | [`MARKET_REF2V_PROMPT`](#market-ref2v-prompt) | `ref2va_market_stallholder` | 9 | 598 | 3 | 2 | `<d>` |
 | [`ref2va_role_character_garment_environment`](#ref2va-role-character-garment-environment) | `ref2va_role_character_garment_environment` | 9 | 173 | 1 | 0 | — |
-| [`I2V_PROMPT`](#i2v-prompt) | `i2va_lighthouse_keyframe` | 8 | 90 | 1 | 0 | — |
 | [`ref2va_image_video_audio_music`](#ref2va-image-video-audio-music) | `ref2va_image_video_audio_music` | 5 | 264 | 1 | 0 | — |
 | [`fl2va_interior_converge`](#fl2va-interior-converge) | `fl2va_interior_converge` | 3 | 159 | 1 | 0 | — |
 | [`BENCH_T2V_PROMPT`](#bench-t2v-prompt) | `t2va_frontier_standoff` | 2 | 385 | 3 | 2 | `<d>` |
@@ -50,7 +50,7 @@ Scenes are ordered by how many graphs carry them, so the defaults that reach the
 
 ## LONG_T2V_PROMPT
 
-Carried by **82** graph(s). Sections: `integrated_multimodal_description`, `overall_soundscape`, `non_diegetic_music`.
+Carried by **83** graph(s). Sections: `integrated_multimodal_description`, `overall_soundscape`, `non_diegetic_music`.
 
 <details><summary>graphs</summary>
 
@@ -59,7 +59,6 @@ Carried by **82** graph(s). Sections: `integrated_multimodal_description`, `over
 - `h3_candidate_t2v_pdd8_baked_audio_freeze_gain_api`
 - `h3_candidate_t2v_pdd8_baked_audio_freeze_guide_api`
 - `h3_candidate_t2v_pdd8_sol_narrow_api`
-- `h3_candidate_t2v_sol_allrows_api`
 - `h3_candidate_t2v_sol_only_api`
 - `h3_probe_canvas_portrait_api`
 - `h3_probe_canvas_ultrawide_api`
@@ -100,6 +99,7 @@ Carried by **82** graph(s). Sections: `integrated_multimodal_description`, `over
 - `h3_probe_t2v_pdd8_dense_api`
 - `h3_probe_t2v_pdd8_merge_api`
 - `h3_probe_t2v_pdd8_sage_api`
+- `h3_probe_t2v_pdmd_2step_api`
 - `h3_probe_t2v_policy_api`
 - `h3_probe_t2v_rotate_api`
 - `h3_probe_t2v_sage_rotate_api`
@@ -135,6 +135,7 @@ Carried by **82** graph(s). Sections: `integrated_multimodal_description`, `over
 - `h3_text_to_video_pdd_manual_sigmas_savelat_api`
 - `h3_text_to_video_pdd_savelat_api`
 - `h3_text_to_video_pdd_x0_api`
+- `h3_text_to_video_pdmd_api`
 - `h3_text_to_video_savelat_api`
 
 </details>
@@ -151,7 +152,7 @@ N/A
 
 ## ref2va_role_character_environment
 
-Carried by **10** graph(s). Sections: `subject_definitions`, `summary`, `retention_analysis`, `detailed_description`, `overall_soundscape`, `non_diegetic_music`.
+Carried by **11** graph(s). Sections: `subject_definitions`, `summary`, `retention_analysis`, `detailed_description`, `overall_soundscape`, `non_diegetic_music`.
 
 <details><summary>graphs</summary>
 
@@ -159,6 +160,7 @@ Carried by **10** graph(s). Sections: `subject_definitions`, `summary`, `retenti
 - `h3_image_ref_plus_text_to_video_pdd_4step_api`
 - `h3_image_ref_plus_text_to_video_pdd_api`
 - `h3_probe_r2v_flashgen_4step_api`
+- `h3_probe_r2v_pdmd_4step_api`
 - `h3_probe_ref2v_pdd_345_api`
 - `h3_probe_ref2v_pdd_8s_api`
 - `h3_probe_ref2v_pdd_api`
@@ -189,6 +191,34 @@ Natural ambient atmosphere continues throughout the shot.
 
 non_diegetic_music:
 N/A
+```
+
+## I2V_PROMPT
+
+Carried by **9** graph(s). Sections: none.
+
+<details><summary>graphs</summary>
+
+- `h3_first_frame_to_video_api`
+- `h3_first_frame_to_video_audio_freeze_api`
+- `h3_first_frame_to_video_pdd_api`
+- `h3_first_frame_to_video_pdd_savelat_api`
+- `h3_first_frame_to_video_stamped_api`
+- `h3_probe_i2v_flashgen_4step_api`
+- `h3_probe_i2v_pdmd_4step_api`
+- `h3_probe_i2v_step_switch_pdd8_flashgen_h080_api`
+- `h3_probe_i2v_step_switch_pdd8_flashgen_h080_savelat_api`
+
+</details>
+
+```text
+For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced.
+
+integrated_multimodal_description: [Shot 1] Live-action, cinematic, the subject shown in <Picture 1> holds its position, framing, lighting, and colors exactly as established in the image. The camera pushes in with small amplitude at slow speed while the subject begins to move, the surrounding scene staying continuous with the reference frame.
+
+overall_soundscape: Quiet room tone with a low ambient hum continues throughout, joined by soft physical sounds from the subject's movement.
+
+non_diegetic_music: N/A
 ```
 
 ## MARKET_REF2V_PROMPT
@@ -273,33 +303,6 @@ Natural ambient atmosphere continues throughout the shot.
 
 non_diegetic_music:
 N/A
-```
-
-## I2V_PROMPT
-
-Carried by **8** graph(s). Sections: none.
-
-<details><summary>graphs</summary>
-
-- `h3_first_frame_to_video_api`
-- `h3_first_frame_to_video_audio_freeze_api`
-- `h3_first_frame_to_video_pdd_api`
-- `h3_first_frame_to_video_pdd_savelat_api`
-- `h3_first_frame_to_video_stamped_api`
-- `h3_probe_i2v_flashgen_4step_api`
-- `h3_probe_i2v_step_switch_pdd8_flashgen_h080_api`
-- `h3_probe_i2v_step_switch_pdd8_flashgen_h080_savelat_api`
-
-</details>
-
-```text
-For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced.
-
-integrated_multimodal_description: [Shot 1] Live-action, cinematic, the subject shown in <Picture 1> holds its position, framing, lighting, and colors exactly as established in the image. The camera pushes in with small amplitude at slow speed while the subject begins to move, the surrounding scene staying continuous with the reference frame.
-
-overall_soundscape: Quiet room tone with a low ambient hum continues throughout, joined by soft physical sounds from the subject's movement.
-
-non_diegetic_music: N/A
 ```
 
 ## ref2va_image_video_audio_music

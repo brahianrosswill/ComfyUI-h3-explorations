@@ -17,6 +17,18 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-02
 
+- **Sol's `sink_conditioning` default becomes `exact_kv_and_all_rows`; `dense_blocks`
+  stays Option C** (owner decision, 0.185.0). The owner stopped the output-level
+  panel after one judged seed and asked for "a good solid general default".
+  `all_rows` was the one Sol setting rated fine on the dialogue scene and lost on
+  no scene; the dense_blocks choice did not move the verdict. Applied to every
+  graph, video references included, against the roadmap's 2026-09-10 plan that
+  kept ref2va on `exact_kv_and_rows`. Evidence and cost:
+  `bench/results/2026-10-02_sol_dense_blocks_panel.md`. Retired the
+  `h3_candidate_t2v_sol_allrows` graph, now the same as its base. The
+  `SOL_DENSE_TAIL` comments used to say Test 9A "proved" Option C; they now say it
+  was kept by decision.
+
 - **The dense_blocks campaign's report was corrected against its captures**
   (0.184.13, `bench/results/2026-10-02_sol_campaign_reanalysis.md`). It used to
   say Test 9C ran `exact_kv_and_all_rows` (it repeated Test 8's settings), that
