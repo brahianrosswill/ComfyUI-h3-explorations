@@ -202,9 +202,10 @@ After ingestion, open the generated HTML files in any browser to review the visu
 
 ## 7. Next-Step Parameter Calibration Rules
 
-Once your capture data is in DuckDB, use these quantitative criteria to calibrate your production workflow:
+Once your capture data is in DuckDB, use these quantitative criteria to calibrate your production workflow (see detailed findings and the 5-test matrix in [`sol_dense_blocks_reanalysis.md`](sol_dense_blocks_reanalysis.md)):
 
-1. **`dense_blocks`**: Add any block where `avg_rel_l2_pct > 12.0%` or `min_cosine < 0.93` (typically blocks 45, 48, 49).
+1. **`dense_blocks`**: Add any block where `avg_rel_l2_pct > 15.0%` or `min_cosine < 0.90`. On `quantizer="rotated"`, blocks 45–48 are tamed (~7%), while middle blocks 38–43 spike to ~25% error. Top candidate configs: Option A (`"39,41,42,49"`) or Option B (`"39,40,41,42,49"`).
 2. **`start_percent`**: If early diffusion steps ($t \le 0.2$) show high relative error on text or video segments, maintain `start_percent=0.2` to keep early structural anchoring dense.
 3. **`token_routing`**: If unnesting `sol_probe_heads` on middle blocks (e.g. 24, 32, 40) reveals high worst-head errors, enable `measured blocks (0, 24, 32, 40)`.
 4. **`sink_conditioning`**: If `sol_probe_segments` shows text segment error above $5.0\%$, ensure `sink_conditioning="exact_kv_and_rows"` is active.
+

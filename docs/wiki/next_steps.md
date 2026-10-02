@@ -1034,6 +1034,15 @@ length every arm above rendered on this card without it.
 
 ## Now
 
+- **Sol dense blocks reanalysis and 5-test matrix, 2026-10-02.** Test 1's all-block
+  instrumentation run on Ref2VA (119k tokens) under `quantizer="rotated"` proved that
+  Hadamard rotation resolved the $K$-norm outlier issue on blocks 45–48 (Block 48 exhibits
+  7.14% relative error). However, sparsity truncation error revealed a massive middle-network
+  spike across blocks 38–43 (peaking at Block 42 with 25.67% error and Block 39 with 25.22%).
+  `dense_blocks="45,48,49"` is under trial for replacement by Option A (`"39,41,42,49"`) or
+  Option B (`"39,40,41,42,49"`). Details and the active 5-test evaluation matrix are in
+  [`../research/sparse/sol_dense_blocks_reanalysis.md`](../research/sparse/sol_dense_blocks_reanalysis.md)
+  and [`decisions.md`](decisions.md).
 - **Prompting docs, 2026-10-01.** `../prompting.md` is the only home of a prompting
   rule and its section 16 is specificity. The dead code is removed and the song node's
   prompts are graded. What is still open for the owner (the song prompt's mood word,

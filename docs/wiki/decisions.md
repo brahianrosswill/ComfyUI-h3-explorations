@@ -15,6 +15,24 @@ Older history lives elsewhere and is not copied here:
   decisions" and forward-plan sections.
 - `bench/results/`: the verdict records, each with its conditions.
 
+## 2026-10-02
+
+- **Re-evaluating Sol's default `dense_blocks="45,48,49"` under `quantizer="rotated"`** (instrumentation
+  finding and experimental trial). The 2026-09-25 default `dense_blocks="45,48,49"` was established
+  under unrotated INT8 attention, where channel outlier spikes in $K$-norm destroyed quantization
+  accuracy on blocks 45, 48, and 49 (`docs/h3_block49_quant_error.md`). With `quantizer="rotated"`
+  (Hadamard rotation) active since 2026-09-27, activation energy is evenly dispersed across all 128
+  channels: Test 1's all-block instrumentation run (Ref2VA, 119k tokens, 8 PDD steps, unmasked) proved
+  that Block 48 drops to 7.14% avg relative $L_2$ error (lower than almost all middle blocks), and
+  blocks 46–47 are 6–7%. However, routing sparsity truncation error reveals a severe error spike in the
+  middle semantic integration layers: Block 42 at 25.67% avg relative $L_2$ error (max 27.01%),
+  Block 39 at 25.22%, Block 41 at 24.35%, and Block 40 at 23.43% (worst heads losing up to 80%
+  magnitude with cosine similarities down to 0.77). Retaining Block 48 in `dense_blocks` is wasteful
+  while leaving the 25% middle cluster unprotected. Block 49 remains mandatory as it directly feeds
+  `final_layer.video_out`. Top candidate sets under a 5-test matrix: Option A (`"39,41,42,49"`, 4 blocks)
+  and Option B (`"39,40,41,42,49"`, 5 blocks). Full analysis and test plan in
+  [`docs/research/sparse/sol_dense_blocks_reanalysis.md`](../research/sparse/sol_dense_blocks_reanalysis.md).
+
 ## 2026-10-01
 
 - **PDMD is parked, on kijai's resized files** (owner, 2026-10-01: "just keep kijais and note it.
