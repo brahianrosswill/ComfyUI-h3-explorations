@@ -126,7 +126,8 @@ so a PR touching an H3 path under an unrelated title can be missed.
   `standalone/h3_mutant_distill/exact_lora.py`. Read from the diff and
   reasoned; nothing has run under the PR. The fix is to accept the three
   keywords and apply core's `_mod_gate` when `residual` is given;
-  [`wiki/next_steps.md`](wiki/next_steps.md) carries it.
+  [`wiki/next_steps.md`](wiki/next_steps.md) carries it. *Made the same day
+  in 0.184.10.*
 - 16712 and 16713 rework `_embed_and_pack` again and move reference-row
   preparation into `extra_conds`; their bodies report identical latents.
   Nothing here mutates `cond_*_latents`. `bench/probe_ref_rows_16604.py`

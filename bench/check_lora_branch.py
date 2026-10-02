@@ -307,6 +307,35 @@ def main() -> int:
     check("a second model does not wrap the first's applied patches",
           rel(stacked, ref) < 1e-5, f"{rel(stacked, ref):.3g} from its own merge")
 
+    # Core PR 16681 (open as of 2026-10-02) has `DiTBlock` hand the MLP its
+    # residual add: `self.mlp(h, residual=x, gate=gate_mlp,
+    # segments=mod_segments)` whenever the MLP carries no hook. An object
+    # patch is not a hook, so the MLP patch gets those keywords. Emulated by
+    # swapping that last line into core's own block forward for one run.
+    stock = mm_h3.DiTBlock.forward
+
+    def pr16681_forward(self, x, t_emb, mod_segments, rope_freqs, transformer_options={}, attention=None):
+        attention = self.attn if attention is None else attention
+        shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = self.adaln_proj(t_emb)
+        h = mm_h3._mod_scale_shift(self.norm1(x), shift_msa, scale_msa, mod_segments)
+        x = mm_h3._mod_gate(x, gate_msa, attention(h, rope_freqs=rope_freqs,
+                                                   transformer_options=transformer_options), mod_segments)
+        h = mm_h3._mod_scale_shift(self.norm2(x), shift_mlp, scale_mlp, mod_segments)
+        return self.mlp(h, residual=x, gate=gate_mlp, segments=mod_segments)
+
+    mm_h3.DiTBlock.forward = pr16681_forward
+    try:
+        out_pr, _ = branched(dm, sd)
+    except TypeError as e:
+        out_pr = None
+        detail = f"the MLP patch refused the call: {e}"
+    finally:
+        mm_h3.DiTBlock.forward = stock
+    if out_pr is not None:
+        detail = f"{rel(out_pr, ref):.3g} from the merge"
+    check("under PR 16681's MLP call the branch still equals the merge",
+          out_pr is not None and rel(out_pr, ref) < 1e-5, detail)
+
     if fails:
         print(f"\n  FAIL  {len(fails)}: {fails}")
         return 1

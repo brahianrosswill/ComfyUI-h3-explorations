@@ -4,6 +4,21 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.184.10
+
+### Fixed
+
+- **`MiniMaxH3LoRABranch` survives core PR 16681** (owner, 2026-10-02). The
+  PR, open as of that date, has `DiTBlock` call the MLP with `residual`,
+  `gate` and `segments`; an object patch is not a hook, so the one-argument
+  `mlp.forward` patch would have raised on every LoRA touching fc2.
+  `lora_branch.py::_mlp_forward` and its copy in
+  `standalone/h3_mutant_distill/exact_lora.py` accept the three keywords and
+  apply core's `_mod_gate` when `residual` is given; with today's core
+  nothing changes. `bench/check_lora_branch.py` adds a case that swaps the
+  PR's call into core's block forward and requires the branch to equal the
+  merge; it went red against the one-argument signature.
+
 ## 0.184.9
 
 ### Changed

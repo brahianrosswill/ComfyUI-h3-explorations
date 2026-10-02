@@ -456,7 +456,10 @@ none of it is done.
   `_mod_gate` when `residual` is given, with `bench/check_lora_branch.py`
   calling it both ways, and the full `bench/check_*.py` sweep before commit.
   Reasoned from the diff, not run. Do it when the PR merges, or before as a
-  forward-compatible change if the PR's signature settles.
+  forward-compatible change if the PR's signature settles. *Done 2026-10-02
+  in 0.184.10 (owner): both copies accept the keywords, and
+  `bench/check_lora_branch.py` runs the PR's call. If the PR's signature
+  changes before merge, that case is what to update.*
 - **If core PR 16713 merges,** re-run `bench/probe_ref_rows_16604.py`, which
   calls `_cond_video_rows`.
 - **Two optional decoders now exist, neither measured here.** Core loads
