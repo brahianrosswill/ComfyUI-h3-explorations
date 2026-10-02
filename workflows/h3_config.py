@@ -544,16 +544,24 @@ SOL_CORE_DEFAULTS = {
     "verbose": False,
 }
 
-#: The Sol node's `dense_blocks` default, 2026-09-25 (owner): the blocks whose
-#: K-norm is lopsided on the released checkpoint. Mirrors
-#: `sol_attn_h3.py::SOL_DENSE_TAIL`; `bench/check_attention_defaults.py` holds
-#: the two together, and the node's docstring near it says why these three.
-#: *(2026-10-02, re-evaluated under quantizer="rotated": Hadamard rotation
-#: dispersed the outlier energy, dropping block 48 error to 7.14% and 45 to
-#: 9.55%, while middle blocks 38–43 spike to ~25% error. dense_blocks="45,48,49"
-#: is under active trial for replacement by "39,41,42,49" or "39,40,41,42,49".
-#: See docs/research/sparse/sol_dense_blocks_reanalysis.md).*
-SOL_DENSE_TAIL = "45,48,49"
+#: Option A candidate: shields the top 3 worst middle blocks (>24% error) plus
+#: the terminal block 49 (which feeds final_layer.video_out). Adopted 2026-10-02.
+SOL_DENSE_OPTION_A = "39,41,42,49"
+
+#: Option B candidate: shields the entire 23%–26% middle error plateau plus
+#: the terminal block 49.
+SOL_DENSE_OPTION_B = "39,40,41,42,49"
+
+#: Historical 2026-09-25 tail default (from unrotated INT8 K-norm outliers):
+SOL_DENSE_HISTORICAL_TAIL = "45,48,49"
+
+#: The Sol node's `dense_blocks` default. Set to SOL_DENSE_OPTION_A ("39,41,42,49")
+#: on 2026-10-02 after Test 1 full 50-block telemetry under quantizer="rotated"
+#: revealed that rotation dropped block 48 error to 7.14% while middle blocks
+#: 38–43 peak at 25.67%. Can be switched to SOL_DENSE_OPTION_B or SOL_DENSE_HISTORICAL_TAIL.
+#: Mirrors `sol_attn_h3.py::SOL_DENSE_TAIL`; `bench/check_attention_defaults.py`
+#: holds the two together.
+SOL_DENSE_TAIL = SOL_DENSE_OPTION_A
 
 SOL_RECOMMENDED_CUDA = dict(
     # Keyed to `MiniMaxH3Sol`'s inputs since the redesign (2026-09-27,
@@ -658,13 +666,12 @@ SOL_RECOMMENDED_CUDA = dict(
     # route capture deliberately runs with this empty so blocks 0-2 and 32 are
     # observable instead of bypassed.
     #
-    # **Overridden by the owner, 2026-09-25**, as a practical default rather than
-    # the validated set the paragraph above asked for: the three lopsided-K-norm
-    # tail blocks go to the dense kernel (`SOL_DENSE_TAIL`, below). On the
-    # block-49 capture, kitchen's dense INT8 error is well below Sol's routed
-    # error on the same heads (`bench/results/2026-09-15_ck_int8_attention_block49.json`),
-    # at a small cost measured once (`bench/results/2026-09-15_block49_community_chain.md`).
-    # The kitchen-chain render of it is unscored. `docs/wiki/decisions.md`.
+    # **Updated 2026-10-02 (Option A adoption)**: Under quantizer="rotated"
+    # (Hadamard rotation), block 48 error dropped to 7.14% and 45 to 9.55%,
+    # while middle blocks 38–43 spike to ~25% error. dense_blocks adopts Option A
+    # ("39,41,42,49") via SOL_DENSE_TAIL, shielding the three worst middle blocks
+    # (39, 41, 42) plus terminal block 49 (feeds final_layer.video_out). Option B
+    # ("39,40,41,42,49") is available as SOL_DENSE_OPTION_B. `docs/wiki/decisions.md`.
     dense_blocks=SOL_DENSE_TAIL,
     # `quantizer` "balanced" = qk_balance on, rotate off, the shipped state
     # until 2026-09-27; "rotated" since (below).

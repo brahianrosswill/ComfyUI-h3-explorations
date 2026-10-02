@@ -4,6 +4,23 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.184.8
+
+### Changed
+
+- **Sol's `dense_blocks` adopts Option A (`"39,41,42,49"`), with Option B (`"39,40,41,42,49"`)
+  named as a switchable variable** (owner, 2026-10-02).
+  - Defined `SOL_DENSE_OPTION_A = "39,41,42,49"` (shields top 3 worst middle blocks 39, 41, 42
+    with >24% error + terminal block 49).
+  - Defined `SOL_DENSE_OPTION_B = "39,40,41,42,49"` (shields full 39–42 middle plateau + terminal
+    block 49).
+  - Preserved `SOL_DENSE_HISTORICAL_TAIL = "45,48,49"`.
+  - Re-pointed `SOL_DENSE_TAIL` to `SOL_DENSE_OPTION_A` across `sol_attn_h3.py` and
+    `workflows/h3_config.py`.
+  - Updated node schema tooltip in `sol_attn_h3.py` to explain Option A and Option B.
+  - Rebuilt all 166 workflow graphs via `workflows/build_workflows.py` and validated against the
+    live ComfyUI server schema.
+
 ## 0.184.7
 
 ### Added

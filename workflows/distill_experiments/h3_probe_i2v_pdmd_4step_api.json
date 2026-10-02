@@ -213,7 +213,7 @@
       "min_tokens": 12288,
       "sink_conditioning": "exact_kv_and_rows",
       "verbose": true,
-      "dense_blocks": "45,48,49",
+      "dense_blocks": "39,41,42,49",
       "quantizer": "rotated",
       "token_routing": "off"
     }

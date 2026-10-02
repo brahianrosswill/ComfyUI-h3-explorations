@@ -17,6 +17,15 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-02
 
+- **Sol's `dense_blocks` adopts Option A (`"39,41,42,49"`), with Option B (`"39,40,41,42,49"`)
+  named** (owner, 2026-10-02: "change the sol dense detail in whatever builds the workflows and the
+  h3 config and sol attn h3 to be the Option A candidate list, but also include the Option B candidate
+  list as a named variable, so switching is possible"). Replaces the 2026-09-25 tail default
+  `SOL_DENSE_TAIL = "45,48,49"`. `SOL_DENSE_OPTION_A`, `SOL_DENSE_OPTION_B` and
+  `SOL_DENSE_HISTORICAL_TAIL` are defined in `sol_attn_h3.py` and `workflows/h3_config.py`.
+  `SOL_DENSE_TAIL` defaults to Option A. 166 graphs rebuilt and validated against the live server.
+  (0.184.8).
+
 - **Re-evaluating Sol's default `dense_blocks="45,48,49"` under `quantizer="rotated"`** (instrumentation
   finding and experimental trial). The 2026-09-25 default `dense_blocks="45,48,49"` was established
   under unrotated INT8 attention, where channel outlier spikes in $K$-norm destroyed quantization

@@ -142,13 +142,24 @@ def parse_token_aug_profile(spec, count):
 #: well below Sol's routed error on the same heads
 #: (`bench/results/2026-09-15_ck_int8_attention_block49.json`), at a small cost
 #: measured once (`bench/results/2026-09-15_block49_community_chain.md`).
-#: Chosen as a practical default, not a scored result: the kitchen-chain render
-#: of it is unscored. `workflows/h3_config.py::SOL_DENSE_TAIL` carries the same
-#: value, and `bench/check_attention_defaults.py` holds the two together.
-#: *(2026-10-02, re-evaluated under quantizer="rotated": block 48 error is 7.14%
-#: while middle blocks 38–43 spike to ~25%; trial underway for Option A "39,41,42,49"
-#: or Option B "39,40,41,42,49", see docs/research/sparse/sol_dense_blocks_reanalysis.md).*
-SOL_DENSE_TAIL = "45,48,49"
+#: Option A candidate: shields the top 3 worst middle blocks (>24% error) plus
+#: the terminal block 49 (which feeds final_layer.video_out). Adopted 2026-10-02.
+SOL_DENSE_OPTION_A = "39,41,42,49"
+
+#: Option B candidate: shields the entire 23%–26% middle error plateau plus
+#: the terminal block 49.
+SOL_DENSE_OPTION_B = "39,40,41,42,49"
+
+#: Historical 2026-09-25 tail default (from unrotated INT8 K-norm outliers):
+SOL_DENSE_HISTORICAL_TAIL = "45,48,49"
+
+#: Active default for Sol dense_blocks. Set to SOL_DENSE_OPTION_A ("39,41,42,49")
+#: on 2026-10-02 after Test 1 full 50-block telemetry under quantizer="rotated"
+#: revealed that rotation dropped block 48 error to 7.14% while middle blocks
+#: 38–43 peak at 25.67%. Switch to SOL_DENSE_OPTION_B or SOL_DENSE_HISTORICAL_TAIL
+#: as needed. `workflows/h3_config.py::SOL_DENSE_TAIL` carries the same value,
+#: and `bench/check_attention_defaults.py` holds the two together.
+SOL_DENSE_TAIL = SOL_DENSE_OPTION_A
 #: Token routing's budget per query block when a preset turns it on;
 #: `parse_token_aug_profile` says why 64.
 TOKEN_ROUTING_BUDGET = 64
@@ -1018,8 +1029,9 @@ class MiniMaxH3Sol(io.ComfyNode):
                 io.String.Input("dense_blocks", default=SOL_DENSE_TAIL,
                                 tooltip="Blocks kept off Sol, e.g. '0-2,32'; negative indices "
                                         "count from the end. They run on the dense fallback. "
-                                        f"Default '{SOL_DENSE_TAIL}': the blocks whose K is "
-                                        "lopsided, where Sol's INT8 error is largest."),
+                                        f"Default '{SOL_DENSE_TAIL}' (Option A): shields the worst middle "
+                                        "routing-error blocks (39, 41, 42) and terminal block (49). "
+                                        f"Option B is '{SOL_DENSE_OPTION_B}'."),
                 io.Combo.Input("sink_conditioning", options=list(SINK_CONDITIONING_MODES),
                                default="exact_kv_and_rows",
                                tooltip="How the packed conditioning rows (text, references, "
