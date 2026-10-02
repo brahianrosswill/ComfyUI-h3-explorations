@@ -4,6 +4,17 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.184.12
+
+### Changed
+
+- **Sol's `dense_blocks` adopts Option C / Full Ridge Shield (`"38,39,40,41,42,49"`)** (owner decision, 2026-10-02).
+  - Empirical telemetry across the Test 9 campaign (Tests 9A, 9B, 9C) resolved the Block 38 bottleneck observed under high sparsity ($\tau=1.3$ in Test 8, where Block 38 breached 22.09% peak error).
+  - Test 9A proved that shielding Block 38 alongside Blocks 39–42 and 49 drops whole-network peak call error to a record-low 17.73% (Block 43 is now the worst remaining block), while ref_img max error drops below 20% (19.37%) and routed density remains ultra-sparse at 15.18% (~20.3% relative compute reduction over $\tau=1.1$).
+  - Re-pointed `SOL_DENSE_TAIL` to `SOL_DENSE_OPTION_C` across `sol_attn_h3.py` and `workflows/h3_config.py`.
+  - Rebuilt all 166 workflow graphs via `workflows/build_workflows.py`.
+  - Verified by `bench/check_attention_defaults.py`.
+
 ## 0.184.11
 
 ### Changed

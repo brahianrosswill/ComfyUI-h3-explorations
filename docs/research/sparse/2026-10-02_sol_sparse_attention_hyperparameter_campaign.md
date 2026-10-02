@@ -165,17 +165,19 @@ To counter the Block 38 spike observed in Test 8 ($\tau=1.3$), we conducted a 3-
 ## 5. Shipped Architecture & Production Recommendations
 
 ### 5.1 Active Shipped Defaults (`MiniMaxH3Sol`)
-Adopted in release **`0.184.11`** across `sol_attn_h3.py` and `workflows/h3_config.py`:
+Adopted in release **`0.184.12`** across `sol_attn_h3.py` and `workflows/h3_config.py`:
 
 ```python
+SOL_DENSE_OPTION_A = "39,41,42,49"
 SOL_DENSE_OPTION_B = "39,40,41,42,49"
-SOL_DENSE_TAIL = SOL_DENSE_OPTION_B
+SOL_DENSE_OPTION_C = "38,39,40,41,42,49"  # Full Ridge Shield
+SOL_DENSE_TAIL = SOL_DENSE_OPTION_C
 
 SOL_RECOMMENDED_CUDA = dict(
-    tau=1.0,                       # Safe baseline; tau=1.1 recommended for production
+    tau=1.0,                       # Safe baseline; tau=1.3 recommended for high-throughput
     start_percent=0.2,             # Dense warmup for base models (0.0 for PDD distillations)
     end_percent=1.0,               # Sol active through terminal step
-    dense_blocks=SOL_DENSE_TAIL,   # Shields full 39-42 middle plateau + terminal block 49
+    dense_blocks=SOL_DENSE_TAIL,   # Shields full 38-42 middle plateau + terminal block 49
     quantizer="rotated",           # Hadamard rotation eliminates tail channel outliers
     sink_conditioning="exact_kv_and_rows",  # Exact target audio protection (0.71% error)
     token_routing="measured",      # Block augmentation on 0, 24, 32, 40
@@ -192,11 +194,11 @@ SOL_RECOMMENDED_CUDA = dict(
    * `start_percent`: `0.2`
    * **Profile**: **15.18% routed density** (~20.3% relative kernel compute reduction over $\tau=1.1$), record-low **17.73% peak call error**, **19.37% ref image max error**, min cosine **0.9878**. Highly recommended for production throughput.
 
-2. **Production Balanced (Standard Default — Test 7)**:
+2. **Production Balanced (Test 7)**:
    * `tau`: `1.1`
-   * `dense_blocks`: `"39,40,41,42,49"`
+   * `dense_blocks`: `"38,39,40,41,42,49"` (or `"39,40,41,42,49"`)
    * `start_percent`: `0.2`
-   * **Profile**: Sub-19% peak error (18.71%), 8.71% whole-network average error, ~18.8% routed density.
+   * **Profile**: Sub-18% peak error, 8.71% whole-network average error, ~18.8% routed density.
 
 3. **Intermediate Sparsity (Test 9B)**:
    * `tau`: `1.2`
@@ -206,15 +208,15 @@ SOL_RECOMMENDED_CUDA = dict(
 
 4. **Maximum Conservative Quality (Test 4)**:
    * `tau`: `1.0`
-   * `dense_blocks`: `"39,40,41,42,49"`
+   * `dense_blocks`: `"38,39,40,41,42,49"`
    * `start_percent`: `0.2`
-   * **Profile**: Highest dense overlap, ~20.2% routed density, sub-19% peak error.
+   * **Profile**: Highest dense overlap, ~20.2% routed density, sub-18% peak error.
 
 ---
 
 ## 6. Reproducibility & Query Cookbook
 
-All 8 runs are permanently preserved in `data/sparse/sol_analysis.duckdb`.
+All 11 runs (across 10 capture directories) are permanently preserved in `data/sparse/sol_analysis.duckdb`.
 
 ### Ingestion Command
 To re-ingest all capture logs and regenerate the HTML dashboard:

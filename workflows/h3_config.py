@@ -552,15 +552,21 @@ SOL_DENSE_OPTION_A = "39,41,42,49"
 #: the terminal block 49.
 SOL_DENSE_OPTION_B = "39,40,41,42,49"
 
+#: Option C / Full Ridge Shield: shields blocks 38 through 42 plus
+#: the terminal block 49. Discovered in Test 9A to eliminate the Block 38 spike
+#: under tau=1.3, reducing peak network error to 17.73% and ref_img error to 19.37%.
+SOL_DENSE_OPTION_C = "38,39,40,41,42,49"
+SOL_DENSE_RIDGE_SHIELD = SOL_DENSE_OPTION_C
+
 #: Historical 2026-09-25 tail default (from unrotated INT8 K-norm outliers):
 SOL_DENSE_HISTORICAL_TAIL = "45,48,49"
 
-#: The Sol node's `dense_blocks` default. Set to SOL_DENSE_OPTION_B ("39,40,41,42,49")
-#: on 2026-10-02 after Test 5 and Test 6 empirical telemetry proved it suppresses
-#: peak network error from 23.26% down to 19.74% (sub-20%) by shielding block 40.
+#: The Sol node's `dense_blocks` default. Set to SOL_DENSE_OPTION_C ("38,39,40,41,42,49")
+#: on 2026-10-02 after Test 9A empirical telemetry proved it suppresses
+#: peak network error from 22.09% down to 17.73% by shielding block 38.
 #: Mirrors `sol_attn_h3.py::SOL_DENSE_TAIL`; `bench/check_attention_defaults.py`
 #: holds the two together.
-SOL_DENSE_TAIL = SOL_DENSE_OPTION_B
+SOL_DENSE_TAIL = SOL_DENSE_OPTION_C
 
 SOL_RECOMMENDED_CUDA = dict(
     # Keyed to `MiniMaxH3Sol`'s inputs since the redesign (2026-09-27,
@@ -665,12 +671,13 @@ SOL_RECOMMENDED_CUDA = dict(
     # route capture deliberately runs with this empty so blocks 0-2 and 32 are
     # observable instead of bypassed.
     #
-    # **Updated 2026-10-02 (Option B adoption)**: Under quantizer="rotated"
+    # **Updated 2026-10-02 (Option C / Full Ridge Shield adoption)**: Under quantizer="rotated"
     # (Hadamard rotation), block 48 error dropped to 7.14% and 45 to 9.55%,
-    # while middle blocks 38–43 spike to ~25% error. dense_blocks adopts Option B
-    # ("39,40,41,42,49") via SOL_DENSE_TAIL, shielding the full middle plateau
-    # (39, 40, 41, 42) plus terminal block 49 (feeds final_layer.video_out),
-    # dropping peak network error below 20% (19.74%). Option A is SOL_DENSE_OPTION_A. `docs/wiki/decisions.md`.
+    # while middle blocks 38–43 spike to ~25% error. dense_blocks adopts Option C
+    # ("38,39,40,41,42,49") via SOL_DENSE_TAIL, shielding the full middle plateau
+    # (38, 39, 40, 41, 42) plus terminal block 49 (feeds final_layer.video_out),
+    # dropping peak network error below 18% (17.73%) even under high sparsity tau=1.3.
+    # Option B is SOL_DENSE_OPTION_B; Option A is SOL_DENSE_OPTION_A. `docs/wiki/decisions.md`.
     dense_blocks=SOL_DENSE_TAIL,
     # `quantizer` "balanced" = qk_balance on, rotate off, the shipped state
     # until 2026-09-27; "rotated" since (below).

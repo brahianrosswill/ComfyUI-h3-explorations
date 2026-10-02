@@ -17,6 +17,14 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-02
 
+- **Sol's `dense_blocks` adopts Option C / Full Ridge Shield (`"38,39,40,41,42,49"`)** (owner decision, 2026-10-02).
+  Replaces Option B (`"39,40,41,42,49"`) as active default `SOL_DENSE_TAIL`. Empirical findings
+  from Test 8 ($\tau=1.3$) revealed that Block 38 alone breached the 20% error ceiling (22.09% peak call error).
+  Test 9A proved that shielding Block 38 alongside Blocks 39–42 and 49 drops whole-network peak call error to
+  a record-low 17.73% (Block 43 is now the worst remaining block), while ref_img max error drops below
+  20% (19.37%) and routed density remains ultra-sparse at 15.18% (~20.3% relative compute reduction over
+  $\tau=1.1$). 166 workflow graphs rebuilt and validated against the live server. (0.184.12).
+
 - **Sol's `dense_blocks` adopts Option B (`"39,40,41,42,49"`)** (owner decision, 2026-10-02).
   Replaces Option A (`"39,41,42,49"`) as active default `SOL_DENSE_TAIL`. Empirical findings
   from Test 5 and Test 6 proved that shielding Block 40 eliminates the last middle routing spike
