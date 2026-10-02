@@ -175,6 +175,7 @@ import os
 import socket
 import threading
 import time
+import sys
 import zlib
 from pathlib import Path
 
@@ -486,14 +487,23 @@ def _ensure_render(prompt_id: str | None) -> None:
     _write_row(row)
 
 
+_prompts_mod = None
+
+
 def _describe_prompt(graph) -> dict:
+    global _prompts_mod
     try:
-        import importlib.util
-        wf = Path(__file__).resolve().parent / "workflows"
-        spec = importlib.util.spec_from_file_location("_prompts_for_observe", wf / "prompts.py")
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        return mod.describe(graph)
+        if _prompts_mod is None:
+            import importlib.util
+            wf = Path(__file__).resolve().parent / "workflows"
+            if str(wf) not in sys.path:
+                sys.path.insert(0, str(wf))
+            spec = importlib.util.spec_from_file_location("_prompts_for_observe", wf / "prompts.py")
+            mod = importlib.util.module_from_spec(spec)
+            sys.modules["_prompts_for_observe"] = mod
+            spec.loader.exec_module(mod)
+            _prompts_mod = mod
+        return _prompts_mod.describe(graph)
     except Exception as exc:                          # noqa: BLE001 -- identity, not the render
         logging.warning(f"{_LOG} could not describe the prompt: {exc}")
         return {"prompt_id": None, "prompt_sha256": None, "prompt_text": None,
