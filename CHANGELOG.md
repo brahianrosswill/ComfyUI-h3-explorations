@@ -4,6 +4,38 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.184.7
+
+### Added
+
+- **`docs/research/sparse/sol_dense_blocks_reanalysis.md`**: comprehensive research paper and
+  experimental plan re-evaluating Sol-Attn's dense blocks strategy under rotated INT8.
+  - Documents the historical context of `dense_blocks="45,48,49"`, established under unrotated INT8
+    to mask severe $K$-norm channel outliers on blocks 45, 48, and 49.
+  - Details the empirical findings from Test 1 (Ref2VA, 1344x768, 345f, sequence length 119k,
+    unmasked 50 blocks): Hadamard rotation (`quantizer="rotated"`) disperses channel energy evenly,
+    dropping Block 48 avg relative $L_2$ error to 7.14% (max 9.41%) and Block 45 to 9.55%.
+  - Details the discovery that the dominant remaining error is routing sparsity truncation loss,
+    heavily concentrated in the middle semantic integration cluster (Blocks 38–43 peaking at
+    Block 42 with 25.67% error and Block 39 with 25.22%, with individual heads losing up to 80%
+    magnitude and min cosine dropping to 0.77).
+  - Establishes candidate replacement configurations: Option A (`"39,41,42,49"`, 4 blocks) and
+    Option B (`"39,40,41,42,49"`, 5 blocks), noting Block 49 remains mandatory as it directly feeds
+    `final_layer.video_out` (13.73% error).
+  - Outlines the 5-test evaluation matrix (Test 1 diagnostic baseline, Test 2 standard candidate,
+    Test 3 middle dense swap, Test 4 start 0.2 anchor, Test 5 Pareto optimum).
+
+### Changed
+
+- Annotated all historical references, claims, and docstrings regarding `dense_blocks="45,48,49"`
+  with Test 1 empirical data and pointers to the active trial across `docs/wiki/decisions.md`,
+  `docs/wiki/next_steps.md`, `docs/wiki/index.md`, `docs/SOLATTN.md`,
+  `docs/h3_block49_quant_error.md`, `docs/roadmap.md`, `sol_attn_h3.py`, and
+  `workflows/h3_config.py`.
+- `docs/research/sparse/sol_capture_and_optimization_guide.md` updated with revised quantitative
+  calibration thresholds (`avg_rel_l2_pct > 15.0%` or `min_cosine < 0.90`) reflecting rotated INT8
+  behavior and linking to the reanalysis document.
+
 ## 0.184.6
 
 ### Changed

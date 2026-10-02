@@ -31,7 +31,8 @@ Older history lives elsewhere and is not copied here:
   while leaving the 25% middle cluster unprotected. Block 49 remains mandatory as it directly feeds
   `final_layer.video_out`. Top candidate sets under a 5-test matrix: Option A (`"39,41,42,49"`, 4 blocks)
   and Option B (`"39,40,41,42,49"`, 5 blocks). Full analysis and test plan in
-  [`docs/research/sparse/sol_dense_blocks_reanalysis.md`](../research/sparse/sol_dense_blocks_reanalysis.md).
+  [`docs/research/sparse/sol_dense_blocks_reanalysis.md`](../research/sparse/sol_dense_blocks_reanalysis.md)
+  (0.184.7).
 
 ## 2026-10-01
 
