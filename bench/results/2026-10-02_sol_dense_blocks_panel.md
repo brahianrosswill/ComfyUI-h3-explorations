@@ -35,7 +35,7 @@ In the owner's words, "Motion" means the action goes wrong, "like super fast
 transition or tossing coins in the air or walking backward with two crates",
 and "Artifacts" was usually ticked alongside it. The review page was a
 claude.ai artifact; it and its uploaded clips were deleted the same evening
-at the owner's request, and the verdicts below are the only copy kept. One later verdict, on backstage `optCall`, came from the owner watching the clip on the share by its filename, so the setting was known; the table says so.
+at the owner's request, and the verdicts below are the only copy kept. Two later verdicts, on backstage `optCall` and `optC`, came from the owner watching the clip on the share by its filename, so the setting was known; the table says so.
 
 ## Seed 730451892, two scenes
 
@@ -48,7 +48,7 @@ at the owner's request, and the verdicts below are the only copy kept. One later
 | market | tail | 0.937 | 0.715 | 285 | off: motion, artifacts |
 | market | none | 0.939 | 0.712 | 272 | off: motion |
 | backstage | dense | 0 | 0 | 480 | fine |
-| backstage | optC | 0.599 | 0.771 | 294 | not rated (rendered after the session) |
+| backstage | optC | 0.599 | 0.771 | 294 | off: "loud and looks kinda not as good just like option b" (watched by filename) |
 | backstage | optB | 0.614 | 0.662 | 289 | off: audio |
 | backstage | optCall | 0.642 | 0.576 | 333 | fine, "audio is good too" (watched by filename, setting known) |
 | backstage | tail | 0.652 | 0.707 | 281 | fine |
