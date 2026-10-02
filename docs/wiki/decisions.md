@@ -17,6 +17,16 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-02
 
+- **The dense_blocks campaign's report was corrected against its captures**
+  (0.184.13, `bench/results/2026-10-02_sol_campaign_reanalysis.md`). It used to
+  say Test 9C ran `exact_kv_and_all_rows` (it repeated Test 8's settings), that
+  the Test 9 arms held the seed fixed (every run has its own seed), that Test 7
+  shows multi-shot robustness (it shares Test 6's settings with a different
+  prompt and seed), and that Options A to C and `start_percent=0.2` lowered
+  error (on the cells every run measured, they sit within prompt-and-seed
+  noise). The Option A, B and C adoptions below rest on local probe error alone.
+  `SOL_DENSE_TAIL` is unchanged pending the owner.
+
 - **Sol's `dense_blocks` adopts Option C / Full Ridge Shield (`"38,39,40,41,42,49"`)** (owner decision, 2026-10-02).
   Replaces Option B (`"39,40,41,42,49"`) as active default `SOL_DENSE_TAIL`. Empirical findings
   from Test 8 ($\tau=1.3$) revealed that Block 38 alone breached the 20% error ceiling (22.09% peak call error).

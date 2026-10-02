@@ -6,6 +6,16 @@
 **Shipped Release**: `0.184.11` (Commit `b879344a`)  
 **Engine & Kernel**: Comfy Kitchen INT8 Rotated Attention (`kernel="kitchen"`, `quantizer="rotated"`)  
 
+> **Re-read 2026-10-02, later the same day**: `bench/results/2026-10-02_sol_campaign_reanalysis.md`
+> checks this report against the raw captures and corrects it. Test 9C ran
+> `exact_kv_and_rows`, not `exact_kv_and_all_rows`: it is a replicate of Test 8,
+> and its finding has no run behind it. No seed was held fixed, and Tests 7-9
+> use a different prompt from Tests 1-6. Most of the peak and average
+> improvements credited to Options A-C and to `start_percent=0.2` come from
+> cells leaving the measured set; on the cells every run measured, the configs
+> sit within prompt-and-seed noise. The compute figures leave out the dense
+> calls each option adds. Read the record before acting on a number here.
+
 ---
 
 ## 1. Executive Summary

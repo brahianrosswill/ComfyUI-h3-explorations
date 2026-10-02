@@ -1,14 +1,59 @@
 #!/usr/bin/env python3
-"""DuckDB SQL pipeline & interactive visual dashboard for Sol-Attn and Token Routing data.
+"""DuckDB ingest and static dashboard for Sol probe and observer captures.
 
-Ingests JSONL logs from Method A (H3_SOL_OBSERVE and H3_SOL_PROBE) into a local DuckDB database,
-runs SQL analytical queries, and exports an interactive HTML visual report.
-All paths are relative to maintain path privacy, and database files are stored in data/sparse.
+Ingests `sol_probe_*.jsonl` (H3_SOL_PROBE, `sol_block_probe.py`) and
+`sol_observe_*.jsonl` (H3_SOL_OBSERVE, `sol_observe.py`) into a DuckDB file,
+defines the views below, and writes a dashboard of tables computed from them.
+The dashboard carries no prose findings: every number on it is a query result,
+and the query is printed beside it.
+
+**A run is a capture directory.** Every row carries `run`, the name of the
+directory its file sits in, so runs are never pooled by accident. Rewritten
+2026-10-02: the earlier version keyed rows by `prompt_id` alone (the probe's
+`capture` label is null on older records), defaulted a missing schedule index
+to step 0, and pooled every run into one block profile on the dashboard.
+
+Views, each keyed by `run`:
+
+  sol_runs              one row per run: settings, settings digest, seed,
+                        prompt hash, cell/skip counts, probe granularity
+  sol_probe_cells       one row per compared call (whole-call metrics)
+  sol_probe_heads       per-head metrics, unnested
+  sol_probe_segments    per-segment metrics, unnested
+  sol_observe_calls     one row per observed DiT call, with route and density
+  sol_joined_analysis   probe cells joined to their observer call
+  sol_matched_steps     sigmas that every loaded run measured
+  sol_matched_cells     cells on (sigma, block) pairs every loaded run measured
+  sol_run_summary       per run: all-cell and matched-population error
+  sol_run_cost          per run: attention cost in block-equivalents
+  sol_block_profile     per run and block, on matched steps: relative and
+                        absolute error
+  sol_replicates        per block, runs that share a settings digest
+
+**Why the matched population.** `dense_blocks` and `start_percent` remove
+cells from what the probe measures, so the all-cell average and maximum fall
+when the worst blocks or steps go dense even if no measured cell changed.
+`sol_matched_cells` compares runs on the cells all of them measured.
+
+**Why block-equivalents.** A dense block or an out-of-range step costs a full
+attention call; a Sol call costs roughly its kernel density (sinks included).
+Routed density over Sol calls alone ignores the dense calls a config adds.
+
+**What the probe cannot see.** Its reference is the chained fallback on the
+identical q/k/v (`sol_block_probe.py::_header`), so a cell is local error at
+one call. Error carried into later steps or blocks shows up only as a change
+in their inputs, never as a term in any cell.
+
+    uv run python bench/sol_duckdb_analyzer.py --logs-dir data/sparse/captures
+    uv run python bench/sol_duckdb_analyzer.py --query "SELECT * FROM sol_run_summary"
+
+Needs the `duckdb` CLI (`DUCKDB_BIN`, PATH, or ~/.local/bin/duckdb).
 """
 
 from __future__ import annotations
 
 import argparse
+import html
 import json
 import os
 import shutil
@@ -33,642 +78,387 @@ def find_duckdb_binary() -> str:
 
 DUCKDB_BIN = find_duckdb_binary()
 
+# A probe cell is ~20-40 KB of JSON; DuckDB's default object limit is 16 MB,
+# which holds, but render records grew once and this keeps headroom (reasoned).
+MAX_OBJECT_BYTES = 64 * 1024 * 1024
+
 
 def run_duckdb_sql(db_path: Path, sql: str) -> list[dict]:
-    """Execute SQL against a DuckDB database and return results as a Python dict list."""
-    cmd = [
-        DUCKDB_BIN,
-        "-dark-mode",
-        "-json",
-        str(db_path),
-        "-c",
-        sql,
-    ]
+    """Execute SQL against a DuckDB database and return the last statement's rows."""
+    cmd = [DUCKDB_BIN, "-json", str(db_path), "-c", sql]
     res = subprocess.run(cmd, capture_output=True, text=True)
     if res.returncode != 0:
-        raise RuntimeError(f"DuckDB SQL error:\n{res.stderr}\nQuery:\n{sql}")
+        raise RuntimeError(f"DuckDB SQL error:\n{res.stderr}\nQuery (first 2000 chars):\n{sql[:2000]}")
     out = res.stdout.strip()
-    return json.loads(out) if out else []
+    if not out:
+        return []
+    # One JSON array per statement that returns rows; keep the last.
+    last = out[out.rfind("\n[") + 1:] if "\n[" in out else out
+    return json.loads(last)
+
+
+def _reader(files: list[Path]) -> str:
+    files_str = ", ".join(f"'{p.as_posix()}'" for p in files)
+    return (f"read_json_auto([{files_str}], filename=true, union_by_name=true, "
+            f"sample_size=-1, maximum_object_size={MAX_OBJECT_BYTES})")
+
+
+# The run label: the directory holding the file.
+RUN_EXPR = r"regexp_extract(filename, '([^/]+)/[^/]+$', 1)"
+
+
+PROBE_SQL = """
+CREATE OR REPLACE TABLE sol_probe_raw AS
+SELECT {run} AS run, * EXCLUDE (filename) FROM {reader};
+
+CREATE OR REPLACE VIEW sol_runs AS
+WITH cells AS (
+    SELECT run, prompt_id,
+           any_value(config) AS settings_digest,
+           any_value(to_json(settings)) AS settings,
+           count(*) FILTER (WHERE kind = 'cell') AS cells,
+           count(*) FILTER (WHERE kind = 'skip') AS skips,
+           bool_or((to_json(metrics)->'per_segment'->0->>'worst_heads') IS NOT NULL) AS granular
+    FROM sol_probe_raw WHERE kind IN ('cell', 'skip')
+    GROUP BY run, prompt_id
+), renders AS (
+    SELECT run, prompt_id,
+           to_json(rendered)->>'seed' AS seed,
+           left(to_json(rendered)->>'prompt_sha256', 12) AS prompt_sha,
+           to_json(rendered)->>'canvas' AS canvas,
+           try_cast(to_json(rendered)->>'length' AS INTEGER) AS length
+    FROM sol_probe_raw WHERE kind = 'render'
+)
+SELECT c.run, c.prompt_id, c.settings_digest,
+       try_cast(c.settings->>'tau' AS DOUBLE) AS tau,
+       c.settings->>'dense_blocks' AS dense_blocks,
+       try_cast(c.settings->>'start_percent' AS DOUBLE) AS start_percent,
+       c.settings->>'token_routing' AS token_routing,
+       c.settings->>'sink_conditioning' AS sink_conditioning,
+       c.settings->>'quantizer' AS quantizer,
+       r.seed, r.prompt_sha, r.canvas, r.length,
+       c.cells, c.skips, c.granular
+FROM cells c LEFT JOIN renders r USING (run, prompt_id);
+
+CREATE OR REPLACE VIEW sol_probe_cells AS
+SELECT run, prompt_id, executing_node_id, seq, block,
+       schedule.schedule_index AS step,
+       sigma, round(sigma, 4) AS sigma_key,
+       T AS tokens, cond_or_uncond, trajectory, config AS settings_digest,
+       compare_status, compare_reason, returned_backend,
+       metrics.whole.rel_l2 AS rel_l2, metrics.whole.cos AS cos,
+       metrics.whole.diff_rms AS diff_rms, metrics.whole.ref_rms AS ref_rms,
+       metrics.whole.numerator AS numerator, metrics.whole.denominator AS denominator,
+       metrics.per_head AS per_head, metrics.per_segment AS per_segment
+FROM sol_probe_raw
+WHERE kind = 'cell' AND metrics.whole.rel_l2 IS NOT NULL;
+
+CREATE OR REPLACE VIEW sol_probe_heads AS
+WITH u AS (SELECT run, prompt_id, executing_node_id, step, sigma, sigma_key, block, unnest(per_head) AS h
+           FROM sol_probe_cells)
+SELECT run, prompt_id, executing_node_id, step, sigma, sigma_key, block,
+       h.head AS head, h.rel_l2 AS head_rel_l2, h.cos AS head_cos,
+       h.numerator AS head_numerator, h.denominator AS head_denominator,
+       try_cast(to_json(h.rows)->>'p99' AS DOUBLE) AS row_p99,
+       try_cast(to_json(h.rows)->>'p99_9' AS DOUBLE) AS row_p99_9,
+       try_cast(to_json(h.rows)->>'max' AS DOUBLE) AS row_max
+FROM u;
+
+CREATE OR REPLACE VIEW sol_probe_segments AS
+WITH u AS (SELECT run, prompt_id, executing_node_id, step, sigma, sigma_key, block, unnest(per_segment) AS s
+           FROM sol_probe_cells)
+SELECT run, prompt_id, executing_node_id, step, sigma, sigma_key, block,
+       s.kind AS segment_kind, s.start AS seg_start, s."end" AS seg_end,
+       s.rel_l2 AS seg_rel_l2, s.cos AS seg_cos,
+       s.numerator AS seg_numerator, s.denominator AS seg_denominator,
+       try_cast(to_json(s.rows)->>'p99' AS DOUBLE) AS row_p99,
+       try_cast(to_json(s.rows)->>'p99_9' AS DOUBLE) AS row_p99_9,
+       try_cast(to_json(s.rows)->>'max' AS DOUBLE) AS row_max,
+       to_json(s)->'worst_heads' AS worst_heads
+FROM u;
+
+CREATE OR REPLACE VIEW sol_matched_steps AS
+SELECT sigma_key FROM sol_probe_cells GROUP BY sigma_key
+HAVING count(DISTINCT run) = (SELECT count(DISTINCT run) FROM sol_probe_cells);
+
+CREATE OR REPLACE VIEW sol_matched_cells AS
+WITH pairs AS (
+    SELECT sigma_key, block FROM sol_probe_cells GROUP BY sigma_key, block
+    HAVING count(DISTINCT run) = (SELECT count(DISTINCT run) FROM sol_probe_cells)
+)
+SELECT c.* FROM sol_probe_cells c JOIN pairs USING (sigma_key, block);
+
+CREATE OR REPLACE VIEW sol_run_summary AS
+WITH a AS (
+    SELECT run, count(*) AS cells, avg(rel_l2) AS avg_rel_l2, max(rel_l2) AS max_rel_l2,
+           min(cos) AS min_cos
+    FROM sol_probe_cells GROUP BY run
+), m AS (
+    SELECT run, count(*) AS matched_cells, avg(rel_l2) AS matched_avg_rel_l2,
+           max(rel_l2) AS matched_max_rel_l2, min(cos) AS matched_min_cos,
+           sqrt(sum(numerator) / sum(denominator)) AS matched_pooled_rel_l2
+    FROM sol_matched_cells GROUP BY run
+)
+SELECT r.run, r.settings_digest, r.tau, r.dense_blocks, r.start_percent, r.prompt_sha, r.seed,
+       a.cells, a.avg_rel_l2, a.max_rel_l2, a.min_cos,
+       m.matched_cells, m.matched_avg_rel_l2, m.matched_max_rel_l2, m.matched_min_cos,
+       m.matched_pooled_rel_l2
+FROM sol_runs r JOIN a USING (run) LEFT JOIN m USING (run);
+
+CREATE OR REPLACE VIEW sol_block_profile AS
+SELECT run, block, count(*) AS cells,
+       avg(rel_l2) AS avg_rel_l2, max(rel_l2) AS max_rel_l2, min(cos) AS min_cos,
+       avg(diff_rms) AS avg_diff_rms, avg(ref_rms) AS avg_ref_rms
+FROM sol_probe_cells
+WHERE sigma_key IN (SELECT sigma_key FROM sol_matched_steps)
+GROUP BY run, block;
+
+CREATE OR REPLACE VIEW sol_replicates AS
+WITH g AS (SELECT settings_digest FROM sol_runs GROUP BY settings_digest HAVING count(*) > 1),
+     b AS (SELECT p.run, r.settings_digest, r.prompt_sha, r.seed, p.block, p.avg_rel_l2
+           FROM sol_block_profile p JOIN sol_runs r USING (run)
+           WHERE r.settings_digest IN (SELECT settings_digest FROM g))
+SELECT x.settings_digest, x.block, x.run AS run_a, y.run AS run_b,
+       x.prompt_sha = y.prompt_sha AS same_prompt,
+       x.avg_rel_l2 AS a_rel_l2, y.avg_rel_l2 AS b_rel_l2, y.avg_rel_l2 - x.avg_rel_l2 AS diff
+FROM b x JOIN b y ON x.settings_digest = y.settings_digest AND x.block = y.block AND x.run < y.run;
+"""
+
+OBSERVE_SQL = """
+CREATE OR REPLACE TABLE sol_observe_raw AS
+SELECT {run} AS run, * EXCLUDE (filename) FROM {reader};
+
+CREATE OR REPLACE VIEW sol_observe_calls AS
+SELECT run, prompt_id, executing_node_id, seq, block,
+       schedule.schedule_index AS step,
+       sigma, round(sigma, 4) AS sigma_key, cond_or_uncond, route, T AS tokens,
+       routed_density.mean AS mean_routed_density,
+       routed_density.p50 AS p50_routed_density,
+       routed_density.max AS max_routed_density,
+       kernel_density.mean AS mean_kernel_density,
+       try_cast(to_json(ordering_effect_density)->>'overall' AS DOUBLE) AS ordering_effect_density,
+       peak_alloc_bytes / (1024.0 * 1024.0) AS peak_vram_mb
+FROM sol_observe_raw
+WHERE kind = 'call' AND scope = 'dit';
+
+-- A Sol call costs its kernel density; any other route on a DiT call ran the
+-- dense fallback and costs 1. Block-equivalents, not seconds: timings from an
+-- armed render are void (sol_block_probe.py::_header).
+CREATE OR REPLACE VIEW sol_run_cost AS
+SELECT run, count(*) AS dit_calls,
+       count(*) FILTER (WHERE route = 'sol') AS sol_calls,
+       count(*) FILTER (WHERE route <> 'sol') AS dense_calls,
+       sum(CASE WHEN route = 'sol' THEN mean_kernel_density ELSE 1.0 END) AS block_equivalents,
+       sum(CASE WHEN route = 'sol' THEN mean_kernel_density ELSE 1.0 END) / count(*) AS fraction_of_dense,
+       avg(mean_kernel_density) FILTER (WHERE route = 'sol') AS sol_kernel_density,
+       avg(mean_routed_density) FILTER (WHERE route = 'sol') AS sol_routed_density
+FROM sol_observe_calls GROUP BY run;
+"""
+
+JOIN_SQL = """
+CREATE OR REPLACE VIEW sol_joined_analysis AS
+SELECT p.run, p.prompt_id, p.executing_node_id, p.seq, p.step, p.sigma, p.block,
+       p.rel_l2, p.cos, p.diff_rms, p.ref_rms,
+       o.route, o.mean_routed_density, o.mean_kernel_density, o.ordering_effect_density, o.peak_vram_mb
+FROM sol_probe_cells p
+LEFT JOIN sol_observe_calls o
+  ON p.run = o.run AND p.prompt_id = o.prompt_id AND p.executing_node_id = o.executing_node_id
+ AND p.block = o.block AND p.sigma_key = o.sigma_key AND p.cond_or_uncond = o.cond_or_uncond;
+"""
 
 
 def setup_duckdb_tables(db_path: Path, probe_files: list[Path], observe_files: list[Path]):
-    """Initialize DuckDB tables and views for probe and observe JSONL logs."""
+    """Load the JSONL files and (re)define every view."""
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    init_sql = []
-
-    # 1. Ingest Probe Cells (H3_SOL_PROBE)
+    sql = []
     if probe_files:
-        files_str = ", ".join(f"'{p.as_posix()}'" for p in probe_files)
-        init_sql.append(f"""
-        CREATE OR REPLACE TABLE sol_probe_raw AS 
-        SELECT * FROM read_json_auto([{files_str}]);
-
-        CREATE OR REPLACE VIEW sol_probe_cells AS
-        SELECT
-            prompt_id,
-            executing_node_id,
-            seq,
-            block,
-            COALESCE(schedule.schedule_index, 0) AS step,
-            sigma,
-            T AS tokens,
-            cond_or_uncond,
-            capture,
-            trajectory,
-            config,
-            try_cast(to_json(settings)->>'tau' AS DOUBLE) AS tau,
-            to_json(settings)->>'token_routing' AS token_routing,
-            to_json(settings)->>'dense_blocks' AS dense_blocks,
-            to_json(settings)->>'sink_conditioning' AS sink_conditioning,
-            compare_status,
-            compare_reason,
-            returned_backend,
-            fallback_seconds,
-            metrics.whole.rel_l2 AS rel_l2,
-            metrics.whole.cos AS cos,
-            metrics.whole.diff_rms AS diff_rms,
-            metrics.whole.ref_rms AS ref_rms,
-            metrics.per_head AS per_head,
-            metrics.per_segment AS per_segment
-        FROM sol_probe_raw
-        WHERE kind = 'cell';
-
-        CREATE OR REPLACE VIEW sol_probe_heads AS
-        WITH unnested AS (
-            SELECT
-                prompt_id,
-                executing_node_id,
-                seq,
-                block,
-                COALESCE(schedule.schedule_index, 0) AS step,
-                sigma,
-                cond_or_uncond,
-                unnest(metrics.per_head) AS h
-            FROM sol_probe_raw
-            WHERE kind = 'cell'
-        )
-        SELECT
-            prompt_id,
-            executing_node_id,
-            seq,
-            block,
-            step,
-            sigma,
-            cond_or_uncond,
-            h.head AS head_idx,
-            h.rel_l2 AS head_rel_l2,
-            h.cos AS head_cos,
-            try_cast(to_json(h.rows)->>'mean' AS DOUBLE) AS row_mean,
-            try_cast(to_json(h.rows)->>'p50' AS DOUBLE) AS row_p50,
-            try_cast(to_json(h.rows)->>'p90' AS DOUBLE) AS row_p90,
-            try_cast(to_json(h.rows)->>'p99' AS DOUBLE) AS row_p99,
-            try_cast(to_json(h.rows)->>'p99_9' AS DOUBLE) AS row_p99_9,
-            try_cast(to_json(h.rows)->>'p99_99' AS DOUBLE) AS row_p99_99,
-            try_cast(to_json(h.rows)->>'max' AS DOUBLE) AS row_max
-        FROM unnested;
-
-        CREATE OR REPLACE VIEW sol_probe_segments AS
-        WITH unnested AS (
-            SELECT
-                prompt_id,
-                executing_node_id,
-                seq,
-                block,
-                COALESCE(schedule.schedule_index, 0) AS step,
-                sigma,
-                cond_or_uncond,
-                unnest(metrics.per_segment) AS s
-            FROM sol_probe_raw
-            WHERE kind = 'cell'
-        )
-        SELECT
-            prompt_id,
-            executing_node_id,
-            seq,
-            block,
-            step,
-            sigma,
-            cond_or_uncond,
-            s.kind AS segment_kind,
-            s.start AS seg_start,
-            s."end" AS seg_end,
-            s.rel_l2 AS seg_rel_l2,
-            s.cos AS seg_cos,
-            try_cast(to_json(s.rows)->>'mean' AS DOUBLE) AS row_mean,
-            try_cast(to_json(s.rows)->>'p50' AS DOUBLE) AS row_p50,
-            try_cast(to_json(s.rows)->>'p90' AS DOUBLE) AS row_p90,
-            try_cast(to_json(s.rows)->>'p99' AS DOUBLE) AS row_p99,
-            try_cast(to_json(s.rows)->>'p99_9' AS DOUBLE) AS row_p99_9,
-            try_cast(to_json(s.rows)->>'p99_99' AS DOUBLE) AS row_p99_99,
-            try_cast(to_json(s.rows)->>'max' AS DOUBLE) AS row_max,
-            to_json(s)->'worst_heads' AS worst_heads
-        FROM unnested;
-        """)
-
-    # 2. Ingest Observer Calls (H3_SOL_OBSERVE)
+        sql.append(PROBE_SQL.format(run=RUN_EXPR, reader=_reader(probe_files)))
     if observe_files:
-        files_str = ", ".join(f"'{p.as_posix()}'" for p in observe_files)
-        init_sql.append(f"""
-        CREATE OR REPLACE TABLE sol_observe_raw AS 
-        SELECT * FROM read_json_auto([{files_str}]);
-
-        CREATE OR REPLACE VIEW sol_observe_calls AS
-        SELECT
-            prompt_id,
-            executing_node_id,
-            seq,
-            block,
-            COALESCE(schedule.schedule_index, 0) AS step,
-            sigma,
-            cond_or_uncond,
-            route,
-            T AS tokens,
-            routed_density.mean AS mean_routed_density,
-            routed_density.p50 AS p50_routed_density,
-            routed_density.max AS max_routed_density,
-            kernel_density.mean AS mean_kernel_density,
-            try_cast(to_json(ordering_effect_density)->>'overall' AS DOUBLE) AS ordering_effect_density,
-            peak_alloc_bytes / (1024.0 * 1024.0) AS peak_vram_mb,
-            per_segment AS per_segment
-        FROM sol_observe_raw
-        WHERE kind = 'call';
-        """)
-
-    # 3. Joined View if both available
+        sql.append(OBSERVE_SQL.format(run=RUN_EXPR, reader=_reader(observe_files)))
     if probe_files and observe_files:
-        init_sql.append("""
-        CREATE OR REPLACE VIEW sol_joined_analysis AS
-        SELECT
-            p.prompt_id,
-            p.executing_node_id,
-            p.seq,
-            p.block,
-            p.step,
-            p.sigma,
-            p.cond_or_uncond,
-            p.tokens,
-            p.rel_l2,
-            p.cos,
-            o.route,
-            o.mean_routed_density,
-            o.mean_kernel_density,
-            o.ordering_effect_density,
-            o.peak_vram_mb
-        FROM sol_probe_cells p
-        LEFT JOIN sol_observe_calls o 
-          ON p.prompt_id = o.prompt_id
-         AND (p.executing_node_id IS NULL OR o.executing_node_id IS NULL OR p.executing_node_id = o.executing_node_id)
-         AND p.block = o.block 
-         AND p.step = o.step
-         AND (p.cond_or_uncond IS NULL OR o.cond_or_uncond IS NULL OR p.cond_or_uncond = o.cond_or_uncond);
-        """)
+        sql.append(JOIN_SQL)
+    if sql:
+        run_duckdb_sql(db_path, "\n".join(sql))
 
-    if init_sql:
-        full_sql = "\n".join(init_sql)
-        run_duckdb_sql(db_path, full_sql)
+
+# --- dashboard -------------------------------------------------------------
+
+def _fmt(v, kind: str) -> str:
+    if v is None:
+        return "&ndash;"
+    if kind == "pct":
+        return f"{float(v) * 100:.2f}"
+    if kind == "f4":
+        return f"{float(v):.4f}"
+    if kind == "f1":
+        return f"{float(v):.1f}"
+    return html.escape(str(v))
+
+
+def _table(rows: list[dict], cols: list[tuple[str, str, str]]) -> str:
+    if not rows:
+        return '<p class="muted">No rows.</p>'
+    head = "".join(f"<th>{html.escape(label)}</th>" for _, label, _ in cols)
+    body = "".join(
+        "<tr>" + "".join(f"<td>{_fmt(r.get(key), kind)}</td>" for key, _, kind in cols) + "</tr>"
+        for r in rows)
+    return f'<div class="scroll"><table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></div>'
+
+
+def _section(title: str, note: str, sql: str, rows: list[dict], cols) -> str:
+    return (f'<section><h2>{html.escape(title)}</h2><p class="muted">{html.escape(note)}</p>'
+            f'<pre>{html.escape(sql.strip())}</pre>{_table(rows, cols)}</section>')
+
+
+def _block_grid(db_path: Path) -> str:
+    """Blocks down, runs across: mean relative L2 (%) on matched steps."""
+    runs = [r["run"] for r in run_duckdb_sql(db_path, "SELECT run FROM sol_runs ORDER BY run")]
+    rows = run_duckdb_sql(db_path, "SELECT run, block, avg_rel_l2 FROM sol_block_profile")
+    grid: dict[int, dict[str, float]] = {}
+    for r in rows:
+        grid.setdefault(r["block"], {})[r["run"]] = r["avg_rel_l2"]
+    if not grid:
+        return ""
+    vmax = max(v for b in grid.values() for v in b.values())
+    head = "<th>block</th>" + "".join(f"<th class='rot'>{html.escape(r)}</th>" for r in runs)
+    body = []
+    for block in sorted(grid):
+        cells = []
+        for run in runs:
+            v = grid[block].get(run)
+            if v is None:
+                cells.append('<td class="dense">dense</td>')
+            else:
+                a = 0.08 + 0.72 * (v / vmax)
+                cells.append(f'<td style="background: rgb(var(--heat) / {a:.2f})">{v * 100:.1f}</td>')
+        body.append(f"<tr><td>{block}</td>{''.join(cells)}</tr>")
+    sql = "SELECT run, block, avg_rel_l2 FROM sol_block_profile  -- matched steps only"
+    return (f"<section><h2>Per-block relative L2 (%), matched steps</h2>"
+            f"<p class='muted'>Steps every run measured. A cell marked dense was not measured in that run.</p>"
+            f"<pre>{html.escape(sql)}</pre><div class='scroll'><table class='grid'><thead><tr>{head}</tr></thead>"
+            f"<tbody>{''.join(body)}</tbody></table></div></section>")
 
 
 def generate_html_dashboard(db_path: Path, out_html: Path):
-    """Run SQL analytics on DuckDB and render an interactive visual dashboard."""
-    tables = [r["name"] for r in run_duckdb_sql(db_path, "SHOW TABLES;")]
+    """Render the dashboard from the views; no prose findings."""
+    views = {r["name"] for r in run_duckdb_sql(db_path, "SHOW TABLES;")}
+    parts = []
+    if "sol_runs" in views:
+        q = """SELECT run, settings_digest, tau, dense_blocks, start_percent, token_routing,
+       sink_conditioning, prompt_sha, seed, cells, skips, granular FROM sol_runs ORDER BY run"""
+        parts.append(_section("Runs", "One row per capture directory. A shared settings digest means identical Sol settings.",
+                              q, run_duckdb_sql(db_path, q), [
+            ("run", "run", "s"), ("settings_digest", "digest", "s"), ("tau", "tau", "s"),
+            ("dense_blocks", "dense_blocks", "s"), ("start_percent", "start", "s"),
+            ("token_routing", "routing", "s"), ("sink_conditioning", "sink", "s"),
+            ("prompt_sha", "prompt", "s"), ("seed", "seed", "s"), ("cells", "cells", "s"),
+            ("skips", "skips", "s"), ("granular", "granular", "s")]))
+    if "sol_run_summary" in views:
+        q = "SELECT * FROM sol_run_summary ORDER BY run"
+        parts.append(_section(
+            "Error per run: all cells against the matched population",
+            "All-cell figures move when dense_blocks or start_percent remove cells. Matched figures use only (sigma, block) pairs every run measured. Relative L2 in %.",
+            q, run_duckdb_sql(db_path, q), [
+                ("run", "run", "s"), ("cells", "cells", "s"), ("avg_rel_l2", "avg", "pct"),
+                ("max_rel_l2", "max", "pct"), ("min_cos", "min cos", "f4"),
+                ("matched_cells", "matched cells", "s"), ("matched_avg_rel_l2", "matched avg", "pct"),
+                ("matched_max_rel_l2", "matched max", "pct"), ("matched_pooled_rel_l2", "matched pooled", "pct"),
+                ("matched_min_cos", "matched min cos", "f4")]))
+    if "sol_run_cost" in views:
+        q = "SELECT * FROM sol_run_cost ORDER BY run"
+        parts.append(_section(
+            "Attention cost per run",
+            "Block-equivalents: a Sol call counts its kernel density, any dense call counts 1. Fraction of dense is that sum over the DiT call count.",
+            q, run_duckdb_sql(db_path, q), [
+                ("run", "run", "s"), ("dit_calls", "DiT calls", "s"), ("sol_calls", "Sol", "s"),
+                ("dense_calls", "dense", "s"), ("block_equivalents", "block-equiv", "f1"),
+                ("fraction_of_dense", "of dense (%)", "pct"), ("sol_kernel_density", "Sol kernel (%)", "pct"),
+                ("sol_routed_density", "Sol routed (%)", "pct")]))
+    if "sol_replicates" in views:
+        q = """SELECT settings_digest, run_a, run_b, same_prompt, count(*) AS blocks,
+       avg(abs(diff)) AS mean_abs_diff, max(abs(diff)) AS max_abs_diff
+FROM sol_replicates GROUP BY ALL ORDER BY settings_digest"""
+        parts.append(_section(
+            "Replicates: runs with identical Sol settings",
+            "Per-block mean relative L2 on matched steps, run B minus run A. This is the noise a config difference has to clear.",
+            q, run_duckdb_sql(db_path, q), [
+                ("settings_digest", "digest", "s"), ("run_a", "run A", "s"), ("run_b", "run B", "s"),
+                ("same_prompt", "same prompt", "s"), ("blocks", "blocks", "s"),
+                ("mean_abs_diff", "mean |diff| (pts)", "pct"), ("max_abs_diff", "max |diff| (pts)", "pct")]))
+    if "sol_block_profile" in views:
+        parts.append(_block_grid(db_path))
+    if "sol_probe_segments" in views:
+        q = """SELECT run, segment_kind, sqrt(sum(seg_numerator) / sum(seg_denominator)) AS pooled_rel_l2,
+       min(seg_cos) AS min_cos FROM sol_probe_segments
+WHERE sigma_key IN (SELECT sigma_key FROM sol_matched_steps) GROUP BY ALL ORDER BY run, segment_kind"""
+        parts.append(_section("Per-segment error, matched steps",
+                              "Pooled relative L2 (sum of squared error over sum of squared reference) per packed segment.",
+                              q, run_duckdb_sql(db_path, q), [
+            ("run", "run", "s"), ("segment_kind", "segment", "s"),
+            ("pooled_rel_l2", "pooled rel L2 (%)", "pct"), ("min_cos", "min cos", "f4")]))
 
-    has_probe = "sol_probe_cells" in tables or "sol_probe_raw" in tables
-    has_observe = "sol_observe_calls" in tables or "sol_observe_raw" in tables
-    has_heads = "sol_probe_heads" in tables
-    has_segments = "sol_probe_segments" in tables
-
-    probe_blocks = []
-    worst_heads = []
-    segments_summary = []
-    step_density = []
-
-    if has_probe:
-        # Per-block summary ranked by block index
-        probe_blocks = run_duckdb_sql(db_path, """
-        SELECT
-            block,
-            ROUND(AVG(rel_l2), 4) AS avg_rel_l2,
-            ROUND(MAX(rel_l2), 4) AS max_rel_l2,
-            ROUND(MIN(cos), 4) AS min_cos,
-            ROUND(AVG(cos), 4) AS avg_cos,
-            COUNT(*) AS call_count
-        FROM sol_probe_cells
-        GROUP BY block
-        ORDER BY block;
-        """)
-
-    if has_heads:
-        # Worst 12 outlier attention heads across all blocks
-        worst_heads = run_duckdb_sql(db_path, """
-        SELECT
-            block,
-            head_idx,
-            ROUND(AVG(head_rel_l2), 4) AS avg_rel_l2,
-            ROUND(MIN(head_cos), 4) AS min_cos,
-            ROUND(AVG(head_cos), 4) AS avg_cos,
-            COUNT(*) AS call_count
-        FROM sol_probe_heads
-        GROUP BY block, head_idx
-        ORDER BY min_cos ASC
-        LIMIT 12;
-        """)
-
-    if has_segments:
-        # Per-segment modality error
-        segments_summary = run_duckdb_sql(db_path, """
-        SELECT
-            segment_kind,
-            ROUND(AVG(seg_rel_l2), 4) AS avg_rel_l2,
-            ROUND(MIN(seg_cos), 4) AS min_cos,
-            ROUND(AVG(seg_cos), 4) AS avg_cos,
-            COUNT(*) AS cell_count
-        FROM sol_probe_segments
-        GROUP BY segment_kind
-        ORDER BY avg_rel_l2 DESC;
-        """)
-
-    if has_observe:
-        # Timestep vs. routed density and peak VRAM
-        step_density = run_duckdb_sql(db_path, """
-        SELECT
-            step,
-            ROUND(AVG(mean_routed_density) * 100, 2) AS avg_routed_density_pct,
-            ROUND(AVG(mean_kernel_density) * 100, 2) AS avg_kernel_density_pct,
-            ROUND(MAX(peak_vram_mb), 1) AS max_vram_mb,
-            COUNT(*) AS sol_calls
-        FROM sol_observe_calls
-        WHERE route = 'sol'
-        GROUP BY step
-        ORDER BY step;
-        """)
-
-    db_rel_name = db_path.name
-
-    html_text = f"""<!DOCTYPE html>
+    doc = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>DuckDB Sol-Attn & Token Routing Analytics</title>
-  <style>
-    :root {{
-      --bg: #0b0f19;
-      --card-bg: rgba(23, 31, 48, 0.85);
-      --card-border: rgba(255, 255, 255, 0.08);
-      --text: #f1f5f9;
-      --text-muted: #94a3b8;
-      --accent: #38bdf8;
-      --good: #10b981;
-      --bad: #f43f5e;
-      --amber: #f59e0b;
-      --purple: #a855f7;
-      --font: system-ui, -apple-system, sans-serif;
-    }}
-    * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-    body {{
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--font);
-      padding: 2.5rem 1.5rem;
-      line-height: 1.5;
-    }}
-    .container {{ max-width: 1200px; margin: 0 auto; }}
-    h1 {{ font-size: 2.4rem; font-weight: 800; color: #38bdf8; margin-bottom: 0.5rem; }}
-    .subtitle {{ color: var(--text-muted); margin-bottom: 2rem; font-size: 1.05rem; }}
-    .badge {{
-      display: inline-block;
-      padding: 0.25rem 0.6rem;
-      border-radius: 9999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }}
-    .badge-duck {{ background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }}
-    .badge-sql {{ background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }}
-
-    .grid-2 {{ display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }}
-    @media (max-width: 900px) {{ .grid-2 {{ grid-template-columns: 1fr; }} }}
-
-    .card {{
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 0.85rem;
-      padding: 1.5rem;
-      margin-bottom: 1.75rem;
-      backdrop-filter: blur(8px);
-    }}
-    .card-title {{
-      font-size: 1.25rem;
-      font-weight: 700;
-      margin-bottom: 0.75rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      color: #fff;
-    }}
-    .table {{ width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.88rem; }}
-    .table th, .table td {{ padding: 0.75rem 1rem; border-bottom: 1px solid var(--card-border); text-align: left; }}
-    .table th {{ color: var(--text-muted); background: rgba(255, 255, 255, 0.03); font-weight: 600; }}
-    .table tr:hover td {{ background: rgba(255, 255, 255, 0.02); }}
-
-    .sql-code {{
-      background: #06090e;
-      border: 1px solid rgba(56, 189, 248, 0.2);
-      border-radius: 0.5rem;
-      padding: 1rem;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-size: 0.85rem;
-      color: #7dd3fc;
-      overflow-x: auto;
-      margin-top: 0.75rem;
-      margin-bottom: 1rem;
-      line-height: 1.45;
-    }}
-
-    /* Chart Styles */
-    .chart-container {{
-      display: flex;
-      align-items: flex-end;
-      gap: 3px;
-      height: 200px;
-      padding: 1rem 0;
-      border-bottom: 1px solid var(--card-border);
-      overflow-x: auto;
-    }}
-    .bar-col {{
-      flex: 1;
-      min-width: 16px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      height: 100%;
-      justify-content: flex-end;
-    }}
-    .bar {{
-      width: 100%;
-      background: var(--accent);
-      border-radius: 3px 3px 0 0;
-      transition: all 0.15s ease;
-      cursor: pointer;
-    }}
-    .bar:hover {{ filter: brightness(1.3); transform: scaleY(1.03); }}
-    .bar-label {{ font-size: 0.65rem; color: var(--text-muted); margin-top: 4px; }}
-
-    .stat-pill {{
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      padding: 0.4rem 0.8rem;
-      background: rgba(255, 255, 255, 0.04);
-      border-radius: 0.5rem;
-      font-size: 0.85rem;
-      margin-right: 0.5rem;
-      margin-bottom: 0.5rem;
-    }}
-    .stat-val {{ font-weight: 700; color: #fff; }}
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sol Capture Tables</title>
+<style>
+:root {{ --bg:#fbfbfa; --fg:#1d1d1b; --muted:#66655f; --line:#dedcd5; --code:#f1f0ec; --heat:214 84 52; }}
+@media (prefers-color-scheme: dark) {{ :root {{ --bg:#141413; --fg:#ecebe6; --muted:#a3a29b; --line:#33322e; --code:#1d1d1b; --heat:236 112 72; }} }}
+body {{ background:var(--bg); color:var(--fg); font:15px/1.5 system-ui, sans-serif; margin:0; padding:24px 16px; }}
+main {{ max-width:1200px; margin:0 auto; }}
+h1 {{ font-size:1.5rem; margin:0 0 4px; }} h2 {{ font-size:1.1rem; margin:28px 0 4px; }}
+.muted {{ color:var(--muted); margin:0 0 8px; }}
+pre {{ background:var(--code); padding:10px 12px; border-radius:6px; overflow-x:auto; font-size:12.5px; }}
+.scroll {{ overflow-x:auto; }}
+table {{ border-collapse:collapse; font-size:13px; font-variant-numeric:tabular-nums; }}
+th, td {{ border-bottom:1px solid var(--line); padding:4px 10px; text-align:right; white-space:nowrap; }}
+th:first-child, td:first-child {{ text-align:left; }}
+th {{ color:var(--muted); font-weight:600; }}
+table.grid td {{ padding:3px 8px; }} td.dense {{ color:var(--muted); font-size:11px; }}
+</style>
 </head>
-<body>
-  <div class="container">
-    <div style="display: flex; gap: 0.75rem; margin-bottom: 0.75rem; align-items: center;">
-      <span class="badge badge-duck">DuckDB Engine</span>
-      <span class="badge badge-sql">In-Memory / File Database</span>
-    </div>
-    <h1>DuckDB Sol-Attn & Token Routing Analytics</h1>
-    <p class="subtitle">Direct SQL ingestion and analytical reporting on <code>H3_SOL_PROBE</code> and <code>H3_SOL_OBSERVE</code> captures (<code>{db_rel_name}</code>).</p>
-
-    <!-- Block Error Summary from DuckDB -->
-    <div class="card">
-      <div class="card-title">📊 DiT Block Relative Error Profile (Blocks 0 to 49)</div>
-      <p style="color: var(--text-muted); font-size: 0.9rem;">
-        Calculated via DuckDB SQL aggregation on <code>sol_probe_cells</code>. Notice how the middle layers (Blocks 38–43) and tail blocks (48–49) exhibit high sensitivity to block-sparse attention pruning.
-      </p>
-      <div class="sql-code">SELECT block, ROUND(AVG(rel_l2)*100, 2) AS avg_rel_l2_pct, ROUND(MIN(cos), 4) AS min_cosine
-FROM sol_probe_cells GROUP BY block ORDER BY block;</div>
-
-      <div class="chart-container" id="blockChart">
-        <!-- Rendered via JS -->
-      </div>
-      <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem; text-align: right;">
-        Hover over bars to inspect Block Relative L2 error. Red bars highlight blocks with &gt;12% relative error.
-      </div>
-    </div>
-
-    <div class="grid-2">
-      <!-- Outlier Attention Heads -->
-      <div class="card">
-        <div class="card-title">🔍 Sensitive Attention Heads (Outliers)</div>
-        <p style="color: var(--text-muted); font-size: 0.85rem;">
-          Unnesting <code>metrics.per_head</code> struct array in DuckDB isolates individual attention heads where channel collapse occurs:
-        </p>
-        <div class="sql-code">WITH unnested AS (
-  SELECT block, unnest(per_head) AS h FROM sol_probe_cells
-)
-SELECT block, h.head, ROUND(MIN(h.cos), 4) AS min_cos
-FROM unnested GROUP BY block, h.head ORDER BY min_cos ASC LIMIT 8;</div>
-
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Block</th>
-              <th>Head</th>
-              <th>Avg Cosine</th>
-              <th>Min Cosine</th>
-              <th>Diagnosis</th>
-            </tr>
-          </thead>
-          <tbody id="headRows">
-            <!-- Populated from DuckDB -->
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Per-Segment Modality Breakdown -->
-      <div class="card">
-        <div class="card-title">🎬 PackedLayout Modality Sensitivity</div>
-        <p style="color: var(--text-muted); font-size: 0.85rem;">
-          Querying <code>sol_probe_segments</code> reveals which sequence modalities suffer most from sparse pruning:
-        </p>
-        <div class="sql-code">SELECT segment_kind, ROUND(AVG(seg_rel_l2)*100, 2) AS avg_l2_pct, ROUND(MIN(seg_cos), 4) AS min_cos
-FROM sol_probe_segments GROUP BY segment_kind ORDER BY avg_l2_pct DESC;</div>
-
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Modality</th>
-              <th>Avg Rel L2</th>
-              <th>Min Cosine</th>
-              <th>Sensitivity</th>
-            </tr>
-          </thead>
-          <tbody id="segmentRows">
-            <!-- Populated from DuckDB -->
-          </tbody>
-        </table>
-        <div style="margin-top: 1rem; font-size: 0.85rem; color: var(--text-muted);">
-          💡 <strong>Key Finding:</strong> Text tokens suffer the highest relative L2 error (~20%), explaining why conditioning sink blocks (<code>sink_conditioning='exact_kv_and_rows'</code>) are vital to preserve prompt adherence.
-        </div>
-      </div>
-    </div>
-
-    <!-- Step vs Density -->
-    <div class="card">
-      <div class="card-title">⚡ Step Trajectory & Routed Density (<code>sol_observe</code>)</div>
-      <p style="color: var(--text-muted); font-size: 0.9rem;">
-        DuckDB query joining step schedule with router block density and peak CUDA memory footprint:
-      </p>
-      <div class="sql-code">SELECT step, ROUND(AVG(mean_routed_density)*100, 2) AS routed_pct, ROUND(MAX(peak_vram_mb), 1) AS vram_mb
-FROM sol_observe_calls WHERE route = 'sol' GROUP BY step ORDER BY step;</div>
-
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Diffusion Step</th>
-            <th>Avg Routed Density</th>
-            <th>Avg Kernel Density (With Sinks)</th>
-            <th>Peak Alloc VRAM</th>
-            <th>Sol Dispatches</th>
-          </tr>
-        </thead>
-        <tbody id="stepRows">
-          <!-- Populated from DuckDB -->
-        </tbody>
-      </table>
-    </div>
-
-  </div>
-
-  <script>
-    const probeBlocks = {json.dumps(probe_blocks)};
-    const worstHeads = {json.dumps(worst_heads)};
-    const segmentsSummary = {json.dumps(segments_summary)};
-    const stepDensity = {json.dumps(step_density)};
-
-    // 1. Render Block Chart
-    const chart = document.getElementById('blockChart');
-    if (probeBlocks.length > 0) {{
-      const maxL2 = Math.max(...probeBlocks.map(d => d.avg_rel_l2), 0.05);
-
-      probeBlocks.forEach(row => {{
-        const heightPct = Math.max((row.avg_rel_l2 / maxL2) * 100, 4);
-        const isSpike = row.avg_rel_l2 >= 0.12;
-        const col = document.createElement('div');
-        col.className = 'bar-col';
-        col.innerHTML = `
-          <div class="bar" style="height: ${{heightPct}}%; background: ${{isSpike ? 'var(--bad)' : 'var(--accent)'}};" 
-               title="Block ${{row.block}}: Avg L2=${{(row.avg_rel_l2 * 100).toFixed(1)}}%, Min Cos=${{row.min_cos}}"></div>
-          <div class="bar-label">${{row.block % 5 === 0 || row.block === 49 ? row.block : ''}}</div>
-        `;
-        chart.appendChild(col);
-      }});
-    }} else {{
-      chart.innerHTML = '<div style="color: var(--text-muted); margin: auto;">No probe cells loaded.</div>';
-    }}
-
-    // 2. Render Head Rows
-    const headBody = document.getElementById('headRows');
-    if (worstHeads.length > 0) {{
-      worstHeads.forEach(r => {{
-        const isBad = r.min_cos < 0.94;
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td><strong>Block ${{r.block}}</strong></td>
-          <td>Head ${{r.head_idx}}</td>
-          <td>${{r.avg_cos.toFixed(4)}}</td>
-          <td style="color: ${{isBad ? 'var(--bad)' : 'var(--amber)'}};">${{r.min_cos.toFixed(4)}}</td>
-          <td>${{isBad ? '<span style="color: var(--bad); font-weight: 600;">Hot Channel Outlier</span>' : '<span style="color: var(--text-muted);">Moderate Drop</span>'}}</td>
-        `;
-        headBody.appendChild(tr);
-      }});
-    }} else {{
-      headBody.innerHTML = '<tr><td colspan="5" style="color: var(--text-muted); text-align: center;">No head data.</td></tr>';
-    }}
-
-    // 3. Render Modality Rows
-    const segBody = document.getElementById('segmentRows');
-    if (segmentsSummary.length > 0) {{
-      segmentsSummary.forEach(r => {{
-        const tr = document.createElement('tr');
-        const isHigh = r.avg_rel_l2 > 0.15;
-        tr.innerHTML = `
-          <td><strong>${{r.segment_kind.toUpperCase()}}</strong></td>
-          <td style="color: ${{isHigh ? 'var(--bad)' : 'var(--good)'}};">${{(r.avg_rel_l2 * 100).toFixed(2)}}%</td>
-          <td>${{r.min_cos.toFixed(4)}}</td>
-          <td>${{isHigh ? '<span style="color: var(--bad); font-weight: 600;">High Pruning Loss</span>' : '<span style="color: var(--good);">Robust</span>'}}</td>
-        `;
-        segBody.appendChild(tr);
-      }});
-    }} else {{
-      segBody.innerHTML = '<tr><td colspan="4" style="color: var(--text-muted); text-align: center;">No segment data.</td></tr>';
-    }}
-
-    // 4. Render Step Rows
-    const stepBody = document.getElementById('stepRows');
-    if (stepDensity.length > 0) {{
-      stepDensity.forEach(r => {{
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td><strong>Step ${{r.step}}</strong></td>
-          <td style="color: var(--accent);">${{r.avg_routed_density_pct.toFixed(2)}}%</td>
-          <td>${{r.avg_kernel_density_pct.toFixed(2)}}%</td>
-          <td>${{r.max_vram_mb.toFixed(1)}} MB</td>
-          <td>${{r.sol_calls}}</td>
-        `;
-        stepBody.appendChild(tr);
-      }});
-    }} else {{
-      stepBody.innerHTML = '<tr><td colspan="5" style="color: var(--text-muted); text-align: center;">No observer data.</td></tr>';
-    }}
-  </script>
-</body>
-</html>
+<body><main>
+<h1>Sol capture tables</h1>
+<p class="muted">Generated by <code>bench/sol_duckdb_analyzer.py</code> from <code>{html.escape(db_path.name)}</code>. Every table is the result of the query above it.</p>
+{''.join(parts)}
+</main></body></html>
 """
     out_html.parent.mkdir(parents=True, exist_ok=True)
-    out_html.write_text(html_text, encoding="utf-8")
+    out_html.write_text(doc, encoding="utf-8")
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--logs-dir", type=str, nargs="+", help="One or more directories containing sol_probe_*.jsonl or sol_observe_*.jsonl")
-    parser.add_argument("--exclude-dirs", type=str, nargs="*", default=[], help="Directory names or substrings to exclude")
-    parser.add_argument("--db", type=str, default="data/sparse/sol_analysis.duckdb", help="DuckDB database file path (relative to repo root)")
-    parser.add_argument("--out", type=str, default="docs/research/sparse/sol_duckdb_dashboard.html", help="HTML dashboard output path (relative to repo root)")
-    parser.add_argument("--query", type=str, help="Run an arbitrary SQL query against the database and exit")
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--logs-dir", type=str, nargs="+", default=["data/sparse/captures"],
+                        help="Directories searched recursively for sol_probe_*.jsonl and sol_observe_*.jsonl")
+    parser.add_argument("--exclude-dirs", type=str, nargs="*", default=[],
+                        help="Skip files whose path contains any of these substrings")
+    parser.add_argument("--db", type=str, default="data/sparse/sol_analysis.duckdb", help="DuckDB file")
+    parser.add_argument("--out", type=str, default="docs/research/sparse/sol_duckdb_dashboard.html",
+                        help="Dashboard HTML output")
+    parser.add_argument("--query", type=str, help="Run one SQL query against the existing database and exit")
     args = parser.parse_args()
 
     db_path = Path(args.db)
-
     if args.query:
-        rows = run_duckdb_sql(db_path, args.query)
-        print(json.dumps(rows, indent=2))
+        print(json.dumps(run_duckdb_sql(db_path, args.query), indent=2))
         return 0
 
-    probe_files = []
-    observe_files = []
+    probe_files, observe_files = [], []
+    for ld in args.logs_dir:
+        for f in sorted(Path(ld).glob("**/sol_probe_*.jsonl")):
+            if not any(ex in f.as_posix() for ex in args.exclude_dirs):
+                probe_files.append(f)
+        for f in sorted(Path(ld).glob("**/sol_observe_*.jsonl")):
+            if not any(ex in f.as_posix() for ex in args.exclude_dirs):
+                observe_files.append(f)
 
-    if args.logs_dir:
-        for ld in args.logs_dir:
-            p_dir = Path(ld)
-            for f in sorted(p_dir.glob("**/*sol_probe*.jsonl")):
-                if not any(ex in f.as_posix() for ex in args.exclude_dirs):
-                    probe_files.append(f)
-            for f in sorted(p_dir.glob("**/*sol_observe*.jsonl")):
-                if not any(ex in f.as_posix() for ex in args.exclude_dirs):
-                    observe_files.append(f)
-    else:
-        # Auto-discover from internal/sol_observe
-        probe_files = sorted(Path("internal/sol_observe").glob("**/*sol_probe*.jsonl"))
-        observe_files = sorted(Path("internal/sol_observe").glob("**/*sol_observe*.jsonl"))
-
-    print(f"[sol_duckdb] Using DuckDB binary: {DUCKDB_BIN}")
-    print(f"[sol_duckdb] Target database: {args.db}")
-    print(f"[sol_duckdb] Ingesting {len(probe_files)} probe files and {len(observe_files)} observe files...")
-
+    print(f"[sol_duckdb] {len(probe_files)} probe and {len(observe_files)} observe files -> {args.db}")
     setup_duckdb_tables(db_path, probe_files, observe_files)
-
-    out_html = Path(args.out)
-    generate_html_dashboard(db_path, out_html)
-    print(f"[sol_duckdb] Successfully generated DuckDB visual dashboard: {args.out}")
+    generate_html_dashboard(db_path, Path(args.out))
+    print(f"[sol_duckdb] dashboard: {args.out}")
     return 0
 
 

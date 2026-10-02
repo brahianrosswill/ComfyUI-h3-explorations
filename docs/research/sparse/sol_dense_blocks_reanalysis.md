@@ -5,6 +5,14 @@
 **Primary Tools**: `sol_observe.py`, `bench/sol_duckdb_analyzer.py`, `docs/research/sparse/sol_duckdb_dashboard.html`, `preflight.py`  
 **Referents**: `docs/h3_block49_quant_error.md`, `workflows/h3_config.py::SOL_DENSE_TAIL`, `docs/wiki/decisions.md`
 
+> **Re-read 2026-10-02, later the same day**: `bench/results/2026-10-02_sol_campaign_reanalysis.md`
+> corrects this plan against the raw captures. Test 1 was two-stage like the
+> rest. No step runs near sigma 0.1, and error falls as sigma drops rather
+> than rising. Block 40's routed head 47 was already its worst head with routing
+> off. Blocks 45-48 are quiet in the PDD stage but not in the FlashGen
+> finisher. The `--run-id` flag in section 8.2 never existed: the analyzer
+> takes the run from the capture directory.
+
 ---
 
 ## 1. Executive Summary

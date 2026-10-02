@@ -72,6 +72,14 @@ stays the shipped default.
     25.22%]. Protecting block 48 while leaving 39–42 sparse wastes dense compute.
     Option A "39,41,42,49" and Option B "39,40,41,42,49" under trial; see
     [`../research/sparse/sol_dense_blocks_reanalysis.md`](../research/sparse/sol_dense_blocks_reanalysis.md)).*
+    *(2026-10-02, later: Options A, B and C were adopted in turn on local
+    probe error alone, with an unfixed seed and no render. On the cells every
+    run measured, the configs sit within prompt-and-seed noise.
+    `../../bench/results/2026-10-02_sol_campaign_reanalysis.md` corrects the
+    campaign and lists what would settle `dense_blocks`: fixed seed and
+    prompt with two seeds per arm, routing `off` as shipped, an output-level
+    score, the `exact_kv_and_all_rows` arm, a per-head price for block 49,
+    and the FlashGen finisher measured on its own.)*
   - Next: test 3, the token-routing re-grade on the fixed kernel, including
     whether "all blocks" still needs the balance. It runs on the test 2
     captures (keep until 2026-10-31), with no render.

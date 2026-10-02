@@ -4,6 +4,34 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.184.13
+
+### Changed
+
+- **`bench/sol_duckdb_analyzer.py` rebuilt around the run.** Every row now
+  carries `run`, the capture directory it came from. Before, rows were keyed by
+  `prompt_id` alone, and the probe's `capture` label is null on older records.
+  The schedule index is no longer defaulted to step 0, and the observer join
+  matches on run, sampler node, block and sigma. New views:
+  `sol_runs` (settings digest, seed, prompt hash), `sol_matched_cells`,
+  `sol_run_summary`, `sol_run_cost` (block-equivalents, dense calls at full
+  cost), `sol_block_profile` and `sol_replicates` (runs sharing a settings
+  digest). The default `--logs-dir` is `data/sparse/captures`, where the
+  campaign docs write. The dashboard is now tables of query results, one column
+  per run. It no longer pools every run into one block profile, and it carries
+  no prose findings or emojis.
+
+### Added
+
+- **`bench/results/2026-10-02_sol_campaign_reanalysis.md`**: the dense_blocks
+  campaign (0.184.7 to 0.184.12) re-read from the raw captures. Test 9C repeated
+  Test 8's settings. No seed was fixed. Most of the credited gains are cells
+  leaving the measured set. Dense blocks lower later blocks' error within a
+  pass. Blocks 45-48 rise only in the FlashGen finisher, more so at higher tau.
+  Block 49's and block 0's error sits in a few fixed heads. Text and reference
+  query rows, which no run protected, carry the highest segment error. Dated
+  notes at the top of both campaign documents point to it. No default changed.
+
 ## 0.184.12
 
 ### Changed

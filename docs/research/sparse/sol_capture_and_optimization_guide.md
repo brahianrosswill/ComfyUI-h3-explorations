@@ -227,7 +227,7 @@ ORDER BY step;
 
 After ingestion, open the generated HTML files in any browser to review the visual findings:
 
-- [`sol_duckdb_dashboard.html`](sol_duckdb_dashboard.html): Live database dashboard showing the 50-block bar chart, head-level outliers, and modality error tables.
+- [`sol_duckdb_dashboard.html`](sol_duckdb_dashboard.html): Tables generated from the database's views, one column per run: run settings and seeds, error on all cells and on the matched population, attention cost, replicates, per-block error and per-segment error. `bench/sol_duckdb_analyzer.py`'s docstring names the views.
 - [`sol_tau_visual_explainer.html`](sol_tau_visual_explainer.html): Interactive visualizer demonstrating how adjusting `tau` modifies the block-sparse threshold and tile map.
 - [`token_routing_comparison.html`](token_routing_comparison.html): Heatmap comparison showing how token routing rescues outlier tokens from unselected blocks.
 
