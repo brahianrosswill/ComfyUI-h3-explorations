@@ -4,6 +4,21 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.184.11
+
+### Changed
+
+- **Sol's `dense_blocks` adopts Option B (`"39,40,41,42,49"`)** (owner decision, 2026-10-02).
+  - Empirical telemetry across Tests 5 and 6 proved that adding Block 40 to the dense set
+    eliminates the last remaining middle error spike (Block 40 at 19.17% in Option A),
+    dropping whole-network peak call error from 23.26% down to 19.74% (sub-20% for the
+    first time ever).
+  - Re-pointed `SOL_DENSE_TAIL` to `SOL_DENSE_OPTION_B` across `sol_attn_h3.py` and
+    `workflows/h3_config.py`.
+  - Rebuilt all 166 workflow graphs via `workflows/build_workflows.py` and validated against the
+    live ComfyUI server.
+  - Verified by `bench/check_attention_defaults.py`.
+
 ## 0.184.10
 
 ### Fixed

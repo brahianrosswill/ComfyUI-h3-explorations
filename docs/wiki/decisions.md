@@ -17,6 +17,13 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-02
 
+- **Sol's `dense_blocks` adopts Option B (`"39,40,41,42,49"`)** (owner decision, 2026-10-02).
+  Replaces Option A (`"39,41,42,49"`) as active default `SOL_DENSE_TAIL`. Empirical findings
+  from Test 5 and Test 6 proved that shielding Block 40 eliminates the last middle routing spike
+  (where Block 40 had 19.17% error under Option A), bringing whole-network peak call error down
+  from 23.26% to 19.74% (the first time peak error broke below 20%). 166 workflow graphs rebuilt
+  and validated against the live server. (0.184.11).
+
 - **Prose corrected by the 2026-10-02 upstream read** (0.184.9). Each keeps a
   dated note in place:
   - `references.md`, "What moved by 2026-09-25", said sglang keeps the AdaLN

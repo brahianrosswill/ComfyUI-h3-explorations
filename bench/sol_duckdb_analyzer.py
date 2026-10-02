@@ -66,6 +66,8 @@ def setup_duckdb_tables(db_path: Path, probe_files: list[Path], observe_files: l
         CREATE OR REPLACE VIEW sol_probe_cells AS
         SELECT
             prompt_id,
+            executing_node_id,
+            seq,
             block,
             COALESCE(schedule.schedule_index, 0) AS step,
             sigma,
@@ -95,6 +97,8 @@ def setup_duckdb_tables(db_path: Path, probe_files: list[Path], observe_files: l
         WITH unnested AS (
             SELECT
                 prompt_id,
+                executing_node_id,
+                seq,
                 block,
                 COALESCE(schedule.schedule_index, 0) AS step,
                 sigma,
@@ -105,6 +109,8 @@ def setup_duckdb_tables(db_path: Path, probe_files: list[Path], observe_files: l
         )
         SELECT
             prompt_id,
+            executing_node_id,
+            seq,
             block,
             step,
             sigma,
@@ -125,6 +131,8 @@ def setup_duckdb_tables(db_path: Path, probe_files: list[Path], observe_files: l
         WITH unnested AS (
             SELECT
                 prompt_id,
+                executing_node_id,
+                seq,
                 block,
                 COALESCE(schedule.schedule_index, 0) AS step,
                 sigma,
@@ -135,6 +143,8 @@ def setup_duckdb_tables(db_path: Path, probe_files: list[Path], observe_files: l
         )
         SELECT
             prompt_id,
+            executing_node_id,
+            seq,
             block,
             step,
             sigma,
@@ -165,6 +175,8 @@ def setup_duckdb_tables(db_path: Path, probe_files: list[Path], observe_files: l
         CREATE OR REPLACE VIEW sol_observe_calls AS
         SELECT
             prompt_id,
+            executing_node_id,
+            seq,
             block,
             COALESCE(schedule.schedule_index, 0) AS step,
             sigma,
@@ -188,6 +200,8 @@ def setup_duckdb_tables(db_path: Path, probe_files: list[Path], observe_files: l
         CREATE OR REPLACE VIEW sol_joined_analysis AS
         SELECT
             p.prompt_id,
+            p.executing_node_id,
+            p.seq,
             p.block,
             p.step,
             p.sigma,
@@ -203,6 +217,7 @@ def setup_duckdb_tables(db_path: Path, probe_files: list[Path], observe_files: l
         FROM sol_probe_cells p
         LEFT JOIN sol_observe_calls o 
           ON p.prompt_id = o.prompt_id
+         AND (p.executing_node_id IS NULL OR o.executing_node_id IS NULL OR p.executing_node_id = o.executing_node_id)
          AND p.block = o.block 
          AND p.step = o.step
          AND (p.cond_or_uncond IS NULL OR o.cond_or_uncond IS NULL OR p.cond_or_uncond = o.cond_or_uncond);
@@ -614,7 +629,8 @@ FROM sol_observe_calls WHERE route = 'sol' GROUP BY step ORDER BY step;</div>
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--logs-dir", type=str, help="Directory containing sol_probe_*.jsonl or sol_observe_*.jsonl")
+    parser.add_argument("--logs-dir", type=str, nargs="+", help="One or more directories containing sol_probe_*.jsonl or sol_observe_*.jsonl")
+    parser.add_argument("--exclude-dirs", type=str, nargs="*", default=[], help="Directory names or substrings to exclude")
     parser.add_argument("--db", type=str, default="data/sparse/sol_analysis.duckdb", help="DuckDB database file path (relative to repo root)")
     parser.add_argument("--out", type=str, default="docs/research/sparse/sol_duckdb_dashboard.html", help="HTML dashboard output path (relative to repo root)")
     parser.add_argument("--query", type=str, help="Run an arbitrary SQL query against the database and exit")
@@ -631,9 +647,14 @@ def main() -> int:
     observe_files = []
 
     if args.logs_dir:
-        log_dir = Path(args.logs_dir)
-        probe_files = sorted(log_dir.glob("**/*sol_probe*.jsonl"))
-        observe_files = sorted(log_dir.glob("**/*sol_observe*.jsonl"))
+        for ld in args.logs_dir:
+            p_dir = Path(ld)
+            for f in sorted(p_dir.glob("**/*sol_probe*.jsonl")):
+                if not any(ex in f.as_posix() for ex in args.exclude_dirs):
+                    probe_files.append(f)
+            for f in sorted(p_dir.glob("**/*sol_observe*.jsonl")):
+                if not any(ex in f.as_posix() for ex in args.exclude_dirs):
+                    observe_files.append(f)
     else:
         # Auto-discover from internal/sol_observe
         probe_files = sorted(Path("internal/sol_observe").glob("**/*sol_probe*.jsonl"))

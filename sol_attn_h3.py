@@ -153,13 +153,12 @@ SOL_DENSE_OPTION_B = "39,40,41,42,49"
 #: Historical 2026-09-25 tail default (from unrotated INT8 K-norm outliers):
 SOL_DENSE_HISTORICAL_TAIL = "45,48,49"
 
-#: Active default for Sol dense_blocks. Set to SOL_DENSE_OPTION_A ("39,41,42,49")
-#: on 2026-10-02 after Test 1 full 50-block telemetry under quantizer="rotated"
-#: revealed that rotation dropped block 48 error to 7.14% while middle blocks
-#: 38–43 peak at 25.67%. Switch to SOL_DENSE_OPTION_B or SOL_DENSE_HISTORICAL_TAIL
-#: as needed. `workflows/h3_config.py::SOL_DENSE_TAIL` carries the same value,
+#: Active default for Sol dense_blocks. Set to SOL_DENSE_OPTION_B ("39,40,41,42,49")
+#: on 2026-10-02 after Test 5 and Test 6 empirical telemetry proved it suppresses
+#: peak network error from 23.26% down to 19.74% (sub-20%) by shielding block 40.
+#: `workflows/h3_config.py::SOL_DENSE_TAIL` carries the same value,
 #: and `bench/check_attention_defaults.py` holds the two together.
-SOL_DENSE_TAIL = SOL_DENSE_OPTION_A
+SOL_DENSE_TAIL = SOL_DENSE_OPTION_B
 #: Token routing's budget per query block when a preset turns it on;
 #: `parse_token_aug_profile` says why 64.
 TOKEN_ROUTING_BUDGET = 64
@@ -1037,9 +1036,9 @@ class MiniMaxH3Sol(io.ComfyNode):
                 io.String.Input("dense_blocks", default=SOL_DENSE_TAIL,
                                 tooltip="Blocks kept off Sol, e.g. '0-2,32'; negative indices "
                                         "count from the end. They run on the dense fallback. "
-                                        f"Default '{SOL_DENSE_TAIL}' (Option A): shields the worst middle "
-                                        "routing-error blocks (39, 41, 42) and terminal block (49). "
-                                        f"Option B is '{SOL_DENSE_OPTION_B}'."),
+                                        f"Default '{SOL_DENSE_TAIL}' (Option B): shields the entire middle "
+                                        "routing-error plateau (39, 40, 41, 42) and terminal block (49). "
+                                        f"Option A is '{SOL_DENSE_OPTION_A}'."),
                 io.Combo.Input("sink_conditioning", options=list(SINK_CONDITIONING_MODES),
                                default="exact_kv_and_rows",
                                tooltip="How the packed conditioning rows (text, references, "
