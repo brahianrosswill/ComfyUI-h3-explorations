@@ -548,6 +548,11 @@ SOL_CORE_DEFAULTS = {
 #: K-norm is lopsided on the released checkpoint. Mirrors
 #: `sol_attn_h3.py::SOL_DENSE_TAIL`; `bench/check_attention_defaults.py` holds
 #: the two together, and the node's docstring near it says why these three.
+#: *(2026-10-02, re-evaluated under quantizer="rotated": Hadamard rotation
+#: dispersed the outlier energy, dropping block 48 error to 7.14% and 45 to
+#: 9.55%, while middle blocks 38–43 spike to ~25% error. dense_blocks="45,48,49"
+#: is under active trial for replacement by "39,41,42,49" or "39,40,41,42,49".
+#: See docs/research/sparse/sol_dense_blocks_reanalysis.md).*
 SOL_DENSE_TAIL = "45,48,49"
 
 SOL_RECOMMENDED_CUDA = dict(

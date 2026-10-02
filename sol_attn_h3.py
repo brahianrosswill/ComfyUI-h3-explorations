@@ -145,6 +145,9 @@ def parse_token_aug_profile(spec, count):
 #: Chosen as a practical default, not a scored result: the kitchen-chain render
 #: of it is unscored. `workflows/h3_config.py::SOL_DENSE_TAIL` carries the same
 #: value, and `bench/check_attention_defaults.py` holds the two together.
+#: *(2026-10-02, re-evaluated under quantizer="rotated": block 48 error is 7.14%
+#: while middle blocks 38–43 spike to ~25%; trial underway for Option A "39,41,42,49"
+#: or Option B "39,40,41,42,49", see docs/research/sparse/sol_dense_blocks_reanalysis.md).*
 SOL_DENSE_TAIL = "45,48,49"
 #: Token routing's budget per query block when a preset turns it on;
 #: `parse_token_aug_profile` says why 64.

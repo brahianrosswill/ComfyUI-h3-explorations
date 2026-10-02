@@ -694,7 +694,18 @@ Older history lives elsewhere and is not copied here:
   shared default stay empty until all 50 blocks are measured and a set
   validated; that condition is kept with a dated note. The kitchen-chain
   render of the tail is unscored. `h3_probe_t2v_no_dense_tail` is the control.
-  0.142.0.
+  0.142.0. *(2026-10-02, re-evaluated with real data under `quantizer="rotated"`:
+  On an unmasked 50-block Ref2VA capture at sequence length 119,102, Hadamard
+  rotation resolved the unrotated K-norm outlier problem, dropping block 48
+  to 7.14% avg relative $L_2$ error [max 9.41%] and block 45 to 9.55%. In contrast,
+  routing sparsity truncation error heavily concentrates in the middle semantic
+  integration cluster: block 42 at 25.67% [max 27.01%], block 39 at 25.22%,
+  block 41 at 24.35%, and block 40 at 23.43% [worst heads losing 57%–80% magnitude
+  with min cosine down to 0.77]. Keeping block 48 dense while leaving 39–42 sparse
+  wastes dense compute. Block 49 remains mandatory as it feeds `final_layer.video_out`
+  [13.73% error]. Top candidates under active trial: Option A `"39,41,42,49"` (4 blocks)
+  and Option B `"39,40,41,42,49"` (5 blocks). See 2026-10-02 entry and
+  [`../research/sparse/sol_dense_blocks_reanalysis.md`](../research/sparse/sol_dense_blocks_reanalysis.md)).*
 - **`token_routing` reworked into one dropdown** (owner: "that token routing
   field UX is confusing"). `off` replaces "text field" as the default, and the
   list is read only under `custom`. The old default meant off by an empty list,

@@ -768,7 +768,7 @@ Sol-Attn that ships off. Two sessions spent a day on a knob nobody runs.
 **What is still worth doing** is in `docs/open_experiments.md` and below: the
 density-vs-wall-clock consistency check, and depth-based sparsity
 (`dense_blocks` / `tau_profile`, both shipping empty then; since 2026-09-25
-`dense_blocks` ships `45,48,49`, and `tau_profile` was retired 2026-09-27) which is a lever on a
+`dense_blocks` ships `45,48,49` [under trial 2026-10-02 for replacement by `"39,41,42,49"` or `"39,40,41,42,49"`, see `docs/research/sparse/sol_dense_blocks_reanalysis.md`], and `tau_profile` was retired 2026-09-27) which is a lever on a
 knob that ships **on**. The 1440x736 and 1952x544 captures that would have
 settled the `3d` pin are **not** to be run -- that pin governs a knob that is
 off, and the question is only interesting if this section is reopened.

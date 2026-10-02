@@ -232,7 +232,13 @@ fork's capture spike reproduced exactly (share 93.2% at block 49, 5-11% at
 blocks 0, 32, 40).
 
 Blocks 45 and 48 were never captured. The weights say they carry the same
-defect at a third to a half of block 49's strength.
+defect at a third to a half of block 49's strength. *(2026-10-02, captured and measured:
+Full 50-block telemetry on Ref2VA S=119k under `quantizer="rotated"` [Hadamard rotation]
+proved that rotation disperses the channel outlier energy, dropping block 48 error to
+7.14% avg rel $L_2$ [max 9.41%] and block 45 to 9.55%. In contrast, routing sparsity truncation
+peaks in middle blocks 38–43 at 19%–26% [block 42 at 25.67%, block 39 at 25.22%].
+Protecting block 48 dense while leaving 39–42 sparse is obsolete under rotation;
+see [`research/sparse/sol_dense_blocks_reanalysis.md`](research/sparse/sol_dense_blocks_reanalysis.md)).*
 
 ## 2. It is K's rounding, not Q's, not the PV side
 
@@ -507,7 +513,10 @@ rescaling (`docs/h3_quant_policy.md`).
   k_norm gain after the qkv projection, so the convrot INT8 linears never
   see them; that is read from the model code, not measured.
 - Whether blocks 45 and 48 behave like 49 under balancing. The weights say
-  they carry the defect; no capture exists to grade them.
+  they carry the defect; no capture exists to grade them. *(2026-10-02, captured:
+  Under `quantizer="rotated"` [Hadamard rotation], block 48 error is 7.14% and block 45
+  is 9.55%, whereas block 49 is 13.73%. Rotation resolved the K outlier defect across
+  45 and 48, making block 48 cleaner than the DiT's interior blocks).*
 - The remainder. After balancing, block 49 still sits at several times
   block 0, and section 3 says why: the attention shape is the amplifier,
   and no per-channel rescale can fix a spike in one token's row. Finer K

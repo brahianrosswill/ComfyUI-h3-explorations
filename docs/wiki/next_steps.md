@@ -65,7 +65,13 @@ stays the shipped default.
   - Tests 0 to 2 are done: output-neutral, `qk_balance` not inert, and
     `rotated` best while kitchen int8 wins the dense tail.
   - The dense tail still beats Sol on blocks 45, 48 and 49 on PDD8, so
-    `dense_blocks` stays (the same record).
+    `dense_blocks` stays (the same record). *(2026-10-02, re-evaluated with full
+    50-block telemetry: while dense beats sparse locally on 45, 48, 49, rotation
+    dropped block 48 error to 7.14% and 45 to 9.55%. In contrast, middle blocks
+    38–43 suffer 19%–26% routing sparsity error [block 42 at 25.67%, block 39 at
+    25.22%]. Protecting block 48 while leaving 39–42 sparse wastes dense compute.
+    Option A "39,41,42,49" and Option B "39,40,41,42,49" under trial; see
+    [`../research/sparse/sol_dense_blocks_reanalysis.md`](../research/sparse/sol_dense_blocks_reanalysis.md)).*
   - Next: test 3, the token-routing re-grade on the fixed kernel, including
     whether "all blocks" still needs the balance. It runs on the test 2
     captures (keep until 2026-10-31), with no render.
@@ -343,7 +349,11 @@ refine pass, and the finished audio stays close to the uncached pass.
 - **Shorter cached steps:** a VRAM store or K/V contents, both untried.
 
 **2026-09-25, night (0.142.0).** Sol now defaults to `dense_blocks = 45,48,49`,
-and `token_routing` is one dropdown with `off` as its default.
+and `token_routing` is one dropdown with `off` as its default. *(2026-10-02: Under
+`quantizer="rotated"`, block 48 error dropped to 7.14% while middle blocks 38–43
+spike to ~25% error; `dense_blocks="45,48,49"` is under trial for replacement by
+Option A `"39,41,42,49"` or Option B `"39,40,41,42,49"`. See
+[`../research/sparse/sol_dense_blocks_reanalysis.md`](../research/sparse/sol_dense_blocks_reanalysis.md)).*
 - **Red since 0.139.0, found 2026-09-26:** `bench/check_audio_freeze.py`
   imports `audio_freeze.py` as a top-level module. That module's relative import
   of `audio_resample` fails, so the check never reaches its cases.
