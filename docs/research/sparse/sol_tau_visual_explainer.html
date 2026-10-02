@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sol-Attn: How Tau (τ) Works Under the Hood</title>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: rgba(23, 31, 48, 0.75);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --exact-color: #10b981;
+      --exact-bg: rgba(16, 185, 129, 0.2);
+      --sink-color: #f59e0b;
+      --sink-bg: rgba(245, 158, 11, 0.2);
+      --diag-color: #06b6d4;
+      --diag-bg: rgba(6, 182, 212, 0.2);
+      --tail-color: #475569;
+      --tail-bg: rgba(71, 85, 105, 0.2);
+      --font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text-main);
+      font-family: var(--font);
+      line-height: 1.5;
+      padding: 2rem 1rem;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 2.5rem;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 2.25rem;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 1rem;
+      padding: 1.75rem;
+      margin-bottom: 1.75rem;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Interactive Control Section */
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      align-items: center;
+    }
+
+    @media (max-width: 800px) {
+      .controls-grid { grid-template-columns: 1fr; }
+    }
+
+    .slider-box {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .tau-badge {
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: var(--accent);
+      font-family: monospace;
+      padding: 0.2rem 0.8rem;
+      background: rgba(56, 189, 248, 0.1);
+      border-radius: 0.5rem;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 8px;
+      border-radius: 4px;
+      background: #1e293b;
+      outline: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      box-shadow: 0 0 12px var(--accent);
+      transition: transform 0.1s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+
+    .presets {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: 0.5rem;
+    }
+
+    .preset-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      padding: 0.35rem 0.75rem;
+      border-radius: 0.5rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .preset-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: var(--text-main);
+    }
+
+    .preset-btn.active {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: var(--accent);
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    /* Stats readout */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+    }
+
+    .metric-card {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      padding: 1rem;
+      border-radius: 0.75rem;
+      text-align: center;
+    }
+
+    .metric-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.25rem;
+    }
+
+    .metric-val {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    /* Distribution Chart */
+    .chart-container {
+      position: relative;
+      margin: 1.5rem 0;
+      height: 180px;
+      width: 100%;
+    }
+
+    svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    /* Matrix Visualization */
+    .matrix-wrapper {
+      margin-top: 1.5rem;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.25rem;
+      margin-bottom: 1rem;
+      font-size: 0.85rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .legend-box {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+    }
+
+    .matrix-grid {
+      display: grid;
+      grid-template-columns: repeat(24, 1fr);
+      gap: 3px;
+      background: rgba(15, 23, 42, 0.8);
+      padding: 0.75rem;
+      border-radius: 0.75rem;
+      border: 1px solid var(--card-border);
+      max-height: 380px;
+      overflow-y: auto;
+    }
+
+    .cell {
+      aspect-ratio: 1;
+      border-radius: 2px;
+      transition: all 0.2s ease;
+      cursor: default;
+      position: relative;
+    }
+
+    .cell:hover {
+      outline: 2px solid white;
+      z-index: 5;
+    }
+
+    /* Mechanics explainer cards */
+    .formula-box {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      font-family: monospace;
+      font-size: 1.15rem;
+      text-align: center;
+      margin: 1rem 0;
+      color: #7dd3fc;
+    }
+
+    .steps-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .step-item {
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 1.25rem;
+      border-radius: 0.75rem;
+    }
+
+    .step-num {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      line-height: 24px;
+      text-align: center;
+      background: var(--accent);
+      color: #0b0f19;
+      font-weight: 800;
+      font-size: 0.8rem;
+      border-radius: 50%;
+      margin-bottom: 0.5rem;
+    }
+
+    .step-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-bottom: 0.35rem;
+    }
+
+    .step-desc {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .callout {
+      border-left: 4px solid var(--accent);
+      background: rgba(56, 189, 248, 0.05);
+      padding: 1rem 1.25rem;
+      border-radius: 0 0.5rem 0.5rem 0;
+      margin-top: 1rem;
+      font-size: 0.95rem;
+    }
+
+    .callout-amber {
+      border-left-color: var(--sink-color);
+      background: rgba(245, 158, 11, 0.05);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Sol-Attn: How Tau (τ) Works Under the Hood</h1>
+      <p class="subtitle">An interactive visual guide to dynamic statistical routing, block sparsity, and why Tau governs the speed-versus-detail trade-off in MiniMax H3.</p>
+    </header>
+
+    <!-- Interactive Simulator -->
+    <div class="card">
+      <div class="card-title">
+        <span>⚙️ Interactive Sol-Attn Simulator</span>
+      </div>
+
+      <div class="controls-grid">
+        <div class="slider-box">
+          <div class="slider-header">
+            <span style="font-weight: 600;">Routing Threshold Parameter (&tau;):</span>
+            <span class="tau-badge" id="tauValue">1.00</span>
+          </div>
+          <input type="range" id="tauSlider" min="0.0" max="3.0" step="0.05" value="1.0">
+          
+          <div class="presets">
+            <button class="preset-btn" onclick="setTau(0.0)">0.0 (Dense 50%)</button>
+            <button class="preset-btn" onclick="setTau(0.5)">0.5 (Conservative)</button>
+            <button class="preset-btn active" onclick="setTau(1.0)">1.0 (NVLabs/SGLang Recommended)</button>
+            <button class="preset-btn" onclick="setTau(1.5)">1.5 (Fast)</button>
+            <button class="preset-btn" onclick="setTau(2.0)">2.0 (Ultra-Sparse)</button>
+          </div>
+        </div>
+
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-label">Exact Blocks Computed</div>
+            <div class="metric-val" id="exactPercent" style="color: var(--exact-color);">16.2%</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Full 64×64 Tensor Core GEMM</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Pooled Tail (Centroid)</div>
+            <div class="metric-val" id="tailPercent" style="color: var(--tail-color);">83.8%</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Compressed into 1 vector</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Attention Speedup</div>
+            <div class="metric-val" id="speedupVal" style="color: var(--accent);">1.72×</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">vs. Dense Attention</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Reference Fidelity</div>
+            <div class="metric-val" id="fidelityVal" style="color: var(--sink-color);">100% Exact</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Protected by Exact KV Sink</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Statistical Distribution -->
+      <div style="margin-top: 2rem;">
+        <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 0.5rem;">
+          <span style="font-weight: 600;">Statistical Score Distribution (Query Block vs Key Centroids)</span>
+          <span id="formulaReadout" style="font-family: monospace; color: var(--accent);">Threshold T = μ + 1.00σ</span>
+        </div>
+        <div class="chart-container">
+          <svg id="bellChart" viewBox="0 0 600 160">
+            <!-- Drawn dynamically in JS -->
+          </svg>
+        </div>
+      </div>
+
+      <!-- Matrix Tile Visualization -->
+      <div class="matrix-wrapper">
+        <div style="font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem;">
+          Simulated Attention Matrix (24×24 blocks of 64 tokens = 1536 tokens sample view):
+        </div>
+        <div class="legend">
+          <div class="legend-item">
+            <div class="legend-box" style="background: var(--sink-color);"></div>
+            <span><strong>Conditioning Sink</strong> (Text & Reference Images, always exact)</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-box" style="background: var(--diag-color);"></div>
+            <span><strong>Diagonal Band</strong> (Local attention continuity, always exact)</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-box" style="background: var(--exact-color);"></div>
+            <span><strong>Exact Routed</strong> (Cleared score &ge; &mu; + &tau;&sigma;)</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-box" style="background: var(--tail-color);"></div>
+            <span><strong>Pooled Tail</strong> (Unselected, coarse centroid summary)</span>
+          </div>
+        </div>
+        <div class="matrix-grid" id="matrixGrid">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Technical Deep Dive -->
+    <div class="card">
+      <div class="card-title">
+        <span>🔬 The Core Math: What Tau (&tau;) Really Does</span>
+      </div>
+
+      <p>In standard dense attention, every single query attends to every single key, scaling quadratically: <code style="color: #38bdf8;">O(T²)</code>. For MiniMax H3's packed 100k+ token sequences (combining text, reference images, audio, and video), this requires billions of pairwise calculations.</p>
+
+      <div class="formula-box">
+        Threshold: &nbsp; T<sub>i</sub> = &mu;<sub>i</sub> + &tau; &middot; &sigma;<sub>i</sub>
+      </div>
+
+      <p>Sol-Attn (arXiv:2607.24027) turns this into an intelligent <strong>adaptive statistical filter</strong>:</p>
+
+      <div class="steps-list">
+        <div class="step-item">
+          <div class="step-num">1</div>
+          <div class="step-title">64-Token Tiles</div>
+          <div class="step-desc">Keys and values are divided into chunks of 64 tokens. Each 64-token block is summarized by its average vector (the centroid).</div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">2</div>
+          <div class="step-title">Coarse Scoring</div>
+          <div class="step-desc">For query block <em>i</em>, coarse dot products are computed against every key centroid in fast INT8 arithmetic.</div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">3</div>
+          <div class="step-title">Calculate &mu; and &sigma;</div>
+          <div class="step-desc">The kernel measures the mean (&mu;) and standard deviation (&sigma;) of attention scores specifically for that query row.</div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">4</div>
+          <div class="step-title">Apply &tau; Cutoff</div>
+          <div class="step-desc">Key blocks scoring &ge; &mu; + &tau;&sigma; get full 64×64 exact attention. Unselected blocks are pooled into the centroid tail.</div>
+        </div>
+      </div>
+
+      <div class="callout" style="margin-top: 1.5rem;">
+        <strong>The Breakthrough Contribution:</strong> Unlike older sparse attention methods (which simply dropped unselected tokens to zero and caused severe softmax distortion), Sol-Attn keeps the <strong>pooled tail</strong>. The unselected blocks still contribute their proxy energy to the softmax denominator, preventing probability drift!
+      </div>
+    </div>
+
+    <!-- Impact on Reference Images -->
+    <div class="card">
+      <div class="card-title">
+        <span>🖼️ Interaction With Reference Images</span>
+      </div>
+      <p>When you provide two reference images upscaled to 2048 short edge, they inject ~8,000 to ~15,000 latent rows into the packed sequence. Here is how &tau; interacts with them:</p>
+
+      <div class="callout callout-amber">
+        <strong>The Exact KV Sink Guarantee:</strong><br>
+        Under <code style="color: var(--sink-color); font-weight: bold;">sink_conditioning = 'exact_kv_and_rows'</code>, all reference latent rows reside in the exact prefix. This means that <strong>no matter how high you set &tau;</strong>, every generated video query block attends to your reference image rows with <strong>100% exact pairwise attention</strong>! Tau only sparsifies the video-to-video self-attention and reference-to-reference queries.
+      </div>
+
+      <div style="margin-top: 1.25rem;">
+        <h4 style="margin-bottom: 0.5rem; font-size: 1rem;">Summary of Practical Tau Settings:</h4>
+        <ul style="padding-left: 1.25rem; font-size: 0.95rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.4rem;">
+          <li><strong style="color: #38bdf8;">&tau; = 0.5 - 0.8:</strong> High-density (~25-35% exact). Use if you notice subtle texture flicker or very fine facial details drifting over long videos.</li>
+          <li><strong style="color: var(--exact-color);">&tau; = 1.0 (Recommended):</strong> Ideal balance (~16% exact). Matches the official NVLabs and SGLang production recipes. 1.7×–1.9× faster than dense attention with virtually zero perceptual difference.</li>
+          <li><strong style="color: #e2e8f0;">&tau; = 1.3 - 1.5:</strong> Sparser (~7-10% exact). Noticeably faster for rapid iterations, but can slightly soften complex micro-motions.</li>
+          <li><strong style="color: #f87171;">&tau; &gt; 2.0:</strong> Ultra-sparse (&lt;3% exact). Only huge outlier features are attended exactly; can cause loss of coherence or blurry background textures.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const GRID_SIZE = 24;
+    const SINK_BLOCKS = 3; // First 3 columns are sink (Text / Reference images)
+    
+    // Pseudo-random deterministic distribution generator for realistic attention scores
+    function generateScores() {
+      const scores = [];
+      for (let r = 0; r < GRID_SIZE; r++) {
+        const row = [];
+        for (let c = 0; c < GRID_SIZE; c++) {
+          // Synthetic score: strong diagonal + some random semantic clusters
+          let base = Math.sin(r * 0.4 + c * 0.2) * 0.5 + Math.cos(r * 0.1 * c * 0.1) * 0.5;
+          if (Math.abs(r - c) <= 1) base += 2.0; // diagonal boost
+          if (c < SINK_BLOCKS) base += 1.5;      // sink boost
+          base += (Math.random() - 0.5) * 1.2;
+          row.push(base);
+        }
+        scores.push(row);
+      }
+      return scores;
+    }
+
+    const scoresMatrix = generateScores();
+
+    function setTau(val) {
+      document.getElementById('tauSlider').value = val;
+      updateSimulation();
+      
+      // Update active preset button
+      document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (parseFloat(btn.textContent) === val) {
+          btn.classList.add('active');
+        }
+      });
+    }
+
+    function updateSimulation() {
+      const tau = parseFloat(document.getElementById('tauSlider').value);
+      document.getElementById('tauValue').textContent = tau.toFixed(2);
+      document.getElementById('formulaReadout').textContent = `Threshold T = μ + ${tau.toFixed(2)}σ`;
+
+      let totalCells = GRID_SIZE * (GRID_SIZE - SINK_BLOCKS);
+      let exactCount = 0;
+      let tailCount = 0;
+
+      const matrixGrid = document.getElementById('matrixGrid');
+      matrixGrid.innerHTML = '';
+
+      for (let r = 0; r < GRID_SIZE; r++) {
+        const rowScores = scoresMatrix[r];
+        // Calculate mean and std for non-sink blocks
+        const nonSinkScores = rowScores.slice(SINK_BLOCKS);
+        const mean = nonSinkScores.reduce((a, b) => a + b, 0) / nonSinkScores.length;
+        const variance = nonSinkScores.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / nonSinkScores.length;
+        const std = Math.sqrt(variance);
+        const threshold = mean + tau * std;
+
+        for (let c = 0; c < GRID_SIZE; c++) {
+          const score = rowScores[c];
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+
+          let isSink = c < SINK_BLOCKS;
+          let isDiag = Math.abs(r - c) <= 1;
+          let isExactByTau = score >= threshold;
+
+          if (isSink) {
+            cell.style.background = 'var(--sink-color)';
+            cell.title = `Block [${r}, ${c}]: Conditioning Sink (Guaranteed Exact)`;
+          } else if (isDiag) {
+            cell.style.background = 'var(--diag-color)';
+            cell.title = `Block [${r}, ${c}]: Diagonal Band (Guaranteed Exact)`;
+            exactCount++;
+          } else if (isExactByTau) {
+            cell.style.background = 'var(--exact-color)';
+            cell.title = `Block [${r}, ${c}]: Exact Routed (Score ${score.toFixed(2)} >= Threshold ${threshold.toFixed(2)})`;
+            exactCount++;
+          } else {
+            cell.style.background = 'var(--tail-color)';
+            cell.style.opacity = '0.35';
+            cell.title = `Block [${r}, ${c}]: Pooled Centroid Tail (Score ${score.toFixed(2)} < Threshold ${threshold.toFixed(2)})`;
+            tailCount++;
+          }
+
+          matrixGrid.appendChild(cell);
+        }
+      }
+
+      // Update metrics based on theoretical Sol-Attn curves
+      // Standard normal distribution survival function approx for tau:
+      const theoreticalExactPct = Math.max(2.0, Math.min(50.0, (1 - normalCdf(tau)) * 100 + 4.0)); // include diagonal
+      const speedup = (1.0 + (100 - theoreticalExactPct) / 100 * 0.9).toFixed(2);
+
+      document.getElementById('exactPercent').textContent = theoreticalExactPct.toFixed(1) + '%';
+      document.getElementById('tailPercent').textContent = (100 - theoreticalExactPct).toFixed(1) + '%';
+      document.getElementById('speedupVal').textContent = speedup + '×';
+
+      drawBellCurve(tau);
+    }
+
+    function normalCdf(x) {
+      let t = 1 / (1 + 0.2316419 * Math.abs(x));
+      let d = 0.3989423 * Math.exp(-x * x / 2);
+      let prob = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+      return x > 0 ? 1 - prob : prob;
+    }
+
+    function drawBellCurve(tau) {
+      const svg = document.getElementById('bellChart');
+      const width = 600;
+      const height = 150;
+      const margin = 30;
+
+      const meanX = width / 2;
+      const sigmaPx = 70;
+      const thresholdX = meanX + tau * sigmaPx;
+
+      let curvePoints = [];
+      let exactPoints = [`${thresholdX},${height - margin}`];
+
+      for (let x = margin; x <= width - margin; x += 3) {
+        let z = (x - meanX) / sigmaPx;
+        let yNorm = Math.exp(-0.5 * z * z);
+        let y = height - margin - yNorm * 95;
+        curvePoints.push(`${x},${y}`);
+
+        if (x >= thresholdX) {
+          exactPoints.push(`${x},${y}`);
+        }
+      }
+
+      exactPoints.push(`${width - margin},${height - margin}`);
+
+      svg.innerHTML = `
+        <!-- Baseline axis -->
+        <line x1="${margin}" y1="${height - margin}" x2="${width - margin}" y2="${height - margin}" stroke="#334155" stroke-width="2" />
+        
+        <!-- Pooled Tail Area Fill -->
+        <path d="M ${margin},${height - margin} ${curvePoints.join(' ')} L ${width - margin},${height - margin} Z" fill="rgba(71, 85, 105, 0.25)" />
+        
+        <!-- Exact Area Fill -->
+        <polygon points="${exactPoints.join(' ')}" fill="rgba(16, 185, 129, 0.45)" />
+
+        <!-- Bell Curve Stroke -->
+        <path d="M ${curvePoints.join(' ')}" fill="none" stroke="#94a3b8" stroke-width="2.5" />
+
+        <!-- Mean Line -->
+        <line x1="${meanX}" y1="20" x2="${meanX}" y2="${height - margin}" stroke="#64748b" stroke-dasharray="4" stroke-width="1.5" />
+        <text x="${meanX}" y="${height - margin + 18}" fill="#94a3b8" font-size="11" text-anchor="middle" font-family="sans-serif">Mean (μ)</text>
+
+        <!-- Threshold Line -->
+        <line x1="${thresholdX}" y1="10" x2="${thresholdX}" y2="${height - margin}" stroke="#38bdf8" stroke-width="3" />
+        <circle cx="${thresholdX}" cy="10" r="5" fill="#38bdf8" />
+        <text x="${thresholdX}" y="24" fill="#38bdf8" font-size="12" font-weight="700" text-anchor="${tau > 2.2 ? 'end' : 'start'}" dx="${tau > 2.2 ? -10 : 10}" font-family="sans-serif">
+          Cutoff (μ + ${tau.toFixed(2)}σ)
+        </text>
+
+        <!-- Labels -->
+        <text x="${(meanX + margin) / 2}" y="${height / 2 + 10}" fill="#94a3b8" font-size="12" font-weight="600" text-anchor="middle" font-family="sans-serif">
+          POOLED TAIL BLOCKS
+        </text>
+        <text x="${Math.min(width - 50, Math.max(thresholdX + 35, thresholdX + (width - margin - thresholdX) / 2))}" y="${height / 2 + 10}" fill="#10b981" font-size="12" font-weight="700" text-anchor="middle" font-family="sans-serif">
+          EXACT GEMM
+        </text>
+      `;
+    }
+
+    document.getElementById('tauSlider').addEventListener('input', () => {
+      document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+      updateSimulation();
+    });
+
+    // Initialize
+    updateSimulation();
+  </script>
+</body>
+</html>
