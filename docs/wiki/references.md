@@ -1,6 +1,6 @@
 # The sister checkouts: what each one is good for
 
-last updated: 2026-10-01 (the PDMD trainer: a row in the ComfyUI-side table, and its inference script added to what counts as a contract); 2026-09-27 (the TaoMate section trimmed to the checkouts after the lane was removed); 2026-09-26 (section "A distill's reference is its trainer's contract" added; the FastH3 V2 note under 2026-09-19 extended); 2026-09-25 (section "What moved by 2026-09-25" added; the PDD line and the vllm-omni #7693 bullet corrected in place); 2026-09-19 (section "What moved by 2026-09-19" added); 2026-09-15 (section "The streaming references: TaoMate" added; "What moved by 2026-09-11" added and the two comfy-kitchen rows corrected 2026-09-11; "What moved by 2026-09-10" added 2026-09-10; the tables are otherwise the 2026-08-28 read)
+last updated: 2026-10-02 (section "What moved by 2026-10-02" added; a ComfyUI-H3-AudioRefine row; dated notes on the LightX2V row, the 2026-09-25 INT8 VAE sentence, and a correction to the 2026-09-25 AdaLN rounding claim); 2026-10-01 (the PDMD trainer: a row in the ComfyUI-side table, and its inference script added to what counts as a contract); 2026-09-27 (the TaoMate section trimmed to the checkouts after the lane was removed); 2026-09-26 (section "A distill's reference is its trainer's contract" added; the FastH3 V2 note under 2026-09-19 extended); 2026-09-25 (section "What moved by 2026-09-25" added; the PDD line and the vllm-omni #7693 bullet corrected in place); 2026-09-19 (section "What moved by 2026-09-19" added); 2026-09-15 (section "The streaming references: TaoMate" added; "What moved by 2026-09-11" added and the two comfy-kitchen rows corrected 2026-09-11; "What moved by 2026-09-10" added 2026-09-10; the tables are otherwise the 2026-08-28 read)
 
 `coderef/` holds the reference implementations. `ls -l coderef/` is the list of
 what is currently on disk — some symlinks, some real clones — and this page is
@@ -68,7 +68,7 @@ rather than restating.
 | checkout | revision read | what it is | reach for it when |
 |---|---|---|---|
 | `sglang` | `803b4fb31c` | **the vendor's own serving path.** The closest thing to ground truth for what MiniMax intended | you need to know what the release actually does at a stage |
-| `LightX2V` | `5169278f` | inference engine; **origin of the SLA work and the Turbo LoRAs we load** | anything about SLA, DMD step distillation, offload, or what a LoRA was distilled under |
+| `LightX2V` | `5169278f` | inference engine; **origin of the SLA work and the Turbo LoRAs we load** *(2026-10-02: both lanes are closed, turbo on 2026-09-26 and SLA on 2026-09-27, `docs/roadmap.md` "Closed lanes"; no shipped graph loads a Turbo LoRA and `bench/check_distill_settings.py` fails one that does)* | anything about SLA, DMD step distillation, offload, or what a LoRA was distilled under |
 | `DiffSynth-Studio` | `102fe99` | model library with a native H3 pipeline, its own converters and a LoRA path | you need a second opinion on a state-dict namespace or a converter |
 | `diffusers` | `9f7aee482` | model library with a native H3 pipeline, a named H3 scheduler, and a conversion script | you need the canonical tensor namespace, or a clean statement of the sampler |
 
@@ -110,6 +110,7 @@ Recorded here because it is a property of the *references*, not of our code:
 | `ComfyUI-UtilsCollection` | `5bac35b` | a third-party pack with its own PDD path. Two of our guards were **adopted from it** |
 | `Minimax-H3-Turbo` | `02e26d5` | the vendor README that publishes the distilled sigma grid `bench/check_distill_grid.py` grades against — a grid from the vendor, not one we computed |
 | `pdmd` | `03ee66b` | the PDMD release repo (pdmd2026), read 2026-10-01: inference scripts that pin PDMD's sampling contract (`worker/run_a10.py`, `run_a100.py`) and its LoRA fuse rule (`worker/fuse_lora.py`). It borrows job parsing from `Minimax-H3-Turbo` at the revision recorded here. No training code is published, so it says nothing about how the students were trained; the paper does (`../research/pdmd/`) |
+| `ComfyUI-H3-AudioRefine` | `d78d34f` | a third-party pack, added to this table 2026-10-02 (cited before that from `../h3_audio_freeze.md` and `../h3_pdd.md`). It freezes the video stream of a sampled H3 latent and re-denoises only the audio stream through core's per-stream `noise_mask` on the undistilled model, with a K/V cache over the frozen video rows (`coderef/ComfyUI-H3-AudioRefine/README.md`, `TECHNICAL.md`). Read for the audio-refine regime, not installed |
 | `sage-fork` | `56a5be4` | our SageAttention fork |
 | `SLA` | `7db4039` | the sparse top-k attention reference |
 | `TurboDiffusion` | `e3d6136` | step-distillation reference |
@@ -387,7 +388,9 @@ comfy-kitchen, kijai's fork and ComfyUI's workflow templates live in
 adopt-upstream rule.** sglang moved no default this repo differs on. The one
 upstream default that did move, ComfyUI's templates loading an INT8 video
 VAE, belongs to none of the rule's three upstreams and contradicts an owner
-decision; `sol_upstream.md` has it.
+decision; `sol_upstream.md` has it. *2026-10-02: no longer a contradiction.
+The owner reopened the INT8 VAE on 2026-09-26 and
+`workflows/h3_config.py::MODELS` names it as `video_vae`.*
 
 - **`sglang`** (`993d1fccba` to `2f5c9ac43d`) **now implements PDD**
   (`973fb44471`, #40568). It uses the same dt-weighted head fusion as ours
@@ -429,7 +432,14 @@ decision; `sol_upstream.md` has it.
     rounds at more points than sglang's fused kernel, because
     `comfy/ldm/minimax/model.py::_mod_scale_shift` is two in-place bf16 ops.
     By the vendor reference that is not a defect, and only a capture could
-    size it. The same commit turns TF32 off for the keyframe encode on SM90
+    size it. *Corrected 2026-10-02: sglang's affine is not fp32. Its bf16
+    block kernel
+    (`coderef/sglang/python/sglang/kernels/ops/diffusion/modulate/indexed_modulation_triton.py::_indexed_scale_shift_bf16_kernel`,
+    unchanged since 2026-08-18) rounds to bf16 at `1+scale`, at the product
+    and at the stored sum, the same three points as core's three in-place
+    bf16 ops. sglang and core agree, and vllm-omni's fp32 path is the
+    outlier. [`../research/sglang_comparison.md`](../research/sglang_comparison.md),
+    "Eighth read".* The same commit turns TF32 off for the keyframe encode on SM90
     only, so [`../open_experiments.md`](../open_experiments.md) #30's
     `allow_tf32=True` quote is now arch-conditional; #30 stays closed.
   - **Steps now count evaluations** (`67aa30c96`, #7219), the convention
@@ -533,6 +543,183 @@ decision; `sol_upstream.md` has it.
   the same day, in the continuation note linked above. Still not read: the
   line-number citations into the sglang files these commits touched,
   beyond the one corrected in `sol_upstream.md`.
+
+---
+
+## What moved by 2026-10-02
+
+Read on 2026-10-02 by fetch, from each clone's upstream branch, against the
+revision the 2026-09-25 section recorded (pdmd and the continuation packs
+against their 2026-10-01 and 2026-09-25 reads). The commit list for a clone is
+`git log <recorded>..origin/main` inside it (Sana: `origin/sol-engine`).
+sglang, vllm-omni, flashinfer and Model-Optimizer were fast-forwarded to
+their upstream tips so the paths below resolve; the others already sat there.
+Diffs were read for the commits named below and titles for the rest. Core,
+comfy-kitchen and ComfyUI's workflow templates live in
+[`../sol_upstream.md`](../sol_upstream.md), section "comfy-kitchen and core,
+2026-10-02". sglang's eighth read lives in
+[`../research/sglang_comparison.md`](../research/sglang_comparison.md).
+
+**Nothing below changes what runs on this card, and nothing triggers the
+adopt-upstream rule.** sglang moved no default, and no H3 template moved a
+widget value. Two things the read turned up are about our code, not theirs:
+an open core PR that would break `MiniMaxH3LoRABranch` (16681, in the
+`sol_upstream.md` section), and a claim on this page about sglang's AdaLN
+rounding that was wrong when written (corrected in place under 2026-09-25).
+
+A note on the earlier sections: `bench/check_distill_settings.py` has read no
+LightX2V config since the turbo lane closed on 2026-09-26 (its docstring, "no
+retired turbo"). The sentences in the 2026-09-10 and 2026-09-25 sections that
+say it does were true on their dates.
+
+- **`sglang`** (`2f5c9ac43d` to `89f21671bb`). **It now runs the H3 DiT under
+  a ComfyUI graph** (`f1e62e3a2e`, #35990): core builds the model and runs
+  the encoder, VAEs, conditioning and sampler, and an sglang worker process
+  runs each DiT step. None of our DiT-side patches would reach a DiT run that
+  way. Also an opt-in Spectrum skip-step, `kitchen_int8` renamed
+  `convrot_int8`, an exact conditioning cache and t2va RL rollout. The eighth
+  read has each.
+- **`vllm-omni`** (`3bd5ac968` to `527982d88`).
+  - **Reference stills keep their own size** (`7266fc613`, #8253). An image
+    reference used to go to a 2048 short edge, up or down. It now keeps its
+    resolution, rounded per axis to 32, inside validation bounds only
+    (`coderef/vllm-omni/vllm_omni/model_executor/models/minimax_h3/preprocessing.py::resolve_minimax_h3_reference_image_shape`).
+    The title says "avoid enlarging", but large stills are no longer shrunk
+    either, where core's `max` mode shrinks at its short edge. A reference
+    video goes on the canvas only when it has at least the canvas's pixels and
+    otherwise keeps its size rounded to 32
+    (`coderef/vllm-omni/vllm_omni/model_executor/models/minimax_h3/reference_video.py::_reference_video_shape`),
+    which is core's rule in
+    `comfy_extras/nodes_minimax_h3.py::MiniMaxH3ReferenceToVideo`. The PR's
+    evidence is wall time, not quality. sglang still scales stills to its
+    short edge with upscaling on
+    (`coderef/sglang/python/sglang/multimodal_gen/runtime/pipelines_core/stages/model_specific_stages/minimax_h3/reference_encoding.py`),
+    which is what the append node's parity default follows, so that default
+    and [`../evidence.md`](../evidence.md) "Settled about H3" stand.
+    It is one more data point for the unrendered `allow_upscale` arm in
+    `bench/refview2_arms.json`, not a verdict. The PR's before side was read
+    from the GitHub diff page, not the clone.
+  - **Latent super-resolution and a hi-res refine pass** (`a038b3817`,
+    #8322). An optional community 3D-conv latent upscaler
+    (`LBH-123-AI/Minimax_h3_latent_Upscaler`, upscale only) runs between the
+    denoise loop and the decode
+    (`coderef/vllm-omni/vllm_omni/diffusion/models/minimax_h3/latent_upscaler.py::MiniMaxH3LatentResizer3D`).
+    `latent_refine` re-noises video and audio to their own shifted sigmas at
+    one schedule index and reruns the schedule's tail at the larger size
+    (`coderef/vllm-omni/vllm_omni/diffusion/models/minimax_h3/pipeline_minimax_h3.py::_refined_latents`).
+    Both are off unless a checkpoint path is set. Upscale alone gives a larger
+    decode of a canvas-native clip. The refine pass runs the DiT above the
+    trained canvas ([`../h3_resolutions.md`](../h3_resolutions.md)). A
+    third-party ComfyUI node for the checkpoint exists; it is not cloned or
+    read here, and whether core's `LatentUpscaleModelLoader` loads the file
+    is unchecked.
+  - **FastH3 four-step on Ascend** (`817f5d0e4`, #7149): an offline adapter
+    fusion that writes the existing ladder
+    (`coderef/vllm-omni/vllm_omni/diffusion/models/minimax_h3/fasth3.py::FASTH3_BASE_SCHEDULE`)
+    into `model_index.json`. The contract is unchanged; a second hardware
+    path now uses the same positions and base shifts.
+  - The rest touches no H3 numerics: video transport (`3a82c8588`), an
+    offload-flag refactor in which FastH3 still refuses offload
+    (`acf662023`), an empty-tensor guard on the shared RMSNorm (`965ad68f1`),
+    TTS, audio and other models.
+- **`diffusers`** (`bdc2bea37` to `578c9b2c6`).
+  - **The H3 VAE decoder now runs in the pipeline dtype** (`51a454be9`,
+    #14754). It used to pin every top-level VAE module to fp32 and decode
+    under fp16 autocast. Now only the encoder, `quant_conv`, the norms and the
+    LayerScale scales stay fp32
+    (`coderef/diffusers/src/diffusers/models/autoencoders/autoencoder_kl_minimax_h3.py::AutoencoderKLMiniMaxH3._keep_in_fp32_modules`).
+    That moves diffusers toward core on decode. Core still differs in keeping
+    the scales and residual stream in the activation dtype
+    (`comfy/ldm/minimax/vae.py::TransformerBlock._residual_scale`); only a
+    capture could size that. [`../custom_node_gaps.md`](../custom_node_gaps.md)
+    item 3 has a dated note.
+  - **Single-file loading for ComfyUI-format H3 files** (`4de185d6e`, #14839).
+    Its converter records three namespace facts: Comfy-Org single files stack
+    QKV as `[q;k;v]` where the release shards interleave per head, the fused
+    FF is `[gate;value]`, and pruned files (with `adaln_t_table` in place of
+    `time_embedder`) are refused
+    (`coderef/diffusers/src/diffusers/loaders/single_file_utils.py::convert_minimax_h3_transformer_checkpoint_to_diffusers`).
+    A third reading of the layout our converters assume.
+  - `e0abab83b` downcasts `position_ids` on backends without fp64 only, and
+    `fef717ffb` adds an SM120-only Sage backend.
+- **`Sana`** (`6c2f582` to `670482d`).
+  - **SoL-Refiner's H3 version** is a one-step LTX-2.5 refiner over a
+    decoded H3 clip: LTX-2.5's VAE re-encodes it, the latent is upsampled, one
+    forward and one Euler step run with no CFG, and LTX-2.5's diffusion
+    decoder outputs a higher-resolution clip with no audio. Text goes through
+    LTX's own encoder. The weights are a full Diffusers pipeline with merged
+    adapters, not a LoRA, tested on an H100
+    (`coderef/Sana/models/sol-refiner/MiniMax-H3/sol_refiner_h3/pipeline.py::SoLRefinerH3Pipeline`).
+    It uses no Sol on H3. No ComfyUI path is published. Core has LTX-2.5
+    parts, but whether it loads this transformer layout is unverified, and a
+    24 GB card would need offload or quantization (reasoned).
+  - **`1fb0648` (#511)** packages Spark's two-stage recipe for one RTX 5090.
+    Its offload runtime refuses anything but SM120
+    (`coderef/Sana/models/minimax_h3/Sol-H3-RTX5090/runtime/offload.py`). Its
+    Sol on H3 is the opt-in Ref2VA path that
+    [`../sol_upstream.md`](../sol_upstream.md) already records for Spark.
+    Its checkpoint list loads a lightx2v turbo file, a closed lane here.
+  - `1fbe166` makes the LTX-2.3 refiner's attention architecture-aware. The
+    shared Sol backend table still maps SM89 to `cute_sm89`.
+- **`LightX2V`** (`a4b8ce30` to `8a97c759`). Nothing under
+  `configs/minimax_h3` changed.
+  - `190f2ef0` (#1497) adds Apple MPS support. Its "Turbo" config is a
+    four-step smoke config with no LoRA and no shift
+    (`coderef/LightX2V/configs/platforms/mps/`); its VAE fixes are MPS-only
+    and a loader key map.
+  - `d46ab933` (#1568) adds prompt travel to the causal RefA2V runtime. It
+    re-encodes the prompt at chunk boundaries, padded to one fixed token
+    length so the text prefix keeps its row count, and rewrites only the
+    condition K/V
+    (`coderef/LightX2V/lightx2v/models/runners/minimax_h3_causal/action_prompt_travel.py::ActionPromptTravel`).
+    `loop_audio` tiles a short driving track. Fixed-length padding is the
+    pattern to know if anything here ever swaps prompts per window inside one
+    sequence. The runtime still needs its own checkpoint, tensor parallelism
+    and FlashAttention-3. `cb61e625` is a one-line config path fix.
+- **`ComfyUI-UtilsCollection`** (`fc6104c` to `834d66b`). Not installed here,
+  and no shipped graph wires a `UC_*` node.
+  - First and last frames become core-style keyframes and also go to Qwen as
+    reference pictures (`f767043`). Native image references go to the VAE at
+    source size floored to 16, with a separate smaller Qwen view
+    (`coderef/ComfyUI-UtilsCollection/helpers/minimax_h3_reference_media_helpers.py`).
+    Two different stills for the two towers departs from vendor parity, which
+    our `MiniMaxH3AppendRefImage` defaults to
+    ([`../h3_references.md`](../h3_references.md)).
+  - Its isolated reference-video path (`4f439bd`) does not truncate, snap
+    the frame count or apply the canvas rule, all three of which core does,
+    and orders labels images, videos, audio, turning a video's soundtrack
+    into a standalone audio reference. That departs from the label rules all
+    four implementations agreed on in the 2026-08-28 pass. Reasoned, not run.
+  - "Pooled" and "refined" reference-video modes (`6552e04`) pool the VAE
+    latent and then fit it by gradient steps
+    (`coderef/ComfyUI-UtilsCollection/helpers/model_helpers.py::_pool_minimax_h3_visual_latent`,
+    `::_refine_minimax_h3_visual_latent`). A pooled latent is not the encoding
+    of a smaller clip. Its default is still the full, unpooled video.
+  - `0251732` sends the continuation tail to Qwen at 2 fps from index 0,
+    which now matches core. `4353de3` makes its sage forward's tensors
+    contiguous; our `attention.py` splits QKV as core does. Its VLM presets
+    keep timed shot headers, the same departure from
+    [`../prompting.md`](../prompting.md) as vllm-omni's 2026-09-25 prompt
+    skills. One input still treats 0 as "preserve original", which
+    `bench/check_literal_widgets.py` refuses here.
+- **`DiffSynth-Studio`** (`7686e54` to `974cfa3`). `d393669` (#1712) adds
+  EntroPack, pre-quantized H3 DiT, text-encoder and VAE packages at several
+  bit widths in its own `CompressedLinear` format, not ComfyUI's
+  (`coderef/DiffSynth-Studio/examples/minimax_h3/model_inference/MiniMax-H3-EntroPack.py`).
+  The encoder packages touch the closed lane on quantising our own encoder;
+  noted, not proposed.
+- **`flashinfer`** (`bf82326b` to `11e188412`): H3 kernels for SM100, SM103
+  and SM120 only. **`Model-Optimizer`** (`ed7e87953` to `44b46eba8`): IQ
+  codecs and other models, titles only. **`transformers`, `vllm`,
+  `llm-compressor`, `triton`**: a commit-message search for Qwen3-VL, MiniMax
+  and H3 since 2026-09-25 found MiniMax-M3 work and one device-side Qwen3-VL
+  normalisation in vllm's own path. Nothing reaches SM89 or our encoder.
+- **Unmoved:** `Minimax-H3-Turbo` (`02e26d5`), `MiniMax-H3` (`d21241f`),
+  `TurboDiffusion` (`e3d6136`), `pdmd` (`03ee66b`), `FastVideo`
+  (`9491c863`), `comfyui_dagthomas`, `ComfyUI-Minimax-H3-Continuation`
+  (`e1768d5`), `ComfyUI-MiniMax-H3-LongMedia` (`409e4cb`),
+  `comfyui-minimax-h3-audio-T8` (`70fb30f`) and `ComfyUI-H3-AudioRefine`
+  (`d78d34f`), now a row in the ComfyUI-side table.
 
 ---
 

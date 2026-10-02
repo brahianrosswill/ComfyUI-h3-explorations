@@ -1,6 +1,8 @@
 # sglang's H3 serving path against ours
 
-last updated: 2026-09-25 (closing section "Seventh read" added); 2026-09-19 (closing section "Sixth read" added, and a dated
+last updated: 2026-10-02 (closing section "Eighth read" added, with dated
+notes on the seventh read's ComfyUI sentence, the `kitchen_int8` name and our
+dense-blocks cell); 2026-09-25 (closing section "Seventh read" added); 2026-09-19 (closing section "Sixth read" added, and a dated
 note under the Sol-Attn defaults table); 2026-09-11 (subsection "Sol-Attn
 defaults: sglang against core's and ours" added under "What we do that they
 do not", and closing section "Fifth read" added; "Fourth read" added 2026-09-10; one subsection under "What
@@ -380,7 +382,9 @@ and the SLA router have no counterpart ... which runs dense FlashAttention",
 which was true when written and is not now: sglang ships a `sol_attn` attention
 backend (`coderef/sglang/python/sglang/multimodal_gen/test/unit/test_sol_attn_backend.py`)
 and a `kitchen_int8` linear path dispatching the same `comfy_kitchen.int8_linear`
-our checkpoints load through.
+our checkpoints load through. *2026-10-02: `kitchen_int8` is now a deprecated
+alias of `convrot_int8` (`e667ab10d5`), which still dispatches to kitchen on
+this card; see "Eighth read".*
 
 **What that convergence is, and is not.** Their published consumer-card table's
 fastest row is an int8 DiT with a sage-to-Sol hybrid — which is the stack our
@@ -418,6 +422,12 @@ Attention Backend, not onto Sage; `workflows/h3_config.py::DEFAULT_DENSE_CHAIN`
 names the chain and its comment block says what each chain runs. The other
 cells of our column still match `SOL_RECOMMENDED_CUDA`, the knobs added to it
 since (`qk_balance`, `rotate`, `morton`) aside.*
+
+*2026-10-02: the dense-blocks cell of our column is no longer "none". The Sol
+node's `dense_blocks` default is `sol_attn_h3.py::SOL_DENSE_TAIL`, mirrored by
+`workflows/h3_config.py::SOL_DENSE_TAIL`, so on that row sglang, core and ours
+now all differ. sglang's and core's cells were re-read at `89f21671bb` and
+`65787d66` and have not moved.*
 
 The start row agrees only on a fifty-step grid, where 10 steps is a fifth.
 At our sixteen-step base, sglang's count would keep 10 steps dense against
@@ -740,3 +750,102 @@ cookbook naming a server-mode node, which agrees with
 [`sglang_h3_pipeline.md`](sglang_h3_pipeline.md) that sglang has no in-process
 ComfyUI path for H3. The rest is serving, MiniMax-M3, HiSparse, ROCm and XPU,
 read at the title.
+
+*Corrected 2026-10-02: since `f1e62e3a2e` sglang has a ComfyUI path for H3
+that runs the DiT under a ComfyUI graph, one step at a time in a separate
+worker process. "No in-process path" is still literally true; "server mode
+only" is not. See "Eighth read".*
+
+## Eighth read, 2026-10-02
+
+What landed in `coderef/sglang` between `2f5c9ac43d` and `89f21671bb`. Six
+commits touch H3 paths. One retires a sentence in the seventh read, and the
+re-read retires a sentence in [`../wiki/references.md`](../wiki/references.md)
+that was already wrong when written.
+
+**No default moved, and the adopt-upstream rule does not fire.**
+`sol_attn.py` is unchanged, so the table under "Sol-Attn defaults" holds
+(with the dated note on our dense-blocks cell). The H3 sample config still
+runs fifty steps with guidance pinned at 1.0. The integrated mode's shifts
+(`coderef/sglang/python/sglang/multimodal_gen/runtime/pipelines_core/stages/model_specific_stages/minimax_h3/stages/comfyui_step.py`,
+`DEFAULT_SIGMA_SHIFT_VIDEO` and `DEFAULT_SIGMA_SHIFT_AUDIO`)
+equal core's `comfy/supported_models.py::MiniMaxH3.sampling_settings` and
+`h3_config.SIGMA_SHIFT`, which already agree. Its example graphs use
+`res_multistep` on `simple`. They copy core's templates, so they echo one
+upstream rather than adding a second one.
+
+**sglang now runs the H3 DiT under a ComfyUI graph (`f1e62e3a2e`, #35990).**
+The loader builds core's model object from the safetensors header, then swaps
+its diffusion model for an executor that ships each sampler step over local
+ZMQ, with CUDA IPC handles, to an sglang worker
+(`coderef/sglang/python/sglang/multimodal_gen/apps/ComfyUI_SGLDiffusion/core/generator.py::load_model`,
+`coderef/sglang/python/sglang/multimodal_gen/apps/ComfyUI_SGLDiffusion/executors/minimax_h3.py::MiniMaxH3Executor`).
+The worker runs one forward per call
+(`coderef/sglang/python/sglang/multimodal_gen/runtime/pipelines_core/stages/model_specific_stages/minimax_h3/stages/comfyui_step.py::MiniMaxH3ComfyUIStepStage`).
+ComfyUI keeps the encoder, both VAEs, core's H3 conditioning nodes, the packed
+layout and the sampler. Two consequences:
+
+- **None of our DiT-side patches would reach it** (reasoned). The diffusion
+  model is replaced, so the Sol node, the dense attention chain, PDD heads in
+  core's `final_layer` and core's LoRA loader all patch a model that no longer
+  runs. sglang ships its own LoRA loader node for this mode.
+- **Two places read as departures from core's `MiniMaxH3Model.forward`**
+  (reasoned, not run). `MiniMaxH3Adapter.unpack` scales the audio velocity by
+  `time_shift_slope` on top of the carry correction, which core does not, and
+  it does not multiply the output by the denoise mask, which core does. Its
+  only audio test checks shapes. If anyone compares this mode against a stock
+  graph, these are the first two places to look.
+
+**Spectrum skip-step (`ae47bcd4da`, #35684) is opt-in**
+(`SamplingParams.enable_spectrum` is False). It forecasts the
+pre-final-layer hidden state of the target audio and video rows with a
+Chebyshev ridge fit, holds audio at its last real value, blends video toward
+the forecast, and runs the embed step and the final layer every step
+(`coderef/sglang/python/sglang/multimodal_gen/runtime/models/dits/minimax_h3.py::MiniMaxH3DiTModel._h3_spectrum_predict_targets`,
+`coderef/sglang/python/sglang/multimodal_gen/runtime/cache/spectrum.py::SpectrumMixin.begin_spectrum_step`).
+The skip schedule is a rule: real warm-up forwards, then a widening window
+with no cooldown. That is DPCache's insertion point with a rule where DPCache
+has a calibration. It already forecasts only the target rows, which
+[`2026-09-25_step_caching_survey.md`](2026-09-25_step_caching_survey.md)
+said no upstream did, and holds audio rather than weighting the two streams.
+The survey's verdict stands (reasoned): nothing to skip at distilled step
+counts, a second candidate at the base step count. Its code comment credits
+"Comfy / Wan2GP", probably xmarre's Spectrum pack
+([`../sol_upstream.md`](../sol_upstream.md), "Other ComfyUI Sol-Attn
+packs"); not verified.
+
+**The same commit's "fused RMSNorm/AdaLN" landed unfused.**
+`_modulate_rmsnorm_scale_shift` is the norm followed by `_modulate_scale_shift`,
+and its docstring says the fused kernel was removed for drift. On the block
+path, bf16 on CUDA,
+`coderef/sglang/python/sglang/kernels/ops/diffusion/modulate/indexed_modulation_triton.py::_indexed_scale_shift_bf16_kernel`
+rounds to bf16 at `1+scale`, at the product and at the stored sum. Core's
+`comfy/ldm/minimax/model.py::_mod_scale_shift` is three in-place bf16 ops at
+the same three points. That kernel has not changed since 2026-08-18
+(`git log` on the file), so the seventh-read-era claim in
+[`../wiki/references.md`](../wiki/references.md) that sglang keeps the affine
+in fp32 and core rounds at more points was wrong when written; it is corrected
+there. vllm-omni's fp32 affine is the outlier of the three.
+
+**`kitchen_int8` is now a deprecated alias of `convrot_int8` (`e667ab10d5`,
+#38040).** Same quantization as kitchen's, with interchangeable weight and
+scale tensors
+(`coderef/sglang/python/sglang/multimodal_gen/runtime/layers/quantization/configs/convrot_int8_config.py`).
+`auto` picks its own JIT CUTLASS kernels on compute capability 9.0, 10.0, 12.0
+and 12.1 and `comfy_kitchen.int8_linear` everywhere else, so on this card it is
+still kitchen, and the `int8_convrot` files in `h3_config.MODELS` load
+auto-detected. Nothing to adopt.
+
+**The rest:**
+
+- `dc1bd46802` (#40470): an exact, bounded conditioning cache, on by default,
+  that also stores the H3 VAE encode's moments before posterior sampling, so
+  seeded sampling stays exact
+  (`coderef/sglang/python/sglang/multimodal_gen/runtime/cache/conditioning.py`).
+  ComfyUI's node cache covers the same ground here.
+- `0931a72eb2` (#34365): RL rollout for t2va only, a stochastic video-target
+  update that returns log-probs, audio deterministic, off by default.
+- `84622ce9d5` (#41272) is a crash fix for LoRA-wrapped linears and
+  `bf8adf9602` puts int64 offsets in the SubBlock router kernels.
+- Everything else is Qwen-Image, Flux 3, other models, NPU, MiniMax-M3 and
+  docs, read at the title.

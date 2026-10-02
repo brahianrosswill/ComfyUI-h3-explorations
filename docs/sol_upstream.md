@@ -1,6 +1,8 @@
 # What upstream says: the paper, Sol-Engine, Sol-H3, and the other packs
 
-Last updated: 2026-09-27 (core's model.py line citations and the chunked
+Last updated: 2026-10-02 (section "comfy-kitchen and core, 2026-10-02"; a
+superseded note on the 2026-09-25 INT8 VAE paragraph; core's model.py line
+citations re-read); 2026-09-27 (core's model.py line citations and the chunked
 producer's V scale only); 2026-09-25 (section "comfy-kitchen and core, 2026-09-25", with
 ComfyUI's workflow templates; a dated note under sglang's SubBlock router);
 2026-09-22 (section "comfy-kitchen, 2026-09-22": kitchen only,
@@ -36,14 +38,103 @@ disagree about our configuration, they are right.
 | sglang's SubBlock router | source at `ffe98a4279`; `sage_fp8`'s arch set re-read at `2f5c9ac43d` | 2026-09-10, 2026-09-25 |
 | sglang's Sol-Attn backend | source at `593c7a900d`, with its attention-backend doc and H3 cookbook page | 2026-09-11 |
 | two third-party ComfyUI packs | their READMEs only | 2026-08-16 |
-| Comfy-Org/workflow_templates | `gh api`: commits since 2026-09-19 touching H3, and the diff of `fc427f00` | 2026-09-25 |
+| Comfy-Org/workflow_templates | `gh api`: commits since 2026-09-19 touching H3, and the diff of `fc427f00`; on 2026-10-02, commits since 2026-09-25 and a widget-value diff of the H3 and FastH3 t2v templates | 2026-09-25, 2026-10-02 |
 | xmarre's ComfyUI-Sol-H3 | its README and the body of its PR 9, via `gh` | 2026-09-11 |
 | Comfy-Org/ComfyUI PR 16239 (closed unmerged 2026-09-16) | its diff via `gh`: `nodes_sparse_attention.py` and two helpers in its new module | 2026-09-11 |
 | Comfy-Org/ComfyUI PRs touching H3 or core's sparse node, and kitchen's open PRs | `gh`: lists, bodies and threads; diffs for 16388, 16344, 16404, 16245, 16362, 16378 (2026-09-19); diffs for 16460, 16508, 16497, 16548, 16476, 16542, 16156, 16483, 16391 (2026-09-25) | 2026-09-19, 2026-09-25 |
-| Comfy-Org/comfy-kitchen | fetch and `gh`; dated sections below | 2026-09-04, 2026-09-08, 2026-09-10, 2026-09-11, 2026-09-15, 2026-09-19, 2026-09-22, 2026-09-25 |
+| Comfy-Org/comfy-kitchen | fetch and `gh`; dated sections below | 2026-09-04, 2026-09-08, 2026-09-10, 2026-09-11, 2026-09-15, 2026-09-19, 2026-09-22, 2026-09-25, 2026-10-02 |
 
 Every `coderef/Sana/...` pointer below resolves against a checkout at
 `757d902`. The branch `release/sol-h3-spark` has the same tree as that tip.
+
+---
+
+## comfy-kitchen and core, 2026-10-02
+
+Read with `gh` (compare, PR lists, bodies and diffs) and the ComfyUI checkout
+at `65787d66` (pulled 2026-10-02; `git reflog` in it dates each pull),
+against `88ab4a06`, the 2026-09-25 read. The next server start runs this
+checkout.
+
+**Nothing below changes a default this repo ships, and nothing triggers the
+adopt-upstream rule.** No H3 template moved a widget value, and sglang moved
+no default ([`research/sglang_comparison.md`](research/sglang_comparison.md),
+"Eighth read").
+
+**Kitchen: current.** `vendor/rebuild_kernel.sh --check` reports the build
+installed and current against ComfyUI's pin, which core moved to `0.2.36`
+(`6f6a2742`, #16635). The build's contents are recorded in
+`bench/results/2026-10-01_kitchen_merge_aade8d5.md`. Upstream main's two
+commits past the build, `5eeefcf` (#201) and `d0da34b` (#199), are Ascend.
+An open stack of H3-targeted kitchen PRs splits two ways. 217, 218, 222, 227
+and 231 dispatch only on SM120, which is not this card. 219, 220, 221 and 223
+add opt-in indexed-gate, fused-norm and BSHD-output APIs that core does not
+call yet; core's 16681 and 16678 below are their consumers. 224 fixes INT8
+attention for a nonpositive scale, which H3 never passes. **168 (ours)** is
+still open with no activity since 2026-09-11.
+
+**Core, merged since 2026-09-25:**
+
+- **`2d6b7328` (#16677) is an extract-method refactor of H3's forward.** The
+  patchify, cond-row scatter, patch projections, condition projection and
+  token refiner move from `MiniMaxH3Model._forward` into
+  `comfy/ldm/minimax/model.py::MiniMaxH3Model._embed_and_pack`, so their
+  temporaries are freed before the blocks run. Statement order is unchanged
+  and `Attention.forward` did not move. No forward in this pack copies that
+  span, so nothing here follows it. A DiT peak recorded before this pull
+  describes the older core. The line citations in "ComfyUI core's own Sol
+  node" below and in `h3_capture.py` were re-read against it.
+- **`83071e1a` (#16698) fixes a crash decoding H3 video with the VAE
+  offloaded.** `FeedForward.forward` and `Attention.forward` in
+  `comfy/ldm/minimax/vae.py` passed the pre-norm weight uncast into
+  `linear_input_act`'s fused RMSNorm, so an offloaded weight sat on the CPU.
+  It now goes through `CastBiasWeightContext`. The shipped INT8 decoder
+  (`h3_config.MODELS["video_vae"]`) takes that path, and `start.sh`'s `safe`
+  mode offloads. The failure was loud, so no clip that decoded is affected.
+  Whether the cast is a bit-level no-op for a resident VAE was not checked.
+- **`986c4d15` (#16657) loads H3 video VAEs with a shorter decoder.**
+  `comfy/sd.py` counts the decoder's transformer blocks from the file and
+  passes the count to `MiniMaxH3VideoVAE`. Its first user is LynnReal's
+  "light" VAE: the stock encoder with a distilled decoder of fewer blocks,
+  whose model card says the latent space is unchanged and the RGB output is
+  not. It is a full decoder, not a preview one, and stock `VAELoader` loads
+  it. The shipped files load as before. Nothing here has measured it.
+- `8d534945` (#16595) adds `comfy_attention` to other models; H3's
+  `Attention` already passed `preferred_attention`. W6A8 (`491bf3b9`,
+  `9671d89f`), the RGBA fix (`39cb5a8b`, the 16548 of the last read) and a
+  `FixedKVBias` write in `generate()` (`a7169322`) have no reach. ComfyUI
+  `v0.38.0` was tagged 2026-09-29. The rest is other models, assets, partner
+  nodes and EXR.
+
+**Templates.** Since 2026-09-25 the H3 files in Comfy-Org/workflow_templates
+changed only their download notes (`98fd32ca`, `e7cd011d`); a widget-value
+diff of the H3 and FastH3 t2v templates before and after shows no change.
+`e7849852` adds API copies of those two graphs under `benchmarks/`, and
+`9b912856` removes the site's H3 demo page. Core bumped the package through
+`v0.11.74` (`fa98a189`).
+
+**Open core PRs, new or moved since 2026-09-25.** Keyword search as before,
+so a PR touching an H3 path under an unrelated title can be missed.
+
+- **16681 would break `MiniMaxH3LoRABranch` on any LoRA that touches fc2.**
+  It changes `MLP.forward(x)` to `forward(x, residual=None, gate=None,
+  segments=None)`, and `DiTBlock.forward` then calls
+  `self.mlp(h, residual=x, gate=gate_mlp, segments=mod_segments)` unless the
+  MLP carries a hook or core is training. `lora_branch.py::_mlp_forward`
+  installs a one-argument `forward(x)` as an object patch, which is not a
+  hook, so the call would raise a TypeError. The same copy is in
+  `standalone/h3_mutant_distill/exact_lora.py`. Read from the diff and
+  reasoned; nothing has run under the PR. The fix is to accept the three
+  keywords and apply core's `_mod_gate` when `residual` is given;
+  [`wiki/next_steps.md`](wiki/next_steps.md) carries it.
+- 16712 and 16713 rework `_embed_and_pack` again and move reference-row
+  preparation into `extra_conds`; their bodies report identical latents.
+  Nothing here mutates `cond_*_latents`. `bench/probe_ref_rows_16604.py`
+  calls `_cond_video_rows` and would need to follow 16713. 16678 waits on
+  kitchen 220. 16688 duplicates `83071e1a`. 16619 fixes async-offload cast
+  aliasing, including the H3 audio VAE, and reaches only `--async-offload`.
+- 16508, 16460 and 16542 have not moved. 16156 reworded its 2026-09-27
+  commit and keeps the exclusive end. 16391 is still open though superseded.
 
 ---
 
@@ -146,6 +237,12 @@ established"). The owner's decision stands unless the owner reopens it. The
 core decoder has an INT8 attention branch for such a file
 (`comfy/ldm/minimax/vae.py`, `Attention.forward`, the `QuantizedTensor`
 test).
+
+*Superseded 2026-10-02: the owner reopened that lane on 2026-09-26, and
+`workflows/h3_config.py::MODELS` names the INT8 file as `video_vae` again
+(the comment beside it says why). The sentences above about the file being
+removed, `bench/check_model_files.py` going red on it, and the decision
+standing describe the repo before that date.*
 
 **Open core PRs, new or moved since 2026-09-19.** Found by keyword search
 (`gh pr list --search`) on H3, MiniMax, sparse attention, Qwen3, kitchen and
@@ -801,7 +898,9 @@ display name "Model Sparse Attention", experimental
   the checkpoint carries one (`comfy/ldm/minimax/model.py:169-172`, detected at
   `comfy/model_detection.py:415`, i.e. FastH3 VSA weights), and two
   `transformer_options` keys for attention patches, `minimax_h3_layout`
-  (`comfy/ldm/minimax/model.py:624`) and `block_index` (`:755`).
+  (`comfy/ldm/minimax/model.py:667`) and `block_index` (`:760`). *Line
+  numbers re-read 2026-10-02 at core `65787d66`; they were `:624` and `:755`
+  before `2d6b7328` moved the embed span into `_embed_and_pack`.*
 
 *2026-09-19: PR 16239 was closed unmerged on 2026-09-16 and this paragraph no
 longer describes a pending change; section "comfy-kitchen and core,

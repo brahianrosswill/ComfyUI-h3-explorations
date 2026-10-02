@@ -17,6 +17,26 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-02
 
+- **Prose corrected by the 2026-10-02 upstream read** (0.184.9). Each keeps a
+  dated note in place:
+  - `references.md`, "What moved by 2026-09-25", said sglang keeps the AdaLN
+    affine in fp32 and core rounds at more points. sglang's bf16 block kernel
+    rounds at the same three points as core's `_mod_scale_shift`, and has since
+    2026-08-18, so the claim was wrong when written.
+  - `research/sglang_h3_pipeline.md` section 10 and the seventh read in
+    `research/sglang_comparison.md` said sglang's ComfyUI app runs H3 in
+    server mode only. Since `f1e62e3a2e` it also runs the H3 DiT per step under
+    a ComfyUI graph.
+  - `custom_node_gaps.md` item 3 said diffusers decodes the H3 VAE in fp32
+    under autocast. Since `51a454be9` its decoder runs in the pipeline dtype.
+  - `sol_upstream.md`'s 2026-09-25 INT8 VAE paragraph and the matching
+    sentence in `references.md` still described the file as removed; the
+    owner reopened it on 2026-09-26.
+  - `research/2026-09-25_step_caching_survey.md` listed Spectrum as literature
+    only; sglang ships it for H3, opt-in, since `ae47bcd4da`.
+  - Core line citations in `sol_upstream.md` and `h3_capture.py` re-read
+    after `2d6b7328` moved H3's embed span.
+
 - **Test 2 confirms middle error peak invariant across two-stage sampler and exposes token routing limits**
   (empirical finding, 2026-10-02). Running `h3_text_to_video_pdd8_flashgen_finish_api.json` (6 steps PDD8 +
   2 steps FlashGen finisher; 119,102 tokens with 1 reference image at 2752x1536 yielding 7,360 VAE reference

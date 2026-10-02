@@ -1,6 +1,6 @@
 # Step caching for H3, re-examined
 
-last updated: 2026-09-25
+last updated: 2026-10-02 (a dated note on Spectrum, from sglang's eighth read); 2026-09-25
 
 > **Provenance, 2026-09-25.** A research subagent (Claude) read the upstream
 > caches and searched the literature, using CPU only. The session that
@@ -74,7 +74,11 @@ disagree: sglang refuses it for H3, and vllm-omni ships it for FL2VA only.
 - **TaylorSeer**: GPL-3.0, and sglang calls it unsuitable for few-step models.
 - **FoCa** (2508.16211): a predictor-corrector, available in cache-dit.
 - **Spectrum** (2603.01623) and **RACER** (2608.01740): forecasting, and a
-  closed-loop guard that could sit on a forecaster.
+  closed-loop guard that could sit on a forecaster. *2026-10-02: Spectrum is
+  no longer literature only. sglang ships it for H3, opt-in, since
+  `ae47bcd4da`, forecasting only the target rows and holding audio;
+  [`sglang_comparison.md`](sglang_comparison.md), "Eighth read", says how it
+  sits against this survey. The verdict here is unchanged.*
 - **DisCa** (2602.05449): the only method aimed at 4-step distills, but it
   needs a trained predictor. Not feasible for a 33B model on one card.
 - **EchoCache, Chorus**: the wrong workload.

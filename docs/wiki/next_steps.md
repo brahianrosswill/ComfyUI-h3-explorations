@@ -441,6 +441,37 @@ mapped to the owner decision it feeds. None of the decisions is made here.
   owner reopened the lane, and `h3_config.MODELS["video_vae"]` is the INT8
   build since 0.151.0.*
 
+**2026-10-02 (the upstream survey session).** Found by the read in
+[`../sol_upstream.md`](../sol_upstream.md), "comfy-kitchen and core,
+2026-10-02", [`references.md`](references.md), "What moved by 2026-10-02",
+and [`../research/sglang_comparison.md`](../research/sglang_comparison.md),
+"Eighth read". Nothing triggered the adopt-upstream rule. Most urgent first;
+none of it is done.
+
+- **Core PR 16681 would break `MiniMaxH3LoRABranch` on fc2 if it merges.**
+  `lora_branch.py::_mlp_forward` (and its copy in
+  `standalone/h3_mutant_distill/exact_lora.py`) patches `mlp.forward` with a
+  one-argument function, and the PR calls the MLP with `residual`, `gate` and
+  `segments`. The fix is to accept the three keywords and apply core's
+  `_mod_gate` when `residual` is given, with `bench/check_lora_branch.py`
+  calling it both ways, and the full `bench/check_*.py` sweep before commit.
+  Reasoned from the diff, not run. Do it when the PR merges, or before as a
+  forward-compatible change if the PR's signature settles.
+- **If core PR 16713 merges,** re-run `bench/probe_ref_rows_16604.py`, which
+  calls `_cond_video_rows`.
+- **Two optional decoders now exist, neither measured here.** Core loads
+  LynnReal's light H3 VAE (a distilled shorter decoder, same latent space;
+  `986c4d15`), and vllm-omni wires a community latent upscaler between denoise
+  and decode (`a038b3817`). Either would go through the VAE lane's decode
+  comparison (`bench/compare_vae_decoders.py`) before any default moved.
+  The owner's call whether to look.
+- **Not proposed:** sglang's new ComfyUI integrated mode replaces core's
+  diffusion model, so none of our DiT patches would run under it; Spectrum
+  stays behind the step-caching survey's verdict; vllm-omni's no-resize
+  reference stills are one engine leaving parity for speed, and
+  `bench/refview2_arms.json` is still the test that would settle
+  `allow_upscale`.
+
 **2026-09-25 (the upstream survey session).** Found by the read in
 [`../sol_upstream.md`](../sol_upstream.md), "comfy-kitchen and core,
 2026-09-25", and [`references.md`](references.md), "What moved by

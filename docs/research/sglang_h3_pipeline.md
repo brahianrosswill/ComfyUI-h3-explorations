@@ -1,6 +1,6 @@
 # sglang's MiniMax-H3 pipeline, end to end
 
-last updated: 2026-09-25 (one dated note on FastH3's registration)
+last updated: 2026-10-02 (dated notes on the ComfyUI app's H3 integrated mode, rollout, Spectrum and `convrot_int8`, from the eighth read); 2026-09-25 (one dated note on FastH3's registration)
 
 Written 2026-08-25 from a source read of `coderef/sglang` at commit
 `6569125e3a` (2026-08-25). Nothing was run: no server, no GPU, no model
@@ -96,6 +96,9 @@ explicit `num_frames` or `fps`; `guidance_scale`, `guidance_scale_2`,
 `enable_frame_interpolation`, `enable_upscaling`; any `output_mode` other than
 decoded files. The sampling params also reject TeaCache, rollout and
 trajectory output (`coderef/sglang/python/sglang/multimodal_gen/configs/sample/minimax_h3.py:212-226`).
+*Corrected 2026-10-02: since `0931a72eb2` rollout is accepted for t2va only;
+trajectory output still raises. The cited line range no longer holds the
+check; it is the `rollout` branch of the same file.*
 
 **Per task** (`coderef/sglang/python/sglang/multimodal_gen/runtime/pipelines_core/stages/model_specific_stages/minimax_h3/task_profiles.py:148-242`):
 
@@ -691,7 +694,10 @@ quantisation options include `fp8` and `kitchen_int8`; pre-quantised DiTs via
 `int8_convrot`, MXFP8, ConvRot W4A8/W4A4 and NVFP4; the cookbook lists
 FP8, ConvRot, NVFP4-AWQ, Quanto int8 and GGUF overlays for the text encoder.
 FSDP is a capacity option. Frame interpolation, upscaling and TeaCache are
-rejected at validation.
+rejected at validation. *2026-10-02: two more since `ae47bcd4da` and
+`e667ab10d5`. Spectrum is a second, opt-in skip-step for H3, and
+`kitchen_int8` is a deprecated alias of `convrot_int8`;
+[`sglang_comparison.md`](sglang_comparison.md), "Eighth read", has both.*
 
 **Their ComfyUI app** (`coderef/sglang/python/sglang/multimodal_gen/apps/ComfyUI_SGLDiffusion/`): a custom-node pack
 with an integrated mode for FLUX, Qwen-Image and Z-Image, and a **server
@@ -703,6 +709,15 @@ schema: task, keyframes as frame indices 0 / -1, reference image, video,
 audio, seed, steps 50, short edge 768, aspect from four choices, duration
 4..15 s, both shifts. It forwards `negative_prompt` if set, which the server
 side fixes to `None` (INFERENCE: ignored).
+
+*Corrected 2026-10-02: "server mode only" stopped being true at
+`f1e62e3a2e` (#35990). The app now also has an integrated mode for H3: core
+builds the model and runs the encoder, VAEs, conditioning nodes and sampler,
+and the DiT runs one step per call in an sglang worker process. The server
+node is now at
+`coderef/sglang/python/sglang/multimodal_gen/apps/ComfyUI_SGLDiffusion/nodes.py:634`.
+[`sglang_comparison.md`](sglang_comparison.md), "Eighth read", has what it
+means for our patches.*
 
 ---
 

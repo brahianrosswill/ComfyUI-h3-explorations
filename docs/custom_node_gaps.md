@@ -1,6 +1,6 @@
 # Where our custom nodes differ from every other H3 implementation
 
-last updated: 2026-09-13 (the AWQ loader rows, the `encoder` policy and §4.1's reference-view row corrected after the owner's decisions of that day, `docs/wiki/decisions.md`; 2026-09-10 added one §5.4 sentence and one §6 row; everything else is the 2026-08-28 pass)
+last updated: 2026-10-02 (a dated note on item 3: diffusers' VAE decode precision and the shipped VAE); 2026-09-13 (the AWQ loader rows, the `encoder` policy and §4.1's reference-view row corrected after the owner's decisions of that day, `docs/wiki/decisions.md`; 2026-09-10 added one §5.4 sentence and one §6 row; everything else is the 2026-08-28 pass)
 
 The companion to [`comfyui_vendor_gaps.md`](comfyui_vendor_gaps.md). That file
 asks how native ComfyUI differs from the MiniMax release. This one asks the
@@ -293,6 +293,14 @@ already graded.** diffusers pins the VAE's encoder, decoder and both conv layers
 in fp32 and decodes under autocast; DiffSynth loads the release fp32 file. The
 **three canonical graphs** load the fp16 build and wire no
 `MiniMaxH3VAEPrecision`, so both halves are fp16 there.
+*Corrected 2026-10-02: diffusers' half no longer holds. Since `51a454be9`
+(#14754) it keeps only the encoder, `quant_conv`, the norms and the LayerScale
+scales in fp32 and runs the decoder in the pipeline dtype with no autocast
+(`coderef/diffusers/src/diffusers/models/autoencoders/autoencoder_kl_minimax_h3.py::AutoencoderKLMiniMaxH3._keep_in_fp32_modules`).
+On decode, diffusers moved toward core. Separately, the shipped video VAE is
+`h3_config.MODELS["video_vae"]`, the INT8 file since 2026-09-26, so "the fp16
+build" above describes the graphs before that date.
+[`wiki/references.md`](wiki/references.md), "What moved by 2026-10-02".*
 
 **Corrected 2026-08-28, and the correction matters more than the finding.** An
 earlier version of this row said the node "is simply unwired" and called wiring

@@ -4,6 +4,26 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.184.9
+
+### Changed
+
+- **Upstream read, 2026-10-02 (docs only, plus one comment line).** Every
+  `coderef/` clone fetched; sglang, vllm-omni, flashinfer and Model-Optimizer
+  fast-forwarded to their upstream tips. New sections:
+  `docs/wiki/references.md` "What moved by 2026-10-02",
+  `docs/research/sglang_comparison.md` "Eighth read", and
+  `docs/sol_upstream.md` "comfy-kitchen and core, 2026-10-02" (core at
+  `65787d66`, kitchen build current). A `ComfyUI-H3-AudioRefine` row in the
+  references table. Nothing triggered the adopt-upstream rule.
+- Found for our code, not changed: open core PR 16681 would break
+  `MiniMaxH3LoRABranch`'s fc2 branch if merged (`docs/wiki/next_steps.md`,
+  2026-10-02).
+- Prose corrected with dated notes in place, logged in
+  `docs/wiki/decisions.md` (2026-10-02): sglang's AdaLN rounding, its ComfyUI
+  app's H3 mode, diffusers' VAE decode precision, the INT8 VAE paragraph,
+  Spectrum's status, and core line citations (`h3_capture.py` comment).
+
 ## 0.184.8
 
 ### Changed

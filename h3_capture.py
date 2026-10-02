@@ -759,7 +759,7 @@ def maybe_capture_final(out, length_hint=None):
         render = _render
 
     # H3 is an AUDIO-VIDEO model and its forward returns BOTH velocities as a
-    # list -- `[-video_out, -audio_out]` (comfy/ldm/minimax/model.py:732). The
+    # list -- `[-video_out, -audio_out]` (comfy/ldm/minimax/model.py:790). The
     # first version of this tap expected a bare tensor, refused the list and
     # wrote nothing, which is the refusal working but the wrong expectation.
     # Both streams are kept: the video one is what #22 compares, and dropping
