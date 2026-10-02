@@ -70,6 +70,18 @@ def setup_duckdb_tables(db_path: Path, probe_files: list[Path], observe_files: l
             COALESCE(schedule.schedule_index, 0) AS step,
             sigma,
             T AS tokens,
+            cond_or_uncond,
+            capture,
+            trajectory,
+            config,
+            try_cast(to_json(settings)->>'tau' AS DOUBLE) AS tau,
+            to_json(settings)->>'token_routing' AS token_routing,
+            to_json(settings)->>'dense_blocks' AS dense_blocks,
+            to_json(settings)->>'sink_conditioning' AS sink_conditioning,
+            compare_status,
+            compare_reason,
+            returned_backend,
+            fallback_seconds,
             metrics.whole.rel_l2 AS rel_l2,
             metrics.whole.cos AS cos,
             metrics.whole.diff_rms AS diff_rms,
@@ -86,6 +98,7 @@ def setup_duckdb_tables(db_path: Path, probe_files: list[Path], observe_files: l
                 block,
                 COALESCE(schedule.schedule_index, 0) AS step,
                 sigma,
+                cond_or_uncond,
                 unnest(metrics.per_head) AS h
             FROM sol_probe_raw
             WHERE kind = 'cell'
@@ -95,9 +108,17 @@ def setup_duckdb_tables(db_path: Path, probe_files: list[Path], observe_files: l
             block,
             step,
             sigma,
+            cond_or_uncond,
             h.head AS head_idx,
             h.rel_l2 AS head_rel_l2,
-            h.cos AS head_cos
+            h.cos AS head_cos,
+            try_cast(to_json(h.rows)->>'mean' AS DOUBLE) AS row_mean,
+            try_cast(to_json(h.rows)->>'p50' AS DOUBLE) AS row_p50,
+            try_cast(to_json(h.rows)->>'p90' AS DOUBLE) AS row_p90,
+            try_cast(to_json(h.rows)->>'p99' AS DOUBLE) AS row_p99,
+            try_cast(to_json(h.rows)->>'p99_9' AS DOUBLE) AS row_p99_9,
+            try_cast(to_json(h.rows)->>'p99_99' AS DOUBLE) AS row_p99_99,
+            try_cast(to_json(h.rows)->>'max' AS DOUBLE) AS row_max
         FROM unnested;
 
         CREATE OR REPLACE VIEW sol_probe_segments AS
@@ -107,6 +128,7 @@ def setup_duckdb_tables(db_path: Path, probe_files: list[Path], observe_files: l
                 block,
                 COALESCE(schedule.schedule_index, 0) AS step,
                 sigma,
+                cond_or_uncond,
                 unnest(metrics.per_segment) AS s
             FROM sol_probe_raw
             WHERE kind = 'cell'
@@ -116,11 +138,20 @@ def setup_duckdb_tables(db_path: Path, probe_files: list[Path], observe_files: l
             block,
             step,
             sigma,
+            cond_or_uncond,
             s.kind AS segment_kind,
             s.start AS seg_start,
             s."end" AS seg_end,
             s.rel_l2 AS seg_rel_l2,
-            s.cos AS seg_cos
+            s.cos AS seg_cos,
+            try_cast(to_json(s.rows)->>'mean' AS DOUBLE) AS row_mean,
+            try_cast(to_json(s.rows)->>'p50' AS DOUBLE) AS row_p50,
+            try_cast(to_json(s.rows)->>'p90' AS DOUBLE) AS row_p90,
+            try_cast(to_json(s.rows)->>'p99' AS DOUBLE) AS row_p99,
+            try_cast(to_json(s.rows)->>'p99_9' AS DOUBLE) AS row_p99_9,
+            try_cast(to_json(s.rows)->>'p99_99' AS DOUBLE) AS row_p99_99,
+            try_cast(to_json(s.rows)->>'max' AS DOUBLE) AS row_max,
+            to_json(s)->'worst_heads' AS worst_heads
         FROM unnested;
         """)
 
@@ -136,12 +167,15 @@ def setup_duckdb_tables(db_path: Path, probe_files: list[Path], observe_files: l
             prompt_id,
             block,
             COALESCE(schedule.schedule_index, 0) AS step,
+            sigma,
+            cond_or_uncond,
             route,
             T AS tokens,
             routed_density.mean AS mean_routed_density,
             routed_density.p50 AS p50_routed_density,
             routed_density.max AS max_routed_density,
             kernel_density.mean AS mean_kernel_density,
+            try_cast(to_json(ordering_effect_density)->>'overall' AS DOUBLE) AS ordering_effect_density,
             peak_alloc_bytes / (1024.0 * 1024.0) AS peak_vram_mb,
             per_segment AS per_segment
         FROM sol_observe_raw
@@ -156,16 +190,22 @@ def setup_duckdb_tables(db_path: Path, probe_files: list[Path], observe_files: l
             p.prompt_id,
             p.block,
             p.step,
+            p.sigma,
+            p.cond_or_uncond,
             p.tokens,
             p.rel_l2,
             p.cos,
             o.route,
             o.mean_routed_density,
             o.mean_kernel_density,
+            o.ordering_effect_density,
             o.peak_vram_mb
         FROM sol_probe_cells p
         LEFT JOIN sol_observe_calls o 
-          ON p.block = o.block AND p.step = o.step;
+          ON p.prompt_id = o.prompt_id
+         AND p.block = o.block 
+         AND p.step = o.step
+         AND (p.cond_or_uncond IS NULL OR o.cond_or_uncond IS NULL OR p.cond_or_uncond = o.cond_or_uncond);
         """)
 
     if init_sql:

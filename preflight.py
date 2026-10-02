@@ -17,12 +17,14 @@ type. 1024x1024 is legal, 32-divisible, renders, costs more per frame than
 16:9, and is outside the family the checkpoint was trained on. Nothing else
 says so.
 
-**What the segments cost relative to each other.** Reference tokens ride every
-sampling step exactly as video tokens do, so the share of the sequence the
-references take is the number that decides whether to resize them. The
-reference rows are whatever the append chain compiled into `minimax_refs`
-(`latent_h`, `latent_w`, `ref_audio_t` per block), so a change to reference
-sizing policy shows up here without this file knowing the policy.
+**What the segments cost relative to each other, with sub-breakdowns.** Reference
+tokens ride every sampling step exactly as video tokens do, so the share of the
+sequence the references take is the number that decides whether to resize them.
+The reference rows are whatever the append chain compiled into `minimax_refs`
+(`latent_h`, `latent_w`, `ref_audio_t` per block), reported per reference with
+individual row counts and pixel dimensions. Inside the text segment,
+`minimax_token_tags` separates prompt text tokens from Qwen vision tokens so the
+true text vs. vision breakdown inside the text encoder segment is visible.
 
 **What a different aspect ratio would cost.** A tradeoff you cannot act on is
 not a tradeoff. The alternatives are computed at the same length and
@@ -167,24 +169,100 @@ class MiniMaxH3Preflight(io.ComfyNode):
 
         # Scheduled conditioning can differ in text length; report the largest,
         # because the peak is what has to fit.
-        layout = max(
-            # `frame_count=` was dropped from PackedLayout upstream (the
-            # signature is now text_len, latent_t, latent_h, latent_w, audio_t,
-            # keyframes, refs). Passing it raised TypeError and failed EVERY
-            # graph in this repo at the Preflight node -- not a degraded
-            # number, no render at all. Caught within minutes of a `git pull`
-            # only because a render was already queued; a static check would
-            # not have found it, because the break is in a call into upstream.
-            (PackedLayout(cond.shape[1], latent_t, lat_h, lat_w, audio_t,
-                          keyframes=cd.get("minimax_keyframes"),
-                          refs=cd.get("minimax_refs"))
-             for cond, cd in conditioning),
-            key=lambda l: l.seq_len)
+        # `frame_count=` was dropped from PackedLayout upstream (the
+        # signature is now text_len, latent_t, latent_h, latent_w, audio_t,
+        # keyframes, refs). Passing it raised TypeError and failed EVERY
+        # graph in this repo at the Preflight node -- not a degraded
+        # number, no render at all. Caught within minutes of a `git pull`
+        # only because a render was already queued; a static check would
+        # not have found it, because the break is in a call into upstream.
+        def _make_layout(c, d):
+            return PackedLayout(
+                c.shape[1], latent_t, lat_h, lat_w, audio_t,
+                keyframes=d.get("minimax_keyframes"),
+                refs=d.get("minimax_refs"),
+            )
+
+        active_cond, active_cd, layout = max(
+            ((c, d, _make_layout(c, d)) for c, d in conditioning),
+            key=lambda entry: entry[2].seq_len,
+        )
 
         by_kind: dict[str, int] = {}
         for a, b, kind in layout.segments:
             by_kind[kind] = by_kind.get(kind, 0) + (b - a)
         total = layout.seq_len
+
+        # Sub-breakdown 1: Per-reference details from minimax_refs
+        refs = active_cd.get("minimax_refs") if active_cd else None
+        ref_details: list[str] = []
+        if refs:
+            for idx, blk in enumerate(refs, 1):
+                kind = blk.get("kind", "unknown")
+                if kind == "image":
+                    lh = blk.get("latent_h")
+                    lw = blk.get("latent_w")
+                    if (lh is None or lw is None) and "latent" in blk and hasattr(blk["latent"], "shape"):
+                        lh = int(blk["latent"].shape[-2])
+                        lw = int(blk["latent"].shape[-1])
+                    if lh is not None and lw is not None:
+                        rows = (lh // 2) * (lw // 2)
+                        px_w, px_h = lw * 16, lh * 16
+                        ref_details.append(f"Ref {idx} (image): {rows:,} rows ({px_w}x{px_h})")
+                    else:
+                        ref_details.append(f"Ref {idx} (image)")
+                elif kind in ("video", "video_audio"):
+                    lh = blk.get("latent_h")
+                    lw = blk.get("latent_w")
+                    lt = blk.get("latent_t")
+                    if (lt is None or lh is None or lw is None) and "latent" in blk and hasattr(blk["latent"], "shape"):
+                        lt = int(blk["latent"].shape[2])
+                        lh = int(blk["latent"].shape[3])
+                        lw = int(blk["latent"].shape[4])
+                    rt = blk.get("ref_audio_t", 0)
+                    if lh is not None and lw is not None and lt is not None:
+                        rows_v = lt * (lh // 2) * (lw // 2)
+                        px_w, px_h = lw * 16, lh * 16
+                        rows_a = rt * 2 if rt else 0
+                        if rows_a > 0:
+                            ref_details.append(
+                                f"Ref {idx} (video): {rows_v:,} rows ({px_w}x{px_h}, {lt} latent frames) + {rows_a:,} audio rows"
+                            )
+                        else:
+                            ref_details.append(
+                                f"Ref {idx} (video): {rows_v:,} rows ({px_w}x{px_h}, {lt} latent frames)"
+                            )
+                    else:
+                        ref_details.append(f"Ref {idx} (video)")
+                elif kind == "audio":
+                    rt = blk.get("ref_audio_t", 0)
+                    rows_a = rt * 2 if rt else 0
+                    ref_details.append(f"Ref {idx} (audio): {rows_a:,} audio rows")
+                else:
+                    ref_details.append(f"Ref {idx} ({kind})")
+
+        # Sub-breakdown 2: Text conditioning breakdown from minimax_token_tags
+        tags = active_cd.get("minimax_token_tags") if active_cd else None
+        text_breakdown: tuple[int, int] | None = None
+        if tags is not None:
+            try:
+                import torch
+                if hasattr(tags, "cpu"):
+                    tags = tags.cpu()
+                if isinstance(tags, torch.Tensor):
+                    tags = tags.detach()
+                    v_count = int((tags == 0).sum().item())
+                    p_count = int((tags != 0).sum().item())
+                elif hasattr(tags, "__iter__"):
+                    v_count = sum(1 for t in tags if t == 0)
+                    p_count = len(tags) - v_count
+                else:
+                    v_count = 0
+                    p_count = 0
+                if v_count > 0:
+                    text_breakdown = (p_count, v_count)
+            except Exception as exc:
+                logger.debug("[h3] preflight token tags breakdown failed: %s", exc)
 
         tokens_per_frame = (width // 32) * (height // 32)
         in_family = adapt_canvas(width, height) == (width, height)
@@ -230,9 +308,22 @@ class MiniMaxH3Preflight(io.ComfyNode):
         if frames:
             lines.append(f"{describe_length(frames)}  {latent_t} latent frames")
         lines.append(f"sequence length {total:,}")
+        ref_details_printed = False
         for kind, n in sorted(by_kind.items(), key=lambda kv: -kv[1]):
             lines.append(f"  {label.get(kind, kind):<15}{n:>8,}  "
                          f"{_bar(n / total)}  {100 * n / total:5.1f}%")
+            if kind == "text" and text_breakdown:
+                p_count, v_count = text_breakdown
+                lines.append(f"    {'prompt text':<13}{p_count:>8,}")
+                lines.append(f"    {'qwen vision':<13}{v_count:>8,}")
+            elif kind == "ref_img" and ref_details:
+                for detail in ref_details:
+                    lines.append(f"    {detail}")
+                ref_details_printed = True
+            elif kind == "ref_audio" and ref_details and not ref_details_printed:
+                for detail in ref_details:
+                    lines.append(f"    {detail}")
+                ref_details_printed = True
 
         # Alternatives at the same length and conditioning: only the video
         # segment moves, so the comparison is exact rather than modelled.

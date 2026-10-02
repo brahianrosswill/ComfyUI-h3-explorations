@@ -164,7 +164,7 @@ def _sync_spec():
 _sync_spec()
 
 
-def maybe_capture(module, q, k, v, length_hint=None, kernel="sage",
+def maybe_capture(module, q, k, v, length_hint=None, kernel="kitchen",
                   transformer_options=None):
     """Save this call's q/k/v if it matches the requested (block, step).
 
@@ -264,7 +264,7 @@ def _write_record(render, block, step, qkv_host, length_hint, kernel,
     # arm identity off a render's filename, which cost a wrong pair earlier
     # today. `_ksage` / `_ksol`, absent when the tag is the historical default,
     # so pre-2026-08-30 captures keep matching every existing glob.
-    ktag = "" if kernel == "sage" else f"_k{kernel}"
+    ktag = "" if kernel in ("kitchen", "sage") else f"_k{kernel}"
     name = (f"qkv_L{length_hint if length_hint is not None else 'na'}"
             f"_S{seq}_b{block}_s{step}{ktag}{suffix}.pt")
     path = os.path.join(_config["dir"], name)

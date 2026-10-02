@@ -479,11 +479,12 @@ def _ensure_render(prompt_id: str | None) -> None:
                               else "no shipped graph matches this hash; a modified or foreign graph"),
                     "summary": graph_summary(graph)})
         # What was rendered, not only which file: bank id (None for a foreign
-        # prompt, whose text is then carried in full), prompt hash, length,
-        # canvas, seed. Owner's rule 2026-09-03: the exact prompt in every
-        # record, because every Sol number before it came from one scene and
-        # no record said so.
-        row["rendered"] = _describe_prompt(graph)
+        # prompt), prompt hash, length, canvas, seed.
+        # prompt_text is excluded to keep captures and render records private.
+        rendered = _describe_prompt(graph)
+        if isinstance(rendered, dict):
+            rendered.pop("prompt_text", None)
+        row["rendered"] = rendered
     _write_row(row)
 
 
@@ -503,10 +504,12 @@ def _describe_prompt(graph) -> dict:
             sys.modules["_prompts_for_observe"] = mod
             spec.loader.exec_module(mod)
             _prompts_mod = mod
-        return _prompts_mod.describe(graph)
+        desc = dict(_prompts_mod.describe(graph))
+        desc.pop("prompt_text", None)
+        return desc
     except Exception as exc:                          # noqa: BLE001 -- identity, not the render
         logging.warning(f"{_LOG} could not describe the prompt: {exc}")
-        return {"prompt_id": None, "prompt_sha256": None, "prompt_text": None,
+        return {"prompt_id": None, "prompt_sha256": None,
                 "length": None, "canvas": None, "seed": None, "error": str(exc)}
 
 

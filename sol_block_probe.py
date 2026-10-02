@@ -213,8 +213,8 @@ def arm(spec: str | None) -> bool:
     global _armed, _spec, _raw_spec
     _raw_spec = spec or ""
     parsed = _parse(_raw_spec) if _raw_spec else _parse("")
-    if parsed["trajectory"] not in ("sol", "sage"):
-        print(f"{_LOG} H3_SOL_PROBE trajectory must be sol or sage, got {parsed['trajectory']!r}; probe disabled")
+    if parsed["trajectory"] not in ("sol", "kitchen", "fallback", "sage"):
+        print(f"{_LOG} H3_SOL_PROBE trajectory must be sol, kitchen, fallback, or sage, got {parsed['trajectory']!r}; probe disabled")
         parsed["dir"] = None
     _armed = bool(_raw_spec) and bool(parsed["dir"])
     if _raw_spec and not parsed["dir"]:
@@ -313,9 +313,9 @@ def _header() -> dict:
                 "rel_l2": "sqrt(sum |sol - ref|^2 / sum |ref|^2) over the named scope, float32 inputs, float64 sums",
                 "cos": "sum(sol . ref) / (|sol| |ref|) over the named scope",
                 "diff_rms": "sqrt(mean |sol - ref|^2)", "ref_rms": "sqrt(mean |ref|^2)",
-                "rows": "per-row (one head, one token) relative L2 = |sol_row - ref_row| / |ref_row|, summarised as count, mean, p50, p90, p99, max; rows with a zero reference norm are excluded and counted",
+                "rows": "per-row (one head, one token) relative L2 = |sol_row - ref_row| / |ref_row|, summarised as count, mean, p50, p90, p99, p99_9, p99_99, max; rows with a zero reference norm are excluded and counted",
                 "null_rule": "a zero denominator yields null with numerator and denominator retained",
-                "reference": "the CHAINED fallback the Sol override would have run for this call (the shipped sage override on the canonical graphs), on the identical q/k/v; not exact attention"},
+                "reference": "the CHAINED fallback the Sol override would have run for this call (comfy-kitchen / core's ModelAttentionBackend by default; or sage if configured), on the identical q/k/v; not exact attention"},
             "note": "timings from an armed render are void: every Sol call also ran the fallback"}
 
 
@@ -360,8 +360,11 @@ def _ensure_render(prompt_id) -> None:
         row["match"] = why
         if graph is not None:
             sha = _obs.graph_sha256(graph)
+            rendered = _obs._describe_prompt(graph)
+            if isinstance(rendered, dict):
+                rendered.pop("prompt_text", None)
             row.update({"graph_sha256": sha, "workflow_file": _obs._shipped_graph_hashes().get(sha),
-                        "rendered": _obs._describe_prompt(graph)})
+                        "rendered": rendered})
     except Exception as exc:                          # noqa: BLE001 -- identity, not the render
         row["match"] = f"could not read the running prompt: {exc}"
     _write(row)
@@ -385,13 +388,16 @@ def _ratio(num: float, den: float) -> float | None:
 
 
 def _summ(rows: torch.Tensor) -> dict:
-    """count, mean, p50, p90, p99, max of a 1-D tensor of per-row relative
+    """count, mean, p50, p90, p99, p99_9, p99_99, max of a 1-D tensor of per-row relative
     errors; None-valued when empty."""
     if rows.numel() == 0:
-        return {"count": 0, "mean": None, "p50": None, "p90": None, "p99": None, "max": None}
+        return {"count": 0, "mean": None, "p50": None, "p90": None, "p99": None,
+                "p99_9": None, "p99_99": None, "max": None}
     r = rows.double()
     return {"count": int(r.numel()), "mean": float(r.mean()), "p50": float(r.quantile(0.5)),
-            "p90": float(r.quantile(0.9)), "p99": float(r.quantile(0.99)), "max": float(r.max())}
+            "p90": float(r.quantile(0.9)), "p99": float(r.quantile(0.99)),
+            "p99_9": float(r.quantile(0.999)), "p99_99": float(r.quantile(0.9999)),
+            "max": float(r.max())}
 
 
 def _segment_spans(segments, tokens: int) -> list[tuple[str, int, int]]:
@@ -418,7 +424,8 @@ def metrics(sol: torch.Tensor, ref: torch.Tensor, *, heads: int, skip_output_res
     # accumulators (float64 python floats)
     diff2 = ref2 = dot = sol2 = 0.0
     per_head = []
-    seg_acc = {kind: {"diff2": 0.0, "ref2": 0.0, "dot": 0.0, "sol2": 0.0, "rows": []} for kind, _, _ in spans}
+    seg_acc = {kind: {"diff2": 0.0, "ref2": 0.0, "dot": 0.0, "sol2": 0.0, "rows": [],
+                      "head_diff2": {}, "head_ref2": {}} for kind, _, _ in spans}
     zero_rows = 0
     for h in range(H):
         x = a[:, h].float()                       # (B, N, D)
@@ -441,10 +448,14 @@ def metrics(sol: torch.Tensor, ref: torch.Tensor, *, heads: int, skip_output_res
         for kind, s0, s1 in spans:
             xs, ys, ds = x[:, s0:s1], y[:, s0:s1], d[:, s0:s1]
             acc = seg_acc[kind]
-            acc["diff2"] += float((ds * ds).sum(dtype=torch.float64))
-            acc["ref2"] += float((ys * ys).sum(dtype=torch.float64))
+            sh_d2 = float((ds * ds).sum(dtype=torch.float64))
+            sh_r2 = float((ys * ys).sum(dtype=torch.float64))
+            acc["diff2"] += sh_d2
+            acc["ref2"] += sh_r2
             acc["dot"] += float((xs * ys).sum(dtype=torch.float64))
             acc["sol2"] += float((xs * xs).sum(dtype=torch.float64))
+            acc["head_diff2"][h] = sh_d2
+            acc["head_ref2"][h] = sh_r2
             lv = live[:, s0:s1]
             acc["rows"].append(rel_rows[:, s0:s1][lv].detach().cpu())
         del x, y, d, row_d, row_r, rel_rows
@@ -452,12 +463,21 @@ def metrics(sol: torch.Tensor, ref: torch.Tensor, *, heads: int, skip_output_res
     for kind, s0, s1 in spans:
         acc = seg_acc[kind]
         rows = torch.cat(acc["rows"]) if acc["rows"] else torch.zeros(0)
+        head_errs = []
+        for h in range(H):
+            hd2 = acc["head_diff2"].get(h, 0.0)
+            hr2 = acc["head_ref2"].get(h, 0.0)
+            rel = math.sqrt(hd2) / math.sqrt(hr2) if hr2 > 0 else 0.0
+            head_errs.append((rel, h))
+        head_errs.sort(reverse=True)
+        worst_heads = [{"head": h, "rel_l2": round(e, 5)} for e, h in head_errs[:3]]
         per_segment.append({
             "kind": kind, "start": s0, "end": s1, "numerator": acc["diff2"], "denominator": acc["ref2"],
             "rel_l2": _ratio(math.sqrt(acc["diff2"]), math.sqrt(acc["ref2"])) if acc["ref2"] > 0 else None,
             "cos": (_ratio(acc["dot"], math.sqrt(acc["sol2"] * acc["ref2"]))
                     if acc["sol2"] > 0 and acc["ref2"] > 0 else None),
             "rows": _summ(rows),
+            "worst_heads": worst_heads,
         })
     n_elem = float(B * H * N * D)
     return {
@@ -594,17 +614,18 @@ def compare(out: torch.Tensor, dense_fn, *, skip_output_reshape: bool, options, 
                 row["compare_status"], row["compare_reason"] = "non_finite", "NaN or Inf in the sums"
         except Exception as exc:                      # noqa: BLE001
             row["compare_status"], row["compare_reason"] = "metric_error", f"{type(exc).__name__}: {exc}"[:200]
-    if dispatched == 0 and ref is not None:
-        # the reference did not go through sage: a stock-attention substitution,
-        # or a sage build without the counter -- either way not the shipped
-        # fallback, and the row says so rather than describing the wrong thing
+    fallback_backend = str((bits.get("settings") or {}).get("dense_fallback", "")).lower()
+    is_kitchen = "modelattentionbackend" in fallback_backend or "kitchen" in fallback_backend
+    if not is_kitchen and dispatched == 0 and ref is not None:
+        # the reference was expected to go through sage but did not move the counter:
+        # a stock-attention substitution, or a sage build without the counter
         row["compare_status"], row["compare_reason"] = "reference_not_sage", "sage dispatch counter did not move"
     trajectory = _spec.get("trajectory", "sol")
-    if trajectory == "sage":
+    if trajectory in ("kitchen", "fallback", "sage"):
         if ref is None:
             _write({**row, "returned_backend": None})
-            raise RuntimeError(f"{_LOG} trajectory=sage but the fallback failed ({why}); cannot continue honestly")
-        row["returned_backend"] = "sage"
+            raise RuntimeError(f"{_LOG} trajectory={trajectory} but the fallback failed ({why}); cannot continue honestly")
+        row["returned_backend"] = trajectory
         _write(row)
         del out
         return ref

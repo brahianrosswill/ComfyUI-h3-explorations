@@ -66,31 +66,33 @@ def validate(rows: list[dict], n_blocks: int | None = None) -> list[str]:
     if not cells:
         bad.append("no cell rows")
         return bad
-    # one prompt id per render, cells joined to it
-    by_prompt = defaultdict(list)
+    # cells joined by (prompt_id, executing_node_id) to disambiguate sequential samplers
+    by_exec = defaultdict(list)
     for r in cells:
-        by_prompt[r.get("prompt_id")].append(r)
-    if None in by_prompt:
-        bad.append(f"{len(by_prompt[None])} cell(s) carry no prompt id")
-    for pid, cs in by_prompt.items():
+        by_exec[(r.get("prompt_id"), r.get("executing_node_id"))].append(r)
+    if any(pid is None for pid, _ in by_exec):
+        no_pid_count = sum(len(cs) for (pid, _), cs in by_exec.items() if pid is None)
+        bad.append(f"{no_pid_count} cell(s) carry no prompt id")
+    for (pid, node_id), cs in by_exec.items():
+        node_str = f" node {node_id}" if node_id is not None else ""
         # segments contiguous over [0, T)
         for r in cs:
             T = r.get("T"); segs = r.get("segments")
             if segs:
                 spans = sorted((int(a), int(b)) for a, b, _k in segs)
                 if spans[0][0] != 0 or spans[-1][1] != T or any(spans[i][1] != spans[i + 1][0] for i in range(len(spans) - 1)):
-                    bad.append(f"prompt {pid} block {r.get('block')} sigma {r.get('sigma')}: segments {spans} do not tile [0, {T})")
+                    bad.append(f"prompt {pid}{node_str} block {r.get('block')} sigma {r.get('sigma')}: segments {spans} do not tile [0, {T})")
             m = r.get("metrics")
             if r.get("compare_status") == "compared" and m:
                 w = m["whole"]
                 for k in ("numerator", "denominator", "diff_rms", "ref_rms"):
                     v = w.get(k)
                     if v is None or not math.isfinite(v):
-                        bad.append(f"prompt {pid} block {r.get('block')}: whole.{k} is {v}")
+                        bad.append(f"prompt {pid}{node_str} block {r.get('block')}: whole.{k} is {v}")
                 if w.get("rel_l2") is not None and not math.isfinite(w["rel_l2"]):
-                    bad.append(f"prompt {pid} block {r.get('block')}: rel_l2 not finite")
+                    bad.append(f"prompt {pid}{node_str} block {r.get('block')}: rel_l2 not finite")
             elif r.get("compare_status") != "compared":
-                bad.append(f"prompt {pid} block {r.get('block')} sigma {r.get('sigma')}: compare_status {r.get('compare_status')}: {r.get('compare_reason')}")
+                bad.append(f"prompt {pid}{node_str} block {r.get('block')} sigma {r.get('sigma')}: compare_status {r.get('compare_status')}: {r.get('compare_reason')}")
         # completeness: every (schedule index, block) seen by Sol exactly once
         seen = defaultdict(int)
         for r in cs:
@@ -98,19 +100,23 @@ def validate(rows: list[dict], n_blocks: int | None = None) -> list[str]:
             seen[key] += 1
         dups = {k: n for k, n in seen.items() if n > 1}
         if dups:
-            bad.append(f"prompt {pid}: duplicate cells {sorted(dups.items())[:5]}")
+            bad.append(f"prompt {pid}{node_str}: duplicate cells {sorted(dups.items())[:5]}")
         steps = sorted({k[0] for k in seen if k[0] is not None})
         blocks_seen = sorted({k[1] for k in seen if k[1] is not None})
         nb = n_blocks or (max(blocks_seen) + 1 if blocks_seen else 0)
         expected = {(s, b) for s in steps for b in range(nb)}
         missing = sorted(expected - set(seen))
         # a missing cell is legitimate only if a skip row explains it
-        explained = {(r.get("schedule", {}).get("schedule_index"), r.get("block")) for r in skips if r.get("prompt_id") == pid}
+        explained = {
+            (r.get("schedule", {}).get("schedule_index"), r.get("block"))
+            for r in skips
+            if r.get("prompt_id") == pid and (r.get("executing_node_id") == node_id or r.get("executing_node_id") is None)
+        }
         unexplained = [k for k in missing if k not in explained]
         if unexplained:
-            bad.append(f"prompt {pid}: {len(unexplained)} (step, block) cell(s) neither compared nor skipped, e.g. {unexplained[:5]}")
+            bad.append(f"prompt {pid}{node_str}: {len(unexplained)} (step, block) cell(s) neither compared nor skipped, e.g. {unexplained[:5]}")
         if any(k[0] is None for k in seen):
-            bad.append(f"prompt {pid}: cells with no schedule index (sigma not on the schedule)")
+            bad.append(f"prompt {pid}{node_str}: cells with no schedule index (sigma not on the schedule)")
     return bad
 
 

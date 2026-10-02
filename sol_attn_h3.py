@@ -651,12 +651,20 @@ def _record_composed(module, gate, options, tensor, reason):
     block = _h3layout.block_index(options, tokens)
     block_tau = settings.get("tau", 0.0)
     sink, sink_q = _sink_blocks(options, tokens, settings.get("sink_conditioning", "off"))
-    sol_observe.record(
-        route="composed_patch", reason=reason, counts=None, options=options, settings=settings,
-        block=block, block_tau=block_tau, tokens=tokens, batch=batch,
-        heads=getattr(module, "heads", None) or 0, sink=sink, sink_q=sink_q,
-        tail=_TAIL, topk_ratio=_TOPK_RATIO,
-        min_tokens=int(settings.get("min_tokens", 0)), path="composed_patch")
+    if sol_observe.enabled():
+        sol_observe.record(
+            route="composed_patch", reason=reason, counts=None, options=options, settings=settings,
+            block=block, block_tau=block_tau, tokens=tokens, batch=batch,
+            heads=getattr(module, "heads", None) or 0, sink=sink, sink_q=sink_q,
+            tail=_TAIL, topk_ratio=_TOPK_RATIO,
+            min_tokens=int(settings.get("min_tokens", 0)), path="composed_patch")
+    if _probe.enabled():
+        _probe.skip(
+            route="composed_patch", reason=reason, options=options, settings=settings,
+            block=block, block_tau=block_tau, tokens=tokens, batch=batch,
+            heads=getattr(module, "heads", None) or 0, sink=sink, sink_q=sink_q,
+            tail=_TAIL, topk_ratio=_TOPK_RATIO,
+            min_tokens=int(settings.get("min_tokens", 0)))
 
 
 def _compose_module_patch(module, patched_forward):
@@ -709,7 +717,7 @@ def _compose_module_patch(module, patched_forward):
                 x.clear()  # the stock forward wants the tensor; consume the hand-off list
                 args = (tensor,) + args[1:]
             return stock(module, *args, **kwargs)
-        if declined is not None and sol_observe.enabled():
+        if declined is not None and (sol_observe.enabled() or _probe.enabled()):
             _record_composed(module, gate, options, tensor, declined)
         return patched_forward(*args, **kwargs)
 

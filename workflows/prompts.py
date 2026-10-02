@@ -107,10 +107,9 @@ def describe(graph: dict) -> dict:
     """What an API graph renders: prompt id and hash, length, canvas, seed.
 
     Reads the graph, never the bank's opinion of it: `prompt_id` is None and
-    `prompt_text` is carried in full when the text is not a bank entry, so
-    a foreign or hand-edited prompt is recorded rather than lost. Keys are
-    always present; unknown values are None."""
-    out = {"prompt_id": None, "prompt_sha256": None, "prompt_text": None,
+    `prompt_text` is excluded to keep captures and render records private.
+    Keys are always present; unknown values are None."""
+    out = {"prompt_id": None, "prompt_sha256": None,
            "length": None, "canvas": None, "seed": None}
     if not isinstance(graph, dict):
         return out
@@ -122,7 +121,6 @@ def describe(graph: dict) -> dict:
             t = inputs[_cfg.PROMPT_INPUTS[ct]]
             out["prompt_sha256"] = sha256(t.rstrip())
             out["prompt_id"] = identify(t)
-            out["prompt_text"] = None if out["prompt_id"] else t
         elif ct == "MiniMaxH3Resolution":
             out["length"] = inputs.get("length")
             shape = inputs.get("shape")
