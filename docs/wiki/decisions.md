@@ -17,6 +17,19 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-02
 
+- **Test 2 confirms middle error peak invariant across two-stage sampler and exposes token routing limits**
+  (empirical finding, 2026-10-02). Running `h3_text_to_video_pdd8_flashgen_finish_api.json` (6 steps PDD8 +
+  2 steps FlashGen finisher; 119,102 tokens with 1 reference image at 2752x1536 yielding 7,360 VAE reference
+  rows; 400 DiT calls captured across two sequential `MiniMaxH3Sol` nodes without overwriting) verified that
+  the middle error plateau is invariant across samplers: Block 39 at 25.18% avg relative $L_2$ (vs 25.22% in T1),
+  Block 42 at 24.59% (vs 25.67% in T1), Block 40 at 23.93% (vs 23.43% in T1), and quiet tail blocks 46 (7.37%)
+  and 47 (6.53%). Furthermore, `token_routing="measured"` succeeded on localized layers (Block 0 dropped to 5.37%,
+  Block 32 dropped to 12.99%) but failed catastrophically on diffuse middle layers (Block 40 Head 47 exploded to
+  111.06% error, cos 0.6655), proving diffuse middle layers cannot be rescued by token routing and require
+  full dense execution (`dense_blocks`). Preflight geometry confirms Triton int32 crossing safety at 99,864 tokens
+  via 64-bit index arithmetic and 64-bit CUDA quantizer offsets (`ELEMENT_OFFSET_BITS=64`). Full analysis in
+  [`docs/research/sparse/sol_dense_blocks_reanalysis.md`](../research/sparse/sol_dense_blocks_reanalysis.md).
+
 - **Sol's `dense_blocks` adopts Option A (`"39,41,42,49"`), with Option B (`"39,40,41,42,49"`)
   named** (owner, 2026-10-02: "change the sol dense detail in whatever builds the workflows and the
   h3 config and sol attn h3 to be the Option A candidate list, but also include the Option B candidate

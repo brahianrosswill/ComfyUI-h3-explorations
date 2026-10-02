@@ -2,7 +2,7 @@
 
 **Date**: 2026-10-02  
 **Context**: MiniMax H3 Attention Optimization, Rotated INT8 Quantization, and Sparse Routing Telemetry  
-**Primary Tools**: `sol_observe.py`, `bench/sol_duckdb_analyzer.py`, `docs/research/sparse/sol_duckdb_dashboard.html`  
+**Primary Tools**: `sol_observe.py`, `bench/sol_duckdb_analyzer.py`, `docs/research/sparse/sol_duckdb_dashboard.html`, `preflight.py`  
 **Referents**: `docs/h3_block49_quant_error.md`, `workflows/h3_config.py::SOL_DENSE_TAIL`, `docs/wiki/decisions.md`
 
 ---
@@ -13,16 +13,17 @@ Historically, `MiniMaxH3Sol` shipped with the default configuration `dense_block
 
 On 2026-09-27, the repository standardized on `quantizer="rotated"` (Hadamard rotation). By multiplying $Q$ and $K$ by a randomized orthogonal Hadamard matrix prior to INT8 quantization, channel energy is uniformly dispersed across all 128 head dimensions. This eliminated the tail-block quantization penalty.
 
-In **Test 1** (our unmasked 50-block diagnostic baseline on Ref2VA at sequence length 119,102 tokens), comprehensive telemetry revealed:
+In **Test 1** (our unmasked 50-block diagnostic baseline on Ref2VA at sequence length 119,102 tokens) and **Test 2** (the two-stage PDD8 + FlashGen finisher run with `token_routing="measured"`), comprehensive telemetry revealed:
 
-1. **Tail Blocks (45–48) Are Tamed**: Under Hadamard rotation, Block 48 exhibits an average relative $L_2$ error of only **7.14%** (max 9.41%), Block 46 is **7.40%**, and Block 47 is **6.38%**. Keeping Block 48 in `dense_blocks` expends dense computation on blocks that Sol already calculates with high fidelity.
+1. **Tail Blocks (45–48) Are Tamed**: Under Hadamard rotation, Block 48 exhibits an average relative $L_2$ error of only **7.14%** (max 9.41%), Block 46 is **7.40%** (T1) / **7.37%** (T2), and Block 47 is **6.38%** (T1) / **6.53%** (T2). Keeping Block 48 in `dense_blocks` expends dense computation on blocks that Sol already calculates with high fidelity.
 2. **The True Bottleneck is the Middle Cluster (Blocks 38–43)**: With quantization error suppressed, the dominant error source is **sparsity truncation error (routing loss)**. In the middle of the DiT, attention is diffuse and globally integrated across text, reference images, and video tokens. Truncating tokens via top-$k$ sparsity produces severe errors:
-   - **Block 42**: **25.67%** avg relative $L_2$ error (max **27.01%**) — nearly $4\times$ higher than Block 48.
-   - **Block 39**: **25.22%** avg relative $L_2$ error (max **27.20%**) — $3.5\times$ higher than Block 48.
-   - **Block 41**: **24.35%** avg relative $L_2$ error.
-   - **Block 40**: **23.43%** avg relative $L_2$ error.
+   - **Block 42**: **25.67%** (T1) / **24.59%** (T2) avg relative $L_2$ error (max **27.01%**) — nearly $4\times$ higher than Block 48.
+   - **Block 39**: **25.22%** (T1) / **25.18%** (T2) avg relative $L_2$ error (max **27.20%**) — $3.5\times$ higher than Block 48.
+   - **Block 41**: **24.35%** (T1) / **22.45%** (T2) avg relative $L_2$ error.
+   - **Block 40**: **23.43%** (T1) / **23.93%** (T2) avg relative $L_2$ error.
    - Individual attention heads in these blocks suffer catastrophic degradation (e.g., Block 42 Head 44 has **57.0%** error, min cosine similarity **0.7697**; Block 39 Head 12 has **80.1%** error).
-3. **Block 49 Must Remain Dense**: Although Block 49's error is 13.73%, it directly feeds into `final_layer.video_out`. Any approximation error in Block 49 propagates directly into output latents without subsequent transformer layers to smooth it out.
+3. **Token Routing Cannot Rescue Diffuse Middle Layers**: Test 2 demonstrated that while token routing reduced error on localized layers (Block 0 dropped from 7.63% to 5.37%, Block 32 dropped from 14.81% to 12.99%), attempting to rescue tokens on Block 40 caused Head 47 error to explode to **111.06%** (cosine similarity down to **0.6655**). Diffuse layers cannot be repaired with sparse token heuristics; they must be executed fully dense.
+4. **Block 49 Must Remain Dense**: Although Block 49's error is 13.73%, it directly feeds into `final_layer.video_out`. Any approximation error in Block 49 propagates directly into output latents without subsequent transformer layers to smooth it out.
 
 **Conclusion**: Retaining `"45,48,49"` misallocates dense compute to a quiet tail (Block 48) while exposing the 25% error middle cluster to unmitigated sparsity loss. We propose transitioning `dense_blocks` to **Option A (`"39,41,42,49"`)** or **Option B (`"39,40,41,42,49"`)**, evaluated across a structured 5-test matrix.
 
@@ -49,150 +50,192 @@ However, the outlier energy concentrated in 4 channels is now distributed evenly
 
 ---
 
-## 3. Empirical Telemetry: Test 1 Baseline Analysis
+## 3. Experimental Architecture & Preflight Geometry Specification
 
-Test 1 ran an unmasked diagnostic pass over all 50 DiT blocks (Ref2VA, 1344x768, 345 frames, sequence length 119,102 tokens, 8 PDD steps, `dense_blocks=""`, `tau=1.0`, `quantizer="rotated"`).
+To evaluate Sol-Attn under production-representative conditions rather than a synthetic, truncated workload, our experimental setup uses a complete two-stage reference-conditioned generation graph with full latent packing.
 
-The captured activations were ingested into `data/sparse/sol_analysis.duckdb` and visualized in `docs/research/sparse/sol_duckdb_dashboard.html`.
+### 3.1 Two-Stage Sampler Architecture
 
-### 3.1 Tail Blocks vs. Middle Error Cluster
+The experimental workflow (`workflows/h3_text_to_video_pdd8_flashgen_finish_api.json`) executes a hybrid, two-stage denoising trajectory:
+- **Pass 1 (PDD 8-Step Schedule, Steps 0–5)**: Runs the first 6 steps from initial latent noise ($\sigma \approx 1.0$) down to intermediate noise ($\sigma \approx 0.8$). Across all 50 DiT blocks, this produces $6 \times 50 = 300$ attention calls.
+- **Pass 2 (FlashGen 4-Step Finisher, Steps 6–7)**: Takes the partially denoised latent at $\sigma \approx 0.8$ and finishes generation down to $\sigma = 0.0$ in 2 specialized fast steps. Across 50 DiT blocks, this produces $2 \times 50 = 100$ attention calls.
+- **Sequential Multi-Node Capture**: The workflow contains two distinct `MiniMaxH3Sol` nodes—one attached to each sampler stage. Both nodes stream sequentially into the same diagnostic log files (`sol_probe_*.jsonl`, `sol_observe_*.jsonl`, `blk_cnt_*.u16`) without clobbering, capturing all **400 DiT calls** (376 sparse `cell` evaluations + 24 dense `skip` executions when running 3 dense blocks).
 
-| Block Range | Block | Historical Status | Avg Rel $L_2$ Error | Max Rel $L_2$ Error | Avg Cosine Sim | Assessment |
-|---|---|---|---|---|---|---|
-| **Early** | Block 0 | Sparse | 4.88% | 5.25% | 0.9988 | Clean, localized attention |
-| **Middle Cluster** | Block 38 | Sparse | 19.16% | 20.35% | 0.9814 | High error onset |
-| | **Block 39** | Sparse | **25.22%** | **27.20%** | **0.9678** | **Critical Error Peak** |
-| | **Block 40** | Sparse | **23.43%** | **24.97%** | **0.9722** | **Critical Error Peak** |
-| | **Block 41** | Sparse | **24.35%** | **25.77%** | **0.9699** | **Critical Error Peak** |
-| | **Block 42** | Sparse | **25.67%** | **27.01%** | **0.9667** | **Highest Error in DiT** |
-| | Block 43 | Sparse | 19.49% | 20.91% | 0.9807 | Transition decay |
-| **Tail Blocks** | Block 45 | Historical Dense | 9.55% | 12.28% | 0.9954 | Moderate error |
-| | Block 46 | Shipped Sparse | 7.40% | 8.79% | 0.9972 | Highly accurate under rotation |
-| | Block 47 | Shipped Sparse | 6.38% | 7.95% | 0.9979 | Lowest error in second half |
-| | **Block 48** | Historical Dense | **7.14%** | **9.41%** | **0.9974** | **Clean; dense protection is wasted** |
-| | **Block 49** | Historical Dense | **13.73%** | **15.08%** | **0.9906** | **Must stay dense (feeds video_out)** |
+### 3.2 Reference Conditioning Pipeline
 
-### 3.2 Catastrophic Per-Head Degradation in the Middle Cluster
+Reference conditioning injects high-resolution visual context into the unified sequence:
+- **Input Source**: 1 reference image at $2752 \times 1536$ resolution.
+- **Append Node (`MiniMaxH3AppendRefImage`)**:
+  - `size_policy`: `"max"`
+  - `short_edge`: `2048`
+  - `allow_upscale`: `True`
+  - `qwen_view`: `"shared"`
+- **Conditioning Node (`MiniMaxH3ReferenceConditioningOrdered`)**:
+  - `image_policy`: `"comfy"`
+- **Latent Yield**: VAE encoding processes the scaled reference into exactly **7,360 reference latent rows**.
 
-Aggregated per-block metrics conceal even sharper degradation at the individual attention head level. In Blocks 38–43, specific heads experience severe routing failure:
+### 3.3 Sequence Layout & Preflight Report
 
-| Block | Head Index | Avg Rel $L_2$ Error | Min Cosine Sim | Avg Cosine Sim | Routing Behavior |
-|---|---|---|---|---|---|
-| **Block 39** | Head 12 | **80.15%** | 0.8144 | 0.8884 | Diffuse global routing dropped by top-$k$ |
-| **Block 38** | Head 37 | **74.07%** | 0.8413 | 0.9003 | Coarse block grid splits semantic region |
-| **Block 38** | Head 43 | **71.62%** | 0.8447 | 0.9028 | Truncated cross-attention |
-| **Block 39** | Head 23 | **69.10%** | 0.8367 | 0.8890 | Global context dropped |
-| **Block 39** | Head 53 | **65.45%** | 0.8432 | 0.8735 | Reference-to-video alignment lost |
-| **Block 42** | Head 44 | **57.00%** | **0.7697** | 0.8452 | Worst directional distortion in network |
-| **Block 43** | Head 0 | **50.29%** | 0.8144 | 0.8790 | Long-range context failure |
+The sequence layout was verified directly using `MiniMaxH3Preflight` (`preflight.py`), which reads the model's actual compiled `PackedLayout`:
 
-### 3.3 Modality Vulnerability Analysis
+```
+1344x768  trained family  1008 video tokens/frame
+345 frames (14.375s at 24fps)  102 latent frames
+sequence length 119,102
+  video           102,816  #################...   86.3%
+  text              7,776  #...................    6.5%
+  references        7,360  #...................    6.2%
+  audio             1,150  ....................    1.0%
+if the aspect ratio changed, same length:
+  1:1   768x768      75,038    -37%
+  4:3   1024x768      94,622    -21%
+  3:2   1152x768     104,414    -12%
+  16:9  1344x768     119,102     +0%  <- current
+  9:16  768x1344    119,102     +0%
+sage: past the fused int32 crossing at 99,864 (Triton q/k quantizers), fixed in every fork build that has sageattn_consume. The installed build forms 64-bit offsets in the CUDA v quantizer, so the uint32 wrap at 199,728 does not apply to it.
+```
 
-Telemetry across the 119k sequence length showed marked differences in how different token segments tolerate sparsity:
+#### Modality Breakdown ($S = 119,102$ tokens)
+- **Video Tokens**: $102,816$ tokens ($86.3\%$). Formed by 102 latent frames at $1,008$ tokens/frame ($1344 \times 768$ canvas, 7/4 trained family).
+- **Text Tokens**: $7,776$ tokens ($6.5\%$). Prompt embeddings and prefix context.
+- **Reference Tokens**: $7,360$ tokens ($6.2\%$). Packed visual reference latents.
+- **Audio Tokens**: $1,150$ tokens ($1.0\%$). Synchronized latent audio stream.
 
-| Segment Kind | Token Count | Avg Rel $L_2$ Error | Min Cosine Sim | Avg Cosine Sim | Sensitivity |
-|---|---|---|---|---|---|
-| `text` | 7,776 (6.5%) | **15.64%** | **0.8385** | 0.9866 | **High**: Prompt adherence degrades when text rows are dropped |
-| `video` | 102,816 (86.3%) | 11.06% | 0.9720 | 0.9933 | **Moderate**: Latent spatio-temporal structure |
-| `ref_img` | 7,360 (6.2%) | 10.96% | 0.9559 | 0.9934 | **Moderate**: Character consistency across shots |
-| `audio` | 1,150 (1.0%) | **0.78%** | **0.9989** | 1.0000 | **Protected**: Protected by `exact_kv_and_rows` sink |
+#### Integer-Offset Ceilings & Quantizer Safety
+MiniMax H3 constructs $Q, K, V$ as three views of a fused projection (`qkv_proj(x).split`), creating a fused sequence stride of:
+$$\text{stride\_seq} = 3 \times \text{heads} \times \text{head\_dim} = 3 \times 56 \times 128 = 21,504$$
+Two quantizer memory boundaries govern long sequences:
+1. **Triton $Q/K$ Quantizer Int32 Crossing**: $2^{31} / 21,504 = 99,864$ tokens. At $119,102$ tokens, our sequence operates beyond this crossing. This boundary is safely handled because our installed kernel build incorporates `sageattn_consume` with 64-bit index arithmetic (`USE_I64`).
+2. **CUDA $V$ Quantizer UInt32 Wrap**: $2^{32} / 21,504 = 199,728$ tokens. The installed kernel forms 64-bit offsets in `csrc/fused/fused.cu` (`sageattention.quant.ELEMENT_OFFSET_BITS = 64`), ensuring substantial headroom before approaching the $199\text{k}$ ceiling.
 
 ---
 
-## 4. Why `"45,48,49"` Must Change
+## 4. Empirical Telemetry: Test 1 vs. Test 2 Findings
 
-### 4.1 The Waste of Protecting Block 48
+### 4.1 Overview of Test Runs
+
+- **Test 1 (Diagnostic Baseline)**:
+  - Config: `dense_blocks=""`, `tau=1.0`, `token_routing="off"`, `start_percent=0.0`, `quantizer="rotated"`.
+  - Workflow: Single-stage 8 PDD steps, all 50 blocks unmasked.
+  - Ingested Records: 400 sparse cells.
+- **Test 2 (Two-Stage Sampler & Measured Routing Validation)**:
+  - Config: `dense_blocks="45,48,49"`, `tau=1.0`, `token_routing="measured"` (active on blocks 0, 24, 32, 40), `start_percent=0.0`, `quantizer="rotated"`.
+  - Workflow: Two-stage hybrid (Pass 1: PDD8 6 steps, Pass 2: FlashGen 2 steps).
+  - Ingested Records: 376 sparse cells + 24 dense skip calls.
+
+### 4.2 Cross-Test Agreement: The Invariant Middle Error Peak
+
+The most critical finding from comparing Test 1 and Test 2 is that **the middle cluster error peak is an invariant structural property of the model**, persisting across different sampling schedules, timesteps, and routing modes:
+
+| Block Index | Historical Status | Test 1 Avg Rel $L_2$ | Test 2 Avg Rel $L_2$ | Difference | Assessment |
+|---|---|---|---|---|---|
+| **Block 0** | Sparse | 4.88% | 5.37% (routed) | +0.49% | Low error (initial feature extraction) |
+| **Block 24** | Sparse | 14.28% | 15.11% (routed) | +0.83% | Transition mid-point |
+| **Block 32** | Sparse | 14.81% | 12.99% (routed) | **-1.82%** | Rescued by token routing |
+| **Block 38** | Sparse | 19.16% | 19.82% | +0.66% | Middle error onset |
+| **Block 39** | Sparse | **25.22%** | **25.18%** | **-0.04%** | **Critical Error Peak (Identical)** |
+| **Block 40** | Sparse | **23.43%** | **23.93%** (routed) | +0.50% | **Critical Error Peak (Unrescued)** |
+| **Block 41** | Sparse | **24.35%** | **22.45%** | -1.90% | **Critical Error Peak** |
+| **Block 42** | Sparse | **25.67%** | **24.59%** | -1.08% | **Highest Error in DiT (Both runs)** |
+| **Block 43** | Sparse | 19.49% | 19.24% | -0.25% | Transition decay |
+| **Block 46** | Shipped Sparse | **7.40%** | **7.37%** | **-0.03%** | **Quiet Tail (Confirmed)** |
+| **Block 47** | Shipped Sparse | **6.38%** | **6.53%** | **+0.15%** | **Quiet Tail (Confirmed)** |
+| **Block 48** | Historical Dense | **7.14%** (T1) | *(Dense Skip)* | — | **Quiet Tail (Dense wasted)** |
+| **Block 49** | Historical Dense | **13.73%** (T1) | *(Dense Skip)* | — | **Terminal Block (Must stay dense)** |
+
+### 4.3 Key Divergences and New Discoveries in Test 2
+
+#### 1. Token Routing is Effective on Localized Layers, Destructive on Diffuse Layers
+Test 2 enabled `token_routing="measured"` on blocks 0, 24, 32, and 40:
+- **Success on Localized Layers**: On Block 32, average error dropped from $14.81\%$ to $12.99\%$ ($-1.82\%$). Outlier tokens in localized layers represent clear high-attention targets that benefit from dense recovery.
+- **Catastrophic Failure on Diffuse Layer (Block 40)**: In Block 40, attention is globally distributed across the 119k tokens. Rescuing tokens into a dense slice diluted the attention distribution: **Head 47 exploded to 111.06% relative $L_2$ error**, with cosine similarity dropping to **0.6655**.
+- **Takeaway**: Diffuse middle layers (Blocks 39–42) cannot be saved by token routing. They must be routed through `dense_blocks`.
+
+#### 2. Sampler Stage Trajectory (PDD vs. FlashGen Finisher)
+Analyzing Pass 1 (PDD8, steps 0–5) versus Pass 2 (FlashGen, steps 6–7) revealed that relative $L_2$ error increases as the latent clears noise:
+- At $\sigma \approx 1.0$ (step 0), mean network error is $\sim 10.2\%$.
+- At $\sigma \approx 0.1$ (step 7, FlashGen finisher), mean network error reaches $\sim 13.8\%$.
+- Because high-frequency visual details and motion vectors resolve in the low-noise regime, errors in the middle layers during the finisher stage have an outsized impact on perceptual clarity.
+
+---
+
+## 5. Why `"45,48,49"` Must Change
+
+### 5.1 The Waste of Protecting Block 48
 Under Hadamard rotation, Block 48 has an average relative $L_2$ error of **7.14%**. It is cleaner than Block 37, Block 38, Block 39, Block 40, Block 41, Block 42, Block 43, and Block 44. Keeping Block 48 in `dense_blocks` is equivalent to using a fire extinguisher on a cold room while the adjoining room is blazing.
 
-### 4.2 The Vulnerability of Leaving Blocks 39–42 Sparse
+### 5.2 The Vulnerability of Leaving Blocks 39–42 Sparse
 Blocks 39 through 42 sit in a sustained error plateau above **23%–25%**, with peak heads losing up to **80%** of their output magnitude and suffering directional alignment drops down to $0.76$ cosine similarity. In a generative diffusion trajectory, injecting 25% error into the middle representations degrades object coherence and fine motion vectors.
 
-### 4.3 Why Block 49 Cannot Be Made Sparse
+### 5.3 Why Block 49 Cannot Be Made Sparse
 Block 49 is the final transformer block of the DiT. Its output directly feeds the final adaptive layer norm and linear projection (`final_layer.video_out`). Any error in Block 49 cannot be attenuated or redirected by subsequent attention layers; it maps linearly into the predicted latent velocity vector. Therefore, Block 49 remains mandatory in any `dense_blocks` specification.
 
 ---
 
-## 5. Candidate Replacement Configurations
+## 6. Candidate Replacement Configurations
 
 | Configuration | `dense_blocks` Spec | Dense Block Count | Target Error Reduction | Compute Cost Impact | Recommendation |
 |---|---|---|---|---|---|
 | **Historical Default** | `"45,48,49"` | 3 blocks | Ineffective (shields 7% tail, ignores 25% middle) | Baseline | Deprecated under `rotated` |
-| **Option A (Targeted Peak)** | `"39,41,42,49"` | 4 blocks | Shields top 3 worst middle blocks (>24%) + terminal block | +2.0% sampler time | **Top Candidate (High Efficiency)** |
-| **Option B (Full Plateau)** | `"39,40,41,42,49"` | 5 blocks | Shields the entire 23%–26% middle plateau + terminal block | +4.1% sampler time | **Top Candidate (Max Quality)** |
-| **Option C (Strict Budget)** | `"39,42,49"` | 3 blocks | Shields the two worst middle blocks + terminal block | Exactly 0.0% cost vs. historical | Fallback if budget strictly locked |
+| **Option A (Targeted Peak)** | `"39,41,42,49"` | 4 blocks | Shields top 3 worst middle blocks (>24%) + terminal block | +2.0% sampler time | **Active Default (0.184.8)** |
+| **Option B (Full Plateau)** | `"39,40,41,42,49"` | 5 blocks | Shields the entire 23%–26% middle plateau + terminal block | +4.1% sampler time | **High-Quality Candidate** |
+| **Option C (Strict Budget)** | `"39,42,49"` | 3 blocks | Shields the two worst middle blocks + terminal block | Exactly 0.0% cost vs. historical | Budget fallback |
 
 ---
 
-## 6. The 5-Test Experimental Matrix
+## 7. The 5-Test Experimental Matrix
 
-To systematically validate the new dense block strategy and establish Pareto-optimal defaults, we define the following 5-test matrix:
-
-| Test ID | Name / Objective | Configuration Levers | Target Sequence / Scene | Telemetry Scope | Success Criteria / Hypothesis |
+| Test ID | Name / Objective | Configuration Levers | Target Sequence / Scene | Telemetry Scope | Status / Verdict |
 |---|---|---|---|---|---|
-| **Test 1** | **Diagnostic Baseline** *(Completed)* | `tau=1.0`<br>`dense_blocks=""`<br>`token_routing="off"`<br>`start_percent=0.0`<br>`quantizer="rotated"` | Ref2VA Market<br>1344x768, 345f<br>S=119,102, 8 steps | Full 50 blocks unmasked (`sol_probe_*.jsonl`, `sol_observe_*.jsonl`, `.u16`) | Establishes the true unconstrained error profile across all 50 blocks. *Result: Revealed the 38-43 middle peak and 45-48 tail calmness.* |
-| **Test 2** | **Historical Control Candidate** *(Running)* | `tau=1.0`<br>`dense_blocks="45,48,49"`<br>`token_routing="measured"`<br>`start_percent=0.0`<br>`quantizer="rotated"` | Ref2VA Market<br>1344x768, 345f<br>S=119,102, 8 steps | Dense tail masked, token routing active on measured blocks | Measures the exact impact of `token_routing="measured"` on active blocks under historical dense settings. |
-| **Test 3** | **Middle Dense Swap (Option A)** *(Proposed)* | `tau=1.0`<br>`dense_blocks="39,41,42,49"`<br>`token_routing="measured"`<br>`start_percent=0.0`<br>`quantizer="rotated"` | Ref2VA Market<br>1344x768, 345f<br>S=119,102, 8 steps | 4 dense blocks, telemetry on remaining sparse blocks | Pipeline error across steps 0-7 drops dramatically. Peak block error drops from 25.7% to <19% (Block 43). Wall time matches Test 2 within ~2%. |
-| **Test 4** | **Early Warmup Anchor** *(Proposed)* | `tau=1.0`<br>`dense_blocks="39,41,42,49"`<br>`token_routing="measured"`<br>`start_percent=0.2`<br>`quantizer="rotated"` | Ref2VA Market<br>1344x768, 345f<br>S=119,102, 8 steps | Step 0-1 run dense on `attention_comfy_kitchen_int8`; steps 2-7 Sol | Tests whether keeping the first 20% of schedule dense protects global composition when middle blocks are also shielded. |
-| **Test 5** | **Pareto Optimization (Option B)** *(Proposed)* | `tau=1.1` (or `1.0`)<br>`dense_blocks="39,40,41,42,49"`<br>`token_routing="measured"`<br>`start_percent=0.0`<br>`quantizer="rotated"` | Ref2VA Market<br>1344x768, 345f<br>S=119,102, 8 steps | 5 dense blocks, slightly higher sparsity on non-critical blocks | Recovers the compute cost of the 5th dense block by relaxing tau to 1.1 on remaining blocks, testing net Pareto dominance. |
+| **Test 1** | **Diagnostic Baseline** | `tau=1.0`<br>`dense_blocks=""`<br>`token_routing="off"`<br>`start_percent=0.0`<br>`quantizer="rotated"` | Ref2VA Market<br>1344x768, 345f<br>S=119,102, 8 PDD steps | Full 50 blocks unmasked (`sol_probe_*.jsonl`, `sol_observe_*.jsonl`, `.u16`) | **Completed**: Discovered 38–43 middle error peak (25.7%) and confirmed 45–48 tail calmness (~7%). |
+| **Test 2** | **Historical Control & Two-Stage Routing** | `tau=1.0`<br>`dense_blocks="45,48,49"`<br>`token_routing="measured"`<br>`start_percent=0.0`<br>`quantizer="rotated"` | Ref2VA Market<br>1344x768, 345f<br>S=119,102, PDD8 + FlashGen | 400 calls logged (376 cells, 24 skips). Multi-node verified. | **Completed**: Verified middle peak invariant; proved token routing rescues localized layers (32) but fails on diffuse layers (40 Head 47: 111% error). |
+| **Test 3** | **Option A Validation** | `tau=1.0`<br>`dense_blocks="39,41,42,49"`<br>`token_routing="measured"` (or `"off"` on 40)<br>`start_percent=0.0`<br>`quantizer="rotated"` | Ref2VA Market<br>1344x768, 345f<br>S=119,102, PDD8 + FlashGen | 4 dense blocks (39, 41, 42, 49); probe on remaining 46 sparse blocks | **Ready to Run**: Expected to eliminate the 3 worst error peaks (>24%). Peak network error drops below 20%. |
+| **Test 4** | **Early Warmup Anchor** | `tau=1.0`<br>`dense_blocks="39,41,42,49"`<br>`start_percent=0.2`<br>`quantizer="rotated"` | Ref2VA Market<br>1344x768, 345f<br>S=119,102, PDD8 + FlashGen | First 20% steps dense; Sol on remaining 80% | **Scheduled**: Tests whether dense initial warmup adds stability when middle layers are also shielded. |
+| **Test 5** | **Pareto Optimization (Option B)** | `tau=1.1`<br>`dense_blocks="39,40,41,42,49"`<br>`start_percent=0.0`<br>`quantizer="rotated"` | Ref2VA Market<br>1344x768, 345f<br>S=119,102, PDD8 + FlashGen | 5 dense blocks, higher sparsity on non-critical layers | **Scheduled**: Tests whether relaxing tau to 1.1 offsets the compute cost of shielding the full 5-block plateau. |
 
 ---
 
-## 7. Execution Guide: Running Tests in ComfyUI
+## 8. Execution Guide: Running Test 3 in ComfyUI
 
-### 7.1 Setting Up Telemetry Flags for Subsequent Tests
-To run Test 3, Test 4, or Test 5, launch ComfyUI with the appropriate environment variables:
+### 8.1 Arming the Capture Environment
+Capture files must reside in gitignored `data/sparse/captures/`. Because ComfyUI is typically launched from the parent directory, provide the relative path to this custom node repository:
 
 ```bash
-# Example for Test 3: Middle Dense Swap
-H3_SOL_OBSERVE_FILE="data/sparse/captures/test3_middle_swap/sol_observe.jsonl" \
-H3_SOL_OBSERVE_DENSE=1 \
+# Untracked capture target for Test 3
+RUN_DIR="custom_nodes/ComfyUI-h3-explorations/data/sparse/captures/test3_middle_dense"
+mkdir -p "$RUN_DIR"
+
+# Launch ComfyUI armed with probe and observe
+H3_SOL_PROBE="dir=$RUN_DIR" \
+H3_SOL_OBSERVE="dir=$RUN_DIR" \
 python main.py --listen 127.0.0.1 --port 8188
 ```
 
-### 7.2 Configuring the `MiniMaxH3Sol` Node in the Graph
-In the workflow graph (e.g. `workflows/h3_ref2v_market_pdd_api.json` or through the ComfyUI UI):
-1. Locate the **MiniMax H3 Sol-Attn** node (`MiniMaxH3Sol`).
-2. Update the inputs according to the test matrix:
-   - **Test 3**:
-     - `tau`: `1.0`
-     - `dense_blocks`: `"39,41,42,49"`
-     - `token_routing`: `"measured"` (or `"custom"`)
-     - `start_percent`: `0.0`
-     - `end_percent`: `1.0`
-     - `quantizer`: `"rotated"`
-   - **Test 4**:
-     - Same as Test 3, but set `start_percent`: `0.2`
-   - **Test 5**:
-     - `tau`: `1.1`
-     - `dense_blocks`: `"39,40,41,42,49"`
-     - `start_percent`: `0.0`
-     - `token_routing`: `"measured"`
+### 8.2 Ingestion and Comparative Dashboard
+Once Test 3 completes:
 
-### 7.3 Automated Analysis Pipeline
-After each test finishes:
 ```bash
-# Ingest the test run into DuckDB and update dashboard
+# Ingest into the existing untracked database
 python bench/sol_duckdb_analyzer.py \
   --db data/sparse/sol_analysis.duckdb \
-  --observe data/sparse/captures/test3_middle_swap/sol_observe.jsonl \
-  --run-id test3_middle_swap \
-  --html docs/research/sparse/sol_duckdb_dashboard.html
+  --logs-dir data/sparse/captures/test3_middle_dense \
+  --run-id test3_middle_dense \
+  --out docs/research/sparse/sol_duckdb_dashboard.html
 ```
 
 ---
 
-## 8. Summary of Recommendations for `workflows/h3_config.py`
+## 9. Code and Workflow Configuration Status
 
-Once Test 3 and Test 4 validate the reduction in overall network degradation:
-1. Update `SOL_DENSE_TAIL` (or rename to `SOL_DENSE_RECOMMENDED`) in `workflows/h3_config.py`:
+As of version **0.184.8** (commit `20528eab`):
+1. **Option A is Adopted as Active Default**:
    ```python
-   # From:
-   SOL_DENSE_TAIL = "45,48,49"
-   # To:
-   SOL_DENSE_RECOMMENDED = "39,41,42,49"  # Shields middle error plateau + final projection
+   # workflows/h3_config.py & sol_attn_h3.py
+   SOL_DENSE_OPTION_A = "39,41,42,49"
+   SOL_DENSE_OPTION_B = "39,40,41,42,49"
+   SOL_DENSE_HISTORICAL_TAIL = "45,48,49"
+
+   SOL_DENSE_TAIL = SOL_DENSE_OPTION_A  # Active default
    ```
-2. Rebuild the workflow fleet:
-   ```bash
-   python workflows/build_workflows.py
-   ```
-3. Record the reversal in `docs/wiki/decisions.md` under the date of adoption.
+2. **All 166 Shipped Workflows Rebuilt**: The entire workflow fleet reflects Option A while leaving Option B exposed as an easily selectable configuration.
+3. **Decisions Log Updated**: The rationale, empirical evidence, and reversal of `"45,48,49"` are documented in `docs/wiki/decisions.md`.

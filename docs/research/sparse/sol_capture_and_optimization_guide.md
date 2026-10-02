@@ -22,6 +22,9 @@ flowchart TD
 2. **`H3_SOL_OBSERVE` (Cost & Density)**: Extracts the kernel's exact block-dispatch routing buffer (`blk_cnt`), recording routed block density, forced sink counts, and peak CUDA VRAM high-water marks.
 3. **`H3_CAPTURE` (Raw Tensor Slices)**: Dumps compact BF16 activation tensors (`qkv_*.pt`) post-RMSNorm/RoPE for offline parameter sweeps across thousands of configurations in seconds.
 
+> [!NOTE]
+> **Multi-Node Sampler Workflows**: In workflows featuring two-stage sampling (e.g., PDD 8-step Pass 1 followed by FlashGen 4-step finisher Pass 2, using `workflows/h3_text_to_video_pdd8_flashgen_finish_api.json`), each stage has its own `MiniMaxH3Sol` node. The capture instruments open log files in append mode, streaming calls from Pass 1 (steps 0–5 = 300 calls) and Pass 2 (steps 6–7 = 100 calls) seamlessly into the same run files without overwriting.
+
 ---
 
 ## 2. Setting Up the Node Parameters
@@ -61,13 +64,43 @@ Depending on your objective, configure the **MiniMax H3 Sol-Attn** node in Comfy
 
 ---
 
-## 3. Reference Conditioning Configuration
+## 3. Reference Conditioning Configuration & Preflight Geometry
 
-If your target workflow uses reference images (Ref2VA), **always attach your reference images during capture** (e.g. using `MiniMaxH3AppendRefImage` with size policy `max` and short edge `2048`):
+If your target workflow uses reference images (Ref2VA), **always attach your reference images during capture**. For example, our standard diagnostic workload (`workflows/h3_text_to_video_pdd8_flashgen_finish_api.json`) configures:
 
-1. **Token Length ($T$)**: Two 2048-edge reference images add thousands of visual tokens, expanding the sequence to **16,000–30,000+ tokens**. Capturing without them measures an unrepresentative text-to-video workload.
-2. **Attention Sinks**: Reference tokens act as massive attention attractors for video queries. Pruning dynamics and row variances differ significantly when references are present.
-3. **Modality Segmentation**: Attaching references allows DuckDB to isolate `reference` spans in `sol_probe_segments` to verify whether subject identity is preserved without degradation.
+- **Reference Input**: 1 image at $2752 \times 1536$ resolution.
+- **Append Node (`MiniMaxH3AppendRefImage`)**: `size_policy="max"`, `short_edge=2048`, `allow_upscale=True`, `qwen_view="shared"`.
+- **Conditioning Node (`MiniMaxH3ReferenceConditioningOrdered`)**: `image_policy="comfy"`.
+- **Reference Latent Rows**: Exactly **7,360 reference rows** post-VAE encoding.
+
+### Preflight Sequence Breakdown (MiniMax H3 Preflight)
+Inspected directly via [`MiniMaxH3Preflight`](../../../preflight.py), this canvas yields a sequence length of **119,102 tokens**:
+
+```
+1344x768  trained family  1008 video tokens/frame
+345 frames (14.375s at 24fps)  102 latent frames
+sequence length 119,102
+  video           102,816  #################...   86.3%
+  text              7,776  #...................    6.5%
+  references        7,360  #...................    6.2%
+  audio             1,150  ....................    1.0%
+if the aspect ratio changed, same length:
+  1:1   768x768      75,038    -37%
+  4:3   1024x768      94,622    -21%
+  3:2   1152x768     104,414    -12%
+  16:9  1344x768     119,102     +0%  <- current
+  9:16  768x1344    119,102     +0%
+sage: past the fused int32 crossing at 99,864 (Triton q/k quantizers), fixed in every fork build that has sageattn_consume. The installed build forms 64-bit offsets in the CUDA v quantizer, so the uint32 wrap at 199,728 does not apply to it.
+```
+
+### Why Capturing at True Sequence Length Matters
+1. **Realistic Sequence Scale ($S = 119,102$)**: In-production video latents ($102,816$ tokens) combined with prompt ($7,776$), audio ($1,150$), and reference latents ($7,360$) create an authentic attention distribution. Capturing at truncated token counts under-measures diffuse routing error.
+2. **Attention Sinks**: High-resolution reference tokens act as major visual attractors. Pruning dynamics and row variances differ significantly when references are present.
+3. **Quantizer Integer Crossings**:
+   - MiniMax H3's fused sequence projection stride is $3 \times 56 \times 128 = 21,504$.
+   - The Triton $Q/K$ quantizer crosses the signed 32-bit integer ceiling at $2^{31} / 21504 = 99,864$ tokens. At 119,102 tokens, the sequence safely requires 64-bit index arithmetic (`USE_I64` in `sageattn_consume`).
+   - The CUDA $V$ quantizer forms 64-bit offsets (`ELEMENT_OFFSET_BITS = 64`), preventing the unsigned 32-bit wrap at $2^{32} / 21504 = 199,728$ tokens.
+4. **Modality Segmentation**: Attaching references allows DuckDB to isolate `reference` spans in `sol_probe_segments` to verify whether subject identity is preserved without degradation.
 
 ---
 
