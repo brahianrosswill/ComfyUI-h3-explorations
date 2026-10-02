@@ -18,6 +18,8 @@ artifact.
   nothing changes. `bench/check_lora_branch.py` adds a case that swaps the
   PR's call into core's block forward and requires the branch to equal the
   merge; it went red against the one-argument signature.
+- h3-mutant-distill 0.4.1, carrying the same fix, is published on GitHub
+  (`a110839`, owner, 2026-10-02).
 
 ## 0.184.9
 
