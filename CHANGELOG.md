@@ -4,6 +4,21 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.184.14
+
+### Added
+
+- **The Sol dense_blocks panel**: `bench/sol_dense_blocks_panel_arms.json`
+  (four one-picture ref2va bank scenes, two seeds, six Sol arms against an
+  all-dense reference on the shipped PDD8 to FlashGen finish),
+  `bench/score_sol_dense_blocks_panel.py` (each arm's saved latents against
+  the dense arm at the same seed, found through `/history`, with sampler time),
+  and the interim record `bench/results/2026-10-02_sol_dense_blocks_panel.md`
+  with the owner's first judging pass. Interim: `dense_blocks` does not move
+  the verdict; Sol changes the action on an action-heavy scene and runs
+  louder on a dialogue scene unless conditioning query rows are exact. The
+  open questions there are the next runs. No default changed.
+
 ## 0.184.13
 
 ### Changed

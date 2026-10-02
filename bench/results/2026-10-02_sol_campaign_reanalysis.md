@@ -199,6 +199,16 @@ was already that block's worst head with routing off (T1), and block 40's
 whole-call error is the same in T1 and T2. One head on one cell, across
 different seeds. It is not evidence that routing fails on diffuse blocks.
 
+## The owner's look at the campaign's renders
+
+On 2026-10-02 the owner watched the campaign's own renders and found them
+"all pretty good. i couldnt say when one was better or not, but they were all
+solid". Not blind, one render per config, every render at its own seed, and
+no dense render beside them: it says no config was visibly broken, not that
+the configs match dense. The output-level panel that followed,
+`2026-10-02_sol_dense_blocks_panel.md`, has a dense reference at matched
+seeds, and against it the owner did see Sol's effect.
+
 ## What would settle the dense_blocks question
 
 1. **Fix the seed and the prompt within a contrast**, and run two seeds per

@@ -80,6 +80,12 @@ stays the shipped default.
     prompt with two seeds per arm, routing `off` as shipped, an output-level
     score, the `exact_kv_and_all_rows` arm, a per-head price for block 49,
     and the FlashGen finisher measured on its own.)*
+    *(2026-10-02, evening: the output-level panel is running,
+    `../../bench/results/2026-10-02_sol_dense_blocks_panel.md`. Interim:
+    `dense_blocks` does not move the owner's verdict; Sol itself changes the
+    action on an action-heavy scene and the loudness on a dialogue scene. Its
+    open questions are the next runs: PDD-node `start_percent` against dense,
+    Sol on the finisher only, and whether distance from dense screens scenes.)*
   - Next: test 3, the token-routing re-grade on the fixed kernel, including
     whether "all blocks" still needs the balance. It runs on the test 2
     captures (keep until 2026-10-31), with no render.
