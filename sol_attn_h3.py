@@ -55,6 +55,7 @@ from . import sol_observe
 from . import h3_capture as _capture
 from . import sol_block_probe as _probe
 from . import sol_call_timer as _timer
+from . import sparse_table as _table
 
 try:
     import comfy_kitchen as _ck
@@ -311,8 +312,13 @@ def _bthd(q, k, v, heads, skip_reshape):
 def _run(q, k, v, heads, skip_reshape, skip_output_reshape, scale,
          tau, min_tokens, verbose, sink_blocks=(0, 0), sink_q=(0, 0),
          topk_ratio=0.0, tail=True, blk_cnt=None, token_aug=0, qk_balance=False, rotate=False,
-         dtypes=(torch.bfloat16,)):
+         dtypes=(torch.bfloat16,), tau_map=None):
     """Returns the attention output, or None if this call should stay dense.
+
+    `tau_map`, when given, is the kernel's per-head, per-query-block tau
+    (`_tau_map`). Forwarded ONLY when not None, like `blk_cnt`: a call with no
+    table and a row setting one `sink_q` range can express passes no such
+    keyword, so it is the call every earlier measurement was taken on.
 
     `blk_cnt`, when given, is an int32 (B, H, ceil(T/64)) buffer the kernel
     fills with its routed-block counts from this same call. It is forwarded
@@ -347,6 +353,8 @@ def _run(q, k, v, heads, skip_reshape, skip_output_reshape, scale,
         extra["qk_balance"] = True
     if rotate:
         extra["rotate"] = True
+    if tau_map is not None:
+        extra["tau_map"] = tau_map
     out = _ck.sol_attn(qs, ks, vs, tau=tau, scale=scale,
                        sink_blocks=list(sink_blocks), sink_q=list(sink_q),
                        topk_ratio=topk_ratio, tail=tail, **extra)      # BTHD
@@ -425,6 +433,103 @@ def sink_ranges(video, audio, tokens, mode):
     return blocks, (audio_start // BLOCK_SIZE, blocks[1])
 
 
+#: The `rows` input's two choices. "as sink_conditioning" leaves the dense
+#: query rows to `sink_conditioning`, exactly as before the input existed.
+ROWS_FOLLOW = "as sink_conditioning"
+ROWS_PER_SEGMENT = "per segment"
+ROW_EXACT, ROW_ROUTED = "exact", "routed"
+#: The three classes of conditioning query rows a graph can set apart. Text is
+#: core's `text` segment, audio is the TARGET audio, and reference is every
+#: other segment ahead of the target video (cond, cond_audio, ref_img,
+#: ref_audio), so the three together are always the whole conditioning prefix.
+SEGMENT_CLASSES = ("text", "reference", "audio")
+#: The tau that makes a (head, query block) dense: the kernel routes a key
+#: block whose pooled score is at least tau spreads above the row mean, so a
+#: large negative tau routes them all. **Inherited** from the fork's own test
+#: (`tests/test_sol_attn.py::test_tau_map_very_negative_is_a_dense_query_block`),
+#: and on a capture cell it reproduces `sink_q` over the same range bit for
+#: bit (`bench/results/2026-10-03_kitchen_tau_map.md`).
+DENSE_TAU = -1.0e30
+
+
+def segment_class(kind):
+    """The row class of one of core's segment kinds, or None for the target video."""
+    if kind == "video":
+        return None
+    if kind in ("text", "audio"):
+        return kind
+    return "reference"
+
+
+def exact_query_blocks(segments, tokens, exact):
+    """Sorted indices of the 64-token query blocks to run exact, from core's
+    segment table and a `{class: bool}` choice. A block that any exact segment
+    overlaps is exact, which is `sink_ranges`' own rounding (floor of the
+    start, ceiling of the stop). Same guards as `sink_ranges`: nothing without
+    a target-video span, or on a call shorter than the layout."""
+    video = next(((a, b) for a, b, kind in segments or () if kind == "video"), None)
+    if video is None or tokens < video[1] or video[0] <= 0:
+        return ()
+    blocks = set()
+    for a, b, kind in segments:
+        if a >= video[0] or not exact.get(segment_class(kind), False):
+            continue
+        blocks.update(range(a // BLOCK_SIZE, (min(b, video[0]) + BLOCK_SIZE - 1) // BLOCK_SIZE))
+    return tuple(sorted(blocks))
+
+
+def row_plan(segments, tokens, mode, row_segments):
+    """(exact-KV blocks, `sink_q` range, dense columns) for one call.
+
+    `row_segments` None is `ROWS_FOLLOW`: `sink_ranges` decides, as before.
+    Otherwise the exact query blocks come from the three segment classes; when
+    they form one run it goes to the kernel as `sink_q`, and only a broken run
+    (text and audio exact with references routed between them) needs the dense
+    columns of a tau map. The exact-KV side is `sink_conditioning`'s either way.
+    Pure: graded on CPU by `bench/check_sol_node_equivalence.py`."""
+    video = next(((a, b) for a, b, kind in segments or () if kind == "video"), None)
+    audio = next(((a, b) for a, b, kind in segments or () if kind == "audio"), None)
+    sink, sink_q = sink_ranges(video, audio, tokens, mode)
+    if row_segments is None:
+        return sink, sink_q, ()
+    blocks = exact_query_blocks(segments, tokens, row_segments)
+    if not blocks:
+        return sink, (0, 0), ()
+    if blocks[-1] - blocks[0] + 1 == len(blocks):
+        return sink, (blocks[0], blocks[-1] + 1), ()
+    return sink, (0, 0), blocks
+
+
+_MAP_CACHE = {}
+#: Entries before the cache is dropped and rebuilt. **Reasoned**: one map per
+#: (block, row setting, sequence length) per device, a few hundred KB each; a
+#: two-stage graph over 50 blocks stays well under it.
+_MAP_CACHE_MAX = 256
+
+
+def _tau_map(head_taus, tau, heads, query_blocks, dense_cols, device):
+    """The kernel's `tau_map`: float32 (heads, query blocks). Each row is the
+    head's tau from the table (`head_taus`), or the node's `tau` with no table
+    row for this block; the `dense_cols` query blocks get `DENSE_TAU`."""
+    key = (head_taus, float(tau), int(heads), int(query_blocks), dense_cols, str(device))
+    tmap = _MAP_CACHE.get(key)
+    if tmap is None:
+        if len(_MAP_CACHE) >= _MAP_CACHE_MAX:
+            _MAP_CACHE.clear()
+        if head_taus is None:
+            tmap = torch.full((heads, query_blocks), float(tau), dtype=torch.float32, device=device)
+        else:
+            if len(head_taus) != heads:
+                raise RuntimeError(f"[h3-sol] the tau table has {len(head_taus)} heads per block "
+                                   f"and this call has {heads}")
+            tmap = torch.tensor(head_taus, dtype=torch.float32, device=device) \
+                .view(heads, 1).expand(heads, query_blocks).contiguous()
+        if dense_cols:
+            tmap[:, list(dense_cols)] = DENSE_TAU
+        _MAP_CACHE[key] = tmap
+    return tmap
+
+
 #: The SLA lane closed on 2026-09-27, so the node runs Sol's own selection
 #: (tau) with its pooled tail on, always. Kept as names because the recorders
 #: (`sol_observe`, `sol_block_probe`) take them per call.
@@ -444,8 +549,17 @@ def make_override(tau=1.0, min_tokens=12288,
                   sigma_start=None, sigma_end=None, verbose=False,
                   sink_conditioning="exact_kv", dense_blocks=frozenset(),
                   token_aug_profile=None, previous=None, qk_balance=False,
-                  rotate=False, settings=None):
+                  rotate=False, settings=None, tau_table=None, table_blocks=None,
+                  row_segments=None):
     """Build an optimized_attention_override callable.
+
+    ``tau_table`` (None, or ``{"name", "sha256"}`` of a table),
+    ``table_blocks`` (its ``{block: taus per head}``) and ``row_segments``
+    (None, or ``{class: exact?}`` over `SEGMENT_CLASSES`) are the per-head and
+    per-segment policy (`sparse_table.py`, `row_plan`). With all three None
+    the kernel call is the one this node made before they existed. The stamp
+    records ``tau_table`` and ``row_segments``; the table's values are
+    identified by the hash, not copied (`provenance.py::SOL_CLOSURE_KEYS`).
 
     The block index and segment bounds come from what core publishes
     (`h3_layout`); a kernel error raises rather than rendering dense
@@ -526,7 +640,9 @@ def make_override(tau=1.0, min_tokens=12288,
         # Absent from the profile means zero, which is the kernel's default and
         # the shipped state: token routing is opt-in per block, never global.
         block_aug = token_aug_profile.get(block, 0) if token_aug_profile else 0
-        sink, sink_q = _sink_blocks(options, tokens, sink_conditioning)
+        sink, sink_q, dense_cols = row_plan(_h3layout.segments(options, tokens), tokens,
+                                            sink_conditioning, row_segments)
+        head_taus = table_blocks.get(block) if table_blocks else None
         counts = None
 
         # **The route this call actually took, published for the capture.**
@@ -630,6 +746,16 @@ def make_override(tau=1.0, min_tokens=12288,
             # and unrecorded rather than recorded as zeros.
             counts = torch.empty((batch, heads, (tokens + BLOCK_SIZE - 1) // BLOCK_SIZE),
                                  dtype=torch.int32, device=device)
+        tmap = None
+        if head_taus is not None or dense_cols:
+            tmap = _tau_map(head_taus, block_tau, heads,
+                            (tokens + BLOCK_SIZE - 1) // BLOCK_SIZE, dense_cols, device)
+            if verbose:
+                _log_once((tokens, tau_table["name"] if tau_table else None,
+                           block if head_taus is not None else None, dense_cols),
+                          f"tau map on block {block}: "
+                          + (f"table {tau_table['name']}" if head_taus is not None else f"tau {block_tau}")
+                          + (f", {len(dense_cols)} query block(s) dense by segment" if dense_cols else ""))
         if held:
             # Sol's kernel takes tensors, so ownership moves to this frame for
             # the call, which is where `wrap_attn` put it before.
@@ -640,12 +766,14 @@ def make_override(tau=1.0, min_tokens=12288,
                     out = _run(q, k, v, heads, skip_reshape, skip_output_reshape,
                                kwargs.get("scale", None), block_tau, min_tokens, verbose,
                                sink, sink_q, topk_ratio, tail, blk_cnt=counts,
-                               token_aug=block_aug, qk_balance=qk_balance, rotate=rotate, dtypes=dtypes)
+                               token_aug=block_aug, qk_balance=qk_balance, rotate=rotate, dtypes=dtypes,
+                               tau_map=tmap)
             else:
                 out = _run(q, k, v, heads, skip_reshape, skip_output_reshape,
                            kwargs.get("scale", None), block_tau, min_tokens, verbose,
                            sink, sink_q, topk_ratio, tail, blk_cnt=counts,
-                           token_aug=block_aug, qk_balance=qk_balance, rotate=rotate, dtypes=dtypes)
+                           token_aug=block_aug, qk_balance=qk_balance, rotate=rotate, dtypes=dtypes,
+                           tau_map=tmap)
         except torch.OutOfMemoryError:
             # Unwrapped, so core's OOM handling (`execution.py`'s is_oom and
             # its hint) still recognises it.
@@ -957,7 +1085,7 @@ def _chain_contains(override, ours, depth=16):
 
 def _apply_sol(model, *, tau, quantizer, dense_blocks, sink_conditioning,
                token_routing, routing_blocks, start_percent, end_percent,
-               min_tokens, verbose):
+               min_tokens, verbose, tau_table=_table.NONE, row_segments=None):
     if quantizer not in SOL_QUANTIZERS:
         raise ValueError(f"quantizer {quantizer!r} is not one of {list(SOL_QUANTIZERS)}")
     qk_balance, rotate = SOL_QUANTIZERS[quantizer]
@@ -990,6 +1118,29 @@ def _apply_sol(model, *, tau, quantizer, dense_blocks, sink_conditioning,
         raise RuntimeError("token routing is on, and the installed comfy_kitchen.sol_attn has no "
                            "token_aug argument (Comfy-Org/comfy-kitchen #156, 0.2.33).")
 
+    # The per-head table and the per-segment rows both reach the kernel as a
+    # tau map. Refused here, before sampling, on a build without it.
+    table = None
+    if tau_table != _table.NONE:
+        table = _table.load(tau_table)
+        heads = getattr(getattr(blocks[0], "attn", None), "heads", None) if count else None
+        if heads is None:
+            raise RuntimeError("a tau table needs the model's head count, and this model's "
+                               "blocks do not publish one (blocks[0].attn.heads)")
+        _table.require_fits(table, int(heads), count)
+    if row_segments is not None:
+        unknown = sorted(set(row_segments) - set(SEGMENT_CLASSES))
+        if unknown or set(row_segments) != set(SEGMENT_CLASSES):
+            raise ValueError(f"row_segments must set exactly {list(SEGMENT_CLASSES)}, got "
+                             f"{sorted(row_segments)}")
+    if (table is not None or row_segments is not None) and params is not None \
+            and "tau_map" not in params:
+        raise RuntimeError(
+            "a tau table or per-segment rows need tau_map, and the installed "
+            "comfy_kitchen.sol_attn has no tau_map argument. It is carried on the owner's "
+            "fork (h3-frontier); rebuild with vendor/rebuild_kernel.sh, or choose "
+            f"tau_table '{_table.NONE}' and rows '{ROWS_FOLLOW}'.")
+
     model_sampling = model.get_model_object("model_sampling")
     sigma_start = float(model_sampling.percent_to_sigma(start_percent))
     sigma_end = float(model_sampling.percent_to_sigma(end_percent))
@@ -1005,6 +1156,11 @@ def _apply_sol(model, *, tau, quantizer, dense_blocks, sink_conditioning,
         "token_routing": token_routing,
         "token_aug_blocks": {str(k): int(v) for k, v in sorted(aug.items())},
         "n_blocks": count,
+        "tau_table": tau_table,
+        "tau_table_sha256": None if table is None else table["sha256"],
+        "tau_table_provenance": None if table is None else table["provenance"],
+        "rows": ROWS_FOLLOW if row_segments is None else
+                {c: (ROW_EXACT if row_segments[c] else ROW_ROUTED) for c in SEGMENT_CLASSES},
     }
     installed = set()
 
@@ -1023,7 +1179,10 @@ def _apply_sol(model, *, tau, quantizer, dense_blocks, sink_conditioning,
             tau=tau, min_tokens=min_tokens, sigma_start=sigma_start, sigma_end=sigma_end,
             verbose=verbose, sink_conditioning=sink_conditioning, dense_blocks=dense,
             token_aug_profile=aug, previous=current, qk_balance=qk_balance, rotate=rotate,
-            settings=dict(settings, dense_fallback=fallback))
+            settings=dict(settings, dense_fallback=fallback),
+            tau_table=None if table is None else {"name": table["name"], "sha256": table["sha256"]},
+            table_blocks=None if table is None else table["blocks"],
+            row_segments=row_segments)
         installed.add(override)
         transformer_options["optimized_attention_override"] = override
         transformer_options["sol_compose"] = {
@@ -1060,6 +1219,8 @@ def _apply_sol(model, *, tau, quantizer, dense_blocks, sink_conditioning,
         f"(start_percent {start_percent}, end_percent {end_percent}), tau {tau}, "
         f"quantizer {quantizer}, token routing on {len(aug)} block(s), "
         f"dense blocks {sorted(dense)}, sink {sink_conditioning}"
+        + ("" if table is None else f", tau table {table['name']} ({len(table['blocks'])} block(s))")
+        + ("" if row_segments is None else f", rows {settings['rows']}")
         + (f", composed with {len(composed)} patched forward(s)" if composed else ""))
     if sol_observe.enabled():
         logging.info(f"[h3-sol] route observation ARMED ({sol_observe.spec()['spec']}); "
@@ -1145,17 +1306,49 @@ class MiniMaxH3Sol(io.ComfyNode):
                 io.Boolean.Input("verbose", default=True, advanced=True,
                                  tooltip="Log once per call shape whether it ran on Sol or "
                                          "dense, and why."),
+                io.Combo.Input("tau_table", options=[_table.NONE] + _table.list_tables(),
+                               default=_table.NONE, optional=True,
+                               tooltip="A calibrated table of tau per block and head, in place "
+                                       "of the one tau above on the blocks it lists (a block it "
+                                       "does not list keeps tau). Files in sparse_tables/. "
+                                       "Needs the owner's kitchen build."),
+                io.DynamicCombo.Input("rows", options=[
+                    io.DynamicCombo.Option(ROWS_FOLLOW, []),
+                    io.DynamicCombo.Option(ROWS_PER_SEGMENT, [
+                        io.Combo.Input("text_rows", options=[ROW_EXACT, ROW_ROUTED],
+                                       default=ROW_EXACT,
+                                       tooltip="The prompt's own rows, vision tokens included."),
+                        io.Combo.Input("reference_rows", options=[ROW_EXACT, ROW_ROUTED],
+                                       default=ROW_EXACT,
+                                       tooltip="Keyframe and reference rows (image, video, audio)."),
+                        io.Combo.Input("audio_rows", options=[ROW_EXACT, ROW_ROUTED],
+                                       default=ROW_EXACT,
+                                       tooltip="The target audio rows."),
+                    ]),
+                ], optional=True,
+                    tooltip="Which conditioning query rows run exact. 'as sink_conditioning' "
+                            "leaves it to that input, as before. 'per segment' sets text, "
+                            "reference and audio rows apart; all three exact is "
+                            "exact_kv_and_all_rows, audio alone is exact_kv_and_rows. Which "
+                            "keys every row attends exactly stays with sink_conditioning. "
+                            "Text and audio exact with references routed needs the owner's "
+                            "kitchen build."),
             ],
             outputs=[io.Model.Output()],
         )
 
     @classmethod
     def execute(cls, model, tau, quantizer, dense_blocks, sink_conditioning, token_routing,
-                start_percent, end_percent, min_tokens=12288, verbose=True) -> io.NodeOutput:
+                start_percent, end_percent, min_tokens=12288, verbose=True,
+                tau_table=_table.NONE, rows=None) -> io.NodeOutput:
+        row_segments = None
+        if rows is not None and rows["rows"] == ROWS_PER_SEGMENT:
+            row_segments = {c: rows[f"{c}_rows"] == ROW_EXACT for c in SEGMENT_CLASSES}
         return _apply_sol(
             model, tau=tau, quantizer=quantizer, dense_blocks=dense_blocks,
             sink_conditioning=sink_conditioning,
             token_routing=token_routing["token_routing"],
             routing_blocks=token_routing.get("blocks", ""),
             start_percent=start_percent, end_percent=end_percent,
-            min_tokens=min_tokens, verbose=verbose)
+            min_tokens=min_tokens, verbose=verbose,
+            tau_table=tau_table, row_segments=row_segments)

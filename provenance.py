@@ -155,6 +155,9 @@ def _closure_values(fn, names, depth=4):
 SOL_CLOSURE_KEYS = (
     "tau", "min_tokens", "sigma_start", "sigma_end", "verbose",
     "sink_conditioning", "dense_blocks", "token_aug_profile", "qk_balance", "rotate",
+    # 2026-10-03: the per-head table (by name) and the per-segment row setting
+    # (None when rows follow `sink_conditioning`).
+    "tau_table", "row_segments",
     # 2026-09-27: `tau_profile`, `topk_ratio` and `tail` left with
     # MiniMaxH3SolAttn (docs/research/2026-09-27_sol_node_redesign.md); the
     # node runs tau selection with the tail on, always.

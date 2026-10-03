@@ -4,6 +4,28 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.185.11
+
+### Added
+
+- **`MiniMaxH3Sol` takes a tau table and a row setting per segment**, both
+  optional and off by default (owner, 2026-10-03: the per-head table, and
+  text, reference, audio and video rows apart). `tau_table` reads a calibrated
+  tau per block and head from `sparse_tables/` (`sparse_table.py` owns the
+  format; no table ships yet). `rows` either follows `sink_conditioning`, as
+  before, or sets text, reference and target-audio rows exact or routed
+  separately. They sit beside `sink_conditioning` rather than replacing it,
+  so the default call is unchanged and no graph was rebuilt: with neither
+  chosen no `tau_map` reaches the kernel, which
+  `bench/check_sol_node_equivalence.py` now holds along with the row plan, the
+  map and the loader's refusals. `docs/SOLATTN.md`, "A tau per head and a
+  setting per segment".
+- The stamp records the table's name and the hash of its values, and the row
+  setting (`provenance.py::SOL_CLOSURE_KEYS`); `check_provenance_stamp.py`
+  exempts the values themselves, with the reason.
+- `bench/node_id_manifest.json` updated deliberately for the two appended
+  inputs.
+
 ## 0.185.10
 
 ### Added

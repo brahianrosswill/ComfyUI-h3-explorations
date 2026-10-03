@@ -116,7 +116,11 @@ def main() -> int:
     # `settings` (excluded 2026-09-05): the node configuration dict handed to
     # the probe for recording, a parameter since 2026-09-01; a record of the
     # knobs, not a knob. `previous` is the chain.
-    knobs = {n for n in params if n not in ("previous", "settings")}
+    # `table_blocks` (excluded 2026-10-03): the tau table's values. The stamp
+    # records `tau_table`, the table's name and the sha256 of those values
+    # (`sparse_table.parse`), which identifies them without copying fifty rows
+    # of taus into every clip.
+    knobs = {n for n in params if n not in ("previous", "settings", "table_blocks")}
 
     print(f"provenance stamp v{prov.STAMP_SCHEMA_VERSION} against "
           f"{sol.make_override.__module__}.make_override\n")

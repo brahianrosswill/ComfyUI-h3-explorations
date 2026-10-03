@@ -920,6 +920,37 @@ only, and a Sol call still sets attention's peak.
 `bench/measure_sol_container_protocol.py` the tool, and
 `bench/check_sol_node_equivalence.py` holds the hand-off.
 
+### A tau per head and a setting per segment, since 2026-10-03
+
+Two optional inputs on `MiniMaxH3Sol`, both off by default, both served by
+the kitchen build's `sol_attn(tau_map=...)`
+(`bench/results/2026-10-03_kitchen_tau_map.md`). Read their choices and
+defaults from the node's `define_schema`.
+
+- **`tau_table`** names a file in `sparse_tables/`: a tau for every head of
+  the blocks it lists, in place of the node's one `tau` on those blocks.
+  `sparse_table.py` owns the format and refuses a table it does not recognise
+  or one calibrated for another model. No table ships yet. Why a table at
+  all, and why per block: the day's record, "What a tau per head would buy".
+- **`rows`** says which conditioning query rows run exact. Its first choice
+  leaves that to `sink_conditioning`, as before. `per segment` sets the text
+  rows, the reference rows (keyframe rows included) and the target audio rows
+  apart. Where the exact rows form one run they still reach the kernel as
+  `sink_q`; text and audio exact with references routed between them is the
+  one arrangement that needs the map. Which keys every row attends exactly
+  stays with `sink_conditioning`.
+
+**With neither chosen the kernel call is the one the node made before**: no
+`tau_map` keyword is passed, which `bench/check_sol_node_equivalence.py` holds
+by reading the keywords that reach the kernel. The stamp records the table's
+name and the hash of its values, and the row setting
+(`provenance.py::SOL_CLOSURE_KEYS`).
+
+**Not done:** the route observer still computes its densities from `sink_q`,
+so query rows made exact through the map read there as fully routed rows, not
+as exact ones; the settings record says which policy ran. Nothing has been
+judged or measured at the output with either input.
+
 ### Live route telemetry, since 2026-09-01
 
 Every routed-density figure above this line was an offline approximation:

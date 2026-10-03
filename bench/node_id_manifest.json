@@ -396,7 +396,9 @@
       "start_percent",
       "end_percent",
       "min_tokens",
-      "verbose"
+      "verbose",
+      "tau_table",
+      "rows"
     ],
     "node_id": "MiniMaxH3Sol",
     "outputs": [

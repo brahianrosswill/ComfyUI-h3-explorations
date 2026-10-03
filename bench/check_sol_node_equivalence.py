@@ -229,6 +229,132 @@ def sink_cases(node, check):
               f"{options}, default {default}")
 
 
+def policy_cases(node, check):
+    """The per-segment row plan, the tau map it builds and the table loader, on CPU.
+
+    `row_plan` is pure and `_tau_map` is tensor arithmetic with no kernel, so
+    these run without a card. What they hold: the default input changes
+    nothing, the three segment classes reproduce `sink_conditioning`'s two
+    dense ranges where those can be expressed, a broken run becomes dense map
+    columns, and a table that does not fit is refused."""
+    import types
+    B = node.BLOCK_SIZE
+    ref = [(0, 320, "text"), (320, 3840, "ref_img"), (3840, 4160, "audio"), (4160, 8192, "video")]
+    REF = 8192
+    mode = "exact_kv_and_all_rows"
+    kv = (0, 65)
+
+    def plan(row_segments, segments=ref, tokens=REF, m=mode):
+        return node.row_plan(segments, tokens, m, row_segments)
+
+    def seg(text, reference, audio):
+        return {"text": text, "reference": reference, "audio": audio}
+
+    check("rows 'as sink_conditioning' is sink_ranges, with no dense columns",
+          all(plan(None, m=m) == (*node.sink_ranges((4160, REF), (3840, 4160), REF, m), ())
+              for m in node.SINK_CONDITIONING_MODES))
+    check("text, reference and audio exact == exact_kv_and_all_rows",
+          plan(seg(True, True, True)) == (kv, kv, ()))
+    check("audio alone exact == exact_kv_and_rows",
+          plan(seg(False, False, True)) == (*node.sink_ranges((4160, REF), (3840, 4160), REF,
+                                                              "exact_kv_and_rows"), ()))
+    check("none exact: no dense query rows, exact keys kept",
+          plan(seg(False, False, False)) == (kv, (0, 0), ()))
+    check("text alone, and text with references, are one run each, so they go as sink_q",
+          plan(seg(True, False, False)) == (kv, (0, 320 // B), ())
+          and plan(seg(True, True, False)) == (kv, (0, 3840 // B), ()))
+    broken = plan(seg(True, False, True))
+    want_cols = tuple(range(0, 320 // B)) + tuple(range(3840 // B, 65))
+    check("text and audio exact with references routed: sink_q off, dense columns for both",
+          broken == (kv, (0, 0), want_cols), f"{len(broken[2])} dense query blocks")
+    check("the exact-keys side stays with sink_conditioning under per-segment rows",
+          plan(seg(True, False, True), m="off")[0] == (0, 0)
+          and plan(seg(True, False, True), m="exact_kv")[0] == kv)
+    check("no layout, or a call shorter than the layout, is nothing exact",
+          plan(seg(True, True, True), segments=None) == ((0, 0), (0, 0), ())
+          and plan(seg(True, True, True), tokens=320) == ((0, 0), (0, 0), ()))
+    kf = [(0, 300, "text"), (300, 1308, "cond"), (1308, 1400, "cond_audio"),
+          (1400, 1600, "audio"), (1600, 8192, "video")]
+    check("keyframe rows (cond, cond_audio) are reference rows; a block two classes share is exact if either is",
+          node.exact_query_blocks(kf, REF, seg(False, True, False))
+          == tuple(range(300 // B, (1400 + B - 1) // B))
+          and all(node.segment_class(kind) == "reference"
+                  for kind in ("cond", "cond_audio", "ref_img", "ref_audio")))
+
+    heads, nq = 4, 16
+    flat = node._tau_map(None, 1.25, heads, nq, (), "cpu")
+    check("the map with no table row and no dense columns is tau everywhere",
+          tuple(flat.shape) == (heads, nq) and flat.dtype == torch.float32
+          and bool((flat == 1.25).all()))
+    taus = (0.5, 1.0, 2.0, 4.0)
+    tm = node._tau_map(taus, 1.25, heads, nq, (0, 1, 9), "cpu")
+    by_hand = torch.tensor(taus).view(heads, 1).repeat(1, nq)
+    by_hand[:, [0, 1, 9]] = node.DENSE_TAU
+    check("a table row fills each head's row, and dense columns override it",
+          torch.equal(tm, by_hand))
+    try:
+        node._tau_map((1.0, 1.0), 1.0, heads, nq, (), "cpu"); refused = False
+    except RuntimeError:
+        refused = True
+    check("a table row of the wrong head count is refused at the call", refused)
+
+    table = node._table
+    fixtures = REPO / "bench" / "fixtures"
+    t = table.load("sparse_table_synthetic.json", fixtures)
+    check("the fixture table loads: heads, integer block keys, tuples of floats",
+          t["heads"] == 56 and sorted(t["blocks"]) == [0, 24]
+          and all(isinstance(r, tuple) and len(r) == 56 for r in t["blocks"].values()))
+    other = table.parse({"schema": 1, "provenance": dict(t["provenance"]), "heads": 56,
+                         "blocks": {"0": list(t["blocks"][0]), "24": [1.5] * 56}})
+    check("a table's hash follows its values, not its name or provenance",
+          len(t["sha256"]) == 64 and other["sha256"] != t["sha256"]
+          and table.parse({"schema": 1, "provenance": {"calibrated_on": "a", "tool": "b", "date": "c"},
+                           "heads": 56, "blocks": {str(b): list(r) for b, r in t["blocks"].items()}},
+                          "renamed")["sha256"] == t["sha256"])
+    check("no table ships yet, and the node offers 'none' first",
+          table.list_tables() == [] and table.NONE == "none", f"{table.list_tables()}")
+
+    def refuses(fn):
+        try:
+            fn()
+        except table.SparseTableError:
+            return True
+        return False
+    good = {"schema": 1, "provenance": {"calibrated_on": "x", "tool": "y", "date": "z"},
+            "heads": 2, "blocks": {"0": [1.0, 2.0]}}
+    bad = {
+        "an unknown key": dict(good, note="hi"),
+        "a missing provenance field": dict(good, provenance={"tool": "y", "date": "z"}),
+        "a row of the wrong length": dict(good, blocks={"0": [1.0]}),
+        "a negative tau": dict(good, blocks={"0": [1.0, -1.0]}),
+        "a non-finite tau": dict(good, blocks={"0": [1.0, float("inf")]}),
+        "a tau over the ceiling": dict(good, blocks={"0": [1.0, table.TAU_MAX + 1]}),
+        "a block key that is not a plain integer": dict(good, blocks={"00": [1.0, 2.0]}),
+        "another schema": dict(good, schema=2),
+        "no blocks": dict(good, blocks={}),
+    }
+    held = [name for name, doc in bad.items() if not refuses(lambda d=doc: table.parse(d))]
+    check("the loader refuses every malformed table, and takes the well-formed one",
+          not held and table.parse(good)["blocks"] == {0: (1.0, 2.0)}, f"accepted: {held}" if held else "")
+    check("a table for another head count, or naming a block the model lacks, is refused",
+          refuses(lambda: table.require_fits(t, 48, 50))
+          and refuses(lambda: table.require_fits(t, 56, 24))
+          and table.require_fits(t, 56, 50) is None)
+    check("a table name with a path in it is refused",
+          refuses(lambda: table.load("../bench/fixtures/sparse_table_synthetic.json")))
+    try:
+        schema = node.MiniMaxH3Sol.define_schema()
+        ids = [i.id for i in schema.inputs]
+        rows = next(i for i in schema.inputs if i.id == "rows")
+    except Exception as exc:                                  # noqa: BLE001
+        print(f"  SKIP the new inputs' schema   define_schema not readable here: {exc}")
+    else:
+        check("tau_table and rows are the node's last two inputs, both optional, rows defaulting to 'as sink_conditioning'",
+              ids[-2:] == ["tau_table", "rows"] and rows.optional
+              and rows.options[0].key == node.ROWS_FOLLOW,
+              f"{ids[-2:]}")
+
+
 def container_cases(node, check):
     """The override's container entry, driven through core's `wrap_attn` with
     core's own container class. CPU tensors, so the kernel never runs: a call
@@ -357,6 +483,10 @@ KERNEL_CASES = (
     "container entry == tensor entry on a call Sol takes",
     "dispatch with blk_cnt == dispatch without",
     "sink pair reaches the kernel",
+    "default rows and no table pass no tau_map",
+    "a table of equal taus == the scalar call",
+    "a per-head table == each head in its own scalar call",
+    "text and audio exact, references routed, through the override",
     "tau reaches the kernel",
     "a transposed oracle is caught",
 )
@@ -453,6 +583,73 @@ def kernel_cases(node, ck, check, device="cuda", shape=(1, 8, 16384, 128)):
                                    sink_blocks=[0, 4], sink_q=[0, 4]))
           and not torch.equal(sink, dispatch(tau=1.0)),
           "a non-zero sink both arrives and changes the output")
+
+    # The per-head table and the per-segment rows, through the override: what
+    # reaches the kernel, and that the default reaches it unchanged.
+    seen = {}
+    real = ck.sol_attn
+
+    def spy(*a, **kw):
+        seen["kwargs"] = dict(kw)
+        return real(*a, **kw)
+
+    ref_segments = [(0, 320, "text"), (320, 1920, "ref_img"), (1920, 2240, "audio"), (2240, t, "video")]
+    ref_options = {"minimax_h3_layout": types.SimpleNamespace(seq_len=t, segments=ref_segments),
+                   "block_index": 0}
+
+    def through(**kw):
+        ov = node.make_override(tau=1.0, min_tokens=12288, qk_balance=False, rotate=False,
+                                sink_conditioning="exact_kv_and_all_rows", **kw)
+        seen.clear()
+        node._ck.sol_attn = spy
+        try:
+            return ov(declined, q, k, v, h, skip_reshape=True, skip_output_reshape=True,
+                      transformer_options=dict(ref_options))
+        finally:
+            node._ck.sol_attn = real
+
+    plain = through()
+    check("default rows and no table pass no tau_map", "tau_map" not in seen["kwargs"],
+          f"kernel keywords {sorted(seen['kwargs'])}")
+    all_exact = through(row_segments={"text": True, "reference": True, "audio": True})
+    check("default rows and no table pass no tau_map",
+          "tau_map" not in seen["kwargs"] and torch.equal(all_exact, plain),
+          "per segment with all three exact: same bytes, still no tau_map")
+    equal_table = through(tau_table={"name": "equal", "sha256": ""}, table_blocks={0: (1.0,) * h})
+    check("a table of equal taus == the scalar call",
+          "tau_map" in seen["kwargs"] and torch.equal(equal_table, plain), "same bytes")
+    taus = tuple((0.5, 1.0, 2.0)[i % 3] for i in range(h))
+    per_head = through(tau_table={"name": "per_head", "sha256": ""}, table_blocks={0: taus})
+    ok = True
+    for value in (0.5, 2.0):
+        alone = kernel(tau=value, tail=True, sink_blocks=[0, 35], sink_q=[0, 35])
+        hs = [i for i in range(h) if taus[i] == value]
+        ok = ok and torch.equal(per_head[:, hs], alone[:, hs])
+    check("a per-head table == each head in its own scalar call",
+          ok and not torch.equal(per_head, plain), "same bytes per head; differs from one tau")
+    other_block = through(tau_table={"name": "per_head", "sha256": ""}, table_blocks={7: taus})
+    check("a per-head table == each head in its own scalar call",
+          torch.equal(other_block, plain) and "tau_map" not in seen["kwargs"],
+          "a block the table does not list runs the scalar call")
+    cnt = torch.zeros(b, h, n, dtype=torch.int32, device=device)
+    real_run = node._run
+
+    def counting(*a, **kw):
+        kw["blk_cnt"] = cnt
+        return real_run(*a, **kw)
+
+    node._run = counting
+    try:
+        split = through(row_segments={"text": True, "reference": False, "audio": True})
+    finally:
+        node._run = real_run
+    text_b, ref_b, audio_b = range(0, 5), range(5, 30), range(30, 35)
+    check("text and audio exact, references routed, through the override",
+          seen["kwargs"].get("sink_q") == [0, 0] and "tau_map" in seen["kwargs"]
+          and bool((cnt[0][:, list(text_b)] == n).all()) and bool((cnt[0][:, list(audio_b)] == n).all())
+          and int(cnt[0][:, list(ref_b)].max()) < n and not torch.equal(split, plain),
+          f"text and audio query blocks route all {n} key blocks; reference query blocks at most "
+          f"{int(cnt[0][:, list(ref_b)].max())}")
 
     print("\nred controls:")
     base = dispatch(tau=1.0)
@@ -553,6 +750,10 @@ def main():
 
     print("the sink pair per mode, on CPU:")
     sink_cases(node, check)
+    print()
+
+    print("the per-segment rows, the tau map and the table loader, on CPU:")
+    policy_cases(node, check)
     print()
 
     print("the container entry, on CPU through core's wrap_attn:")
