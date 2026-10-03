@@ -43,6 +43,11 @@ values, then run only the prompt tokens against them.
                       pass. This is the reuse.
   continued_edit      the same for the edited prompt, on the first prompt's
                       cache.
+  prompt_without_image  NOT a reuse: core's encode of the prompt as plain
+                      text, no reference in context, against the prompt rows
+                      of the joint pass. What splicing separately encoded
+                      reference rows onto a text-only conditioning gets wrong
+                      on the prompt's side, for scale beside `continued`.
 """
 
 import json
@@ -181,6 +186,15 @@ def measure(clip, ref_items, prompt, edit, normalize):
     (tail2, _), seconds["loop_continued_edit"] = timed(
         lm_pass, embeds2[:, prefix:], position_ids2[:, prefix:], past=cache)
     cases["continued_edit"] = compare(full_edit[:, prefix:], tail2)
+
+    plain = clip.encode_from_tokens(clip.tokenize(normalize(prompt)))
+    cases["prompt_without_image"] = compare(full[:, prefix:], plain)
+    if not cases["prompt_without_image"]["equal"] and plain.shape[1] == tokens_total - prefix:
+        a, b = full[:, prefix:].float().cpu(), plain.float().cpu()
+        cos = torch.nn.functional.cosine_similarity(a, b, dim=-1)
+        cases["prompt_without_image"]["row_cos_min"] = float(cos.min())
+        cases["prompt_without_image"]["row_cos_median"] = float(cos.median())
+    cases["prompt_without_image"]["plain_rows"] = int(plain.shape[1])
 
     return {
         "tokens": {"total": tokens_total, "prefix": int(prefix), "prompt": tokens_total - int(prefix),

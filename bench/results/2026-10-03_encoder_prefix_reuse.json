@@ -8,7 +8,7 @@
  "still": "dirk_runway2.jpeg",
  "edit_appended": " The light shifts as a cloud passes.",
  "state": "a server started for each run with the bench node directory; no DiT resident; comfy-kitchen 0.2.37+sol.6272371.up.be003b7; NVIDIA GeForce RTX 4090, torch 2.14.0+cu132",
- "how_to_read": "each case is torch.equal on conditioning rows (float32); rel_l2 and worst_row_rel_l2 are relative to core's full pass. 'prefix' rows are the reference's, the rest the prompt's. core_full* include tokenizing and the vision tower; the loop_* passes are the language model alone",
+ "how_to_read": "each case is torch.equal on conditioning rows (float32); rel_l2 and worst_row_rel_l2 are relative to core's full pass. 'prefix' rows are the reference's, the rest the prompt's. core_full* include tokenizing and the vision tower; the loop_* passes are the language model alone prompt_without_image is not a reuse: it is the prompt encoded as plain text with no reference in context, against the joint pass's prompt rows; its rel_l2 is dominated by a few rows with very large values, so read row_cos_median and row_cos_min beside it.",
  "for_scale": "the shipped int8 encoder against the bf16 one, same kind of rows: text rel_l2 about 0.005, vision about 0.017 (bench/results/2026-09-27_encoder_int8_vs_bf16_conditioning.json, ref2va scene)",
  "runs": {
   "shared_2048_view": {
@@ -22,7 +22,7 @@
     "size_policy.allow_upscale": true,
     "qwen_view": "shared"
    },
-   "node_seconds": 141.4,
+   "node_seconds": 143.9,
    "tokens": {
     "total": 8159,
     "prefix": 7368,
@@ -83,18 +83,30 @@
      "max_abs": 0.0006561279296875,
      "rows_differing": 799,
      "worst_row_rel_l2": 1.9344193788128905e-05
+    },
+    "prompt_without_image": {
+     "rows": 791,
+     "equal": false,
+     "rel_l2": 2.237170696258545,
+     "max_abs": 16936.2890625,
+     "rows_differing": 791,
+     "worst_row_rel_l2": 65.05595397949219,
+     "row_cos_min": 0.3008953332901001,
+     "row_cos_median": 0.9794535636901855,
+     "plain_rows": 791
     }
    },
    "seconds": {
-    "core_full_first": 23.54,
-    "core_full": 22.85,
-    "core_full_edit": 22.89,
-    "loop_full": 15.05,
-    "core_full_short_prompt": 21.64,
-    "loop_prefix": 13.17,
-    "loop_continued": 2.49,
-    "loop_continued_edit": 2.56
-   }
+    "core_full_first": 23.55,
+    "core_full": 22.87,
+    "core_full_edit": 22.85,
+    "loop_full": 15.08,
+    "core_full_short_prompt": 21.72,
+    "loop_prefix": 13.11,
+    "loop_continued": 2.51,
+    "loop_continued_edit": 2.59
+   },
+   "note": "second run, with the prompt_without_image case added; every earlier case reproduced the first run's values exactly"
   },
   "qwen_view_512": {
    "append": {

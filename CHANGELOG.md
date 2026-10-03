@@ -4,6 +4,20 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.185.12
+
+### Added
+
+- **One more case in the encoder prefix-reuse measurement: the prompt encoded
+  with no reference in context**, against the prompt rows of core's joint
+  pass (`bench/comfy_capture_nodes/h3_bench_prefix_reuse`, record
+  `bench/results/2026-10-03_encoder_prefix_reuse.json`, rerun at the shipped
+  view; the earlier cases reproduced exactly). It sizes what a pre-encoded
+  reference loses when its rows are spliced onto a text-only conditioning,
+  which is how the two RefMod packs under `coderef/` attach one (read by a
+  peer session): those prompt rows are far from the joint pass's, where the
+  continued pass differs in the last bits. Nothing is wired.
+
 ## 0.185.11
 
 ### Added
