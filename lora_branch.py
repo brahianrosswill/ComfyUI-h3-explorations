@@ -90,16 +90,27 @@ class _Branch:
     def _dev(t, like):
         return t.to(like.device, non_blocking=True).to(like.dtype)
 
-    def add_into(self, x, out):
-        """`out += branch(x)`, in place; `out` is the base forward's fresh output."""
+    def device_factors(self, like):
+        """`(a, b, diff_b)` on `like`'s device and dtype, `None` where absent.
+
+        A caller that adds into several slices of one output fetches these
+        once and hands them to each `add_into`, so the host copy is made once
+        per call and not once per slice."""
+        return tuple(None if t is None else self._dev(t, like)
+                     for t in (self.a, self.b, self.diff_b))
+
+    def add_into(self, x, out, factors=None):
+        """`out += branch(x)`, in place; `out` is the base forward's fresh output.
+        `factors` is `device_factors(out)` when the caller already holds it."""
         if self.gate is not None and not self.gate.active:
             return out
+        a, b, diff_b = self.device_factors(out) if factors is None else factors
         flat_out = out.view(-1, out.shape[-1])
-        if self.a is not None:
+        if a is not None:
             flat_x = x.reshape(-1, x.shape[-1]).to(out.dtype)
-            flat_out.addmm_(flat_x @ self._dev(self.a, out).T, self._dev(self.b, out).T)
-        if self.diff_b is not None:
-            flat_out.add_(self._dev(self.diff_b, out))
+            flat_out.addmm_(flat_x @ a.T, b.T)
+        if diff_b is not None:
+            flat_out.add_(diff_b)
         return out
 
 
@@ -162,9 +173,13 @@ def _mlp_forward(mlp, fc1_forward, fc2_branch):
         if not out.is_contiguous():
             out = out.contiguous()
         flat_out = out.view(-1, out.shape[-1])
-        for a in range(0, flat_h.shape[0], FC2_CHUNK_ROWS):
-            b = min(a + FC2_CHUNK_ROWS, flat_h.shape[0])
-            fc2_branch.add_into(swiglu(flat_h[a:b]), flat_out[a:b])
+        if fc2_branch.gate is None or fc2_branch.gate.active:
+            # One host copy of fc2's factors for every chunk, and no
+            # activation written out on a step the window excludes.
+            factors = fc2_branch.device_factors(out)
+            for a in range(0, flat_h.shape[0], FC2_CHUNK_ROWS):
+                b = min(a + FC2_CHUNK_ROWS, flat_h.shape[0])
+                fc2_branch.add_into(swiglu(flat_h[a:b]), flat_out[a:b], factors)
         if residual is None:
             return out
         # Core PR 16681's convention (open as of 2026-10-02): the block hands

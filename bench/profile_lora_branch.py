@@ -97,8 +97,9 @@ def profile_module(name: str, br: "lb._Branch", T: int, iters: int) -> dict:
         h = torch.randn(T, 2 * d_in, device=dev, dtype=dt)
 
         def branch():
+            factors = br.device_factors(out)
             for i, j in chunks:
-                br.add_into(swiglu(h[i:j]), out[i:j])
+                br.add_into(swiglu(h[i:j]), out[i:j], factors)
 
         def resident():
             for i, j in chunks:

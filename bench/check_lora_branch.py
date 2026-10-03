@@ -268,6 +268,51 @@ def main() -> int:
     check("a closed window applies nothing", rel(out_off, base) < 1e-6,
           f"{rel(out_off, base):.3g} from the base")
 
+    # fc2's branch runs a chunk of rows at a time. Its factors are fetched
+    # once per call, not once per chunk, and a closed window writes out no
+    # activation. Counted, because neither shows in the output.
+    copies = {"n": 0}
+    real_dev = lb._Branch.__dict__["_dev"]
+    def counting(t, like):
+        copies["n"] += 1
+        return real_dev.__func__(t, like)
+    acts = {"n": 0}
+    real_act = comfy.ops.INPUT_ACT_EAGER["swiglu"]
+    def spy(x):
+        acts["n"] += 1
+        return real_act(x)
+    rows = lb.FC2_CHUNK_ROWS
+    lb._Branch._dev = staticmethod(counting)
+    comfy.ops.INPUT_ACT_EAGER["swiglu"] = spy
+    try:
+        branched(dm, sd)
+        one_chunk, acts_one = copies["n"], acts["n"]
+        lb.FC2_CHUNK_ROWS = 3
+        copies["n"] = acts["n"] = 0
+        out_chunked = branched(dm, sd)[0]
+        many_chunks, acts_many = copies["n"], acts["n"]
+        acts["n"] = 0
+        run(dm)
+        acts_base = acts["n"]
+        acts["n"] = 0
+        lb.parse_lora = gated
+        try:
+            branched(dm, sd)
+        finally:
+            lb.parse_lora = saved
+        acts_closed = acts["n"]
+    finally:
+        lb.FC2_CHUNK_ROWS = rows
+        lb._Branch._dev = real_dev
+        comfy.ops.INPUT_ACT_EAGER["swiglu"] = real_act
+    check("fc2's factors are copied once per call, however many chunks",
+          many_chunks == one_chunk and acts_many > acts_one and rel(out_chunked, ref) < 1e-5,
+          f"{one_chunk} copies at one chunk and {many_chunks} at several "
+          f"({acts_one} against {acts_many} activation calls)")
+    check("a closed window writes out no activation for fc2",
+          acts_closed == acts_base and acts_one > acts_base,
+          f"{acts_closed} activation calls closed, {acts_base} with no branch, {acts_one} open")
+
     try:
         lb.parse_lora({"diffusion_model.blocks.0.attn.qkv_proj.hada_w1_a": torch.zeros(1)}, 1.0)
         check("an unplaceable key is refused", False)

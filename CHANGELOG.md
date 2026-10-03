@@ -4,6 +4,35 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.185.18
+
+### Fixed
+
+From the same read-only review (`internal/claude/2026-10-03_refdude_code_review.md`,
+board finding rd-10). The output is unchanged: the edited file and the one
+before it return equal tensors on `bench/check_lora_branch.py`'s model, at one
+chunk and at several.
+
+- **`MiniMaxH3LoRABranch` copies `fc2`'s factors to the device once per MLP
+  call.** Its branch runs a chunk of rows at a time (`lora_branch.FC2_CHUNK_ROWS`)
+  and `_Branch.add_into` fetched the factors on every chunk, so one call made
+  one host copy per chunk. `_Branch.device_factors` fetches them once and the
+  chunks share them. Applies to both stages of a graph with a branch on each.
+  Not timed: the card was in use. `bench/profile_lora_branch.py`'s `branch`
+  arm follows the node.
+- **A step the window excludes no longer writes out `fc2`'s activation.** The
+  window was tested inside `add_into`, after the chunked activation pass had
+  been computed for it and thrown away; it is tested before the loop now. No
+  shipped graph windows the branch.
+
+`bench/check_lora_branch.py` gains a counted case for each, and the file as it
+stood before this version fails both.
+
+Not done: a latent compare at a fixed seed on the card. Still open from the
+review in this file: the step window reads a step index while its docstring
+says it reads as Sol's percent does, and a branch limited to some blocks pins
+the whole file first.
+
 ## 0.185.17
 
 ### Added
