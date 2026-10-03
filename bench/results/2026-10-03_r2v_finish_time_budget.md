@@ -139,6 +139,41 @@ What it says:
   visits. Not built. The per-row arithmetic would be unchanged, so the bit
   digest is the test.
 
+## The paired kernel, built: bit-identical and slower on this card
+
+The restructure the probe builds pointed to exists upstream for AMD cards
+(Comfy-Org/comfy-kitchen #184, local branch `pr184` of the fork). Ported to
+CUDA on branch `sol-exact-pair` (local, `e059ba1`), behind an environment
+switch so one build runs both kernels. Rows:
+`2026-10-03_sol_exact_pair_kernel.json`.
+
+| kernel | block 24 | block 40 | block 0 | output |
+|---|--:|--:|--:|---|
+| single block (shipped) | 493 | 501 | 599 | reference digest |
+| paired, union merge: a tile only one of the pair routes leaves the other half idle | 516 | 526 | 623 | bit-identical |
+| paired, no idling: each half takes its own next tile, copied once when both want it | 733 | 741 | 866 | bit-identical |
+
+(ms per Sol call, step 2.) Both variants are correct and neither is faster.
+
+What the three kernels say together, as arithmetic from these timings and
+the probe builds (not a separate measurement):
+
+- A launch block of 8 warps holds a whole SM (the paired kernels compile to
+  the register ceiling), against three blocks of 4 warps today.
+- Copying a tile costs warp time in proportion to the copy instructions each
+  thread issues: 256 threads sharing one tile finish an iteration in about
+  half the time 128 threads take, and a half that stages its own tile with
+  128 threads takes as long as today's kernel does with three blocks on the
+  SM. So the copy is not hidden behind the tensor-core work, and it is not
+  an L2 bandwidth limit either.
+- Sharing therefore pays only on tiles every block in the launch block wants,
+  and the rest must run no worse than today. Two blocks per SM cannot do
+  that; three blocks' worth of rows in one launch block could, in principle,
+  and its ceiling is the "compute only" row above: about a sixth off the
+  call if every copy were free, about an eighth with the shared two thirds.
+  Not built: it has to fit 384 threads in the register budget the single
+  kernel uses per thread.
+
 ## P·V that could be skipped
 
 `bench/probe_pv_skip_on_capture.py` on all 20 cells of the same capture, 56

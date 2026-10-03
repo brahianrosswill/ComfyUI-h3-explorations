@@ -4,6 +4,18 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.185.9
+
+### Added
+
+- **The paired exact kernel, built and measured**: upstream's HIP design
+  (two adjacent query blocks sharing a staged tile) ported to CUDA on a local
+  branch of the kitchen fork, in two variants. Both reproduce the shipped
+  kernel's output bit for bit and both are slower on this card.
+  `bench/results/2026-10-03_r2v_finish_time_budget.md` ("The paired kernel")
+  reads the timings; rows in `2026-10-03_sol_exact_pair_kernel.json`. Not
+  merged into the build branch; the installed kernel is unchanged.
+
 ## 0.185.8
 
 ### Added
