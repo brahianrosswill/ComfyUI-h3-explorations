@@ -4,6 +4,23 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.185.8
+
+### Added
+
+- **What a prompt edit costs at `MiniMaxH3ReferenceConditioning`, measured.**
+  `bench/measure_prompt_edit_conditioning.py` submits the conditioning side of
+  the ref2va finish graph alone and edits the prompt between runs; record
+  `bench/results/2026-10-03_prompt_edit_conditioning_cost.json`. The reference
+  VAE encode, which the node repeats on every prompt edit although its result
+  cannot differ, is a small part of the node's time. Nearly all of it is the
+  text encoder reading the still, and it falls steeply as the encoder's view
+  (`qwen_view`) shrinks. So splitting the VAE encode into its own node, the
+  plan this was measured for, would buy little by itself. The reference tokens
+  precede the prompt in a causal encoder (`comfy/text_encoders/minimax.py`,
+  `llama.py`), which is what a reuse across prompt edits would rest on; that
+  is not built, and its numerics are not measured. Nothing shipped changed.
+
 ## 0.185.7
 
 ### Changed
