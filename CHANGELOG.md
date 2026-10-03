@@ -4,6 +4,19 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.185.7
+
+### Changed
+
+- **The kitchen build carries `sol_attn(tau_map=...)`**: a tau per head and
+  query block, the kernel half of the per-head and per-segment table the owner
+  asked for on 2026-10-03. One commit on `h3-frontier` in the fork, built and
+  installed by `vendor/rebuild_kernel.sh`; read the build from its record and
+  `--check`. A call without the map is bit-identical to the build before.
+  Checks and what it does not do yet:
+  `bench/results/2026-10-03_kitchen_tau_map.md`. Nothing in this pack passes
+  the map yet.
+
 ## 0.185.6
 
 ### Fixed

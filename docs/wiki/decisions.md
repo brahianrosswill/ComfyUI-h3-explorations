@@ -17,6 +17,15 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-03
 
+- **Sparse settings go per head and per segment** (owner, 2026-10-03, on the
+  lever board: per-head table, "love it. lets do it"; separating text, video,
+  audio and reference rows, "a granularity dive ive been wanting"). The same
+  day the owner said no more judging sessions for now and asked for
+  lower-level work on the kernels and on how the nodes compose with core. The
+  kernel half is in the installed kitchen build (`tau_map`,
+  `bench/results/2026-10-03_kitchen_tau_map.md`, 0.185.7); the node and the
+  calibrated table are not built.
+
 - **Corrected: `docs/sol_upstream.md` named the installed kitchen build by version.** Its 2026-10-02
   section said `vendor/rebuild_kernel.sh --check` reports the build current against core's pin
   "which core moved to `0.2.36`", and pointed at the 2026-10-01 merge record for its contents. The
