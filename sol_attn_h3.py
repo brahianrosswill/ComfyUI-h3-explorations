@@ -434,6 +434,12 @@ _TAIL = True
 _SOL_ACCEPTED_DTYPES = (torch.bfloat16, torch.float16)
 
 
+def _tensor(t):
+    """q, k or v as a tensor, whether it arrived bare or in one of core's
+    single-owner `AttentionTensorContainer`s. A read: ownership stays put."""
+    return t if torch.is_tensor(t) else t.peek()
+
+
 def make_override(tau=1.0, min_tokens=12288,
                   sigma_start=None, sigma_end=None, verbose=False,
                   sink_conditioning="exact_kv", dense_blocks=frozenset(),
@@ -448,6 +454,19 @@ def make_override(tau=1.0, min_tokens=12288,
     ``previous`` chains any override already installed on the model: every path
     that declines hands off to it first, falling through to ``func`` only if
     there is none.
+
+    **Core's container protocol (2026-10-03).** When ``previous`` carries a
+    ``container_function`` (core's `set_model_optimized_attention` copies one
+    from a backend that has it), the override returned here carries one too,
+    and `wrap_attn` then hands q, k and v over in their single-owner containers
+    instead of taking them first. A call this node declines passes the
+    containers on untouched, so the fallback frees the bf16 q, k and v once it
+    has quantized them; before, this frame and `wrap_attn`'s held them for the
+    whole dense kernel. A call Sol takes takes the tensors here, as `wrap_attn`
+    did. With no ``previous``, or one without a ``container_function`` (the
+    sage override), nothing changes: there is no container entry to hand to.
+    `bench/results/2026-10-03_sol_container_protocol.json` has the memory and
+    the bit-equality of the two kitchen entries this swaps between.
 
     ``settings`` is the node configuration as a plain dict, recorded by
     `sol_observe` once per distinct configuration and referenced from every
@@ -467,9 +486,11 @@ def make_override(tau=1.0, min_tokens=12288,
         ticket = None
         if _capture.enabled:
             options = kwargs.get("transformer_options")
+            shape = _tensor(q).shape
             ticket = _capture.seam_begin(
-                _h3layout.block_index(options, q.shape[2] if skip_reshape else q.shape[1]),
-                q, k, v, heads, skip_reshape, transformer_options=options)
+                _h3layout.block_index(options, shape[2] if skip_reshape else shape[1]),
+                _tensor(q), _tensor(k), _tensor(v), heads, skip_reshape,
+                transformer_options=options)
         out = _decide_and_run(func, q, k, v, heads, mask=mask, attn_precision=attn_precision,
                               skip_reshape=skip_reshape,
                               skip_output_reshape=skip_output_reshape, **kwargs)
@@ -486,7 +507,14 @@ def make_override(tau=1.0, min_tokens=12288,
         # environment at import, and a test may arm and disarm the module.
         observing = sol_observe.enabled()
         options = kwargs.get("transformer_options")
-        tokens = q.shape[2] if skip_reshape else q.shape[1]
+        # `held`: q, k and v are core's containers (the container entry at the
+        # foot of `make_override`). This frame then keeps no tensor of its own
+        # across a dense call, or the fallback's `del` would free nothing.
+        held = not torch.is_tensor(q)
+        box = type(q)
+        shape, device = _tensor(q).shape, _tensor(q).device
+        tokens = shape[2] if skip_reshape else shape[1]
+        batch = shape[0]
         # The block label is read whenever a consumer exists. Before
         # 2026-09-01 only the depth gates read it, so an armed recorder on a
         # canonical graph (no dense_blocks, no profile) would have had no
@@ -520,7 +548,7 @@ def make_override(tau=1.0, min_tokens=12288,
                 sol_observe.record(
                     route=name, reason=reason, counts=counts if name == "sol" else None,
                     options=options, settings=settings, block=block,
-                    block_tau=block_tau, tokens=tokens, batch=q.shape[0],
+                    block_tau=block_tau, tokens=tokens, batch=batch,
                     heads=heads, sink=sink, sink_q=sink_q, tail=tail,
                     topk_ratio=topk_ratio, min_tokens=min_tokens)
             # The Sol-versus-fallback probe (`sol_block_probe.py`), armed by
@@ -530,7 +558,7 @@ def make_override(tau=1.0, min_tokens=12288,
             if name != "sol" and _probe.enabled():
                 _probe.skip(route=name, reason=reason, options=options, settings=settings,
                             block=block, block_tau=block_tau, tokens=tokens,
-                            batch=q.shape[0], heads=heads, sink=sink, sink_q=sink_q,
+                            batch=batch, heads=heads, sink=sink, sink_q=sink_q,
                             tail=tail, topk_ratio=topk_ratio, min_tokens=min_tokens)
 
         def _timed(route_name):
@@ -538,10 +566,13 @@ def make_override(tau=1.0, min_tokens=12288,
             sig = (options or {}).get("sigmas")
             return _timer.span(route_name, block=block,
                                sigma=float(sig[0]) if sig is not None else None,
-                               tokens=tokens, batch=q.shape[0], heads=heads)
+                               tokens=tokens, batch=batch, heads=heads)
 
         def dense():
-            target = func if previous is None else partial(previous, func)
+            if held:
+                target = previous.container_function
+            else:
+                target = func if previous is None else partial(previous, func)
             if _timer.enabled():
                 with _timed("dense"):
                     return target(q, k, v, heads, mask=mask, attn_precision=attn_precision,
@@ -597,8 +628,12 @@ def make_override(tau=1.0, min_tokens=12288,
         if observing:
             # Allocated OUTSIDE the try, so a kernel failure leaves it unfilled
             # and unrecorded rather than recorded as zeros.
-            counts = torch.empty((q.shape[0], heads, (tokens + BLOCK_SIZE - 1) // BLOCK_SIZE),
-                                 dtype=torch.int32, device=q.device)
+            counts = torch.empty((batch, heads, (tokens + BLOCK_SIZE - 1) // BLOCK_SIZE),
+                                 dtype=torch.int32, device=device)
+        if held:
+            # Sol's kernel takes tensors, so ownership moves to this frame for
+            # the call, which is where `wrap_attn` put it before.
+            q, k, v = q.take(), k.take(), v.take()
         try:
             if _timer.enabled():
                 with _timed("sol"):
@@ -633,7 +668,10 @@ def make_override(tau=1.0, min_tokens=12288,
             if observing:
                 qs, ks, _vs, _b, dim_head = _bthd(q, k, v, heads, skip_reshape)
                 reason = _ineligible(qs, ks, None, dim_head, min_tokens, dtypes)
+                del qs, ks, _vs
             route("ineligible", reason)
+            if held:
+                q, k, v = box(q), box(k), box(v)
             return dense()
         route("sol")
         if _probe.enabled():
@@ -641,14 +679,25 @@ def make_override(tau=1.0, min_tokens=12288,
             # the canonical graphs) on the SAME q/k/v, records Sol against it,
             # and returns Sol's output under trajectory=sol or the fallback's
             # under trajectory=sage. Placed after `route("sol")` so the route
-            # recorder's row and this one describe the same call.
+            # recorder's row and this one describe the same call. Under the
+            # container entry the tensors go back in a container each, which
+            # the fallback consumes on its one run.
+            if held:
+                q, k, v = box(q), box(k), box(v)
             return _probe.compare(out, dense, skip_output_reshape=skip_output_reshape,
                                   options=options, settings=settings, block=block,
-                                  block_tau=block_tau, tokens=tokens, batch=q.shape[0],
+                                  block_tau=block_tau, tokens=tokens, batch=batch,
                                   heads=heads, sink=sink, sink_q=sink_q, tail=tail,
                                   topk_ratio=topk_ratio, min_tokens=min_tokens, counts=counts)
         return out
 
+    # Core's container protocol: `wrap_attn` calls this in place of taking the
+    # tensors and calling `override`, and passes no `func`, which the held
+    # path never reads (`dense` goes to `previous.container_function`). Set
+    # only when there is such an entry to hand the containers to; `wrap_attn`
+    # tests for the attribute, not its value.
+    if getattr(previous, "container_function", None) is not None:
+        override.container_function = partial(override, None)
     return override
 
 

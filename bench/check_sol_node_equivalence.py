@@ -106,8 +106,26 @@ Claims, i.e. what breaks if a case is deleted:
                            combo lists exactly the modes the function accepts,
                            with the shipped default among them.
 
+  the container entry      CPU, through core's own `wrap_attn`, run BEFORE the
+    (no kernel)            CUDA gate. The override carries a
+                           `container_function` exactly when its fallback
+                           does. A dense block then hands core's containers
+                           to the fallback's container entry untaken, and
+                           the tensor is gone once that entry has consumed
+                           it, which is the point: no frame of ours holds
+                           it. RED CONTROL: the same override with the
+                           attribute removed reaches the fallback's tensor
+                           entry with the tensor still alive, so the case
+                           can see a held reference. A call Sol takes gets
+                           tensors, an ineligible one goes back to the
+                           fallback in containers, and an armed probe's
+                           fallback run gets the same q, k and v.
+  container entry ==       on the card: a call Sol takes through the
+    tensor entry           container entry is the same bytes as through the
+                           tensor entry.
+
 Needs CUDA and a comfy_kitchen carrying the merged `sol_attn` for the kernel
-cases; the sink cases run anywhere the node imports. Exit 0 all passed, 1 a
+cases; the sink and container cases run anywhere the node imports. Exit 0 all passed, 1 a
 case failed, 2 the kernel cases were not graded (no CUDA, no kernel, OOM),
 even when the sink cases ran and passed.
 
@@ -211,6 +229,111 @@ def sink_cases(node, check):
               f"{options}, default {default}")
 
 
+def container_cases(node, check):
+    """The override's container entry, driven through core's `wrap_attn` with
+    core's own container class. CPU tensors, so the kernel never runs: a call
+    Sol would take is `_run` stubbed, or ineligible ("not cuda")."""
+    import gc
+    import types
+    import weakref
+    from comfy.ldm.modules.attention import AttentionTensorContainer as Box, wrap_attn
+
+    h, t, d = 2, 256, node.HEAD_DIM
+    seen = {}
+
+    def consume(entry, tensors):
+        """What a dense backend does with q, k and v: use them, drop them."""
+        ref = weakref.ref(tensors[0])
+        out = tensors[0] * 2
+        seen.update(entry=entry, k=tensors[1].clone(), v=tensors[2].clone())
+        del tensors[:]
+        gc.collect()
+        seen["freed"] = ref() is None
+        return out
+
+    def fallback(func, q, k, v, heads, **kw):
+        tensors = [q, k, v]
+        del q, k, v
+        return consume("tensors", tensors)
+
+    def fallback_containers(q, k, v, heads, **kw):
+        if any(torch.is_tensor(x) for x in (q, k, v)):
+            raise AssertionError("the container entry was handed a bare tensor")
+        return consume("containers", [q.take(), k.take(), v.take()])
+
+    fallback.container_function = fallback_containers
+
+    def bare(func, q, k, v, heads, **kw):
+        return q * 2
+
+    @wrap_attn
+    def stock(q, k, v, heads, **kw):
+        raise AssertionError("the stock attention ran: the override was skipped")
+
+    def make(previous, dense_blocks=frozenset()):
+        return node.make_override(tau=1.0, min_tokens=0, sink_conditioning="off",
+                                  dense_blocks=dense_blocks, previous=previous)
+
+    def call(override):
+        """One attention call as core's H3 forward makes it. Returns what came
+        back, what it should be from `consume`, the inputs and the route."""
+        torch.manual_seed(0)
+        boxes = [Box(torch.randn(1, h, t, d)) for _ in range(3)]
+        q, k, v = (b.peek().clone() for b in boxes)
+        options = {"minimax_h3_layout": types.SimpleNamespace(
+                       seq_len=t, segments=[(0, 64, "text"), (64, t, "video")]),
+                   "block_index": 3, "optimized_attention_override": override}
+        seen.clear()
+        out = stock(*boxes, h, mask=None, skip_reshape=True, transformer_options=options)
+        same = (torch.equal(out, q * 2) and torch.equal(seen.get("k", out), k)
+                and torch.equal(seen.get("v", out), v))
+        return same, options.get("h3_attn_route")
+
+    check("the override has a container entry exactly when its fallback has one",
+          hasattr(make(fallback), "container_function")
+          and not hasattr(make(bare), "container_function")
+          and not hasattr(make(None), "container_function"))
+
+    same, route = call(make(fallback, dense_blocks=frozenset({3})))
+    check("a dense block hands the containers on, and the fallback frees q",
+          same and route == "dense_block" and seen["entry"] == "containers" and seen["freed"],
+          f"route {route}, fallback entry {seen.get('entry')}, freed {seen.get('freed')}")
+
+    tensor_only = make(fallback, dense_blocks=frozenset({3}))
+    del tensor_only.container_function
+    same, route = call(tensor_only)
+    check("RED CONTROL: without the container entry q is still held",
+          same and route == "dense_block" and seen["entry"] == "tensors" and not seen["freed"],
+          f"route {route}, fallback entry {seen.get('entry')}, freed {seen.get('freed')}")
+
+    same, route = call(make(fallback))
+    check("an ineligible call goes back to the fallback in containers",
+          same and route == "ineligible" and seen["entry"] == "containers" and seen["freed"],
+          f"route {route}, fallback entry {seen.get('entry')}, freed {seen.get('freed')}")
+
+    # A call Sol takes, with the probe armed: `_run` must get tensors, and the
+    # probe's fallback run the same q, k and v after it.
+    ran = {}
+
+    def run(q, k, v, *a, **kw):
+        ran["tensors"] = all(torch.is_tensor(x) for x in (q, k, v))
+        return q * 3
+
+    saved = node._run, node._probe
+    node._run = run
+    node._probe = types.SimpleNamespace(
+        enabled=lambda: True, skip=lambda **kw: None,
+        compare=lambda out, dense_fn, **kw: dense_fn())
+    try:
+        same, route = call(make(fallback))
+    finally:
+        node._run, node._probe = saved
+    check("a call Sol takes gets tensors, and an armed probe's fallback the same q, k, v",
+          same and route == "sol" and ran.get("tensors") and seen["entry"] == "containers",
+          f"route {route}, kernel got tensors {ran.get('tensors')}, "
+          f"fallback entry {seen.get('entry')}")
+
+
 def load_node():
     """The Sol node module. With a card, through the pack's entrypoint, as the
     server loads it. Without one, the single module under a bare package:
@@ -231,6 +354,7 @@ def load_node():
 # were not graded rather than "every case".
 KERNEL_CASES = (
     "dispatch == kernel through the node's override",
+    "container entry == tensor entry on a call Sol takes",
     "dispatch with blk_cnt == dispatch without",
     "sink pair reaches the kernel",
     "tau reaches the kernel",
@@ -298,6 +422,18 @@ def kernel_cases(node, ck, check, device="cuda", shape=(1, 8, 16384, 128)):
               f"same bytes, sink {sink_kv} dense rows {sink_q}" if same else
               f"DIFFER: max abs {float((got.float() - want.float()).abs().max()):.3e}, "
               f"sink {sink_kv}")
+
+        # The same call through the container entry, which exists only over
+        # a fallback that has one. Clones, because the entry takes them.
+        from comfy.ldm.modules.attention import AttentionTensorContainer as Box
+        declined.container_function = declined
+        boxed = node.make_override(tau=1.0, min_tokens=12288, sink_conditioning=mode,
+                                   qk_balance=False, rotate=False, previous=declined)
+        via = boxed.container_function(Box(q.clone()), Box(k.clone()), Box(v.clone()), h,
+                                       skip_reshape=True, skip_output_reshape=True,
+                                       transformer_options=dict(options))
+        check("container entry == tensor entry on a call Sol takes", torch.equal(via, got),
+              "same bytes")
 
     # The observer's passthrough: a count buffer handed to `_run` reaches the
     # kernel, comes back bounded, and moves no byte of the output. Graded here
@@ -417,6 +553,10 @@ def main():
 
     print("the sink pair per mode, on CPU:")
     sink_cases(node, check)
+    print()
+
+    print("the container entry, on CPU through core's wrap_attn:")
+    container_cases(node, check)
     print()
 
     if "--oom-control" in sys.argv[1:]:

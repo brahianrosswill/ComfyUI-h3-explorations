@@ -4,6 +4,35 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.185.5
+
+### Changed
+
+- **`MiniMaxH3Sol`'s override takes core's container entry.** Core hands
+  attention backends q, k and v in single-owner containers and calls an
+  override's `container_function` when it has one; ours had none, so its dense
+  calls ran with the bf16 tensors held through the kernel. `make_override` now
+  carries the entry whenever the fallback under it does (core's
+  `ModelAttentionBackend` on the shipped graphs) and passes the containers on
+  for every call it declines; a call Sol takes takes the tensors as before.
+  No output changes: kitchen's two dense entries return the same bytes on
+  captured ref2va tensors, each route returns the same bytes through either
+  entry, and one render of the ref2va finish graph reproduces the morning's
+  latents bit for bit. The saving is memory on dense calls only, and smaller
+  than the board's first sizing; a Sol call still sets attention's peak.
+  Record: `bench/results/2026-10-03_sol_container_protocol.md`. No schema,
+  default or graph changed. With the sage override or nothing under Sol the
+  override is as it was. (The owner, on the board: "is this not low hanging
+  fruit?")
+
+### Added
+
+- `bench/measure_sol_container_protocol.py`: one attention call through core's
+  `optimized_attention` on captured q/k/v, with and without the entry: route,
+  bit-equality, peak allocation, time.
+- `bench/check_sol_node_equivalence.py` grades the container entry on CPU
+  through core's `wrap_attn`, with a red control, and one kernel case.
+
 ## 0.185.4
 
 ### Added

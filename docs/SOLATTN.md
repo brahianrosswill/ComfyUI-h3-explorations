@@ -903,6 +903,23 @@ reorder and padding, and the two regimes are mutually exclusive at the same 50
 blocks) and because it needs a checkpoint that carries the gate. A design
 choice stated as a constraint is the thing this page warns about elsewhere.
 
+### Dense calls take core's container entry, since 2026-10-03
+
+Core hands attention backends q, k and v in single-owner containers
+(`comfy/ldm/modules/attention.py::AttentionTensorContainer`) and calls an
+override's `container_function` with them when it has one; kitchen's int8
+backend uses that to free the bf16 tensors once it has quantized them. The
+node's override had no such entry, so every call reached it as tensors and
+its dense calls held them through the kernel. `make_override` now carries the
+entry whenever the fallback under it does (core's `ModelAttentionBackend` on
+the shipped graphs; not the sage override, and not a graph with nothing under
+Sol), and a declined call passes the containers on. Output is unchanged, bit
+for bit, per call and on a whole render; the saving is memory on dense calls
+only, and a Sol call still sets attention's peak.
+`bench/results/2026-10-03_sol_container_protocol.md` is the record,
+`bench/measure_sol_container_protocol.py` the tool, and
+`bench/check_sol_node_equivalence.py` holds the hand-off.
+
 ### Live route telemetry, since 2026-09-01
 
 Every routed-density figure above this line was an offline approximation:
