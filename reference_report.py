@@ -205,13 +205,24 @@ def price_references(records, width: int, height: int, length: int,
     duration = frame_count / FPS
     bounds = _native_encoder_bounds(clip) if clip is not None else (3136, 12845056)
     labels = assign_labels(rc._order_records(records))
+    # One (label, soundtrack label) per record. `assign_labels` returns one
+    # label per presentation item, and a video with a soundtrack is two items
+    # (its `<Audio j>`, then its `<Video k>`), so indexing it by record
+    # mislabelled every record after the first sounded video until 2026-10-03.
+    record_labels, pointer = [], 0
+    for record in records:
+        sound = None
+        if isinstance(record, rc.RuntimeVideoReference) and record.soundtrack is not None:
+            sound, pointer = labels[pointer], pointer + 1
+        record_labels.append((labels[pointer], sound))
+        pointer += 1
     items = []
     blocks = []
     label_texts = []
     vision_tokens = 0
 
     for index, record in enumerate(records):
-        label = labels[index] if index < len(labels) else f"#{index + 1}"
+        label, sound_label = record_labels[index]
         if isinstance(record, rc.RuntimeImageReference):
             _, sh, sw = rc._image_shape(record.image, f"reference image {index + 1}")
             role_w, role_h = fit_reference_image(
@@ -310,9 +321,9 @@ def price_references(records, width: int, height: int, length: int,
             blocks.append({"kind": "video_audio" if audio_rows else "video",
                            "latent_t": lt, "latent_h": ch // 16, "latent_w": cw // 16,
                            "ref_audio_t": audio_rows // 2})
-            label_texts.append(f"{label}: ")
             if has_sound:
-                label_texts.append("<Audio 1>: ")
+                label_texts.append(f"{sound_label}: ")
+            label_texts.append(f"{label}: ")
             label_texts.extend(f"<{(i + 0.5):.1f} seconds>" for i in range(pairs))
             continue
 

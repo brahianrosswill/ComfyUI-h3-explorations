@@ -26,11 +26,18 @@ one:
   the chained key            the same entries give the same key; a changed
                              pixel, a changed token and a changed parent each
                              give another.
-  the store                  least recently used out first under its byte
-                             budget, the calling chain never evicted to make
-                             room, and a host short of memory keeps nothing.
-                             RED CONTROL: with the budget raised the same
-                             sequence evicts nothing.
+  the span cut               one span per item that carries vision tokens; a
+                             label-only item joins the one after it; the cut
+                             reads the list alone.
+  the store                  least recently used out first once what is kept
+                             beyond the chain in use passes the byte budget,
+                             the chain in use held whatever it weighs, a host
+                             short of memory keeps nothing, and a collected
+                             encoder empties it. RED CONTROL: with the budget
+                             raised the same sequence evicts nothing.
+  the report's labels        `reference_report.price_references` labels each
+                             record with its own label when a sounded video
+                             (two labels) comes first.
   the two nodes are          both are in the pack's node list, experimental,
     registered               and the prompt node takes the encode node's type.
   the one-node switch        `MiniMaxH3ReferenceConditioning.keep_references`
@@ -134,6 +141,13 @@ def main() -> int:
                enc.span_key("root", [(11, 1.0), (99, 1.0)] + entries[2:]),
                enc.span_key("other", entries)}) == 4)
 
+    print("\nthe span cut:")
+    kinds = lambda *k: [{"type": t} for t in k]        # noqa: E731
+    check("a still, a sounded video, a still: three spans, the soundtrack's label with its video",
+          enc.span_groups(kinds("image", "audio", "video", "image")) == [[0], [1, 2], [3]])
+    check("trailing audio references form a last span of their own",
+          enc.span_groups(kinds("image", "audio", "audio")) == [[0], [1, 2]])
+
     print("\nthe store:")
 
     def span(key, megabytes):
@@ -155,17 +169,25 @@ def main() -> int:
         return store
 
     owner = Encoder()
-    store = run(10)
-    check("over budget, the least recently used entry goes and the recent ones stay",
+    store = run(6)                                     # a and b are 8 MB beyond chain c
+    check("past the budget beyond the chain in use, the least recently used entry goes",
           list(store.spans) == ["a", "c"], f"{list(store.spans)}")
     check("RED CONTROL: with room for all three nothing is evicted",
           sorted(run(100).spans) == ["a", "b", "c"])
-    tight = enc._Store(6 * 2 ** 20)
+    tight = enc._Store(0)
     tight.claim(owner, 0)
     tight.put(span("x", 4), {"x", "y"}, available=plenty)
     tight.put(span("y", 4), {"x", "y"}, available=plenty)
-    check("the calling chain is never evicted to make room for itself",
+    check("the chain in use is held whatever it weighs, even with no budget beyond it",
           sorted(tight.spans) == ["x", "y"])
+    import gc
+    mortal = Encoder()
+    dying = enc._Store(100 * 2 ** 20)
+    dying.claim(mortal, 0)
+    dying.put(span("m", 1), {"m"}, available=plenty)
+    del mortal
+    gc.collect()
+    check("a collected encoder empties the store", not dying.spans and dying.owner is None)
     check("a host short of memory keeps nothing",
           not run(100, available=lambda: 0).spans)
     other = Encoder()
@@ -174,6 +196,17 @@ def main() -> int:
     store.put(span("z", 1), {"z"}, available=plenty)
     store.claim(other, 1)
     check("new patches on the encoder empty it too", not store.spans)
+
+    print("\nthe report's labels:")
+    rc_ = importlib.import_module("h3x.reference_conditioning")
+    report = importlib.import_module("h3x.reference_report")
+    sound = {"waveform": torch.zeros(1, 2, 48000), "sample_rate": 48000}
+    records = (rc_.RuntimeVideoReference(frames=torch.rand(24, 64, 96, 3), loaded_fps=24.0, soundtrack=sound),
+               rc_.RuntimeImageReference(image=torch.rand(1, 64, 96, 3), size_policy="match"))
+    priced = report.price_references(records, 96, 64, 5)
+    got = [getattr(item, "label", None) for item in getattr(priced, "items", [])]
+    check("a still after a sounded video is <Picture 1>, not the video's label",
+          got == ["<Video 1>", "<Picture 1>"], f"{got}")
 
     print("\nthe two nodes:")
     nodes = importlib.import_module("h3x.nodes")

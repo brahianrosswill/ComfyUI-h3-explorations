@@ -4,6 +4,44 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.185.15
+
+### Fixed
+
+From a read-only review of the reference path by a peer session
+(`internal/claude/2026-10-03_refdude_code_review.md`); none changed a result
+on a stills-only chain.
+
+- **The reference store's budget now means what its report says**: it caps
+  what is kept beyond the chain in use, which is held whatever it weighs.
+  Before, the chain in use counted against it, so going back to the previous
+  pair of 2048 stills re-encoded while the report implied room.
+- **A collected encoder empties the store** (a weak-reference callback);
+  before, its spans stayed in memory until another encoder claimed the store.
+- **Kept keys and values are copied off a host-resident encoder's tensors**,
+  not viewed: a view kept the whole past-plus-new tensor alive and
+  under-counted the span.
+- **A label-only item shares the next item's span** (a video's soundtrack
+  label, an audio reference), by a rule that reads the reference list alone,
+  so it no longer costs a language-model pass of its own and a chain is cut
+  the same way whatever the store holds.
+- **Encoded references tell core what they hold**: `get_models()` (the
+  encoder stays marked in use on a run where only the prompt node executes)
+  and `_comfy_cache_tensors()` (the RAM-pressure cache can size the entry).
+- Host memory is read through core's cgroup-aware
+  `comfy.system_memory.virtual_memory_available`; a redundant copy of the
+  embeddings is gone.
+- **`reference_report.py` mislabelled every record after a video with a
+  soundtrack** in the conditioning node's preview (it indexed one label per
+  record where such a video has two) and hard-coded that soundtrack's label
+  as `<Audio 1>`. It now takes each record's own labels.
+  `bench/check_reference_encode.py` holds each of these.
+
+Not fixed, recorded: a reference video at a frame rate other than 24 is
+resampled in full before the frame-count cut, a video already at size is
+resized anyway, and a mono soundtrack is duplicated before the duration cut
+(the same review, section C5).
+
 ## 0.185.14
 
 ### Added

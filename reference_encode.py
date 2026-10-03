@@ -109,8 +109,9 @@ STORE_HOST_FLOOR_BYTES = 16 * 1024 ** 3
 
 
 def _host_available() -> int:
-    import psutil
-    return int(psutil.virtual_memory().available)
+    """Available host memory as core reads it (cgroup limits included)."""
+    import comfy.system_memory
+    return int(comfy.system_memory.virtual_memory_available())
 
 
 @dataclass
@@ -148,6 +149,19 @@ class EncodedReferences:
     def length(self) -> int:
         return sum(s.length for s in self.spans)
 
+    def get_models(self):
+        """For core's `PromptModelTracker`: the encoder is in use by a prompt
+        that uses these references, also on a run where the encode node is
+        served from cache and only the prompt node executes."""
+        return [self.clip.patcher]
+
+    def _comfy_cache_tensors(self):
+        """For core's RAM-pressure cache, which sizes an entry by its tensors."""
+        out = []
+        for span in self.spans:
+            out += [span.rows, *span.keys, *span.values]
+        return out
+
     def images(self) -> list[dict]:
         """Every vision block, indexed from the start of the sequence, in the
         shape core's position and tag builders read."""
@@ -181,7 +195,15 @@ class _Store:
             if self.spans:
                 logger.info("[h3-ref] reference store emptied: a different encoder or new patches")
             self.spans.clear()
-            self.owner, self.patches = weakref.ref(encoder), patches
+            # The callback empties the store when the encoder is collected:
+            # nothing could hit after that, and without it the spans would sit
+            # in memory until another encoder claimed the store.
+            self.owner, self.patches = weakref.ref(encoder, self._owner_gone), patches
+
+    def _owner_gone(self, ref):
+        if self.owner is ref:
+            self.spans.clear()
+            self.owner = None
 
     def get(self, key: str):
         span = self.spans.get(key)
@@ -191,20 +213,21 @@ class _Store:
 
     def put(self, span: Span, keep: set, available=_host_available):
         """Keep `span`, then drop the least recently used entries outside
-        `keep` until the store is inside its budget and the host has its floor
-        of available memory. The caller holds its own spans, so an eviction
-        costs a later hit, never a result."""
+        `keep` (the chain in use) until what is kept beyond that chain is
+        inside the budget and the host has its floor of available memory. The
+        chain in use is held whatever it weighs. The caller holds its own
+        spans, so an eviction costs a later hit, never a result."""
         self.spans[span.key] = span
         self.spans.move_to_end(span.key)
-        held = sum(s.nbytes for s in self.spans.values())
+        beyond = sum(s.nbytes for k, s in self.spans.items() if k not in keep)
         short = max(0, STORE_HOST_FLOOR_BYTES - available())
         for key in list(self.spans):
-            if held <= self.budget and short <= 0:
+            if beyond <= self.budget and short <= 0:
                 break
             if key in keep:
                 continue
             freed = self.spans.pop(key).nbytes
-            held -= freed
+            beyond -= freed
             short -= freed
         if short > 0:
             # Still short with only this call's spans left: do not keep them
@@ -244,17 +267,38 @@ def unsupported(clip):
     return None
 
 
-def span_entries(clip, ref_items):
-    """The tokenizer's entries for the reference list, one list per reference.
+def span_groups(ref_items):
+    """Which presentation items share a span, as lists of item indices.
+
+    One span per item that carries vision tokens. An item that is only a label
+    (an audio reference, a video's soundtrack) joins the item after it, since
+    a language-model pass has a fixed cost and a few label tokens do not earn
+    one; trailing label-only items form a last span. The rule reads the list
+    and nothing else, so a chain is cut the same way whatever is in the store,
+    and a chain's kept values do not depend on the order things were encoded."""
+    groups, pending = [], []
+    for i, item in enumerate(ref_items):
+        pending.append(i)
+        if item.get("type") != "audio":
+            groups.append(pending)
+            pending = []
+    if pending:
+        groups.append(pending)
+    return groups
+
+
+def span_entries(clip, ref_items, groups=None):
+    """The tokenizer's entries for the reference list, one list per span.
 
     Core appends each reference's label and vision blocks in order and numbers
     labels by what came before, so the entries for the first i references are
     a prefix of the entries for the first i + 1, and the cut points are the
     lengths."""
     name = clip.cond_stage_model.clip_name
+    groups = span_groups(ref_items) if groups is None else groups
     cuts, entries = [0], []
-    for i in range(1, len(ref_items) + 1):
-        entries = clip.tokenize("", minimax_ref_items=ref_items[:i])[name][0]
+    for group in groups:
+        entries = clip.tokenize("", minimax_ref_items=ref_items[:group[-1] + 1])[name][0]
         cuts.append(len(entries))
     return [entries[a:b] for a, b in zip(cuts, cuts[1:])]
 
@@ -312,7 +356,8 @@ def _lm_pass(lm, x, position_ids, visual=None, deepstack=None, past=None, past_l
     import comfy.model_prefetch
     from comfy.ldm.modules.attention import optimized_attention_for_device
 
-    x = x.clone()                           # a layer writes its output into its input
+    # A layer writes its output into its input, so `x` is consumed. Both
+    # callers hand over embeddings nothing else reads.
     seq = x.shape[1]
     freqs_cis = lm.compute_freqs_cis(position_ids, x.device)
     total = past_len + seq
@@ -334,7 +379,10 @@ def _lm_pass(lm, x, position_ids, visual=None, deepstack=None, past=None, past_l
             x, kv = layer(x=x, attention_mask=mask, freqs_cis=freqs_cis,
                           optimized_attention=attention, past_key_value=kept)
             if keep:
-                new.append((kv[0][:, :, past_len:].to(host), kv[1][:, :, past_len:].to(host)))
+                # copy=True: when the encoder runs on the host, `.to` alone would
+                # return a view that keeps the whole past-plus-new tensor alive.
+                new.append((kv[0][:, :, past_len:].to(host, copy=True),
+                            kv[1][:, :, past_len:].to(host, copy=True)))
         comfy.model_prefetch.prefetch_queue_pop(
             queue, x.device, layer, x.dtype, core=core, enable_graph=False, malloc_scope="block")
         if deepstack is not None and i < len(deepstack):
@@ -420,12 +468,14 @@ def encode_references(clip, ref_items, labels=None) -> EncodedReferences:
     te, sdclip, lm = _parts(clip)
     patches = clip.patcher.patches_uuid
     STORE.claim(te, patches)
-    per_reference = span_entries(clip, ref_items)
+    groups = span_groups(ref_items)
+    per_reference = span_entries(clip, ref_items, groups)
     keys, parent = [], "h3-reference-chain"
     for entries in per_reference:
         parent = span_key(parent, entries)
         keys.append(parent)
-    names = _described(ref_items, labels)
+    described = _described(ref_items, labels)
+    names = [" and ".join(described[i] for i in group) for group in groups]
     found = [STORE.get(k) for k in keys]
     spans, report, keep = [], [], set(keys)
     if all(s is not None for s in found):
@@ -453,8 +503,8 @@ def encode_references(clip, ref_items, labels=None) -> EncodedReferences:
     chain = sum(s.nbytes for s in spans)
     report.append(
         f"in memory for this session: {STORE.nbytes() / 2 ** 30:.1f} GiB, of which this chain "
-        f"is {chain / 2 ** 30:.1f} GiB (up to {STORE.budget / 2 ** 30:.0f} GiB is kept beyond "
-        "the chain in use; nothing is on the card or on disk)")
+        f"is {chain / 2 ** 30:.1f} GiB (earlier chains are kept up to "
+        f"{STORE.budget / 2 ** 30:.0f} GiB beyond the one in use; nothing is on the card or on disk)")
     for line in report:
         logger.info("[h3-ref] %s", line)
     return EncodedReferences(spans=list(spans), ref_blocks=[], ref_items=list(ref_items),
