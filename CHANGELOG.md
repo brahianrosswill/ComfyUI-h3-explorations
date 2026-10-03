@@ -4,6 +4,26 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.185.10
+
+### Added
+
+- **Can the encoder's work on a reference be kept across prompt edits?
+  Measured on the shipped encoder.** `bench/measure_encoder_prefix_reuse.py`
+  drives a bench-only server node
+  (`bench/comfy_capture_nodes/h3_bench_prefix_reuse`, loaded only when a
+  server is started with that directory), record
+  `bench/results/2026-10-03_encoder_prefix_reuse.json`. At the shipped view of
+  one 2048 still: the reference's rows are the same bytes whatever the prompt,
+  in core's own pass and when the reference is run alone; the prompt's rows,
+  run against the reference's cached keys and values, differ from core's
+  single pass in the last bits, by far less than the int8 encoder differs
+  from bf16. The continued pass is a small fraction of the full pass's time.
+  The owner asked for this to be pursued (2026-10-03); nothing is wired, and
+  whether that difference is acceptable is the owner's call. A bare process
+  cannot run the shipped encoder (no dynamic VRAM), which is why the
+  measurement is a node.
+
 ## 0.185.9
 
 ### Added

@@ -1,0 +1,190 @@
+{
+ "question": "if the encoder's work on a reference is kept across prompt edits, is the conditioning the same as today's",
+ "measured": "2026-10-03",
+ "tool": "bench/measure_encoder_prefix_reuse.py",
+ "node": "bench/comfy_capture_nodes/h3_bench_prefix_reuse",
+ "graph": "workflows/distill_experiments/h3_probe_r2v_step_switch_pdd8_flashgen_h080_savelat_api.json",
+ "encoder": "qwen3vl_32b_minimax_h3_int8_convrot.safetensors",
+ "still": "dirk_runway2.jpeg",
+ "edit_appended": " The light shifts as a cloud passes.",
+ "state": "a server started for each run with the bench node directory; no DiT resident; comfy-kitchen 0.2.37+sol.6272371.up.be003b7; NVIDIA GeForce RTX 4090, torch 2.14.0+cu132",
+ "how_to_read": "each case is torch.equal on conditioning rows (float32); rel_l2 and worst_row_rel_l2 are relative to core's full pass. 'prefix' rows are the reference's, the rest the prompt's. core_full* include tokenizing and the vision tower; the loop_* passes are the language model alone",
+ "for_scale": "the shipped int8 encoder against the bf16 one, same kind of rows: text rel_l2 about 0.005, vision about 0.017 (bench/results/2026-09-27_encoder_int8_vs_bf16_conditioning.json, ref2va scene)",
+ "runs": {
+  "shared_2048_view": {
+   "append": {
+    "image": [
+     "15",
+     0
+    ],
+    "size_policy": "max",
+    "size_policy.dit_short_edge": 2048,
+    "size_policy.allow_upscale": true,
+    "qwen_view": "shared"
+   },
+   "node_seconds": 141.4,
+   "tokens": {
+    "total": 8159,
+    "prefix": 7368,
+    "prompt": 791,
+    "total_edit": 8167,
+    "total_short_prompt": 7568
+   },
+   "hidden_dtype": "torch.float32",
+   "cache": {
+    "bytes": 3017932800,
+    "dtype": "torch.float32",
+    "layers": 50,
+    "keys_shape": [
+     1,
+     8,
+     7368,
+     128
+    ]
+   },
+   "attention": "attention_pytorch",
+   "cases": {
+    "repeat": {
+     "rows": 8159,
+     "equal": true
+    },
+    "replica": {
+     "rows": 8159,
+     "equal": true
+    },
+    "prefix_two_prompts": {
+     "rows": 7368,
+     "equal": true
+    },
+    "prefix_short_prompt": {
+     "rows": 7368,
+     "equal": true
+    },
+    "prefix_alone": {
+     "rows": 7368,
+     "equal": true
+    },
+    "continued": {
+     "rows": 791,
+     "equal": false,
+     "rel_l2": 2.5197407467203448e-06,
+     "max_abs": 0.0006561279296875,
+     "rows_differing": 791,
+     "worst_row_rel_l2": 1.9344193788128905e-05
+    },
+    "embeds_prefix_two_prompts": {
+     "rows": 7368,
+     "equal": true
+    },
+    "continued_edit": {
+     "rows": 799,
+     "equal": false,
+     "rel_l2": 2.5170720618916675e-06,
+     "max_abs": 0.0006561279296875,
+     "rows_differing": 799,
+     "worst_row_rel_l2": 1.9344193788128905e-05
+    }
+   },
+   "seconds": {
+    "core_full_first": 23.54,
+    "core_full": 22.85,
+    "core_full_edit": 22.89,
+    "loop_full": 15.05,
+    "core_full_short_prompt": 21.64,
+    "loop_prefix": 13.17,
+    "loop_continued": 2.49,
+    "loop_continued_edit": 2.56
+   }
+  },
+  "qwen_view_512": {
+   "append": {
+    "image": [
+     "15",
+     0
+    ],
+    "size_policy": "max",
+    "size_policy.dit_short_edge": 2048,
+    "size_policy.allow_upscale": true,
+    "qwen_view": "separate",
+    "qwen_view.qwen_short_edge": 512
+   },
+   "node_seconds": 16.9,
+   "tokens": {
+    "total": 1263,
+    "prefix": 472,
+    "prompt": 791,
+    "total_edit": 1271
+   },
+   "hidden_dtype": "torch.float32",
+   "cache": {
+    "bytes": 193331200,
+    "dtype": "torch.float32",
+    "layers": 50,
+    "keys_shape": [
+     1,
+     8,
+     472,
+     128
+    ]
+   },
+   "attention": "attention_pytorch",
+   "cases": {
+    "repeat": {
+     "rows": 1263,
+     "equal": true
+    },
+    "replica": {
+     "rows": 1263,
+     "equal": true
+    },
+    "prefix_two_prompts": {
+     "rows": 472,
+     "equal": true
+    },
+    "prefix_alone": {
+     "rows": 472,
+     "equal": false,
+     "rel_l2": 7.396294563477568e-07,
+     "max_abs": 0.017578125,
+     "rows_differing": 472,
+     "worst_row_rel_l2": 1.0647958333720453e-05
+    },
+    "continued": {
+     "rows": 791,
+     "equal": false,
+     "rel_l2": 1.4801410088693956e-06,
+     "max_abs": 0.0006561279296875,
+     "rows_differing": 791,
+     "worst_row_rel_l2": 1.9994064132333733e-05
+    },
+    "embeds_prefix_two_prompts": {
+     "rows": 472,
+     "equal": true
+    },
+    "continued_edit": {
+     "rows": 799,
+     "equal": false,
+     "rel_l2": 1.4791769444855163e-06,
+     "max_abs": 0.0006561279296875,
+     "rows_differing": 799,
+     "worst_row_rel_l2": 1.9994064132333733e-05
+    }
+   },
+   "seconds": {
+    "core_full_first": 4.32,
+    "core_full": 2.34,
+    "core_full_edit": 2.4,
+    "loop_full": 2.02,
+    "loop_prefix": 1.23,
+    "loop_continued": 1.68,
+    "loop_continued_edit": 1.68
+   },
+   "note": "run before the prefix_short_prompt case was added"
+  }
+ },
+ "does_not_establish": [
+  "whether the DiT's prediction moves: bench/measure_encoder_quant_dit.py's forward method is the instrument",
+  "anything about a second reference, a video reference or another prompt",
+  "time inside the server's conditioning node: the loop_* figures are the language model alone"
+ ]
+}
