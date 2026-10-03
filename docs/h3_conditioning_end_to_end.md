@@ -314,6 +314,9 @@ The important asymmetry: **the video VAE and Qwen see different pixels of the
 same reference.** The VAE takes whatever the reference nodes produced; Qwen
 takes that *through* the encoder's own image processor.
 
+*2026-10-03: `qwen_view` moved again. The owner made `separate` at a 512 short edge the default (node, constant and generated graphs) on two clips of the finish graph at one seed; `size_policy`, the 2048 short edge and `allow_upscale` stay at vendor parity. `docs/wiki/decisions.md` has the evidence and what it does not cover.* So the paragraph below describes 2026-09-13 to 2026-10-03, and the
+instrument graphs still.
+
 **Nothing splits them on the shipped path since 2026-09-13.** Core's ceiling
 is 12,845,056 px and binds nothing a reference node produces, and
 `qwen_view=shared` is the append node's default and what every rebuilt graph

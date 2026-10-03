@@ -62,23 +62,34 @@ MIN_DURATION = 5.0
 MAX_LENGTH = 362
 MAX_DURATION = MAX_LENGTH / FPS  # 15.083s
 
-#: Shorter side, in pixels, pre-filled when `MiniMaxH3AppendRefImage.qwen_view`
-#: is set to `separate`: the copy of a still handed to the TEXT ENCODER alone.
+#: Shorter side, in pixels, of the copy of a still handed to the TEXT ENCODER
+#: alone: `MiniMaxH3AppendRefImage.qwen_view = separate`, the node's default
+#: since 2026-10-03, at this size.
 #:
 #: A still is read twice, by the video model and by the text encoder, and only
 #: the text encoder's copy sits in the text segment ahead of the prompt. The
-#: node's default is `shared` (one prepared copy feeds both, what sglang,
-#: diffusers and DiffSynth do; owner decision 2026-09-13,
-#: `docs/wiki/decisions.md`), so this value is read only when someone picks
-#: `separate`. It was the shipped default from 2026-08-27 to 2026-09-13 on one
-#: observation (CHANGELOG 0.82.0); the reference-view ablation
-#: (`bench/refview2_arms.json`, arm `noup_q512`) is what tests it.
+#: video model's copy stays at the vendor short edge.
+#:
+#: History, since it has moved three times. 2026-08-27 to 2026-09-13: the
+#: shipped default, on one observation (CHANGELOG 0.82.0). 2026-09-13 to
+#: 2026-10-03: only the pre-filled value, the default being `shared` (one
+#: prepared copy for both, what sglang, diffusers and DiffSynth do; the owner's
+#: vendor-parity decision). Since 2026-10-03: the default again, by the owner's
+#: decision on three clips of the current finish graph at one seed, not blind,
+#: which they passed and which sampled faster
+#: (`bench/results/2026-10-03_sol_output_check.md`, section 5;
+#: `docs/wiki/decisions.md` has what the evidence does and does not cover,
+#: including a louder mix on the one dialogue scene). It departs from the
+#: vendor. The reference-view
+#: ablation that would test it properly (`bench/refview2_arms.json`) was
+#: rendered and never scored.
 #:
 #: Owned HERE rather than in `workflows/h3_config.py` because the node and the
 #: generator have to agree and the node cannot import that file. This module
 #: needs no ComfyUI on the path, which is what lets both sides read one value.
 #:
-#: Reasoned, not measured. Do not cite it as a result.
+#: Decided by the owner's eye and ear on three clips, not measured. Do not
+#: cite it as a result.
 REF_QWEN_SHORT_EDGE = 512
 
 # diffusers' hard-coded `max_duration`. Kept, and kept SEPARATE, for the one

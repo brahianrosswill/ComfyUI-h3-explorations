@@ -195,8 +195,16 @@ for each, as it stood when it was written, is in `docs/rules_history.md`.
   (`docs/research/sglang_h3_pipeline.md` "Reference stills"); read them from
   the node's `define_schema`. The separate 512 view that shipped from
   2026-08-27 rested on one render at one seed (CHANGELOG 0.82.0).
+  **Since 2026-10-03 `qwen_view` is `separate` at 512 again, by the owner's
+  decision**, on the node, the constant and the generated graphs: three clips
+  of the finish graph at one seed passed their eye and ear and sampled faster
+  (`bench/results/2026-10-03_sol_output_check.md`, section 5). Not blind, one
+  seed, not the vendor's path, and on the one dialogue scene the mix is
+  louder at this view; `docs/wiki/decisions.md` has the evidence and what it
+  does not cover. The other three defaults stay at parity, and the instruments stay
+  on `shared` (`workflows/h3_config.py::REF_QWEN_SHORT_EDGE`).
   `bench/refview2_arms.json` is the ablation built to settle `qwen_view` and
-  `allow_upscale`, unrendered. `MiniMaxH3ReferenceConditioning`'s preview prices both
+  `allow_upscale`, rendered on 2026-09-13 and never scored. `MiniMaxH3ReferenceConditioning`'s preview prices both
   copies of every reference before anything is encoded (the `MiniMaxH3ReferenceReport`
   node that drew them was deleted in 0.174.0).
 

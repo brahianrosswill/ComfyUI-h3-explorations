@@ -506,15 +506,17 @@ def _reference_media(inputs: dict, graph: dict):
                 qwen_short_edge = _value("qwen_short_edge", 512,
                                          group="qwen_view")
             else:
-                # Neither spelling: an older graph on the flat Int, or a
-                # hand-built one. 0 is what the retired node did with the key
-                # missing, so it is a reading of that graph rather than a guess.
+                # Neither spelling: a hand-built graph that omits the input,
+                # or an older one on the flat Int. An omitted `qwen_view` gets
+                # the node's default, which since 2026-10-03 is `separate` at
+                # 512 (0, one shared view, from 2026-09-13 until then); a flat
+                # `qwen_short_edge` still present is read as written.
                 #
                 # **The default must not be None here.** `_value` returns None
                 # for a value WIRED to another node, and `linked` below is
                 # computed from exactly that -- so a None default reports an
                 # absent input as linked, which is a different defect entirely.
-                qwen_short_edge = _value("qwen_short_edge", 0)
+                qwen_short_edge = _value("qwen_short_edge", 512)
             image_policies[key] = {
                 "size_policy": size_policy,
                 "allow_upscale": (None if allow_upscale is None

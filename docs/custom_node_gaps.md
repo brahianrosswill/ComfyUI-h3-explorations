@@ -205,7 +205,7 @@ Stage one (`reference_fit.py::fit_reference_image`) sets the geometry the VAE
 and the DiT see. Stage two (`qwen_view_size`) builds a *second* view from the
 source for the text encoder alone, when `qwen_view=separate`; since 2026-09-13
 the default is `shared`, one copy for both, and `MiniMaxH3ReferenceReport`
-draws what each reader gets.
+draws what each reader gets. *2026-10-03: `qwen_view` moved again. The owner made `separate` at a 512 short edge the default (node, constant and generated graphs) on two clips of the finish graph at one seed; `size_policy`, the 2048 short edge and `allow_upscale` stay at vendor parity. `docs/wiki/decisions.md` has the evidence and what it does not cover.*
 
 ### Reading traps in the shipped JSON
 
@@ -277,7 +277,7 @@ From 2026-08-27 until then the node set a separate, much smaller 512 view for
 the encoder, deliberate and dated: the fix for a two-speaker scene whose
 dialogue was misattributed after upscaled references crowded the prompt out of
 its own segment, *priced, not proven* on one render and one seed (CHANGELOG
-0.82.0). That view is still available as `qwen_view=separate`. The ablation
+0.82.0). That view is still available as `qwen_view=separate`. *2026-10-03: `qwen_view` moved again. The owner made `separate` at a 512 short edge the default (node, constant and generated graphs) on two clips of the finish graph at one seed; `size_policy`, the 2048 short edge and `allow_upscale` stay at vendor parity. `docs/wiki/decisions.md` has the evidence and what it does not cover.* The ablation
 that would judge it is built and unrendered: `bench/refview2_arms.json`, six
 arms on five scene graphs (`h3_config.REFVIEW2_SCENES`). **This is the
 strongest open candidate in this document.**

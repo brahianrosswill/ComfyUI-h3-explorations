@@ -649,13 +649,17 @@ def image_policy_is_opt_in_and_the_two_differ():
 def append_node_defaults_are_the_serving_defaults():
     """What an API prompt that omits every input gets, read off the schema.
 
-    The defaults moved on 2026-09-13 to what sglang, diffusers and DiffSynth
-    do: `size_policy=max` at the release's 2048 short edge WITH upscale, and
-    one shared view for both towers. A DynamicCombo's default is its FIRST
-    option -- that is what core substitutes for an omitted input, and there
-    is no second copy of it to compare against -- so the order of `options`
-    is the observable, and the nested inputs' `default` attributes are the
-    rest. Typed here would be a cache of the schema; this reads it.
+    The video model's copy is what sglang, diffusers and DiffSynth prepare
+    (since 2026-09-13): `size_policy=max` at the release's 2048 short edge
+    WITH upscale. The encoder's copy is NOT theirs since 2026-10-03: the
+    owner made `qwen_view = separate` at `h3_rules.REF_QWEN_SHORT_EDGE` the
+    default, on two clips (`docs/wiki/decisions.md`); the serving
+    implementations share one copy, which is the second option. A
+    DynamicCombo's default is its FIRST option -- that is what core
+    substitutes for an omitted input, and there is no second copy of it to
+    compare against -- so the order of `options` is the observable, and the
+    nested inputs' `default` attributes are the rest. Typed here would be a
+    cache of the schema; this reads it.
     """
     schema = R.MiniMaxH3AppendRefImage.define_schema()
     by_id = {spec.id: spec for spec in schema.inputs}
@@ -669,11 +673,11 @@ def append_node_defaults_are_the_serving_defaults():
         "the schema default is the release constant; if the constant moved, "
         "this case and the node's tooltip both need to say so")
 
-    assert qwen_view.options[0].key == "shared", (
+    assert [option.key for option in qwen_view.options] == ["separate", "shared"], (
         [option.key for option in qwen_view.options])
-    assert qwen_view.options[0].inputs == [], "shared carries no size member"
-    separate = {option.key: option for option in qwen_view.options}["separate"]
-    nested = {spec.id: spec.default for spec in separate.inputs}
+    by_key = {option.key: option for option in qwen_view.options}
+    assert by_key["shared"].inputs == [], "shared carries no size member"
+    nested = {spec.id: spec.default for spec in by_key["separate"].inputs}
     h3_rules = importlib.import_module(f"{_REPO.name}.h3_rules")
     assert nested == {"qwen_short_edge": h3_rules.REF_QWEN_SHORT_EDGE}, nested
 
@@ -681,9 +685,12 @@ def append_node_defaults_are_the_serving_defaults():
     # nested members is the "schema's own defaults" branch of `execute`, and
     # it must land where the schema says, not on a second copy of the values.
     record = R.MiniMaxH3AppendRefImage.execute(
-        _frames(1, 64, 64), "max", "shared").args[0][-1]
+        _frames(1, 64, 64), "max", "separate").args[0][-1]
     assert (record.size_policy, record.short_edge, record.allow_upscale,
-            record.qwen_short_edge) == ("max", 2048, True, 0), record
+            record.qwen_short_edge) == ("max", 2048, True, h3_rules.REF_QWEN_SHORT_EDGE), record
+    shared = R.MiniMaxH3AppendRefImage.execute(
+        _frames(1, 64, 64), "max", "shared").args[0][-1]
+    assert shared.qwen_short_edge == 0, shared
 
 
 def qwen_view_is_separate_from_the_vae_view():

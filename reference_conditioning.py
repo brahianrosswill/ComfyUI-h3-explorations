@@ -859,13 +859,14 @@ class MiniMaxH3AppendRefImage(io.ComfyNode):
                 ),
                 # A DynamicCombo since 2026-08-31; it was an Int whose 0 meant
                 # "no separate view", a number quietly selecting a mode.
-                # `shared` first since 2026-09-13, so the default is what every
-                # serving implementation does and what an API prompt that omits
-                # the input gets.
+                # The FIRST option is the default: what an API prompt that
+                # omits the input gets. `separate` first since 2026-10-03 (the
+                # owner, on two clips: h3_rules.REF_QWEN_SHORT_EDGE has the
+                # history); `shared` was first from 2026-09-13, which is what
+                # every serving implementation does.
                 io.DynamicCombo.Input(
                     "qwen_view",
                     options=[
-                        io.DynamicCombo.Option("shared", []),
                         io.DynamicCombo.Option("separate", [
                             io.Int.Input(
                                 "qwen_short_edge",
@@ -877,29 +878,36 @@ class MiniMaxH3AppendRefImage(io.ComfyNode):
                                     "the source in both directions: below the "
                                     "source it shrinks, above it enlarges.\n\n"
                                     "Vision tokens grow with the square of this "
-                                    "value. The pre-filled value is a starting "
-                                    "point, not a measured optimum "
+                                    "value. The pre-filled value is the owner's "
+                                    "choice on two clips, not a measured optimum "
                                     "(h3_rules.REF_QWEN_SHORT_EDGE)."
                                 ),
                             ),
                         ]),
+                        io.DynamicCombo.Option("shared", []),
                     ],
                     tooltip=(
                         "How the TEXT ENCODER's copy is sized. Its vision "
                         "tokens sit in the text segment ahead of your prompt, "
                         "and their hidden states ride the DiT's text segment "
                         "on every step.\n\n"
-                        "shared (default): the same copy the video model gets, "
-                        "sized by size_policy. One prepared image feeds both, "
-                        "which is what every serving implementation does.\n\n"
-                        "separate: the encoder gets its own copy scaled to "
-                        "qwen_short_edge from the source, while the video "
-                        "model keeps the size_policy copy. Use it to change "
-                        "what the encoder sees without changing DiT rows: a "
-                        "smaller copy leaves the prompt a larger share of what "
-                        "the encoder reads, a larger one gives the encoder "
-                        "more detail. Neither direction is measured yet; the "
-                        "reference-view ablation is the arm that would."
+                        "separate (default since 2026-10-03): the encoder gets "
+                        "its own copy scaled to qwen_short_edge from the "
+                        "source, while the video model keeps the size_policy "
+                        "copy. At the pre-filled size the encoder reads far "
+                        "fewer tokens, so every sampling step and every prompt "
+                        "edit is faster. Chosen by the owner on two clips at "
+                        "a few clips at one seed; not what the serving "
+                        "implementations do. Known cost: on the one dialogue "
+                        "scene measured, the mix came out louder at this view. "
+                        "Not looked at: several references, a small face in a "
+                        "wide still, text or a logo in the still.\n\n"
+                        "shared: the same copy the video model gets, sized by "
+                        "size_policy. One prepared image feeds both, which is "
+                        "what every serving implementation does, and the "
+                        "choice when the encoder needs the detail.\n\n"
+                        "A workflow saved before 2026-10-03 keeps the view it "
+                        "was saved with."
                     ),
                 ),
                 # Appended 2026-10-03.
@@ -989,9 +997,17 @@ class MiniMaxH3AppendRefImage(io.ComfyNode):
             short_edge=int(short_edge), allow_upscale=bool(allow_upscale),
             qwen_short_edge=qwen_short_edge, use_vae=bool(use_vae),
         ),)
-        return io.NodeOutput(records, ui=ui.PreviewText(_appended_preview(
-            records, 1, f"still, {source_w}x{source_h}"
-            + ("" if use_vae else ", text encoder only (use_vae off)"))))
+        detail = f"still, {source_w}x{source_h}"
+        if not use_vae:
+            detail += ", text encoder only (use_vae off)"
+            if 0 < qwen_short_edge < short_edge:
+                # Each alone passed the owner's eye once; together they leave
+                # the model the encoder's reading of a small copy and nothing
+                # else, and nobody has looked at that.
+                detail += (f". Its only copy is the encoder's at a {qwen_short_edge} short "
+                           "edge: untested together; set qwen_view to shared, or turn "
+                           "use_vae on, if the still's detail matters")
+        return io.NodeOutput(records, ui=ui.PreviewText(_appended_preview(records, 1, detail)))
 
 
 class MiniMaxH3AppendRefVideo(io.ComfyNode):

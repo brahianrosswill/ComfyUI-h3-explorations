@@ -4,6 +4,54 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.185.21
+
+### Changed
+
+- **A reference still's encoder view defaults to `separate` at a 512 short
+  edge** (owner decision, 2026-10-03). The append node's `qwen_view` default,
+  the constant (`h3_rules.REF_QWEN_SHORT_EDGE`) and the generated reference
+  graphs move together; the video model's copy stays at the vendor's 2048
+  short edge with upscale on. It replaces `shared`, one copy for both readers,
+  the default since 2026-09-13 and what sglang, diffusers and DiffSynth do, so
+  this departs from the vendor, and it reverses that part of the 2026-09-13
+  parity decision (`docs/wiki/decisions.md`, which has the evidence in full).
+  The encoder reads far fewer vision tokens, which shortens the sequence in
+  every sampling step and makes the conditioning node's pass a few seconds.
+  **Evidence:** three clips of the PDD8 then FlashGen finish graph at one
+  seed, not blind, each passed by the owner
+  (`bench/results/2026-10-03_sol_output_check.md`, section 5).
+  **Known cost:** on the one dialogue scene the mix is louder at this view,
+  with sparse and with dense attention
+  (`bench/results/2026-10-03_backstage_qview512_clip.json`); the owner heard
+  the dense clip and passed it. On that scene's clip at 512 with sparse
+  attention, which is what the generated graphs run, a line came from the
+  wrong character; with dense attention it did not. One clip, not attributed.
+  **Not looked at:** more than one reference, a small face in a wide still,
+  text or a logo in the still, a base graph. No render was made on the rebuilt
+  graphs.
+  **Where it does not apply:** the instruments stay on `shared`: the `_savelat`
+  and `_x0` twins and the bench graphs, whose renders are compared byte for
+  byte with earlier ones, and the `h3_probe_refview2_*` scenes, whose
+  manifest's `parity` arm means the 2026-09-13 values
+  (`bench/check_widget_deviations.py` declares the deviation). **A workflow
+  saved before this keeps the view it was saved with**; only the generated
+  graphs, a newly placed node and an API prompt that omits the input move.
+  **Remedy:** set `qwen_view` to `shared` on a still whose detail the encoder
+  needs, or on a scene that comes out loud.
+- The append node's preview says so when a still is both encoder-only
+  (`use_vae` off) and at a small encoder view: each passed the owner's eye
+  once on its own, and nobody has looked at the two together.
+- `bench/preflight_graph.py` prices a graph that omits `qwen_view` at the new
+  node default.
+
+### Added
+
+- Loudness and cut counts for the encoder-only clip of 0.185.17, in
+  `bench/results/2026-10-03_encoder_only_reference.md`: on the market scene
+  neither the encoder-only still nor the 512 view moves the level against the
+  shipped clip by much.
+
 ## 0.185.20
 
 ### Added

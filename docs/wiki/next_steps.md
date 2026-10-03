@@ -739,7 +739,9 @@ none of it is done.
   against each other arm per scene), `score.html` beside them, key sealed
   under `internal/blind_keys/`. What it settles: the `qwen_view` default
   (if `noup_q512` beats `parity` across scenes, the 2026-08-27 separate view
-  was right and returns; if not, `shared` stands) and the `allow_upscale`
+  was right and returns; if not, `shared` stands; *2026-10-03: the owner
+  returned it without this session, on two clips of the finish graph,
+  `decisions.md`*) and the `allow_upscale`
   default (if `noup_shared` matches `parity` on identity, the upscale buys
   rows and nothing else). One seed is one sample per pair; the reading is
   across the five scenes. Nothing is claimed until scored. The old three-arm

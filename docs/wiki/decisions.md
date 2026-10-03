@@ -25,28 +25,52 @@ Older history lives elsewhere and is not copied here:
   It is a switch, `keep_references`, and on in no generated graph: the
   generator change that turned it on was withdrawn before commit while a 512
   encoder view was about to become the default, where the one pass is already
-  a few seconds (CHANGELOG 0.185.19). That default is now on hold, so whether
-  the generated graphs turn the switch on is open again.
+  a few seconds (CHANGELOG 0.185.19).
 - **A still can be an encoder-only reference by its own switch** (owner,
   2026-10-03: "maybe we should at least have a setting in our ref node(s) to
   use vae or not", after one clip rendered that way: "look the same to me,
   cant tell the difference"). `use_vae` on `MiniMaxH3AppendRefImage`, on by
   default; no default moved (`bench/results/2026-10-03_encoder_only_reference.md`).
-- **A 512 encoder view as the default: decided, built, then held** (owner,
+- **A still's encoder view is `separate` at 512 by default again** (owner,
   2026-10-03: "yeah lets do 512, unless theres a reason not to based on
-  everything else we did", then "i agree make it 512 default", said in a peer
-  session and relayed). The change was built and its checks passed (node
-  default, constant, 40 rebuilt graphs, the instruments pinned to `shared`),
-  and it was not committed: the render made to separate the 512 view from
-  sparse attention came back against the view. On the one dialogue scene the
-  mix is +3.8 LU with sparse attention and +4.1 LU with dense, against +1.1
-  for the shipped render, each measured against the dense clip at the shared
-  view (`bench/results/2026-10-03_backstage_qview512_clip.json`; one scene,
-  one seed). That is the range the owner called loud on 2026-10-02, and the
-  owner's condition was "unless theres a reason not to". The node default
-  stays `shared`; `qwen_view = separate` at 512 remains a per-still choice.
-  The built change is kept as a patch in the session's notes folder; the
-  owner has the choice.
+  everything else we did", then "i agree make it 512 default"; said in peer
+  sessions and relayed). The append node's `qwen_view` default, the constant
+  (`h3_rules.REF_QWEN_SHORT_EDGE`) and the generated reference graphs move
+  together. **It reverses the `qwen_view` part of the 2026-09-13 vendor-parity
+  decision below**; `size_policy=max`, the 2048 short edge and `allow_upscale`
+  stay at parity, and the vendor still gives one copy to both readers.
+  **Evidence, and it is mixed.** Three clips of the PDD8 then FlashGen finish
+  graph at the judged seed, not blind: market and backstage at the 512 view
+  with the shipped sparse attention ("both looked pretty good to me"), and
+  backstage at the 512 view with dense attention, rendered to separate the
+  view from sparse attention ("dialogue is good here and everything is
+  fine"). The sampler ran about a minute shorter on the sparse pair
+  (`bench/results/2026-10-03_sol_output_check.md`, section 5).
+  *The level moves with the view:* backstage against the dense clip at the
+  shared view is +1.1 LU for the shipped render, +3.8 LU at 512 with sparse
+  attention and +4.1 LU at 512 with dense
+  (`bench/results/2026-10-03_backstage_qview512_clip.json`), the range the
+  owner called loud on 2026-10-02; the owner heard the dense 512 clip and
+  passed it. On the market scene the 512 clip's level does not move against
+  the shipped clip (`2026-10-03_encoder_only_reference.md`, loudness).
+  *A swapped line:* on the backstage clip at 512 with sparse attention a line
+  was spoken by the wrong character; at 512 with dense attention it was not.
+  The generated graphs run sparse attention, so the pairing that becomes the
+  default is the one whose only dialogue clip had the swapped line. One clip,
+  not attributed.
+  **Not looked at:** more than one reference, a small face in a wide still,
+  text or a logo in the still, a base (non-distilled) graph. No render was
+  made on the rebuilt graphs. This change was built, held when the level
+  result came back, and released when the owner passed the separating clip.
+  The remedy for a still that needs the detail, or a scene that comes out
+  loud, is `qwen_view=shared` on its append node. The instruments stay on
+  `shared`: the `_savelat` and `_x0` twins and the bench graphs (byte-for-byte
+  comparisons), and the `h3_probe_refview2_*` scenes (their manifest's
+  `parity` arm). A workflow saved before this keeps the view it was saved
+  with. What the prose used to claim: `docs/evidence.md` "Reference sizing",
+  `docs/h3_references.md`, `docs/custom_node_gaps.md` and
+  `docs/h3_conditioning_end_to_end.md` called `shared` the default; each has a
+  dated note now.
 
 - **The output check goes ahead of the per-head calibration** (owner,
   2026-10-03: "and output check first"). Every sparse lever in flight is

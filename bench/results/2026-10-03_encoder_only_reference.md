@@ -38,6 +38,29 @@ was encoder only if i didnt know. seems to hold the ref image well." (the
 owner, 2026-10-03, on `..._savelat_encoder_only_00001-audio.mp4` against
 `..._savelat_ship_00004-audio.mp4`.)
 
+## Loudness and cuts, measured later the same day
+
+`bench/score_clip_shots_loudness.py` on the clips already on disk, nothing
+rendered. EBU R128 integrated loudness against the dense render of the market
+scene at the shared view (`dbp_market__dense`), and scene cuts against the
+three shots the prompt scripts:
+
+| clip, market scene, seed 730451892 | LUFS | against dense | cuts |
+|---|--:|--:|--:|
+| dense attention, shared view (the reference) | -21.0 | | 2 |
+| shipped (sparse attention, shared view) | -21.3 | -0.3 LU | 4 |
+| encoder-only still (sparse, shared view to the encoder) | -22.4 | -1.4 LU | 4 |
+| 512 encoder view (sparse) | -21.3 | -0.3 LU | 4 |
+
+- On this scene dropping the still's VAE rows makes the mix about 1 LU
+  quieter than the shipped clip, and the 512 view does not move it. The
+  louder mix the 512 view shows on the backstage dialogue scene
+  (`2026-10-03_backstage_qview512_clip.json`) is not here.
+- Every sparse clip holds two cuts the script does not have, the encoder-only
+  one included; that is the sparse-attention finding of
+  `2026-10-03_sol_output_check.md`, not a reference effect.
+- One scene, one seed, one clip per row.
+
 ## What this does not establish
 
 - **Not blind.** The filenames say which is which, and the owner knew.

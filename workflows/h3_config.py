@@ -1802,6 +1802,17 @@ def _ref_qwen_short_edge() -> int:
     return int(mod.REF_QWEN_SHORT_EDGE)
 
 
+#: The encoder's own view of a still, as a short edge: the append node's
+#: default (`qwen_view = separate` at this size) and what the generator writes
+#: on every still's append node since 2026-10-03. Read from `h3_rules.py`,
+#: which owns the value and its history; the node cannot import this file.
+#:
+#: **Pinned to `shared` instead (the generator passes 0) on the instruments:**
+#: the `_savelat` and `_x0` twins and the `bench/` graphs, whose renders are
+#: compared byte for byte with earlier ones, and the `h3_probe_refview2_*`
+#: scenes, whose manifest (`bench/refview2_arms.json`) defines its `parity` arm
+#: as "the graph as built" at the 2026-09-13 values. The generator always
+#: writes the selection, so none of these inherits the node default.
 REF_QWEN_SHORT_EDGE = _ref_qwen_short_edge()
 
 REF_VIDEO_CANVAS = dict(width=1024, height=768)

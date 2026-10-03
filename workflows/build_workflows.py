@@ -92,7 +92,7 @@ from h3_config import (  # noqa: E402
     CORE_LOADED_ENCODERS, IMAGE_VAE, DRAFT_VAE, STEP_SWITCH_PASS1_SIGMAS, STEP_SWITCH_PASS2_SIGMAS,
     STEP_SWITCH_REV, STEP_SWITCH_BASE, CANVAS, FPS, LENGTH, LONG_LENGTH, MODELS,
     SAMPLING, SAGE_NODE, DENSE_BACKEND_NODE, DENSE_CHAINS, DEFAULT_DENSE_CHAIN, SEED, SIGMA_SHIFT, SOL_CORE_NODE, SOL_CORE_DEFAULTS,
-    REF_VIDEO_LOADER,
+    REF_VIDEO_LOADER, REF_QWEN_SHORT_EDGE,
     CACHE_NODE, CACHE_NODE_CLASS,
     DISTILL_SAMPLING,
     REF_VIDEO_BUDGET,
@@ -1256,10 +1256,13 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
               manual_sigmas: str | None = None,
               ref_video_policy: str = "comfy",
               ref_image_policy: str = "comfy",
-              # 0 is `qwen_view = shared`: one copy for both towers, the node
-              # default and the serving implementations' behaviour (owner,
-              # 2026-09-13). A size selects `separate` at that short edge.
-              ref_qwen_short_edge: int = 0,
+              # A size selects `qwen_view = separate` at that short edge: the
+              # node default and the owner's choice since 2026-10-03. 0 is
+              # `shared`, one copy for both towers, the serving
+              # implementations' behaviour and the default from 2026-09-13;
+              # the instruments pass it (h3_config.REF_QWEN_SHORT_EDGE says
+              # which).
+              ref_qwen_short_edge: int = REF_QWEN_SHORT_EDGE,
               ref_video: bool = False, ref_video_audio: bool = True,
               ref_images_on: bool = True, ref_image_count: int = 2,
               ref_images: tuple[str, ...] | None = None,
@@ -3955,6 +3958,10 @@ def main():
              _bank_prompt(prompt_id),
              dict(length=LONG_LENGTH, ref_image_count=len(stills),
                   ref_images=stills,
+                  # Pinned: "as built" is the manifest's `parity` arm, and it
+                  # means the 2026-09-13 values, not whatever the node
+                  # default is now.
+                  ref_qwen_short_edge=0,
                   out_prefix=f"Video/h3_probe_refview2_{tag}"),
              f"reference-view ablation scene: {prompt_id}")
             for tag, prompt_id, stills in REFVIEW2_SCENES
@@ -5118,6 +5125,11 @@ def main():
         sage_on, sol_on, _dense_mode = _attention_plan(extra)
         api_extra = {k: v for k, v in extra.items()
                      if k not in ("sol_on", "dense_attn", "sol_overrides", "distill_experiment")}
+        # The instrumented twins keep one shared copy of a still: their
+        # renders are compared byte for byte with earlier ones
+        # (h3_config.REF_QWEN_SHORT_EDGE).
+        if fname.removesuffix(".json").endswith(("_savelat", "_x0")):
+            api_extra.setdefault("ref_qwen_short_edge", 0)
         wf = build_api(task, sage=sage_on,
                        prompt=prompt,
                        sol=(_sol_with_overrides(extra) if sol_on else None),
@@ -5175,7 +5187,10 @@ def main():
         ("h3_first_frame_to_video_stamped_api.json", "i2v", None, True),
     ):
         wf = build_api(task, sage=sage, length=LONG_LENGTH,
-                       sol=None, prompt=prompt, stamp=True)
+                       sol=None, prompt=prompt, stamp=True,
+                       # A bench graph is an instrument: one shared copy, as
+                       # every record taken on it was.
+                       ref_qwen_short_edge=0)
         p = bench / fname
         written.append((f"{task}-stamped", p, wf))
 

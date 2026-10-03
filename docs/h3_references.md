@@ -4,7 +4,7 @@
 is, what ComfyUI actually does to it, what it costs, and how to write the
 prompt so the model uses it the way you meant.
 
-last updated: 2026-10-03 (the section "Encoding references apart from the prompt", the append nodes showing their label, and `use_vae` on the still's append node); 2026-08-25; the reference policies, the append node's defaults and the reference-view ablation corrected 2026-09-13 (`docs/wiki/decisions.md`); the retired concise swap twin corrected 2026-09-14
+last updated: 2026-10-03 (the section "Encoding references apart from the prompt", the append nodes showing their label, `use_vae` on the still's append node, and dated notes where `qwen_view`'s default is stated: it is `separate` at 512 again); 2026-08-25; the reference policies, the append node's defaults and the reference-view ablation corrected 2026-09-13 (`docs/wiki/decisions.md`); the retired concise swap twin corrected 2026-09-14
 
 Sources: MiniMax's official prompt guide, general prompting research, ComfyUI's
 own code, and **sglang's MiniMax H3 serving path** (`coderef/sglang`, read at
@@ -217,7 +217,7 @@ defaults are `size_policy=max`, `dit_short_edge=2048`, `allow_upscale=True`
 and `qwen_view=shared`, one prepared still for both the video VAE and
 Qwen3-VL, which is what sglang, diffusers and DiffSynth do
 ([`research/sglang_h3_pipeline.md`](research/sglang_h3_pipeline.md)
-"Reference stills"). Read the values from the node's `define_schema`;
+"Reference stills"). *2026-10-03: `qwen_view` moved again. The owner made `separate` at a 512 short edge the default (node, constant and generated graphs) on two clips of the finish graph at one seed; `size_policy`, the 2048 short edge and `allow_upscale` stay at vendor parity. `docs/wiki/decisions.md` has the evidence and what it does not cover.* Read the values from the node's `define_schema`;
 `bench/refview2_arms.json` is the ablation that would move them.
 
 **On the typed path both live on `MiniMaxH3AppendRefImage`** and that is the
