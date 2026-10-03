@@ -340,7 +340,10 @@ def single_frame_dirs():
     # Only the image use case is single-frame. `distill_experiments` (added
     # 2026-09-27) is video, held to the same Sol rule as the root; reading
     # every non-root dir as single-frame exempted it wholesale.
-    return {d for d in h3_config.GRAPH_DIRS if d and d != "distill_experiments"}
+    # By name since 2026-10-03: "every folder but the root and
+    # distill_experiments" exempted `daily/` wholesale the day it was added,
+    # which this check's own stale-exemption rule caught.
+    return {d for d in h3_config.GRAPH_DIRS if d == h3_config.SINGLE_FRAME_DIR}
 
 
 def wires_dense_kernel(graph) -> bool:

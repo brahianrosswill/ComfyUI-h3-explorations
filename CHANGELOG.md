@@ -4,6 +4,32 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.185.24
+
+### Added
+
+- **`workflows/daily/`: the three graphs the owner renders with**, generated
+  like every other graph (owner, 2026-10-03: "if we're using something
+  regularly ... why keep that in distill experiments?").
+  `h3_ref2v_pdd8_flashgen_finish`, `h3_t2v_pdd8_flashgen_finish` and
+  `h3_i2v_pdd8_flashgen_finish` are PDD8 then FlashGen finishing on each task;
+  `h3_config.DAILY_GRAPHS` names them and the probe each is derived from, so
+  a daily graph cannot drift from its probe (the ref2va one differs from it
+  only in the output filename prefix). The probes and their `_savelat` twins
+  keep their names and folder. No existing graph changed: a fresh generation
+  matches the tree file for file.
+- The rest of the by-purpose layout the owner chose the same day (shipped by
+  task, experiments by topic, instruments apart) is prepared on the local
+  branch `workflows-by-purpose` and has not landed.
+
+### Fixed
+
+- `bench/check_attention_defaults.py` read every folder in `GRAPH_DIRS` but
+  the root and `distill_experiments` as the single-frame class, so adding
+  `daily` exempted its graphs from the Sol-on rule; the check's own
+  stale-exemption rule caught it. The class is now the folder named by
+  `h3_config.SINGLE_FRAME_DIR`.
+
 ## 0.185.23
 
 ### Measured

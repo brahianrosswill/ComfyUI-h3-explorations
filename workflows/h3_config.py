@@ -1943,7 +1943,24 @@ CAPTURE_REF_IMAGES = (
 #: `build_workflows._is_distill_experiment`: every `_savelat` or `_x0` twin,
 #: every `h3_probe_*` graph that runs a distill, and entries marked
 #: `distill_experiment=True`. The shipped distill graphs stay at the root.
-GRAPH_DIRS: tuple[str, ...] = ("", "distill_experiments")
+#: **`daily` added 2026-10-03** (owner, of the ref2va finish graph: "if we're
+#: using something regularly ... why keep that in distill experiments?").
+#: `DAILY_GRAPHS` says which graphs those are and which probe each was promoted
+#: from; a fact about use, so it is declared here and nowhere else. The rest
+#: of the by-purpose layout the owner chose the same day is prepared on the
+#: branch `workflows-by-purpose` and has not landed.
+DAILY_DIR = "daily"
+#: The one folder that holds single-frame graphs (`build_workflows._graph_dir`).
+#: Named so a reader of `GRAPH_DIRS` can tell that class from every other
+#: folder: `bench/check_attention_defaults.py` used to treat any folder but
+#: the root and `distill_experiments` as single-frame, and `daily` tripped it.
+SINGLE_FRAME_DIR = "image"
+DAILY_GRAPHS: dict[str, str] = {
+    "h3_ref2v_pdd8_flashgen_finish": "h3_probe_r2v_step_switch_pdd8_flashgen_h080.json",
+    "h3_t2v_pdd8_flashgen_finish": "h3_probe_t2v_step_switch_pdd8_flashgen_h080.json",
+    "h3_i2v_pdd8_flashgen_finish": "h3_probe_i2v_step_switch_pdd8_flashgen_h080.json",
+}
+GRAPH_DIRS: tuple[str, ...] = ("", "distill_experiments", DAILY_DIR)
 
 # What `bench/` is exempt from is schema grading, and only that. A bench graph
 # naming a model file that no longer exists is not schema drift -- it is the

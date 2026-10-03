@@ -89,6 +89,7 @@ _OUR_NODES = {
 # 2026-09-03 (owner): one source of truth for prompt text.
 from prompts import text as _bank_prompt  # noqa: E402
 from h3_config import (  # noqa: E402
+    DAILY_DIR, DAILY_GRAPHS, SINGLE_FRAME_DIR,
     CORE_LOADED_ENCODERS, IMAGE_VAE, DRAFT_VAE, STEP_SWITCH_PASS1_SIGMAS, STEP_SWITCH_PASS2_SIGMAS,
     STEP_SWITCH_REV, STEP_SWITCH_BASE, CANVAS, FPS, LENGTH, LONG_LENGTH, MODELS,
     SAMPLING, SAGE_NODE, DENSE_BACKEND_NODE, DENSE_CHAINS, DEFAULT_DENSE_CHAIN, SEED, SIGMA_SHIFT, SOL_CORE_NODE, SOL_CORE_DEFAULTS,
@@ -615,7 +616,11 @@ def _graph_dir(out, extra: dict, fname: str = ""):
     use case ever appears, both have to learn about it.
     """
     if extra.get("single_frame"):
-        return out / "image"
+        return out / SINGLE_FRAME_DIR
+    if extra.get("daily"):
+        # What the owner renders with (`h3_config.DAILY_GRAPHS`): the one
+        # folder that is declared, since use cannot be derived from a graph.
+        return out / DAILY_DIR
     return out / "distill_experiments" if _is_distill_experiment(fname, extra) else out
 
 
@@ -5037,7 +5042,19 @@ def main():
         _twins.append((f"{stem}_savelat.json", f"{label}-savelat", task, prompt,
                        dict(extra, save_latents=True, out_prefix=extra["out_prefix"] + "_savelat"),
                        f"{note}; saves its latents"))
-    GRAPHS = GRAPHS + (_step_switch,) + _pdd_tests + _reverse + tuple(_twins)
+    # What the owner renders with (2026-10-03): PDD8 to 0.8, then FlashGen
+    # finishing, on each task. Derived from the probe entry, so a daily graph
+    # cannot drift from the probe it was promoted from; made after the twins,
+    # so it has none. The probes and their `_savelat` twins keep their names
+    # and folder: arms files, the reproduction guard and dated records cite
+    # them.
+    _probes = {e[0]: e for e in GRAPHS + _reverse}
+    _daily = tuple(
+        (f"{name}.json", name.removeprefix("h3_").replace("_", "-"), _probes[src][2], _probes[src][3],
+         dict(_probes[src][4], daily=True, out_prefix=f"Video/{name}"),
+         f"daily: {_probes[src][5]}")
+        for name, src in DAILY_GRAPHS.items())
+    GRAPHS = GRAPHS + (_step_switch,) + _pdd_tests + _reverse + tuple(_twins) + _daily
 
     if args.list_scenes:
         for name, text in T2V_SCENES.items():
@@ -5124,7 +5141,7 @@ def main():
             extra = _on_chain(extra, args.chain)
         sage_on, sol_on, _dense_mode = _attention_plan(extra)
         api_extra = {k: v for k, v in extra.items()
-                     if k not in ("sol_on", "dense_attn", "sol_overrides", "distill_experiment")}
+                     if k not in ("sol_on", "dense_attn", "sol_overrides", "distill_experiment", "daily")}
         # The instrumented twins keep one shared copy of a still: their
         # renders are compared byte for byte with earlier ones
         # (h3_config.REF_QWEN_SHORT_EDGE).

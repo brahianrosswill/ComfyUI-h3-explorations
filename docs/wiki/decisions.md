@@ -17,6 +17,17 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-03
 
+- **The graphs the owner renders with get their own folder, and the
+  workflows are to be organized by purpose** (owner, 2026-10-03: "if we're
+  using something regularly ... why keep that in distill experiments?" and
+  "can we organize our workflows while we're here? not just throw it all in
+  one giant folder"). Landed: `workflows/daily/` with the ref2va, t2v and i2v
+  PDD8-then-FlashGen finish graphs (`h3_config.DAILY_GRAPHS`). Chosen and
+  not yet landed: shipped picks by task, experiments by topic, the
+  instrumented twins and bench graphs apart; prepared on the local branch
+  `workflows-by-purpose`. This narrows the 2026-09-27 rule that session-made
+  distill graphs go to `distill_experiments`: a graph in daily use is not an
+  experiment.
 - **Last-bits differences in the conditioning are accepted** (owner,
   2026-10-03: "i dont care if it differs by such a small amount"; on the
   board: "dont care if theyre not bit identical"). That is the difference
