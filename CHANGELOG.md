@@ -4,6 +4,25 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.185.22
+
+### Measured
+
+- **The 512 encoder view on the dialogue scene with dense attention**, the
+  render the owner asked for to rule the view in or out
+  (`bench/results/2026-10-03_sol_output_check.md`, section 5;
+  `bench/results/2026-10-03_backstage_qview512_clip.json`; row
+  `od_backstage__qview512_dense` in `2026-10-03_sol_output_distance.jsonl`).
+  The owner passed the clip. The line spoken by the wrong character in the
+  earlier 512 clip does not come with the view alone; the level shift against
+  the dense clip does, as large with dense attention as with sparse.
+
+### Fixed
+
+- **The output-check record had the two 512 token counts swapped** between
+  market and backstage; the server log's reference line beside each render is
+  the authority. The sampler seconds were right.
+
 ## 0.185.21
 
 ### Changed

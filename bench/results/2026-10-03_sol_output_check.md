@@ -149,14 +149,25 @@ The owner's ask of the same day. Shipped settings otherwise, seed 730451892.
 
 | scene | sequence length | sampler s | against the 2048 view |
 |---|--:|--:|---|
-| market | 112,720 | 276 | 119,485 tokens, 337 s; video latent 0.818 from the shipped render |
-| backstage | 112,589 | 272 | 333 s (the panel's row); +3.8 LU against the dense clip where shipped is +1.1; cuts at 3.46 and 6.96 s against 4.75 and 9.58 |
+| market | 112,589 | 276 | 119,485 tokens, 337 s; video latent 0.818 from the shipped render |
+| backstage | 112,720 | 272 | 333 s (the panel's row); +3.8 LU against the dense clip where shipped is +1.1; cuts at 3.46 and 6.96 s against 4.75 and 9.58 |
+| backstage, dense attention in both stages | 112,720 | 434 | 480 s for the dense render at the 2048 view; +4.1 LU against that clip; cuts at 4.29 and 9.25 s |
 
-One clip per scene, each a different sample from the shipped one, both with
-sparse attention in both stages. The backstage clip is loud and has a line
-spoken by the wrong character. Neither is attributable to the 512 view from
-this; the render that would separate them (512 with dense attention) was
-queued and not run.
+*Corrected the same day:* the first two token counts were swapped when this
+was first committed; the reference line in the server log beside each render
+is the authority.
+
+One clip per row, each a different sample from the shipped one. The sparse
+backstage clip is loud and has a line spoken by the wrong character (the
+owner's ear, above). The owner asked for the third row to rule the view in or
+out ("Ok do one more with the 512 so we can rule that out"), and of that clip
+said: "dialogue is good here and everything is fine". So the swapped line
+does not come with the 512 view alone, and from one clip cannot be pinned on
+sparse attention either. **The level shift does come with the 512 view**: it
+is as large with dense attention as with sparse
+(`2026-10-03_backstage_qview512_clip.json`), and the owner heard that clip
+and passed it. The 512 view became the default for reference stills the same
+day (`docs/wiki/decisions.md`).
 
 ## Decisions (owner, 2026-10-03)
 
@@ -176,3 +187,5 @@ queued and not run.
 - Nothing here was rendered on the dialogue scene with a dense finisher.
 - Not rendered, stopped with the queue: the first stage with its first two
   evaluations dense, tau 0.5, tau 0.25, the fourth single-stage replication.
+- The 512 view with sparse attention, which is what a generated graph runs,
+  has one dialogue clip, and it is the one with the swapped line.

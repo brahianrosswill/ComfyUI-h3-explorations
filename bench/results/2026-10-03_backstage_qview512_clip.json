@@ -30,6 +30,31 @@
  },
  "clips": [
   {
+   "clip": "h3_probe_r2v_step_switch_pdd8_flashgen_h080_savelat_od_backstage__qview512_dense_00001-audio.mp4",
+   "cut_times_s": [
+    4.292,
+    9.25
+   ],
+   "cuts": 2,
+   "shots_match": true,
+   "scene_scores": [
+    [
+     4.292,
+     0.552
+    ],
+    [
+     9.25,
+     0.35
+    ]
+   ],
+   "loudness": {
+    "integrated_lufs": -13.8,
+    "loudness_range_lu": 5.4,
+    "true_peak_dbfs": -0.3
+   },
+   "loudness_delta_lu": 4.1
+  },
+  {
    "clip": "h3_probe_r2v_step_switch_pdd8_flashgen_h080_savelat_od_backstage__qview512_00001-audio.mp4",
    "cut_times_s": [
     3.458,
