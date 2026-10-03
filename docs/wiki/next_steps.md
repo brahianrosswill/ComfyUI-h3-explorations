@@ -457,6 +457,21 @@ mapped to the owner decision it feeds. None of the decisions is made here.
   owner reopened the lane, and `h3_config.MODELS["video_vae"]` is the INT8
   build since 0.151.0.*
 
+**2026-10-03 (sparse attention: the output check and the per-head table).**
+- The output check is closed: no measurement predicts the owner's verdict,
+  no automatic judge, the shipped default stays
+  (`../../bench/results/2026-10-03_sol_output_check.md`). A dense finisher
+  is the remedy for one render whose action came out wrong.
+- The per-head tau table waits on the owner: a different reference did not
+  break it, it is worth little, and it needs a guard margin and a re-fit on
+  the 512 layout before any use
+  (`../../bench/results/2026-10-03_per_head_ref_kill.md`). The instrument is
+  built (`../../bench/results/2026-10-03_tau_sweep.md`).
+- Every attention timing and routed share of 2026-10-03 is on the shared
+  2048-view layout; none has been re-taken on the 512 default.
+- Open from the 2026-10-03 review of the sparse node: the items listed under
+  "Not done" in CHANGELOG 0.185.20.
+
 **2026-10-02 (the upstream survey session).** Found by the read in
 [`../sol_upstream.md`](../sol_upstream.md), "comfy-kitchen and core,
 2026-10-02", [`references.md`](references.md), "What moved by 2026-10-02",

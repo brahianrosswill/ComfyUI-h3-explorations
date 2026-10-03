@@ -4,6 +4,31 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.185.25
+
+### Measured
+
+- **Does a different reference still break a per-head tau table?**
+  (`bench/results/2026-10-03_per_head_ref_kill.md`, `.json`.) Two sweep
+  renders on the ref2va finish graph, same prompt and seed, the shipped still
+  and a different one; a table fitted on the first and scored on the second.
+  The saving in routed key blocks and the ranking of heads by error carry
+  almost whole. The per-head guard, fitted with no margin, is passed on some
+  blocks of the second still, and equally the other way round. Full size, a
+  table is worth about a tenth of the routed key blocks on the video rows.
+  The lever is left to the owner with a recommendation to park it; no table
+  ships. Ran on the shared 2048-view layout.
+
+### Changed
+
+- **The LoRA branch change of 0.185.18 is cleared on the card** (refdude's
+  note, carried here). That entry said "not timed" and "not done: a latent
+  compare". The guard render of 0.185.23 reproduces the morning's clip and
+  its four saved latents on a server that had loaded `753e62a0`, and its
+  sampler time is the morning's, so the change saves nothing measurable on
+  this graph. It reaches all eight evaluations, since PDD's exact branch runs
+  through the same code.
+
 ## 0.185.24
 
 ### Added
