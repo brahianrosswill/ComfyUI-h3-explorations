@@ -4,6 +4,19 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.185.16
+
+### Added
+
+- **`bench/check_reference_encode.py` holds the split loop to core's
+  `Llama2_.forward` on a small random model**, on the CPU: spans encoded one
+  on another and a prompt continued on them, against one forward over the
+  whole sequence, for two vision spans, a label-only span ahead of a vision
+  span, and a one-token prompt, with a red control (positions off by one).
+  Until now the only comparison with core's arithmetic needed the shipped
+  encoder and the card. Written by a peer session during its review and
+  folded in here.
+
 ## 0.185.15
 
 ### Fixed
