@@ -17,6 +17,39 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-03
 
+- **The output check goes ahead of the per-head calibration** (owner,
+  2026-10-03: "and output check first"). Every sparse lever in flight is
+  lossy, nobody is judging clips, and local error did not predict the
+  2026-10-02 verdicts, so a calibrated table had nothing that could accept
+  it. The sweep instrument and calibrator are built and wait
+  (`bench/results/2026-10-03_tau_sweep.md`); the check's record is
+  `bench/results/2026-10-03_sol_output_check.md`.
+
+- **The sparse attention default stays as it is** (owner, 2026-10-03: "leave
+  the shipped default as is", and no more renders on the question). On the
+  market scene at three seeds the owner passed dense attention at all three,
+  sparse in the first stage with a dense finisher at all three, and the
+  shipped setting (sparse in both stages) at two; the third has the double
+  crate, and it is the seed the 2026-10-02 panel judged. A dense finisher
+  costs part of the saving. The owner kept the default; a dense finisher is
+  a per-render remedy, not a shipped setting.
+  `bench/results/2026-10-03_sol_output_check.md`.
+
+- **No automatic judge for action defects** (owner, 2026-10-03, asked
+  whether to build one: "no"). The output check found that latent distance
+  from the dense render, cut count and loudness do not predict the owner's
+  verdict on the market scene, where the defect is an action done wrong. The
+  owner's glance stays the acceptance test for a lossy change; latent
+  distance keeps one use, certifying that a render is nearly the dense
+  sample. `bench/results/2026-10-03_sol_output_check.md`.
+
+- **Corrected: `docs/SOLATTN.md`'s options table carried two retired
+  defaults.** The `dense_blocks` row said `45,48,49` and the
+  `sink_conditioning` row said `exact_kv_and_rows`, and that no graph ships
+  `exact_kv_and_all_rows`. Both rows now point at
+  `sol_attn_h3.py::SOL_DENSE_TAIL` and `SOL_SINK_DEFAULT`. Found in refdude's
+  review of the ref2va path, 2026-10-03.
+
 - **Sparse settings go per head and per segment** (owner, 2026-10-03, on the
   lever board: per-head table, "love it. lets do it"; separating text, video,
   audio and reference rows, "a granularity dive ive been wanting"). The same

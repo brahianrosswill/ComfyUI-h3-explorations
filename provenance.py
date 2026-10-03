@@ -57,6 +57,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -196,6 +197,24 @@ def _jsonable(value):
     return repr(value)
 
 
+def _returns_fallback() -> dict:
+    """Armed instruments under which a call the sparse node takes hands the
+    model the FALLBACK's output, so a render with Sol wired is not a Sol
+    render: the tau sweep always, the probe on its control trajectories. Read
+    from the environment the server started with, as the instruments do; the
+    spec's directory stays out of the stamp."""
+    out = {}
+    if "dir=" in os.environ.get("H3_SOL_SWEEP", ""):
+        out["H3_SOL_SWEEP"] = "every attention call under the sparse node returned the fallback's output"
+    probe = os.environ.get("H3_SOL_PROBE", "")
+    if "dir=" in probe:
+        trajectory = next((part.partition("=")[2].strip().lower() for part in probe.split(",")
+                           if part.strip().startswith("trajectory=")), "sol")
+        if trajectory != "sol":
+            out["H3_SOL_PROBE"] = f"trajectory={trajectory}: every call Sol took returned the fallback's output"
+    return out
+
+
 def _sol_state(transformer_options, sigmas):
     """Three states, and the caller must be able to tell them apart.
 
@@ -228,6 +247,10 @@ def _sol_state(transformer_options, sigmas):
         override = probe
 
     state: dict[str, object] = {"state": "present"}
+    # Only when armed, so an ordinary stamp is byte for byte what it was.
+    fallback = _returns_fallback()
+    if fallback:
+        state["returns_fallback"] = fallback
     compose = transformer_options.get("sol_compose")
     state["sol_compose"] = {k: _jsonable(v) for k, v in compose.items()} if compose else NOT_DETECTED
     # `morton`/`morton_curve` were recorded here until 2026-09-27, when the

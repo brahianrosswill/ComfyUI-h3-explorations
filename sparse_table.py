@@ -122,6 +122,18 @@ def load(name: str, directory: Path | None = None) -> dict:
     return parse(doc, name)
 
 
+def file_fingerprint(name: str, directory: Path | None = None) -> str | None:
+    """A hash of the table file's bytes, or None for `NONE` or a file that is
+    not there. For a node's `fingerprint_inputs`: the calibrator rewrites a
+    table under the same name, which changes no node input."""
+    if not name or name == NONE or Path(name).name != name:
+        return None
+    try:
+        return hashlib.sha256(((TABLE_DIR if directory is None else Path(directory)) / name).read_bytes()).hexdigest()
+    except OSError:
+        return None
+
+
 def require_fits(table: dict, heads: int, n_blocks: int) -> None:
     """Refuse a table calibrated for another model: head count, or a block that does not exist."""
     if table["heads"] != heads:

@@ -23,7 +23,7 @@ by `_require_kernel`), not from a version string.
   token_aug         the node's `token_routing`, per block.
   qk_balance,       the node's `quantizer` (both are fork options; the node
   rotate            refuses at patch time on a build without them).
-  blk_cnt           passed only when `H3_SOL_OBSERVE` is armed.
+  blk_cnt           passed only when `H3_SOL_OBSERVE` or `H3_SOL_SWEEP` is armed.
   key_bias          NOT exposed: legal only where the biased keys are
                     sink-covered, which on H3 means the conditioning rows,
                     and the model was never trained against such a bias.
@@ -55,6 +55,7 @@ from . import sol_observe
 from . import h3_capture as _capture
 from . import sol_block_probe as _probe
 from . import sol_call_timer as _timer
+from . import sol_tau_sweep as _sweep
 from . import sparse_table as _table
 
 try:
@@ -288,12 +289,12 @@ def _require_kernel():
     # Only an ARMED observer needs the count out-parameter. Unarmed, the node
     # never passes it, so an older wheel keeps rendering; armed against such
     # a wheel it must fail here, not record nothing and look complete.
-    if sol_observe.enabled() and "blk_cnt" not in params:
+    if (sol_observe.enabled() or _sweep.enabled()) and "blk_cnt" not in params:
         raise RuntimeError(
-            "H3_SOL_OBSERVE is set, but the installed comfy_kitchen.sol_attn "
-            "has no blk_cnt argument, so the route cannot be observed. Rebuild "
-            "the kernel with vendor/rebuild_kernel.sh, or start the server "
-            "without H3_SOL_OBSERVE.")
+            "H3_SOL_OBSERVE or H3_SOL_SWEEP is set, but the installed "
+            "comfy_kitchen.sol_attn has no blk_cnt argument, so the route cannot "
+            "be observed. Rebuild the kernel with vendor/rebuild_kernel.sh, or "
+            "start the server without them.")
 
 
 def _bthd(q, k, v, heads, skip_reshape):
@@ -718,6 +719,38 @@ def make_override(tau=1.0, min_tokens=12288,
                       "be a Sol render. Every later masked call is silent.",
                       level=logging.WARNING)
             return dense()
+
+        # The tau sweep (`sol_tau_sweep.py`), armed by H3_SOL_SWEEP. Ahead of
+        # the depth and sigma gates on purpose: every block and step is
+        # measured, and the model gets the fallback's output. The tensors are
+        # read, not taken, so under the container entry the fallback still
+        # consumes its containers and this frame keeps q, k and v alive for
+        # the Sol calls after it. Unarmed this is one bool.
+        if _sweep.enabled():
+            tq, tk, tv = _tensor(q), _tensor(k), _tensor(v)
+            qs, ks, vs, b, dim_head = _bthd(tq, tk, tv, heads, skip_reshape)
+            if _ineligible(qs, ks, None, dim_head, min_tokens, dtypes) is None:
+                scale = kwargs.get("scale", None)
+
+                def sol_at(sweep_tau, sweep_counts):
+                    # The node's own call with tau varied and no exact query
+                    # rows; no table, so a table on the node is not swept.
+                    return _run(tq, tk, tv, heads, skip_reshape, skip_output_reshape,
+                                scale, sweep_tau, min_tokens, False, sink, (0, 0),
+                                topk_ratio, tail, blk_cnt=sweep_counts, token_aug=block_aug,
+                                qk_balance=qk_balance, rotate=rotate, dtypes=dtypes)
+
+                def stock():
+                    o = torch.nn.functional.scaled_dot_product_attention(
+                        qs.transpose(1, 2), ks.transpose(1, 2), vs.transpose(1, 2), scale=scale)
+                    return o if skip_output_reshape else o.transpose(1, 2).reshape(b, -1, heads * dim_head)
+
+                route("sweep")
+                return _sweep.run(dense_fn=dense, sol_fn=sol_at, stock_fn=stock, heads=heads,
+                                  skip_output_reshape=skip_output_reshape, options=options,
+                                  settings=settings, block=block, tokens=tokens, batch=batch,
+                                  sink=sink, device=device)
+            del tq, tk, tv, qs, ks, vs
 
         # Depth gate: a block in dense_blocks runs on the fallback.
         if block in dense_blocks:
@@ -1213,6 +1246,21 @@ def _apply_sol(model, *, tau, quantizer, dense_blocks, sink_conditioning,
         composed.append(key)
     if hasattr(diffusion_model, "blocks"):
         _install_compose_hooks(diffusion_model, "attn")
+    if _sweep.enabled():
+        # The sweep is its own record on the fallback's trajectory. A route
+        # or probe record written beside it would describe calls that never
+        # ran as the node's, and a composed forward keeps the calls outside
+        # the sigma window away from the override, so the sweep would miss
+        # them without saying so.
+        if sol_observe.enabled() or _probe.enabled():
+            raise RuntimeError("H3_SOL_SWEEP is armed together with H3_SOL_OBSERVE or H3_SOL_PROBE. "
+                               "Arm the sweep alone: it returns the fallback's output on every call.")
+        if composed:
+            raise RuntimeError("H3_SOL_SWEEP is armed and this model has an object-patched attention "
+                               f"forward ({composed[0]}), which keeps some calls from the sparse "
+                               "node. Sweep a graph whose dense node is ModelAttentionBackend.")
+        logging.warning(f"[h3-sol] tau sweep ARMED ({_sweep.spec()['spec']}): this render gets the "
+                        f"fallback's attention on every call and is NOT a Sol render")
 
     logging.info(
         f"[h3-sol] MiniMaxH3Sol on: sigma window [{sigma_end:.4g}, {sigma_start:.4g}] "
@@ -1336,6 +1384,13 @@ class MiniMaxH3Sol(io.ComfyNode):
             ],
             outputs=[io.Model.Output()],
         )
+
+    @classmethod
+    def fingerprint_inputs(cls, tau_table=_table.NONE, **kwargs):
+        # A table rewritten under the same name changes no input, and the node
+        # cache would hand back the model patched with the old values (found
+        # in review, 2026-10-03). The file's bytes are the input.
+        return _table.file_fingerprint(tau_table)
 
     @classmethod
     def execute(cls, model, tau, quantizer, dense_blocks, sink_conditioning, token_routing,

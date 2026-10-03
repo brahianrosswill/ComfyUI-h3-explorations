@@ -4,6 +4,72 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.185.20
+
+### Added
+
+- **The tau sweep, `H3_SOL_SWEEP`** (`sol_tau_sweep.py`): the calibration
+  instrument for a per-head tau table. Armed, every attention call under
+  `MiniMaxH3Sol` runs the chained fallback once and Sol at each tau of a grid
+  on the same q, k and v, records per segment and head the squared error and
+  the routed key blocks at each tau, and hands the model the fallback's
+  output. It sits ahead of the node's `dense_blocks` and sigma gates, so an
+  unedited shipped graph gives every block and step of both stages. Unarmed
+  it is one boolean, and a render with the hook loaded is bit-identical to
+  one without it (the shipped finish graph at the judged seed). The node
+  refuses to arm it with the observer or the probe, or over an object-patched
+  attention forward. `bench/run_tau_sweep.py` queues the scenes of a sweep;
+  `bench/calibrate_sparse_table.py` fits a table from the records (equal
+  error to the shipped tau with fewest routed blocks, or equal routed blocks
+  with lowest error, under a per-head guard, scored on a held-out scene).
+  **No calibration has run and no table ships**:
+  `bench/results/2026-10-03_tau_sweep.md` has the premises that were
+  measured (`bench/measure_tau_sweep_premises.py`) and what was not.
+- **`bench/score_output_distance.py`** scores renders by their saved latents'
+  distance from a reference render at the same seed, from the files, with
+  the distance between seeds as the top of the scale, loudness against the
+  reference clip and the clip's cuts. **`bench/score_clip_shots_loudness.py`**
+  does the two clip-only parts. Arms: `bench/sol_output_distance_arms.json`.
+
+### Measured
+
+- **The output check for sparse attention**
+  (`bench/results/2026-10-03_sol_output_check.md`), which the owner put ahead
+  of the calibration and closed the same day. The render is deterministic, so
+  a judged clip can be re-rendered exactly. Latent distance from the dense
+  render, cut count and loudness do not predict the owner's verdict on the
+  market scene. Dense attention was passed at three seeds of three, sparse in
+  the first stage with a dense finisher at three of three, and the shipped
+  setting at two; the third is the seed the 2026-10-02 panel judged. The
+  owner kept the shipped default and declined an automatic judge
+  (`docs/wiki/decisions.md`). The same rows carry the two renders with the
+  text encoder's view of the reference at 512.
+
+### Fixed
+
+From refdude's read-only review of the ref2va path
+(`internal/claude/2026-10-03_refdude_code_review.md`, board findings rd-12 to
+rd-14):
+
+- **A tau table rewritten under the same file name is re-read.**
+  `MiniMaxH3Sol` had no `fingerprint_inputs`, so the node cache handed back
+  the model patched with the old values. The table file's bytes are now the
+  fingerprint (`sparse_table.file_fingerprint`).
+- **A render made under an armed instrument that returns the fallback's
+  output says so in its stamp.** `provenance.py::_returns_fallback` adds
+  `returns_fallback` to the Sol state under `H3_SOL_SWEEP` or a probe on a
+  fallback trajectory. An ordinary stamp is unchanged.
+- **`docs/SOLATTN.md`'s options table carried two retired defaults**; both
+  rows point at the constants now (`docs/wiki/decisions.md`).
+
+Not done: the checks that need the card were not graded for this commit (a
+render held it); every other check passed or exits non-zero for a reason
+that is not this change. Still open from the review: a per-call
+`float(sigmas[0])` on a device tensor, `_MAP_CACHE` outside core's memory
+accounting, the log-once key, `sol_chunked_h3.py` dropping settings the
+observer reports, and the audio gain applied twice on the sage chain when Sol
+declines a call.
+
 ## 0.185.19
 
 ### Added
