@@ -94,6 +94,12 @@ class RuntimeImageReference:
     # `docs/h3_conditioning_end_to_end.md` section 1b is why the two branches
     # need not share a geometry.
     qwen_short_edge: int = 0
+    # False: this still reaches the model through the text encoder only. No
+    # VAE encode, no reference latent rows for the DiT. The same thing as
+    # leaving `vae` unwired on the conditioner, for one reference
+    # (2026-10-03, the owner, after one clip rendered that way looked the
+    # same to them: bench/results/2026-10-03_encoder_only_reference.md).
+    use_vae: bool = True
 
 
 @dataclass(frozen=True)
@@ -630,8 +636,14 @@ def _compile_reference_records(
                  else "same tensor as the VAE view"),
                 image_policy, (qwen_w // 32) * (qwen_h // 32))
             ref_items.append({"type": "image", "data": qwen_view})
-            if vae is None:
+            if vae is None or not record.use_vae:
                 # Encoder-only still: Qwen sees it, the DiT gets no rows.
+                # Either no VAE is wired, or this reference's append node
+                # turned its own off.
+                if vae is not None:
+                    logger.info(
+                        "[h3] reference %d: use_vae is off on its append node; "
+                        "text encoder only, no reference rows", index + 1)
                 continue
             latent = vae.encode(vae_view)
             # Read the grid off the tensor the VAE returned, not off the pixel
@@ -890,6 +902,24 @@ class MiniMaxH3AppendRefImage(io.ComfyNode):
                         "reference-view ablation is the arm that would."
                     ),
                 ),
+                # Appended 2026-10-03.
+                io.Boolean.Input(
+                    "use_vae", default=True, optional=True,
+                    tooltip=(
+                        "On (default): the VIDEO MODEL gets its own copy of "
+                        "this still as reference rows, attended on every "
+                        "sampling step. This is what every serving "
+                        "implementation does.\n\n"
+                        "Off: this still reaches the model through the TEXT "
+                        "ENCODER only. Its reference rows are not built, so "
+                        "every step runs a shorter sequence and the render is "
+                        "faster; what the model knows of the still is what the "
+                        "encoder read. One clip rendered this way looked the "
+                        "same to the owner; it is not measured beyond that.\n\n"
+                        "The same as leaving vae unwired on the conditioning "
+                        "node, for this one reference."
+                    ),
+                ),
             ],
             outputs=[H3References.Output(display_name="references")],
         )
@@ -900,7 +930,7 @@ class MiniMaxH3AppendRefImage(io.ComfyNode):
     # is a UI-versus-API split (2026-08-31). `None` is what an API prompt
     # omitting a DynamicCombo yields; it takes the schema's FIRST option, so
     # the schema order above is the default and there is no second copy of it.
-    def execute(cls, image, size_policy, qwen_view, references=None):
+    def execute(cls, image, size_policy, qwen_view, references=None, use_vae=True):
         # A DynamicCombo arrives as ONE nested dict: the selected key under the
         # input's own id, and the chosen option's inputs alongside it. NOT as
         # flattened kwargs. `MiniMaxH3Resolution.execute` carries the scar from
@@ -957,10 +987,11 @@ class MiniMaxH3AppendRefImage(io.ComfyNode):
         records = _reference_tuple(references) + (RuntimeImageReference(
             image=image, size_policy=size_policy,
             short_edge=int(short_edge), allow_upscale=bool(allow_upscale),
-            qwen_short_edge=qwen_short_edge,
+            qwen_short_edge=qwen_short_edge, use_vae=bool(use_vae),
         ),)
         return io.NodeOutput(records, ui=ui.PreviewText(_appended_preview(
-            records, 1, f"still, {source_w}x{source_h}")))
+            records, 1, f"still, {source_w}x{source_h}"
+            + ("" if use_vae else ", text encoder only (use_vae off)"))))
 
 
 class MiniMaxH3AppendRefVideo(io.ComfyNode):

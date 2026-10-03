@@ -14,7 +14,8 @@
       "image",
       "references",
       "size_policy",
-      "qwen_view"
+      "qwen_view",
+      "use_vae"
     ],
     "node_id": "MiniMaxH3AppendRefImage",
     "outputs": [

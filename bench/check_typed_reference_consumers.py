@@ -93,7 +93,17 @@ def main():
             # rather than a guess.
             "absent": ["allow_upscale", "dit_short_edge", "qwen_view",
                        "qwen_short_edge"],
+            # The append node's own VAE switch (2026-10-03). A graph built
+            # before it lacks the key, and that reads as on without being
+            # recorded absent: on is what such a graph renders.
+            "use_vae": True,
         }}, policies
+        import copy
+        off = copy.deepcopy(graph)
+        still = next(k for k, n in off.items() if n["class_type"] == "MiniMaxH3AppendRefImage")
+        off[still]["inputs"]["use_vae"] = False
+        _media, off_policies, _typed = _reference_media(inputs, off)
+        assert off_policies["ref_images.ref_image_0"]["use_vae"] is False, off_policies
 
     def malformed_chain_is_not_partially_reported():
         broken = _graph()

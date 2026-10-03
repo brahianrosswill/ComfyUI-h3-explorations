@@ -528,6 +528,12 @@ def _reference_media(inputs: dict, graph: dict):
                                           ("qwen_short_edge", qwen_short_edge))
                            if v is None],
                 "absent": absent,
+                # The append node's own VAE switch (2026-10-03). Read without
+                # `_value`: every graph built before it lacks the key, and
+                # absent means on. A wired value cannot be read off the graph
+                # and is priced as on.
+                "use_vae": (append_inputs.get("use_vae", True)
+                            if not isinstance(append_inputs.get("use_vae"), list) else True),
             }
         elif kind == "video":
             media[f"ref_videos.ref_video_{index}"] = append_inputs.get("frames")
@@ -1565,7 +1571,8 @@ def price(node: dict, graph: dict) -> list[str]:
         scale = tw / iw
         # Priced at the VAE view even when no VAE is wired, so the line still
         # says what the still WOULD cost; the count is what the DiT gets.
-        r = latent_rows(tw, th) if rows_reach_dit else 0
+        still_uses_vae = bool((policy or {}).get("use_vae", True))
+        r = latent_rows(tw, th) if rows_reach_dit and still_uses_vae else 0
         ref_total += r
         bound_notes = (_vision_bound_warnings(key, tw, th)
                        if image_policy == "comfy" and not qwen_edge else [])

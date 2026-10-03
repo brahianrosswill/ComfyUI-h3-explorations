@@ -499,6 +499,42 @@ def encoder_only_references_skip_the_dit_rows():
         "the same layout core builds for a text-only pass")
 
 
+def a_still_can_turn_its_own_vae_copy_off():
+    """`use_vae` on the append node is `vae` unwired, for one reference.
+
+    Two stills, the second with `use_vae` off: both reach the text encoder,
+    in order and unchanged, and only the first gets a DiT block. RED CONTROL:
+    with it on, both do. The node's default and the record's default are on,
+    the input is the last one, and the report prices no rows for the still
+    that turned it off.
+    """
+    import torch
+    first, second = _frames(1, 64, 64), _frames(1, 64, 64)
+    chain = R.MiniMaxH3AppendRefImage.execute(first, "match", "shared").args[0]
+    off = R.MiniMaxH3AppendRefImage.execute(second, "match", "shared", references=chain, use_vae=False)
+    on = R.MiniMaxH3AppendRefImage.execute(second, "match", "shared", references=chain)
+    assert [r.use_vae for r in off.args[0]] == [True, False]
+    assert [r.use_vae for r in on.args[0]] == [True, True], "the default must be on"
+    schema = R.MiniMaxH3AppendRefImage.define_schema()
+    last = schema.inputs[-1]
+    assert last.id == "use_vae" and last.optional and last.default is True, last.id
+
+    items_off, blocks_off = R._compile_reference_records(
+        off.args[0], _VideoVae(), None, width=64, height=64, frame_count=22)
+    items_on, blocks_on = R._compile_reference_records(
+        on.args[0], _VideoVae(), None, width=64, height=64, frame_count=22)
+    assert [i["type"] for i in items_off] == [i["type"] for i in items_on] == ["image", "image"]
+    assert all(torch.equal(a["data"], b["data"]) for a, b in zip(items_off, items_on)), (
+        "turning the VAE copy off must not change what the text encoder is shown")
+    assert len(blocks_on) == 2, "red control: with use_vae on, both stills get a block"
+    assert len(blocks_off) == 1, f"the still with use_vae off still got a block: {len(blocks_off)}"
+
+    reference_report = importlib.import_module(f"{_REPO.name}.reference_report")
+    priced = reference_report.price_references(off.args[0], 64, 64, 22)
+    assert [item.dit_rows > 0 for item in priced.items] == [True, False], (
+        [item.dit_rows for item in priced.items])
+
+
 def append_sizing_reaches_the_encoded_geometry():
     """`short_edge` and `allow_upscale` on the append change what the VAE gets.
 
@@ -900,6 +936,7 @@ CHECKS = (
     preflight_resolves_the_contract_from_the_loader_node,
     conditioning_node_assembles_the_real_payload_shape,
     encoder_only_references_skip_the_dit_rows,
+    a_still_can_turn_its_own_vae_copy_off,
     preflight_reads_the_vae_gate_off_the_graph,
     video_grid_is_read_off_the_latent,
 )

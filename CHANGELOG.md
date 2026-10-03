@@ -4,6 +4,32 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.185.17
+
+### Added
+
+- **`MiniMaxH3AppendRefImage` gains `use_vae`**, an optional switch appended
+  last and on by default (the owner, 2026-10-03: "maybe we should at least
+  have a setting in our ref node(s) to use vae or not"). Off, that one still
+  reaches the model through the text encoder only: no VAE encode and no
+  reference-latent rows for it, so every step runs a shorter sequence. It is
+  `vae` left unwired on the conditioner, for one reference; the encoder is
+  shown the same copy either way. The node's preview says when it is off, the
+  conditioning node's report prices no rows for that still, and
+  `bench/preflight_graph.py` reads the switch off a graph.
+  `bench/check_reference_runtime.py` holds it with a red control,
+  `bench/check_typed_reference_consumers.py` holds preflight's reading of it
+  (the full check sweep caught that check pinning the old shape), and
+  `bench/node_id_manifest.json` records the appended input. No graph turns it
+  off, and no default moved: the evidence is one clip.
+- `bench/results/2026-10-03_encoder_only_reference.md`: that clip. The shipped
+  ref2va finish graph with its only still encoder-only, beside the shipped
+  render at the same seed: a shorter sequence, a faster sampler, and the
+  owner could not tell the two apart. Not blind, one scene, one still, one
+  seed, and not the vendor's path.
+
+Not done: the same switch on the video and audio append nodes.
+
 ## 0.185.16
 
 ### Added

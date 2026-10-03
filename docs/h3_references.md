@@ -4,7 +4,7 @@
 is, what ComfyUI actually does to it, what it costs, and how to write the
 prompt so the model uses it the way you meant.
 
-last updated: 2026-10-03 (the section "Encoding references apart from the prompt", and the append nodes showing their label); 2026-08-25; the reference policies, the append node's defaults and the reference-view ablation corrected 2026-09-13 (`docs/wiki/decisions.md`); the retired concise swap twin corrected 2026-09-14
+last updated: 2026-10-03 (the section "Encoding references apart from the prompt", the append nodes showing their label, and `use_vae` on the still's append node); 2026-08-25; the reference policies, the append node's defaults and the reference-view ablation corrected 2026-09-13 (`docs/wiki/decisions.md`); the retired concise swap twin corrected 2026-09-14
 
 Sources: MiniMax's official prompt guide, general prompting research, ComfyUI's
 own code, and **sglang's MiniMax H3 serving path** (`coderef/sglang`, read at
@@ -87,6 +87,15 @@ frame loader, which is why the frame rate is your problem (below).
 ---
 
 ## Encoder-only references: leave the VAE unwired
+
+**For one still, since 2026-10-03:** `MiniMaxH3AppendRefImage` has a `use_vae`
+switch, on by default. Off, that still is presented to the text encoder as
+before and gets no reference-latent rows, while the other references keep
+theirs. It is the per-reference form of what this section describes. One
+render with the only still encoder-only looked the same to the owner and its
+sampler was faster; the record, with what one unblinded clip does not
+establish, is `bench/results/2026-10-03_encoder_only_reference.md`. No shipped
+graph turns it off.
 
 Since ComfyUI PR 16065 (core commit `1aec3a13`, merged 2026-09-03) both VAE
 inputs on `MiniMaxH3ReferenceToVideo` are optional, and since this pack's

@@ -272,10 +272,16 @@ def price_references(records, width: int, height: int, length: int,
             rows = latent_rows(vae_w, vae_h)
             tokens = merged_tokens(qwen_w, qwen_h)
             vision_tokens += tokens
+            if not getattr(record, "use_vae", True):
+                # The append node turned this still's VAE copy off: the
+                # compiler builds no block for it, so it costs no rows.
+                rows = 0
+                notes.append("use_vae off: text encoder only, no reference rows")
             items.append(StillPricing(index, label, (sw, sh), (vae_w, vae_h), rows,
                                       (qwen_w, qwen_h), tokens, separate, notes))
-            blocks.append({"kind": "image", "latent_h": vae_h // 16,
-                           "latent_w": vae_w // 16})
+            if rows:
+                blocks.append({"kind": "image", "latent_h": vae_h // 16,
+                               "latent_w": vae_w // 16})
             label_texts.append(f"{label}: ")
             continue
 
