@@ -1102,6 +1102,25 @@ class MiniMaxH3ReferenceConditioning(io.ComfyNode):
                         "Reference Report shows which bounds moved a copy."
                     ),
                 ),
+                # Appended 2026-10-03. Off is the one-pass encode, unchanged.
+                io.Boolean.Input(
+                    "keep_references", default=False, optional=True,
+                    tooltip=(
+                        "Keep the text encoder's reading of the references in "
+                        "memory for this session, so a prompt edit encodes "
+                        "only the prompt. Changing the last reference reuses "
+                        "the ones before it; the preview says what was kept.\n\n"
+                        "Off (default): references and prompt are encoded in "
+                        "one pass, as always.\n\n"
+                        "On: the conditioning differs from the one-pass "
+                        "result in the last bits, far less than the int8 "
+                        "encoder differs from bf16. The same thing as wiring "
+                        "MiniMax H3 Encode References into MiniMax H3 Prompt "
+                        "On References, without rewiring; those two also "
+                        "skip the reference VAE encode on a prompt edit, "
+                        "which this node repeats."
+                    ),
+                ),
             ],
             outputs=[
                 io.Conditioning.Output(display_name="positive"),
@@ -1113,7 +1132,7 @@ class MiniMaxH3ReferenceConditioning(io.ComfyNode):
     def execute(
         cls, clip, references, prompt, width=1344,
         height=768, length=124, video_policy="comfy",
-        image_policy="comfy", vae=None, audio_vae=None,
+        image_policy="comfy", vae=None, audio_vae=None, keep_references=False,
     ):
         records = _reference_tuple(references)
         if not records:
@@ -1130,8 +1149,25 @@ class MiniMaxH3ReferenceConditioning(io.ComfyNode):
             records, vae, audio_vae, width, height, frame_count,
             video_policy=video_policy, image_policy=image_policy,
         )
-        tokens = clip.tokenize(normalize_prompt(prompt), minimax_ref_items=ref_items)
-        conditioning = clip.encode_from_tokens_scheduled(tokens)
+        kept_report = []
+        if keep_references:
+            # The split pass (`reference_encode.py`), on the same store its two
+            # nodes use. An encoder it cannot split falls through to the one
+            # pass below, which is the reference result, and the preview says so.
+            from . import reference_encode
+            reason = reference_encode.unsupported(clip)
+            if reason is None:
+                encoded = reference_encode.encode_references(
+                    clip, ref_items, assign_labels(_order_records(records)))
+                conditioning = reference_encode.condition_prompt(encoded, normalize_prompt(prompt))
+                kept_report = encoded.report
+            else:
+                keep_references = False
+                kept_report = [f"references not kept: {reason}; encoded in one pass"]
+                logger.info("[h3] keep_references is on, but %s; encoding in one pass", reason)
+        if not keep_references:
+            tokens = clip.tokenize(normalize_prompt(prompt), minimax_ref_items=ref_items)
+            conditioning = clip.encode_from_tokens_scheduled(tokens)
         if ref_blocks:
             # Absent, not []: `model_base` builds the text-only layout for a
             # missing key and a refs=[] layout for an empty one, and core
@@ -1162,5 +1198,7 @@ class MiniMaxH3ReferenceConditioning(io.ComfyNode):
                 video_policy=video_policy, clip=clip, prompt=prompt))
         except Exception as exc:  # pragma: no cover - reporting must not gate
             logger.warning("[h3] reference report skipped: %s", exc)
+        if kept_report:
+            preview = "\n".join(([preview, ""] if preview else []) + kept_report)
         return io.NodeOutput(conditioning, latent,
                              ui=ui.PreviewText(preview) if preview else None)

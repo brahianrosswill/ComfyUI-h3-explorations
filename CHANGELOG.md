@@ -4,6 +4,27 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.185.14
+
+### Added
+
+- **`MiniMaxH3ReferenceConditioning` gains `keep_references`**, an optional
+  switch appended last and off by default. On, the node keeps the text
+  encoder's reading of the references for the session and encodes only the
+  prompt on a prompt edit: the same two steps and the same store as the two
+  experimental nodes of 0.185.13, with nothing to rewire. Off, the node is the
+  one-pass encode it was, and a peer's render of the shipped ref2va finish
+  graph with this tree loaded reproduced the morning's latents bit for bit.
+  On, the conditioning differs from the one pass in the last bits
+  (`bench/results/2026-10-03_reference_split.json`); an encoder that cannot be
+  split is encoded in one pass and the preview says so. The node repeats the
+  references' resize and VAE encode on each prompt edit, which the two-node
+  form does not. No graph sets it; turning it on in the generator is the
+  owner's call. `bench/node_id_manifest.json` records the appended input and
+  `bench/check_reference_encode.py` holds the switch, with a red control.
+  Not yet run on the real encoder through this node (the two functions it
+  calls were: 0.185.13).
+
 ## 0.185.13
 
 ### Added

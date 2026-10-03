@@ -167,6 +167,13 @@ mechanism. The owner accepted that difference on 2026-10-03. No shipped graph
 wires these nodes; the one-node path is the default and the reference for
 "today's conditioning".
 
+**Without rewiring:** `MiniMaxH3ReferenceConditioning` has a
+`keep_references` switch (off by default) that runs the same two steps on the
+same store inside the one node. A prompt edit then re-executes the node, so it
+repeats the references' resize and VAE encode, which the two-node form does
+not; for stills that is small beside the encoder's pass, for a video
+reference it is not.
+
 Not kept across a miss: the vision tower's output and the VAE rows.
 `bench/check_reference_encode.py` pins the core source the split depends on.
 

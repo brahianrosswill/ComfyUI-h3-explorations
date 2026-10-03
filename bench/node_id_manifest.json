@@ -377,7 +377,8 @@
       "height",
       "length",
       "video_policy",
-      "image_policy"
+      "image_policy",
+      "keep_references"
     ],
     "node_id": "MiniMaxH3ReferenceConditioning",
     "outputs": [
