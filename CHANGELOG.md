@@ -4,6 +4,18 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.185.3
+
+### Added
+
+- **Probe builds of Sol's exact kernel**, in
+  `bench/results/2026-10-03_r2v_finish_time_budget.md` ("Probe builds") and
+  `2026-10-03_sol_exact_probe_builds.json`: the stage's extra cost per attended
+  pair against the dense kernel is the gathered tile copy, not the arithmetic.
+  Four local fixes were built and measured, none faster; all bit-identical.
+  The probes live on a local branch of the kitchen fork; the installed build
+  is unchanged.
+
 ## 0.185.2
 
 ### Added

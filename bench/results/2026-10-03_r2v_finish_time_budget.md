@@ -92,6 +92,53 @@ global memory inside the tile loop, syncs threads twice per key block around
 a two-stage gathered copy, and sets no launch bounds on this card. It does
 hold Q in registers. The build uses fast math.
 
+## Probe builds: where the exact stage's extra cost is
+
+Branch `sol-exact-sm89` of the kitchen fork (local, commit `e96705d`), built
+from a worktree to a side directory; the installed build was not touched.
+Compile-time switches remove one thing at a time from the exact kernel only,
+so routing is unchanged. One cell (block 24, step 2), whole Sol call, median
+of 5; the other stages are about 16 ms of every row. Rows:
+`2026-10-03_sol_exact_probe_builds.json`. A side build of the unmodified
+branch matches the installed kernel in time and in a bit digest of the output.
+
+| build | call, ms | output |
+|---|--:|---|
+| unmodified | 487 to 491 | reference digest |
+| no P·V tensor-core issue | 401 | changed, by design |
+| no QK tensor-core issue | 385 | changed |
+| neither | 302 | changed |
+| staging only, no compute | 286 | changed |
+| compute only, no staging | 406 | changed |
+| key scale and bias not loaded | 466 | changed |
+| one thread sync per key block / none | 486 / 480 | changed (racy) |
+| P·V accumulate pipelined | 488 | bit-identical |
+| three-deep staging pipeline | 505 | bit-identical |
+| key scale and bias staged into shared memory | 493 | bit-identical |
+| launch bounds of 3 blocks per SM | 495 | bit-identical |
+
+What it says:
+
+- **The compute is not the gap.** With staging removed the call is 406 ms; the
+  dense kernel's cost for the same share of pairs is about 377 ms (918 ms at
+  0.41). Sol's arithmetic per pair is about as cheap as the dense kernel's.
+- **The gap is the gathered copy.** Staging alone, with no compute, takes 286
+  ms. The exact kernel copies a 16 KB K and V^T tile for 4 warps and 64 keys;
+  the dense kernel copies 32 KB for 8 warps and 128 keys, a quarter of the
+  bytes per attended pair. The tensor-core work adds almost fully on top of
+  the staging time rather than hiding behind it.
+- **The local fixes do nothing.** Pipelining the P·V accumulate, a deeper
+  pipeline (it costs occupancy, as the source comment says), moving the key
+  scales into shared memory (the register count rises and a block per SM is
+  lost) and launch bounds are all within noise or worse. Thread syncs are
+  about 2 percent.
+- **What would help is staging fewer bytes per pair:** two adjacent query
+  blocks in one launch block sharing a staged tile wherever both route it.
+  They always do on the conditioning prefix and on the dense query rows,
+  which by arithmetic from the capture's layout is over half of all tile
+  visits. Not built. The per-row arithmetic would be unchanged, so the bit
+  digest is the test.
+
 ## P·V that could be skipped
 
 `bench/probe_pv_skip_on_capture.py` on all 20 cells of the same capture, 56
