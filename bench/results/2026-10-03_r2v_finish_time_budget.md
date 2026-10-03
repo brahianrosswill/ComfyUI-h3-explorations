@@ -162,6 +162,42 @@ Bit-exact skipping exists only at block 49. A bounded skip is depth-dependent
 and strongest in the tail. Step 6 reads a little higher than step 2. In the
 kernel's own tile order the shares are lower (the `causal` rows in the file).
 
+## What a tau per head would buy
+
+`bench/measure_per_head_tau_on_capture.py` on ten cells of the same capture
+(`2026-10-03_per_head_tau_ref2va.json`). One Sol call per tau in a sweep gives
+every head's error against the dense kernel and its routed share, because a
+head's routing does not read another head's; the best per-head assignment is
+then priced against the single shipped tau. Fitted and scored on the same
+cell, so an upper bound for that cell.
+
+| cell | single tau 1.0: error, routed share | per head, same error: share | per head, same share: error |
+|---|---|--:|--:|
+| block 0, step 2 | 0.058, 0.496 | 0.391 | 0.033 |
+| block 8, step 2 | 0.054, 0.428 | 0.414 | 0.048 |
+| block 24, step 2 | 0.107, 0.410 | 0.384 | 0.090 |
+| block 40, step 2 | 0.191, 0.415 | 0.387 | 0.165 |
+| block 44, step 2 | 0.073, 0.429 | 0.373 | 0.050 |
+| block 46, step 2 | 0.053, 0.418 | 0.369 | 0.040 |
+| block 47, step 2 | 0.056, 0.417 | 0.367 | 0.041 |
+| block 49, step 2 | 0.076, 0.416 | 0.346 | 0.059 |
+| block 24, step 6 | 0.091, 0.412 | 0.392 | 0.085 |
+| block 44, step 6 | 0.068, 0.434 | 0.363 | 0.048 |
+
+- The share includes the conditioning floor, which no tau moves, so the
+  routed remainder shrinks by more than these ratios suggest.
+- **A block's table carries across steps.** Block 24's step-2 table on step 6
+  gives error 0.091 at share 0.386 (single tau: 0.091 at 0.412); block 44's
+  gives 0.061 at 0.377 (single tau: 0.068 at 0.434).
+- **It does not carry across blocks.** Block 44's table on block 46 more than
+  doubles the error. The table is per block and head.
+- One scene. Yesterday's probe records say per-head error keeps its ranking
+  across a new prompt and seed (rank correlation 0.96 at equal settings, 0.996
+  across seeds only; `data/sparse/sol_analysis.duckdb`, `sol_probe_heads`),
+  with every run on one reference geometry. A different reference is untested.
+- The reference is the dense INT8 kernel, not exact attention, and local
+  error did not predict the owner's verdicts on 2026-10-02.
+
 ## Reference rows across steps
 
 Same capture, steps 2 and 6, reference rows' K and V over all 56 heads

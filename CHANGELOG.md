@@ -4,6 +4,17 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.185.4
+
+### Added
+
+- `bench/measure_per_head_tau_on_capture.py`: what a routing threshold per
+  head would buy over the single tau `sol_attn` takes, priced from a tau sweep
+  on captured q/k/v with no kernel change. First record:
+  `bench/results/2026-10-03_per_head_tau_ref2va.json`, read in
+  `2026-10-03_r2v_finish_time_budget.md` ("What a tau per head would buy").
+  The owner asked for the per-head table on 2026-10-03; nothing is wired yet.
+
 ## 0.185.3
 
 ### Added
