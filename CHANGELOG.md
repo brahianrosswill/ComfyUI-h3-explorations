@@ -4,6 +4,27 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.185.2
+
+### Added
+
+- **Where a ref2va finish render's time goes**, measured end to end:
+  `bench/results/2026-10-03_r2v_finish_time_budget.md` and its row files. One
+  evaluation is accounted for piece by piece (attention by route, the int8
+  linear layers, the elementwise ops), Sol's exact stage is compared with the
+  dense kernel on the same captured tensors, and two ideas are priced on the
+  ref2va capture (skipping P·V on negligible key tiles; reusing reference K/V
+  across steps).
+- `bench/profile_block_ops.py`: every non-attention op of one DiT block timed
+  alone on the checkpoint's own weights.
+- `bench/time_dense_on_capture.py`: the dense kitchen kernel on captured
+  q/k/v, the companion to `bench/profile_sol_stages.py`.
+- `bench/probe_pv_skip_on_capture.py`: how many key tiles carry a negligible
+  P·V term per block, and what skipping them costs.
+- `bench/compare_vae_decoders.py --extra LABEL=FILE` runs another decoder as
+  an arm. First use: LynnReal's light INT8 VAE
+  (`bench/results/2026-10-03_vae_decoders_light_r2v.json`). No default moved.
+
 ## 0.185.1
 
 ### Changed

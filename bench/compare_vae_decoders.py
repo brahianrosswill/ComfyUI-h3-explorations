@@ -129,6 +129,8 @@ def main() -> int:
     ap.add_argument("latent", type=Path)
     ap.add_argument("--out", type=Path)
     ap.add_argument("--fast", nargs="*", default=[])
+    ap.add_argument("--extra", action="append", default=[], metavar="LABEL=FILE",
+                    help="another decoder under models/vae to run as an arm, compared like the rest")
     ap.add_argument("--child", action="store_true", help=argparse.SUPPRESS)
     ap.add_argument("--folder", help=argparse.SUPPRESS)
     ap.add_argument("--file", help=argparse.SUPPRESS)
@@ -140,11 +142,12 @@ def main() -> int:
     import numpy as np
     rows, frames = {}, {}
     with tempfile.TemporaryDirectory() as tmp:
-        for label, folder, fname in ARMS:
+        extra = [(e.split("=", 1)[0], "vae", e.split("=", 1)[1]) for e in args.extra]
+        for label, folder, fname in ARMS + extra:
             save = str(Path(tmp) / f"{label}.npy")
             cmd = [sys.executable, __file__, str(args.latent.resolve()), "--child",
                    "--folder", folder, "--file", fname, "--save", save,
-                   "--fast", *args.fast]
+                   *(["--fast", *args.fast] if args.fast else [])]
             r = subprocess.run(cmd, capture_output=True, text=True, cwd=str(COMFY))
             if r.returncode != 0:
                 print(r.stderr[-3000:], file=sys.stderr)
