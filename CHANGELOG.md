@@ -4,6 +4,17 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.185.1
+
+### Changed
+
+- **`MiniMaxH3Sol` is shown as "MiniMax H3 Sparse Attention"** (owner,
+  2026-10-03), replacing "MiniMax H3 Sol-Attn". Display name only: the
+  `node_id` is unchanged, so every saved and generated graph loads as before
+  and none was rebuilt. Search aliases (`sol`, `sol-attn`) find it under the
+  old name. `docs/h3_geometry_and_nodes.md`, `docs/SOLATTN.md` and
+  `docs/research/sparse/sol_capture_and_optimization_guide.md` follow.
+
 ## 0.185.0
 
 ### Changed

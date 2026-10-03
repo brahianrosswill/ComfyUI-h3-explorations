@@ -1024,7 +1024,8 @@ class MiniMaxH3Sol(io.ComfyNode):
     def define_schema(cls):
         return io.Schema(
             node_id="MiniMaxH3Sol",
-            display_name="MiniMax H3 Sol-Attn",
+            display_name="MiniMax H3 Sparse Attention",
+            search_aliases=["sol", "sol-attn", "sparse attention", "block sparse"],
             is_experimental=True,
             category="model/attention/minimax",
             description=(

@@ -1990,7 +1990,7 @@ what is installed — put it in the run log.
 ## Ordering
 
 ```
-Load Diffusion Model -> Model Attention Backend (kitchen) -> MiniMax H3 Sol-Attn -> BasicGuider
+Load Diffusion Model -> Model Attention Backend (kitchen) -> MiniMax H3 Sparse Attention -> BasicGuider
 ```
 
 Sol must come second: it walks the model's existing object patches and composes

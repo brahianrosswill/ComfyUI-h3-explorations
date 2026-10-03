@@ -15,6 +15,15 @@ Older history lives elsewhere and is not copied here:
   decisions" and forward-plan sections.
 - `bench/results/`: the verdict records, each with its conditions.
 
+## 2026-10-03
+
+- **The Sol node is shown as "MiniMax H3 Sparse Attention"** (owner, 2026-10-03:
+  "MiniMax H3 Sparse Attention works"; not core's exact name, which is "Model
+  Sparse Attention"). The owner wants the node to be the home for sparsity and
+  attention efficiency in general, not Sol's method alone. Display name only:
+  `node_id` stays `MiniMaxH3Sol` (`docs/comfy_notes.md`, the `node_id` rule), so
+  no graph changes. It used to read "MiniMax H3 Sol-Attn" (0.185.1).
+
 ## 2026-10-02
 
 - **Sol's `sink_conditioning` default becomes `exact_kv_and_all_rows`; `dense_blocks`

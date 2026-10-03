@@ -1,6 +1,6 @@
 # End-to-End Guide: Sol-Attn Data Capture & Hyperparameter Optimization
 
-A comprehensive guide for instrumenting, capturing, and analyzing **MiniMax H3 Sol-Attn** telemetry. This pipeline enables data-driven optimization of every hyperparameter in the [`MiniMaxH3Sol`](../../../sol_attn_h3.py) node—including `tau`, `quantizer`, `dense_blocks`, `sink_conditioning`, `token_routing`, and `start_percent`—using local, untracked DuckDB analytics and interactive visual dashboards.
+A comprehensive guide for instrumenting, capturing, and analyzing **MiniMax H3 Sparse Attention** (`MiniMaxH3Sol`) telemetry. This pipeline enables data-driven optimization of every hyperparameter in the [`MiniMaxH3Sol`](../../../sol_attn_h3.py) node—including `tau`, `quantizer`, `dense_blocks`, `sink_conditioning`, `token_routing`, and `start_percent`—using local, untracked DuckDB analytics and interactive visual dashboards.
 
 ---
 
@@ -29,7 +29,7 @@ flowchart TD
 
 ## 2. Setting Up the Node Parameters
 
-Depending on your objective, configure the **MiniMax H3 Sol-Attn** node in ComfyUI for either a **Diagnostic Probe** (to discover bottlenecks) or a **Verification Probe** (to validate candidate production settings).
+Depending on your objective, configure the **MiniMax H3 Sparse Attention** (`MiniMaxH3Sol`) node in ComfyUI for either a **Diagnostic Probe** (to discover bottlenecks) or a **Verification Probe** (to validate candidate production settings).
 
 ### Strategy A: Diagnostic Probe (Run First)
 *Goal: Measure unmasked error across all 50 DiT blocks and all timesteps to discover which blocks need protection and what `tau` to select.*
