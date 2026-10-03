@@ -1,6 +1,7 @@
 # What upstream says: the paper, Sol-Engine, Sol-H3, and the other packs
 
-Last updated: 2026-10-02 (section "comfy-kitchen and core, 2026-10-02"; a
+Last updated: 2026-10-03 (a dated note under "Kitchen: current" in the 2026-10-02
+section: the installed build has moved); 2026-10-02 (section "comfy-kitchen and core, 2026-10-02"; a
 superseded note on the 2026-09-25 INT8 VAE paragraph; core's model.py line
 citations re-read); 2026-09-27 (core's model.py line citations and the chunked
 producer's V scale only); 2026-09-25 (section "comfy-kitchen and core, 2026-09-25", with
@@ -72,6 +73,16 @@ add opt-in indexed-gate, fused-norm and BSHD-output APIs that core does not
 call yet; core's 16681 and 16678 below are their consumers. 224 fixes INT8
 attention for a nonpositive scale, which H3 never passes. **168 (ours)** is
 still open with no activity since 2026-09-11.
+
+*2026-10-03: the pin and the build named above are the 2026-10-02 state and
+both have moved. Core's pin is the `comfy-kitchen==` line of ComfyUI's
+`requirements.txt`; the installed build, its upstream base and the commits it
+carries are in `comfy_kitchen_build.json` beside the ComfyUI venv, which
+`vendor/rebuild_kernel.sh` writes, and `bench/check_sol_kernel.py` reports
+the build that is importable. Read those, not this paragraph. Between the
+build above and the installed one the fork's log shows upstream's two Ascend
+commits and a version bump, and no change to what we carry
+(`git log aade8d5..6b42fab` in the clone).*
 
 **Core, merged since 2026-09-25:**
 

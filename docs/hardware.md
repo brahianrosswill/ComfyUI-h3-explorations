@@ -1,6 +1,6 @@
 # The box, and what actually bounds it
 
-Last updated: 2026-08-17.
+Last updated: 2026-10-03.
 
 Every measured number in this repo was taken on one machine. This file is what
 about that machine can change a result, and how to tell whether it has. It does
@@ -156,6 +156,16 @@ topology in `hwinfo.py`'s output refutes.
 page cache is why a repeat stage swap is much cheaper than the first — a second
 load of the same stage comes from RAM rather than storage.
 
+Capacity is not speed. Every module is configured below the speed it reports,
+which `hwinfo.py` prints per slot and flags, as it does a narrowed link
+(found 2026-10-03). The modules' part number names a faster profile again
+than the speed they report, so the firmware's memory profile is the first
+thing to look at; whether it is off or failed to train is unknown, and the
+setting is the owner's. Like the link width it can move host-side copies (a
+model load, a stage swap, weights streamed to the card) and not a kernel. Its
+effect is unmeasured here. A timing taken before the setting changes and one
+taken after are on different hosts for those stages.
+
 **CPU.** Not a factor during sampling. Text and reference encoding run on the
 GPU, not on a CPU core, so a claim that host single-thread speed gates prompt
 processing is a mechanism error rather than a measurement.
@@ -191,7 +201,7 @@ made months earlier.
 
 | what | how |
 |---|---|
-| host, GPU, power state, PCIe topology | `python bench/hwinfo.py` |
+| host, GPU, power state, PCIe topology, memory speed | `python bench/hwinfo.py` |
 | power, utilisation and PCIe traffic under load | `nvidia-smi dmon -s pumt -c 12 -d 1` |
 | tensor-core issue rates | `bench/mma_rate.cu`, owned by `docs/open_experiments.md` |
 | whether a render is comparable to a recorded one | `hwinfo.py`, power limit line |

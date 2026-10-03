@@ -1,6 +1,6 @@
 {
   "what": "comfy_kitchen.sol_attn device time by stage on captured q/k/v, the node's own sinks and the shipped recipe",
-  "model": "MiniMax H3, int8 convrot checkpoint, captures from a base 16-step t2v render",
+  "model": "2026-09-27_sol_test2_pdd8_ref2va: minimax_h3_ref2va_pruned_int8_convrot.safetensors, ref2va, 1344x768 x 345 frames, 8 steps (the set's manifest.json)",
   "conditions": {
     "gpu": "NVIDIA GeForce RTX 4090",
     "torch": "2.14.0+cu132",

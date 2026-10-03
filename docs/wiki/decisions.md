@@ -17,6 +17,22 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-03
 
+- **Corrected: `docs/sol_upstream.md` named the installed kitchen build by version.** Its 2026-10-02
+  section said `vendor/rebuild_kernel.sh --check` reports the build current against core's pin
+  "which core moved to `0.2.36`", and pointed at the 2026-10-01 merge record for its contents. The
+  build was rebuilt on 2026-10-03 against core's next pin. The section keeps its text with a dated
+  note that points at the pin in ComfyUI's `requirements.txt`, the build record beside the venv and
+  `bench/check_sol_kernel.py`. The 2026-10-01 entry below and the dated records that name that
+  day's build are history and stand.
+- **Corrected: `docs/hardware.md` said host RAM was "ample" and stopped there.** Every module is
+  configured below the speed it reports (found by a dotfiles session, verified with `udevadm`).
+  `bench/hwinfo.py` now prints each slot and flags it; the doc says what it can and cannot move.
+  Its "Last updated" header read 2026-08-17 with a last commit of 2026-08-25.
+- **Corrected: `bench/profile_sol_stages.py` wrote a fixed `model` string** ("captures from a base
+  16-step t2v render") into every record, and `bench/results/2026-10-03_sol_stages_ref2va.json`
+  carried it for a ref2va capture. The tool now reads the source render from the capture set's
+  `manifest.json`; that record's field is rewritten to what the tool writes now.
+
 - **The Sol node is shown as "MiniMax H3 Sparse Attention"** (owner, 2026-10-03:
   "MiniMax H3 Sparse Attention works"; not core's exact name, which is "Model
   Sparse Attention"). The owner wants the node to be the home for sparsity and

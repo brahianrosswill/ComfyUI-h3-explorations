@@ -93,6 +93,31 @@ def _recipe():
     return h3_config.SOL_RECOMMENDED_CUDA
 
 
+def capture_source(captures) -> str:
+    """The render the captures came from, read from the `manifest.json` beside
+    them (its `workload`), one clause per capture set.
+
+    Until 2026-10-03 the record's `model` field was a fixed string naming a
+    base 16-step t2v render, which the first ref2va record carried unchanged.
+    A set with no manifest says so instead of guessing.
+    """
+    import json
+    clauses = []
+    for folder in dict.fromkeys(Path(c).resolve().parent for c in captures):
+        try:
+            load = json.loads((folder / "manifest.json").read_text())["workload"]
+        except (OSError, KeyError, ValueError):
+            clauses.append(f"{folder.name}: no manifest.json beside the captures, source render unknown")
+            continue
+        canvas, sampling = load.get("canvas") or {}, load.get("sampling") or {}
+        clauses.append(
+            f"{folder.name}: {(load.get('models') or {}).get('unet', 'unet unknown')}, "
+            f"{load.get('task', 'task unknown')}, "
+            f"{canvas.get('width', '?')}x{canvas.get('height', '?')} x {canvas.get('length', '?')} frames, "
+            f"{sampling.get('steps', '?')} steps (the set's manifest.json)")
+    return "; ".join(clauses)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("captures", nargs="+")
@@ -192,7 +217,7 @@ def main() -> int:
     import importlib.metadata
     record = {
         "what": "comfy_kitchen.sol_attn device time by stage on captured q/k/v, the node's own sinks and the shipped recipe",
-        "model": "MiniMax H3, int8 convrot checkpoint, captures from a base 16-step t2v render",
+        "model": capture_source(args.captures),
         "conditions": {"gpu": torch.cuda.get_device_name(0), "torch": torch.__version__,
                        "comfy_kitchen": importlib.metadata.version("comfy-kitchen"),
                        "heads": args.heads or "all", "iters": args.iters,

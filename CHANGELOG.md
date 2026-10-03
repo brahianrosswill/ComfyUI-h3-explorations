@@ -4,6 +4,25 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.185.6
+
+### Fixed
+
+- **`bench/hwinfo.py` prints each memory module's configured and reported
+  speed** and flags a module configured below what it reports, as it flags a
+  narrowed PCIe link. Every module on this box is flagged (found by a dotfiles
+  session, verified with `udevadm`). `docs/hardware.md` says what that can and
+  cannot move, and its "Last updated" header is current again.
+- **`bench/profile_sol_stages.py` reads the source render from the capture
+  set's `manifest.json`** for its record's `model` field, which was a fixed
+  string naming a base 16-step t2v render. The one record that carried it for
+  a ref2va capture, `bench/results/2026-10-03_sol_stages_ref2va.json`, has
+  that field rewritten to what the tool writes now; nothing else in it moved.
+- **`docs/sol_upstream.md` named the installed kitchen build by version**; its
+  2026-10-02 section now carries a dated note pointing at core's pin, the
+  build record beside the venv and `bench/check_sol_kernel.py`.
+  `docs/wiki/decisions.md` logs what each of the three used to say.
+
 ## 0.185.5
 
 ### Changed

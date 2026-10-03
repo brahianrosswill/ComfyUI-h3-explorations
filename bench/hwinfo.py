@@ -14,8 +14,9 @@ and writes the `uv.lock` that `docs/comfy_notes.md` says must not exist here.
 Nothing below imports anything outside the standard library, so a bare
 interpreter is enough and the question does not arise.
 
-Needs no CUDA, no model, no ComfyUI server -- it reads `nvidia-smi`, sysfs and
-`/proc`. Safe to run during a render; it takes one sample and does not allocate.
+Needs no CUDA, no model, no ComfyUI server -- it reads `nvidia-smi`, sysfs,
+`/proc` and udev's DMI properties. Safe to run during a render; it takes one
+sample and does not allocate.
 
 **Sample the PCIe line under load.** The link downtrains when the GPU is idle,
 so `current_link_speed` reads gen 1 on a card that negotiates gen 4 the moment
@@ -120,6 +121,46 @@ def host():
     return rows
 
 
+def memory_devices():
+    """Each populated memory slot: size, the speed the module reports and the
+    speed the firmware configured it at.
+
+    Configured below reported is the interesting case, for the reason a
+    narrowed PCIe link is: a memory profile that is off, or one the firmware
+    backed away from in training, leaves the modules slower than they report
+    and nothing announces it. What it can move is host-side copies (a model
+    load, a stage swap, the weights streamed to the card), not a kernel.
+
+    Read from udev's copy of the DMI table, which needs no root where
+    `dmidecode` does. Empty when `udevadm` is absent or exposes no devices.
+    """
+    raw = _run(["udevadm", "info", "-q", "property", "-p", "/sys/devices/virtual/dmi/id"])
+    slots = {}
+    for line in (raw or "").splitlines():
+        key, _, val = line.partition("=")
+        if not key.startswith("MEMORY_DEVICE_"):
+            continue
+        index, _, field = key[len("MEMORY_DEVICE_"):].partition("_")
+        if index.isdigit():
+            slots.setdefault(int(index), {})[field] = val.strip()
+    rows = []
+    for index in sorted(slots):
+        dev = slots[index]
+        if not dev.get("SIZE", "0").isdigit() or int(dev.get("SIZE", "0")) == 0:
+            continue                                   # an empty slot
+        reported, configured = dev.get("SPEED_MTS"), dev.get("CONFIGURED_SPEED_MTS")
+        below = (reported or "").isdigit() and (configured or "").isdigit() \
+            and int(configured) < int(reported)
+        rows.append(
+            (dev.get("LOCATOR", f"slot {index}"),
+             f"{int(dev['SIZE']) / 2**30:.0f} GiB {dev.get('TYPE', '?')}"
+             f"  configured {configured or '?'} MT/s"
+             f"  (reports {reported or '?'} MT/s, part {dev.get('PART_NUMBER', '?')})"
+             + ("  <-- below reported speed" if below else ""))
+        )
+    return rows
+
+
 def pcie_topology():
     """Every PCI function's negotiated link, for the ones with a link at all.
 
@@ -202,6 +243,12 @@ def main():
         print("\npcie links")
         for addr, desc in topo:
             print(f"  {addr}  {desc}")
+
+    dimms = memory_devices()
+    if dimms:
+        print("\nmemory devices")
+        for locator, desc in dimms:
+            print(f"  {locator:10s} {desc}")
 
     return 0
 
