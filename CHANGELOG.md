@@ -4,6 +4,30 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.185.19
+
+### Added
+
+- **`keep_references` run through the conditioning node itself on the shipped
+  encoder**, conditioning only, nothing rendered:
+  `bench/measure_keep_references.py`, record
+  `bench/results/2026-10-03_keep_references.json`. The node with the switch on
+  hands on the same reference latents and token tags as the node as shipped;
+  the conditioning is within a few millionths; on a prompt edit the node's
+  time falls to a fraction of the one pass, with one still at the shared view
+  and with a second still after it. A first run costs a little more than the
+  one pass, since the reference and the prompt are two passes.
+- **No generated graph turns it on, and that is deliberate.** The generator
+  change was built and the graphs rebuilt (on in every reference graph but the
+  instrumented `_savelat` and `_x0` twins and the bench graphs, whose renders
+  are compared byte for byte with earlier ones), then withdrawn before it was
+  committed: the same afternoon the owner decided the generated reference
+  graphs go to a 512 encoder view, where the one pass is already a few
+  seconds and the switch has almost nothing left to save, while still costing
+  byte-comparability with earlier renders. It stays a switch for a still at
+  the shared view. The withdrawn change is kept as a patch in the session's
+  notes folder.
+
 ## 0.185.18
 
 ### Fixed
