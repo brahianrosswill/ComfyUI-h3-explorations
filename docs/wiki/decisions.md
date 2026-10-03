@@ -17,6 +17,37 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-03
 
+- **Last-bits differences in the conditioning are accepted** (owner,
+  2026-10-03: "i dont care if it differs by such a small amount"; on the
+  board: "dont care if theyre not bit identical"). That is the difference
+  between encoding references and prompt in one pass and keeping the
+  references across prompt edits (`bench/results/2026-10-03_reference_split.json`).
+  It is a switch, `keep_references`, and on in no generated graph: the
+  generator change that turned it on was withdrawn before commit while a 512
+  encoder view was about to become the default, where the one pass is already
+  a few seconds (CHANGELOG 0.185.19). That default is now on hold, so whether
+  the generated graphs turn the switch on is open again.
+- **A still can be an encoder-only reference by its own switch** (owner,
+  2026-10-03: "maybe we should at least have a setting in our ref node(s) to
+  use vae or not", after one clip rendered that way: "look the same to me,
+  cant tell the difference"). `use_vae` on `MiniMaxH3AppendRefImage`, on by
+  default; no default moved (`bench/results/2026-10-03_encoder_only_reference.md`).
+- **A 512 encoder view as the default: decided, built, then held** (owner,
+  2026-10-03: "yeah lets do 512, unless theres a reason not to based on
+  everything else we did", then "i agree make it 512 default", said in a peer
+  session and relayed). The change was built and its checks passed (node
+  default, constant, 40 rebuilt graphs, the instruments pinned to `shared`),
+  and it was not committed: the render made to separate the 512 view from
+  sparse attention came back against the view. On the one dialogue scene the
+  mix is +3.8 LU with sparse attention and +4.1 LU with dense, against +1.1
+  for the shipped render, each measured against the dense clip at the shared
+  view (`bench/results/2026-10-03_backstage_qview512_clip.json`; one scene,
+  one seed). That is the range the owner called loud on 2026-10-02, and the
+  owner's condition was "unless theres a reason not to". The node default
+  stays `shared`; `qwen_view = separate` at 512 remains a per-still choice.
+  The built change is kept as a patch in the session's notes folder; the
+  owner has the choice.
+
 - **The output check goes ahead of the per-head calibration** (owner,
   2026-10-03: "and output check first"). Every sparse lever in flight is
   lossy, nobody is judging clips, and local error did not predict the
