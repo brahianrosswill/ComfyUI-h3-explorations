@@ -1,0 +1,192 @@
+#!/usr/bin/env python3
+"""Hold the split reference path's pieces that need no encoder.
+
+`reference_encode.py` encodes an H3 reference list apart from the prompt and
+continues the prompt on kept keys and values, with a copy of core's language
+model loop. The real comparison with core's one pass needs the encoder and is
+`bench/measure_reference_split.py`. This file holds what can drift without
+one:
+
+  the copied loop's source   `_lm_pass` copies `Llama2_.forward`'s layer loop,
+    is pinned                and relies on `Attention.forward`'s list path for
+                             kept keys and on `TransformerBlock.forward`
+                             writing into its input. Their source is hashed
+                             against `PINNED`. A change in core fails here,
+                             and the fix is to re-read the three, re-run the
+                             server measurement, and move the pin: never to
+                             move the pin alone.
+  positions                  `_positions` against core's own
+                             `qwen2vl_mrope_position_ids` on a layout with a
+                             vision block in the first span and one in the
+                             second, cut where the spans are cut, and a plain
+                             count when no vision block precedes.
+  the causal mask            `_causal_rows` is the new tokens' rows of the
+                             square mask core builds, for a pass from the
+                             start and for continued ones.
+  the chained key            the same entries give the same key; a changed
+                             pixel, a changed token and a changed parent each
+                             give another.
+  the store                  least recently used out first under its byte
+                             budget, the calling chain never evicted to make
+                             room, and a host short of memory keeps nothing.
+                             RED CONTROL: with the budget raised the same
+                             sequence evicts nothing.
+  the two nodes are          both are in the pack's node list, experimental,
+    registered               and the prompt node takes the encode node's type.
+
+    PYTHONPATH=<ComfyUI root> python bench/check_reference_encode.py
+"""
+from __future__ import annotations
+
+import hashlib
+import importlib
+import importlib.util
+import inspect
+import sys
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parent.parent
+
+#: sha256 of the source of the core functions `_lm_pass` copies or leans on,
+#: read at ComfyUI e9027f2b on 2026-10-03, the day the copy was held to core's
+#: output on the shipped encoder (bench/results/2026-10-03_encoder_prefix_reuse.json).
+PINNED = {
+    "Llama2_.forward": "164b0ad348cb0544",
+    "Attention.forward": "e05700e116d6a4ce",
+    "TransformerBlock.forward": "71b138c2606ad2a3",
+}
+
+
+def load_pack():
+    import comfy.cli_args as cli_args
+    import torch
+    if not torch.cuda.is_available():
+        cli_args.args.cpu = True
+    spec = importlib.util.spec_from_file_location(
+        "h3x", REPO / "__init__.py", submodule_search_locations=[str(REPO)])
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["h3x"] = module
+    spec.loader.exec_module(module)
+    return importlib.import_module("h3x.reference_encode")
+
+
+def main() -> int:
+    import torch
+    enc = load_pack()
+    failures = []
+
+    def check(name, ok, detail=""):
+        print(f"  {'ok  ' if ok else 'FAIL'} {name}" + (f"   {detail}" if detail else ""))
+        if not ok:
+            failures.append(name)
+
+    print("the copied loop's source:")
+    import comfy.text_encoders.llama as llama
+    for name, pinned in PINNED.items():
+        cls, fn = name.split(".")
+        got = hashlib.sha256(inspect.getsource(getattr(getattr(llama, cls), fn)).encode()).hexdigest()[:16]
+        check(f"{name} is the source the copy was made from", got == pinned,
+              "" if got == pinned else f"now {got}, pinned {pinned}: re-read it, re-run "
+              "bench/measure_reference_split.py, then move the pin")
+
+    print("\npositions:")
+    from comfy.text_encoders.qwen_vl import qwen2vl_mrope_position_ids
+    grid_a, grid_b = torch.tensor([[1, 8, 12]]), torch.tensor([[1, 6, 4]])
+    images = [{"type": "image", "index": 5, "size": 24, "extra": {"grid": grid_a}},
+              {"type": "image", "index": 37, "size": 6, "extra": {"grid": grid_b}}]
+    total, cut_a, cut_b = 60, 30, 44                   # span one, span two, then the prompt
+    whole = qwen2vl_mrope_position_ids(images, total, "cpu")
+    first = enc._positions(images[:1], 0, cut_a, "cpu")
+    second = enc._positions(images, cut_a, cut_b - cut_a, "cpu")
+    prompt = enc._positions(images, cut_b, total - cut_b, "cpu")
+    check("three cuts of the sequence carry core's positions",
+          torch.equal(torch.cat([first, second, prompt], dim=1), whole),
+          f"{tuple(whole.shape)}")
+    plain = enc._positions([], 7, 5, "cpu")
+    check("no vision block ahead: a plain count from the start offset",
+          torch.equal(plain, torch.arange(7, 12).unsqueeze(0)))
+
+    print("\nthe causal mask:")
+    for seq, past in ((7, 0), (5, 11), (1, 9)):
+        total = past + seq
+        square = torch.empty(total, total).fill_(torch.finfo(torch.float32).min / 4).triu_(1)
+        check(f"{seq} new tokens on {past} kept: the rows of core's square mask",
+              torch.equal(enc._causal_rows(seq, past, torch.float32, "cpu"), square[past:]))
+
+    print("\nthe chained key:")
+    pixels = torch.rand(1, 8, 8, 3)
+    entries = [(11, 1.0), (12, 1.0), ({"type": "image", "data": pixels}, 1.0), (13, 1.0)]
+    key = enc.span_key("root", entries)
+    moved = pixels.clone()
+    moved[0, 0, 0, 0] += 0.5
+    check("the same entries give the same key",
+          key == enc.span_key("root", [(11, 1.0), (12, 1.0), ({"type": "image", "data": pixels.clone()}, 1.0), (13, 1.0)]))
+    check("a changed pixel, a changed token and a changed parent each give another",
+          len({key,
+               enc.span_key("root", entries[:2] + [({"type": "image", "data": moved}, 1.0)] + entries[3:]),
+               enc.span_key("root", [(11, 1.0), (99, 1.0)] + entries[2:]),
+               enc.span_key("other", entries)}) == 4)
+
+    print("\nthe store:")
+
+    def span(key, megabytes):
+        rows = torch.zeros(1, 1, megabytes * 2 ** 20 // 4)
+        return enc.Span(key=key, length=1, rows=rows, keys=[], values=[], images=[])
+
+    plenty = lambda: 1 << 62                           # noqa: E731
+
+    class Encoder:                                     # weakly referenceable, as a module is
+        pass
+
+    def run(budget_mb, available=plenty):
+        store = enc._Store(budget_mb * 2 ** 20)
+        store.claim(owner, 0)
+        for key in ("a", "b"):
+            store.put(span(key, 4), {key}, available=available)
+        store.get("a")                                 # a is now the more recent
+        store.put(span("c", 4), {"c"}, available=available)
+        return store
+
+    owner = Encoder()
+    store = run(10)
+    check("over budget, the least recently used entry goes and the recent ones stay",
+          list(store.spans) == ["a", "c"], f"{list(store.spans)}")
+    check("RED CONTROL: with room for all three nothing is evicted",
+          sorted(run(100).spans) == ["a", "b", "c"])
+    tight = enc._Store(6 * 2 ** 20)
+    tight.claim(owner, 0)
+    tight.put(span("x", 4), {"x", "y"}, available=plenty)
+    tight.put(span("y", 4), {"x", "y"}, available=plenty)
+    check("the calling chain is never evicted to make room for itself",
+          sorted(tight.spans) == ["x", "y"])
+    check("a host short of memory keeps nothing",
+          not run(100, available=lambda: 0).spans)
+    other = Encoder()
+    store.claim(other, 0)
+    check("a different encoder empties the store", not store.spans)
+    store.put(span("z", 1), {"z"}, available=plenty)
+    store.claim(other, 1)
+    check("new patches on the encoder empty it too", not store.spans)
+
+    print("\nthe two nodes:")
+    nodes = importlib.import_module("h3x.nodes")
+    source = inspect.getsource(nodes)
+    check("both are in the pack's node list",
+          "MiniMaxH3EncodeReferences, MiniMaxH3PromptOnReferences]" in source)
+    a, b = enc.MiniMaxH3EncodeReferences.define_schema(), enc.MiniMaxH3PromptOnReferences.define_schema()
+    check("both are marked experimental", bool(a.is_experimental and b.is_experimental))
+    out_type = a.outputs[0].io_type if hasattr(a.outputs[0], "io_type") else getattr(a.outputs[0], "get_io_type", lambda: None)()
+    in_types = [getattr(i, "io_type", None) or getattr(i, "get_io_type", lambda: None)() for i in b.inputs]
+    check("the prompt node takes the encode node's output type",
+          out_type is not None and out_type in in_types, f"{out_type}")
+
+    print()
+    if failures:
+        print(f"FAILED: {len(failures)} case(s): {', '.join(failures)}")
+        return 1
+    print("all cases passed")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

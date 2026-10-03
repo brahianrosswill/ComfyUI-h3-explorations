@@ -4,6 +4,39 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.185.13
+
+### Added
+
+- **Two experimental nodes that encode references apart from the prompt**
+  (`reference_encode.py`): `MiniMaxH3EncodeReferences` encodes the reference
+  chain alone and `MiniMaxH3PromptOnReferences` encodes only the prompt on top
+  of it, so a prompt edit no longer pays for the text encoder reading the
+  stills. Each reference is kept for the session under a key chained to the
+  references ahead of it: changing the last one reuses the rest, a moved one
+  is encoded fresh, and the encode node's preview says which. Host memory
+  only, under a byte budget; nothing on the card between passes, nothing on
+  disk (the owner's scope, 2026-10-03). The prompt node has no encoder socket:
+  the references carry the encoder that made them.
+  **Not bit-identical to `MiniMaxH3ReferenceConditioning`:** the conditioning
+  differs in the last bits, far below the int8 encoder's distance from bf16,
+  which the owner accepted on 2026-10-03. Record:
+  `bench/results/2026-10-03_reference_split.json` (one reference and two
+  chains against core's one pass, with the seconds of each half). No shipped
+  graph wires them; the one-node path stays the default. Ideas taken from the
+  two RefMod packs (a reference as a kept, reusable thing); their splice of
+  separately encoded rows onto a text-only prompt is not (0.185.12).
+- **Each append-reference node shows the label it ended up with** once it has
+  run, and the chain so far (the owner: "its hard to know which one goes to
+  picture1, 2, etc"). Preview text only; no input, schema or graph changed.
+- `bench/check_reference_encode.py` (pins the core source the split's copied
+  loop depends on; positions and the causal mask against core's own; the key;
+  the store, with a red control), `bench/measure_reference_split.py` and the
+  bench node `H3BenchSplitReferences` behind it.
+- `bench/node_id_manifest.json` gains the two nodes, and
+  `h3_config.PROMPT_INPUTS` the prompt node, which the full check sweep
+  caught missing (`check_prompt_guide_conformance.py`).
+
 ## 0.185.12
 
 ### Added

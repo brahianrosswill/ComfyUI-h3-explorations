@@ -4,7 +4,7 @@
 is, what ComfyUI actually does to it, what it costs, and how to write the
 prompt so the model uses it the way you meant.
 
-last updated: 2026-08-25; the reference policies, the append node's defaults and the reference-view ablation corrected 2026-09-13 (`docs/wiki/decisions.md`); the retired concise swap twin corrected 2026-09-14
+last updated: 2026-10-03 (the section "Encoding references apart from the prompt", and the append nodes showing their label); 2026-08-25; the reference policies, the append node's defaults and the reference-view ablation corrected 2026-09-13 (`docs/wiki/decisions.md`); the retired concise swap twin corrected 2026-09-14
 
 Sources: MiniMax's official prompt guide, general prompting research, ComfyUI's
 own code, and **sglang's MiniMax H3 serving path** (`coderef/sglang`, read at
@@ -132,6 +132,49 @@ vendor pipelines always build the latents, so nothing there is a control for
 this.
 
 ---
+
+## Encoding references apart from the prompt
+
+`MiniMaxH3ReferenceConditioning` encodes the references and the prompt as one
+sequence, so a prompt edit pays for the references again, and nearly all of
+that is the text encoder reading the stills
+(`bench/results/2026-10-03_prompt_edit_conditioning_cost.json`). Core puts
+every reference ahead of the prompt and the encoder's attention is causal, so
+what it computes for the references cannot depend on the prompt. Two
+experimental nodes split the work there (`reference_encode.py`):
+
+- **MiniMax H3 Encode References** takes the encoder, the VAEs and the
+  reference chain, and encodes the references alone. Its inputs do not include
+  the prompt, so a prompt edit leaves it cached.
+- **MiniMax H3 Prompt On References** takes its output and the prompt, and
+  encodes only the prompt's tokens on top. It uses the encoder the references
+  were encoded with; there is none to wire.
+
+Each reference is kept for the session under a key made of what the encoder
+was shown for it and for everything ahead of it. Nobody tracks order: a
+changed, resized or moved reference is a miss and is encoded fresh, never a
+wrong hit; changing only the last reference reuses the ones before it; going
+back to a chain used a moment ago is a hit. The encode node's preview says,
+per reference, kept, continued or encoded. The kept data lives in host memory
+under a byte budget (`reference_encode.py::STORE_BYTES`), never on the card
+between passes and never on disk.
+
+**It is not bit-identical to the one-node path.** The conditioning differs in
+the last bits, by far less than the shipped int8 encoder differs from bf16;
+`bench/results/2026-10-03_reference_split.json` has each span's distance with
+one reference and with two, and `2026-10-03_encoder_prefix_reuse.json` the
+mechanism. The owner accepted that difference on 2026-10-03. No shipped graph
+wires these nodes; the one-node path is the default and the reference for
+"today's conditioning".
+
+Not kept across a miss: the vision tower's output and the VAE rows.
+`bench/check_reference_encode.py` pins the core source the split depends on.
+
+The two RefMod packs under `coderef/` pre-encode references differently: they
+store the VAE rows, one also the encoder's rows for the image alone, and both
+encode the prompt without the image in context. That prompt is a different
+conditioning, not a rounding of this one (the same record's
+`prompt_without_image` case).
 
 ## What ComfyUI does to each one
 
@@ -974,6 +1017,12 @@ substitute for the atomic release policy.
 ---
 
 ## Labels: the tokenizer decides, not the prompt
+
+**Since 2026-10-03 each append node shows the label it ended up with** once it
+has run (`<Picture 2>`, with the chain so far), and `MiniMaxH3EncodeReferences`
+lists the references by label. A label is a position in the chain, so it is
+shown after the chain is known, not typed anywhere.
+
 
 Native socket references are emitted in a fixed order with a **separate
 1-based counter per type**:

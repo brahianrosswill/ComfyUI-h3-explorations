@@ -58,6 +58,7 @@ from .reference_conditioning import (
     MiniMaxH3AppendRefVideo,
     MiniMaxH3ReferenceConditioning,
 )
+from .reference_encode import MiniMaxH3EncodeReferences, MiniMaxH3PromptOnReferences
 from .prompt_lists import MiniMaxH3FillPromptLists, MiniMaxH3PromptList, register_wildcards_folder
 from . import h3_capture
 
@@ -336,7 +337,10 @@ class H3ExplorationsExtension(ComfyExtension):
                 MiniMaxH3CoreSparseCapture,
                 # appended 2026-09-29, a research checkpoint as an overlay on the released
                 # one, by piece (overlay_loader.py, checkpoint_overlay.py)
-                MiniMaxH3OverlayLoader]
+                MiniMaxH3OverlayLoader,
+                # appended 2026-10-03, references encoded apart from the prompt
+                # (reference_encode.py)
+                MiniMaxH3EncodeReferences, MiniMaxH3PromptOnReferences]
 
 
 async def comfy_entrypoint() -> H3ExplorationsExtension:

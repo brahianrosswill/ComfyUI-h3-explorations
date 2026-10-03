@@ -470,6 +470,21 @@ def _order_records(records) -> list[ImageRef | VideoRef | AudioRef]:
     return ordered
 
 
+def _appended_preview(records, added: int, detail: str) -> str:
+    """What an append node shows once it has run: the label the prompt must
+    use for what it just appended, and the chain so far.
+
+    The label is a position, not a property of the node: `<Picture 2>` is the
+    second still in the chain whichever node holds it (`assign_labels`). Until
+    2026-10-03 nothing on the graph said which was which (the owner: "its hard
+    to know which one goes to picture1, 2, etc")."""
+    labels = assign_labels(_order_records(records))
+    lines = [f"{' and '.join(labels[-added:])}: {detail}"]
+    if len(labels) > added:
+        lines.append("chain so far: " + ", ".join(labels))
+    return "\n".join(lines)
+
+
 def _view_or_source(image, source_w: int, source_h: int, w: int, h: int):
     """One resize, or the source sliced to RGB when the size is unchanged.
 
@@ -939,14 +954,13 @@ class MiniMaxH3AppendRefImage(io.ComfyNode):
                 raise ValueError(
                     f"qwen_short_edge must be at least {CANVAS_MULTIPLE}, "
                     f"got {qwen_short_edge}")
-        return io.NodeOutput(
-            _reference_tuple(references)
-            + (RuntimeImageReference(
-                image=image, size_policy=size_policy,
-                short_edge=int(short_edge), allow_upscale=bool(allow_upscale),
-                qwen_short_edge=qwen_short_edge,
-            ),)
-        )
+        records = _reference_tuple(references) + (RuntimeImageReference(
+            image=image, size_policy=size_policy,
+            short_edge=int(short_edge), allow_upscale=bool(allow_upscale),
+            qwen_short_edge=qwen_short_edge,
+        ),)
+        return io.NodeOutput(records, ui=ui.PreviewText(_appended_preview(
+            records, 1, f"still, {source_w}x{source_h}")))
 
 
 class MiniMaxH3AppendRefVideo(io.ComfyNode):
@@ -976,12 +990,13 @@ class MiniMaxH3AppendRefVideo(io.ComfyNode):
         loaded_fps = _loaded_fps(video_info, frame_count, height, width)
         if soundtrack is not None:
             _audio_shape(soundtrack, "soundtrack")
-        return io.NodeOutput(
-            _reference_tuple(references)
-            + (RuntimeVideoReference(
-                frames=frames, loaded_fps=loaded_fps, soundtrack=soundtrack
-            ),)
-        )
+        records = _reference_tuple(references) + (RuntimeVideoReference(
+            frames=frames, loaded_fps=loaded_fps, soundtrack=soundtrack
+        ),)
+        return io.NodeOutput(records, ui=ui.PreviewText(_appended_preview(
+            records, 2 if soundtrack is not None else 1,
+            f"video, {width}x{height}, {frame_count} frames"
+            + (" with its soundtrack" if soundtrack is not None else ""))))
 
 
 class MiniMaxH3AppendRefAudio(io.ComfyNode):
@@ -1002,9 +1017,9 @@ class MiniMaxH3AppendRefAudio(io.ComfyNode):
     @classmethod
     def execute(cls, audio, references=None):
         _audio_shape(audio, "audio")
-        return io.NodeOutput(
-            _reference_tuple(references) + (RuntimeAudioReference(audio=audio),)
-        )
+        records = _reference_tuple(references) + (RuntimeAudioReference(audio=audio),)
+        return io.NodeOutput(records, ui=ui.PreviewText(_appended_preview(
+            records, 1, "audio")))
 
 
 class MiniMaxH3ReferenceConditioning(io.ComfyNode):

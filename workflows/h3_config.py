@@ -1962,6 +1962,10 @@ BENCH_GRAPH_DIRS: tuple[str, ...] = ("bench",)
 PROMPT_INPUTS: dict[str, str] = {
     "MiniMaxH3Conditioning": "prompt",
     "MiniMaxH3ReferenceConditioning": "prompt",
+    # The prompt half of the two-node reference path (`reference_encode.py`,
+    # 2026-10-03). No shipped graph wires it yet; listed so one that does is
+    # graded. Its references are on `MiniMaxH3EncodeReferences`, one link up.
+    "MiniMaxH3PromptOnReferences": "prompt",
     "MiniMaxH3ImageToVideo": "prompt",
     "MiniMaxH3ReferenceToVideo": "prompt",
     "MiniMaxH3AudioFreezeSong": "prompt",

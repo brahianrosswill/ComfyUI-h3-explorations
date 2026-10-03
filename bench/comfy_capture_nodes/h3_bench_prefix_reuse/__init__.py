@@ -240,4 +240,117 @@ class H3BenchEncoderPrefixReuse:
         return {"ui": {"text": (json.dumps(record["cases"]),)}}
 
 
-NODE_CLASS_MAPPINGS = {"H3BenchEncoderPrefixReuse": H3BenchEncoderPrefixReuse}
+def _joint(clip, ref_items, text):
+    """Core's one-pass conditioning, as MiniMaxH3ReferenceConditioning makes it."""
+    return clip.encode_from_tokens_scheduled(clip.tokenize(text, minimax_ref_items=ref_items))
+
+
+def compare_conditioning(joint, split, encoded):
+    """The split path's conditioning against core's: rows per reference span
+    and for the prompt, the token tags, and the shape of the extras."""
+    a, b = joint[0][0], split[0][0]
+    out = {"shape_equal": tuple(a.shape) == tuple(b.shape), "spans": []}
+    if not out["shape_equal"]:
+        out["shapes"] = [list(a.shape), list(b.shape)]
+        return out
+    start = 0
+    for span in encoded.spans:
+        out["spans"].append(compare(a[:, start:start + span.length], b[:, start:start + span.length]))
+        start += span.length
+    out["prompt"] = compare(a[:, start:], b[:, start:])
+    ea, eb = joint[0][1], split[0][1]
+    out["extra_keys_equal"] = sorted(ea) == sorted(eb)
+    out["extra_keys"] = [sorted(ea), sorted(eb)]
+    ta, tb = ea.get("minimax_token_tags"), eb.get("minimax_token_tags")
+    out["tags_equal"] = bool(ta is not None and tb is not None and ta.shape == tb.shape
+                             and torch.equal(ta.cpu(), tb.cpu()))
+    pa, pb = ea.get("pooled_output"), eb.get("pooled_output")
+    out["pooled_equal"] = (pa is None and pb is None) or (
+        pa is not None and pb is not None and bool(torch.equal(pa.cpu(), pb.cpu())))
+    out["dtype_device"] = [str(a.dtype), str(a.device), str(b.dtype), str(b.device)]
+    return out
+
+
+class H3BenchSplitReferences:
+    """The pack's two-node path (`reference_encode.py`) against core's one
+    pass, on the real encoder: one reference, the same again (a store hit),
+    then two chains that share their first reference."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {"clip": ("CLIP",),
+                             "references_a": ("MINIMAX_H3_REFERENCES",),
+                             "references_ab": ("MINIMAX_H3_REFERENCES",),
+                             "references_ac": ("MINIMAX_H3_REFERENCES",),
+                             "prompt": ("STRING", {"multiline": True}),
+                             "edit": ("STRING", {"multiline": True}),
+                             "name": ("STRING", {"default": "split_references"})}}
+
+    RETURN_TYPES = ()
+    FUNCTION = "run"
+    OUTPUT_NODE = True
+    CATEGORY = "h3/bench"
+
+    def run(self, clip, references_a, references_ab, references_ac, prompt, edit, name):
+        out = os.environ.get("H3_BENCH_CAPTURE_DIR")
+        if not out:
+            raise RuntimeError("H3_BENCH_CAPTURE_DIR is not set in the server's environment")
+        os.makedirs(out, exist_ok=True)
+        rc = _pack_module("reference_conditioning")
+        enc = _pack_module("reference_encode")
+        prompt, edit = rc.normalize_prompt(prompt), rc.normalize_prompt(edit)
+
+        def items(references):
+            return rc._compile_reference_records(tuple(references), None, None, 1344, 768, 345)[0]
+
+        def timed(fn, *a):
+            torch.cuda.synchronize()
+            t0 = time.perf_counter()
+            value = fn(*a)
+            torch.cuda.synchronize()
+            return value, round(time.perf_counter() - t0, 2)
+
+        enc.STORE.spans.clear()
+        record = {"store_budget_bytes": enc.STORE.budget, "cases": {}, "seconds": {}, "reports": {}}
+        cases, seconds, reports = record["cases"], record["seconds"], record["reports"]
+
+        a = items(references_a)
+        joint_a, seconds["joint_a"] = timed(_joint, clip, a, prompt)
+        encoded_a, seconds["encode_a"] = timed(enc.encode_references, clip, a)
+        reports["encode_a"] = encoded_a.report
+        split_a, seconds["prompt_on_a"] = timed(enc.condition_prompt, encoded_a, prompt)
+        cases["one_reference"] = compare_conditioning(joint_a, split_a, encoded_a)
+
+        joint_a_edit, seconds["joint_a_edit"] = timed(_joint, clip, a, edit)
+        again, seconds["encode_a_again"] = timed(enc.encode_references, clip, a)
+        reports["encode_a_again"] = again.report
+        cases["store_hit_same_spans"] = all(x is y for x, y in zip(again.spans, encoded_a.spans))
+        split_a_edit, seconds["prompt_edit_on_a"] = timed(enc.condition_prompt, again, edit)
+        cases["one_reference_edit"] = compare_conditioning(joint_a_edit, split_a_edit, again)
+        repeat, _ = timed(enc.condition_prompt, again, edit)
+        cases["split_repeat_equal"] = bool(torch.equal(repeat[0][0], split_a_edit[0][0]))
+        del joint_a, split_a, joint_a_edit, split_a_edit, repeat
+
+        for label, references in (("ab", references_ab), ("ac", references_ac), ("ab_again", references_ab)):
+            both = items(references)
+            encoded, seconds[f"encode_{label}"] = timed(enc.encode_references, clip, both)
+            reports[f"encode_{label}"] = encoded.report
+            split, seconds[f"prompt_on_{label}"] = timed(enc.condition_prompt, encoded, prompt)
+            if label != "ab_again":
+                joint, seconds[f"joint_{label}"] = timed(_joint, clip, both, prompt)
+                cases[f"chain_{label}"] = compare_conditioning(joint, split, encoded)
+                cases[f"chain_{label}"]["first_span_is_a"] = encoded.spans[0] is encoded_a.spans[0]
+                del joint
+            record.setdefault("tokens", {})[label] = [s.length for s in encoded.spans]
+            record.setdefault("span_bytes", {})[label] = [s.nbytes for s in encoded.spans]
+            del split
+        record["tokens"]["a"] = [s.length for s in encoded_a.spans]
+        record["store_bytes_at_end"] = enc.STORE.nbytes()
+        record["torch"], record["device"] = torch.__version__, torch.cuda.get_device_name(0)
+        with open(os.path.join(out, f"{name}.json"), "w") as f:
+            json.dump(record, f, indent=1)
+        return {"ui": {"text": (json.dumps(record["cases"]),)}}
+
+
+NODE_CLASS_MAPPINGS = {"H3BenchEncoderPrefixReuse": H3BenchEncoderPrefixReuse,
+                       "H3BenchSplitReferences": H3BenchSplitReferences}
