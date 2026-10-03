@@ -41,6 +41,14 @@ setting, and today's all-dense render to the judged dense clip, across a
 kitchen rebuild and server restarts. A guard render taken after a peer's
 conditioning-node edits were loaded matched again, clip and saved latents.
 
+A second guard at the end of the day (row `guard_shipped` in
+`2026-10-03_sol_output_distance.jsonl`), on a server that had loaded every
+commit through `7c7cc468`, the LoRA branch change `753e62a0` among them: the
+clip is byte-identical to the morning's, and the four saved latents (video
+and audio, after each sampler) are equal tensor for tensor. Sampler 335.3 s,
+first stage 251.0 and finisher 84.3, against 335.2 s, 251.1 and 84.1 in the
+morning's row at that seed (`2026-10-03_r2v_finish_e2e.jsonl`).
+
 ## 2. Latent distance from the dense render
 
 Relative L2 on the saved latents against the all-dense render at the same

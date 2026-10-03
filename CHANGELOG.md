@@ -4,6 +4,24 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.185.23
+
+### Measured
+
+- **A second guard render at the end of the day**, on a server that had
+  loaded every commit through `7c7cc468`, the LoRA branch change of 0.185.18
+  among them: the shipped ref2va finish graph at the judged seed is
+  byte-identical to the morning's clip, its four saved latents are equal
+  tensor for tensor, and the sampler time is unchanged. Row `guard_shipped`
+  in `bench/results/2026-10-03_sol_output_distance.jsonl`; section 1 of
+  `bench/results/2026-10-03_sol_output_check.md`. This is the latent compare
+  and the timing 0.185.18 listed as not done.
+- **The checks that need the card, owed since 0.185.13**, were run with the
+  card visible and a server up on 0.185.22: every Sol, provenance, node-id,
+  attention-default and reference check passes. The non-zero exits are the
+  ones that want arguments, an environment variable, the dataset cache, or
+  read gitignored files.
+
 ## 0.185.22
 
 ### Measured
