@@ -1185,6 +1185,11 @@ class MiniMaxH3ReferenceConditioning(io.ComfyNode):
                 # 2026-10-03). It is the two-node path
                 # (`reference_encode.py`) without rewiring, except that this
                 # node repeats the reference VAE encode on a prompt edit.
+                # Changing the last reference reuses the ones before it, and
+                # the preview says what was reused. It pays for a still whose
+                # `qwen_view` is shared (slow to encode, gigabytes to keep);
+                # at the small default copy there is little to save
+                # (`bench/results/2026-10-03_keep_references.json`).
                 io.Boolean.Input(
                     "keep_references", default=False, optional=True,
                     tooltip=(
@@ -1192,16 +1197,8 @@ class MiniMaxH3ReferenceConditioning(io.ComfyNode):
                         "the same.\n\n"
                         "Off (default): references and prompt are encoded "
                         "together on every run.\n\n"
-                        "On: the text encoder's work on the references is "
-                        "kept in memory for this session, so a prompt edit "
-                        "encodes only the prompt, and changing the last "
-                        "reference reuses the ones before it. The result is "
-                        "the same to within rounding. The preview says what "
-                        "was reused.\n\n"
-                        "Worth turning on for a still whose qwen_view is "
-                        "shared: its full-size copy is slow to encode and "
-                        "takes gigabytes of memory to keep. With the small "
-                        "default copy there is little to save."
+                        "On: the references are kept in memory for this "
+                        "session, so a prompt edit encodes only the prompt."
                     ),
                 ),
             ],

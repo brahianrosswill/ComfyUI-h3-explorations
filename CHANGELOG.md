@@ -4,6 +4,18 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.4
+
+### Changed
+
+- The `keep_references` tooltip is cut to the same shape as `qwen_view`'s
+  (owner, 2026-10-04): what it does, and what off and on do. That a changed
+  last reference reuses the ones before it, and when the switch is worth
+  turning on, stay in the comment beside the input.
+- This file had two `0.186.2` headings: two sessions committed that number
+  the same hour (38809e10 and 43a87ab7). They are one heading now, with both
+  commits' sections under it and no text changed.
+
 ## 0.186.3
 
 ### Added
@@ -26,8 +38,6 @@ artifact.
   and what values do dont add all that prose"). The louder mix seen on one
   dialogue scene and the cases nobody has looked at stay in the comment
   beside the input. `use_vae` loses "Lightly tested" for the same reason.
-
-## 0.186.2
 
 ### Added
 
