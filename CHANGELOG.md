@@ -4,6 +4,18 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.13
+
+### Changed
+
+- `docs/research/masking/2026-10-04_mrhf.md`: the paint-out test's result.
+  The owner rejects it: the new subject looks cut out and pasted on, and the
+  cap is chopped in the close-up. The patch measurements are recorded beside
+  that, with three other causes of what the owner saw (the tracker's object on
+  the hanging mic is in the mask, the fixed margin is small in a close-up, the
+  original's cast shadow is still in the plate) and a composite design that
+  shows the render only where it differs from the source.
+
 ## 0.186.12
 
 ### Changed
