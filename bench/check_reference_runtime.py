@@ -647,7 +647,7 @@ def image_policy_is_opt_in_and_the_two_differ():
 
 
 def append_node_defaults_are_the_serving_defaults():
-    """What an API prompt that omits every input gets, read off the schema.
+    """What a fresh node in the UI is pre-filled with, read off the schema.
 
     The video model's copy is what sglang, diffusers and DiffSynth prepare
     (since 2026-09-13): `size_policy=max` at the release's 2048 short edge
@@ -655,11 +655,18 @@ def append_node_defaults_are_the_serving_defaults():
     owner made `qwen_view = separate` at `h3_rules.REF_QWEN_SHORT_EDGE` the
     default, on two clips (`docs/wiki/decisions.md`); the serving
     implementations share one copy, which is the second option. A
-    DynamicCombo's default is its FIRST option -- that is what core
-    substitutes for an omitted input, and there is no second copy of it to
-    compare against -- so the order of `options` is the observable, and the
-    nested inputs' `default` attributes are the rest. Typed here would be a
-    cache of the schema; this reads it.
+    DynamicCombo's default is its FIRST option: that is what the UI
+    pre-selects, and there is no second copy of it to compare against, so
+    the order of `options` is the observable, and the nested inputs'
+    `default` attributes are the rest. Typed here would be a cache of the
+    schema; this reads it.
+
+    The title's "omits every input" is the UI's fresh node, not an API
+    prompt. Core substitutes nothing for a DynamicCombo an API prompt leaves
+    out: its expansion drops the input from the required set, validation
+    passes, and `execute` fails for want of the argument (driven through
+    `comfy_api.latest._io.get_finalized_class_inputs`, 2026-10-04). This
+    case does not drive that; the generator always writes both selections.
     """
     schema = R.MiniMaxH3AppendRefImage.define_schema()
     by_id = {spec.id: spec for spec in schema.inputs}

@@ -4,6 +4,47 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.1
+
+### Changed
+
+- **The reference nodes' tooltips and descriptions say what an input does,
+  when to change it and what it costs** (owner, 2026-10-04: "Chosen by the
+  owner means nothing to someone using it"). Rewritten on the three append
+  nodes, `MiniMaxH3ReferenceConditioning`, `MiniMaxH3EncodeReferences` and
+  `MiniMaxH3PromptOnReferences`. Who chose a default, on which clips, and
+  which upstream it follows moved out of the tooltips into comments beside
+  the inputs. Inputs that had no tooltip have one. Texts two nodes share
+  (`video_policy`, `image_policy`, the VAEs, the chain) are one constant each
+  in `reference_conditioning.py`. No input id, default or behaviour changed,
+  so no graph was rebuilt.
+- Three tooltips pointed at "MiniMax H3 Reference Report", a node that is no
+  longer registered. They point at the node's own preview.
+- The `qwen_view` tooltip held a garbled sentence about how its default was
+  chosen; gone with the rewrite. The default is unchanged: `separate` at
+  `h3_rules.REF_QWEN_SHORT_EDGE`.
+- The conditioning node's log line said "no VAE wired" whenever no reference
+  had a VAE copy, which is also the case when every still has `use_vae` off.
+
+### Fixed
+
+- **Two comments and a check docstring said core substitutes a
+  DynamicCombo's first option when an API prompt omits it.** It does not:
+  the expansion drops the absent input from the required set, validation
+  passes, and `MiniMaxH3AppendRefImage.execute` fails for want of the
+  argument. Driven through core's own input building, on the CPU, not on a
+  live server. The comments in `reference_conditioning.py` and the docstring
+  of `bench/check_reference_runtime.py::append_node_defaults_are_the_serving_defaults`
+  now say so. No None branch was added (the owner's choice): the UI and the
+  generator always send both selections, and a missing one stays loud.
+
+### Checks
+
+- Every `bench/check_*.py` run with the card masked (a render was on it).
+  Exit codes equal the same day's earlier sweep except four checks that were
+  red in that sweep, mid-work, and are green now. The checks that need the
+  card or files this box does not hold are not graded by this run.
+
 ## 0.186.0
 
 ### Added

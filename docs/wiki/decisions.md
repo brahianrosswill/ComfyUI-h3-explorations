@@ -30,6 +30,21 @@ Older history lives elsewhere and is not copied here:
 - **`docs/h3_references.md` said "There is no mask"** of editing a source
   video. Still true of the ref2va edit; a dated note there now points at the
   masked path.
+- **A node's tooltip says what the input does, when to change it and what it
+  costs; why a default is what it is goes in a comment and here** (owner,
+  2026-10-04: "make the tooltip and code comments and everything else
+  actually simple to understand. Chosen by the owner means nothing to someone
+  using it"; and of the widget names, "I like the widget names as-is because
+  its part of the pipeline"). Applied to the reference nodes (0.186.1); the
+  input ids stay.
+- **An omitted `qwen_view` or `size_policy` stays a loud failure, with no
+  None branch** (owner, 2026-10-04, on the two options put to them). Comments
+  in `reference_conditioning.py` and a docstring in
+  `bench/check_reference_runtime.py` used to claim core substitutes the
+  schema's first option for an API prompt that omits a DynamicCombo. Core
+  substitutes nothing and the node fails at execute. The same day the owner
+  restated the default: the text encoder's copy is `separate` at a 512 short
+  edge "for now", not `shared`.
 
 ## 2026-10-03
 

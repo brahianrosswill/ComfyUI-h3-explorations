@@ -84,8 +84,18 @@ from comfy_extras.nodes_minimax_h3 import _empty_av_latent
 
 from .h3_rules import normalize_prompt
 from .reference_conditioning import (
+    AUDIO_VAE_TOOLTIP,
+    CLIP_TOOLTIP,
+    HEIGHT_TOOLTIP,
     IMAGE_POLICIES,
+    IMAGE_POLICY_TOOLTIP,
+    LENGTH_TOOLTIP,
+    PROMPT_TOOLTIP,
+    REFERENCES_LIST_TOOLTIP,
     VIDEO_POLICIES,
+    VIDEO_POLICY_TOOLTIP,
+    VIDEO_VAE_TOOLTIP,
+    WIDTH_TOOLTIP,
     H3References,
     _compile_reference_records,
     _order_records,
@@ -556,34 +566,29 @@ class MiniMaxH3EncodeReferences(io.ComfyNode):
             category="MiniMaxH3/references",
             is_experimental=True,
             description=(
-                "Encode an ordered MINIMAX_H3_REFERENCES list once, apart from the "
-                "prompt: the text encoder's reading of each reference and its "
-                "reference latents. Wire the result into MiniMax H3 Prompt On "
-                "References. A prompt edit then leaves this node cached and pays "
-                "only for the prompt. Encoded references are kept in memory for "
-                "the session, so going back to a reference used a moment ago, or "
-                "changing only the last one, reuses the rest. The node's preview "
-                "says what was kept and what was encoded."
+                "Encode a reference chain once, separately from the prompt, and "
+                "output an empty latent of the right size. Wire the result into "
+                "MiniMax H3 Prompt On References. Editing the prompt then re-runs "
+                "only that node, which is fast.\n\n"
+                "Encoded references stay in memory for the session, so going "
+                "back to a reference used a moment ago, or changing only the "
+                "last one, reuses the rest. After a run, the preview says what "
+                "was reused and what was encoded."
             ),
+            # The tooltips are `reference_conditioning.py`'s own, one copy each:
+            # the inputs mean the same thing on both nodes.
             inputs=[
-                io.Clip.Input("clip"),
-                io.Vae.Input(
-                    "vae", optional=True,
-                    tooltip="Video VAE. Unwired, stills and videos reach the text "
-                            "encoder only: no reference latents for the DiT."),
-                io.Vae.Input(
-                    "audio_vae", optional=True,
-                    tooltip="Audio VAE. Unwired, an audio reference is only its label."),
-                H3References.Input("references"),
-                io.Int.Input("width", default=1344, min=32, max=16384, step=32),
-                io.Int.Input("height", default=768, min=32, max=16384, step=32),
-                io.Int.Input("length", default=124, min=5, max=3600, step=17),
+                io.Clip.Input("clip", tooltip=CLIP_TOOLTIP),
+                io.Vae.Input("vae", optional=True, tooltip=VIDEO_VAE_TOOLTIP),
+                io.Vae.Input("audio_vae", optional=True, tooltip=AUDIO_VAE_TOOLTIP),
+                H3References.Input("references", tooltip=REFERENCES_LIST_TOOLTIP),
+                io.Int.Input("width", default=1344, min=32, max=16384, step=32, tooltip=WIDTH_TOOLTIP),
+                io.Int.Input("height", default=768, min=32, max=16384, step=32, tooltip=HEIGHT_TOOLTIP),
+                io.Int.Input("length", default=124, min=5, max=3600, step=17, tooltip=LENGTH_TOOLTIP),
                 io.Combo.Input("video_policy", options=list(VIDEO_POLICIES), default="comfy",
-                               optional=True,
-                               tooltip="As on MiniMax H3 Reference Conditioning."),
+                               optional=True, tooltip=VIDEO_POLICY_TOOLTIP),
                 io.Combo.Input("image_policy", options=list(IMAGE_POLICIES), default="comfy",
-                               optional=True,
-                               tooltip="As on MiniMax H3 Reference Conditioning."),
+                               optional=True, tooltip=IMAGE_POLICY_TOOLTIP),
             ],
             outputs=[
                 H3EncodedReferences.Output(display_name="encoded references"),
@@ -614,17 +619,22 @@ class MiniMaxH3PromptOnReferences(io.ComfyNode):
             display_name="MiniMax H3 Prompt On References",
             category="MiniMaxH3/references",
             is_experimental=True,
+            # "To within rounding": the prompt's rows come from a second pass, so
+            # they differ from the one-node result in the last bits, not more
+            # (`bench/results/2026-10-03_reference_split.json`).
             description=(
-                "Encode the prompt on top of references already encoded by MiniMax "
-                "H3 Encode References, and attach their reference latents. It "
-                "uses the text encoder that encoded them, so there is no encoder "
-                "to wire here. The conditioning matches MiniMax H3 Reference "
-                "Conditioning's to the last bits, not bit for bit: the prompt's "
-                "rows are computed in a second pass."
+                "Encode the prompt on top of references from MiniMax H3 Encode "
+                "References, and output the conditioning for the sampler. There "
+                "is no text encoder to wire: it uses the one that encoded the "
+                "references. The result matches MiniMax H3 Reference "
+                "Conditioning to within rounding."
             ),
             inputs=[
-                H3EncodedReferences.Input("encoded_references"),
-                io.String.Input("prompt", multiline=True, dynamic_prompts=True),
+                H3EncodedReferences.Input(
+                    "encoded_references", tooltip="From MiniMax H3 Encode References."),
+                io.String.Input(
+                    "prompt", multiline=True, dynamic_prompts=True,
+                    tooltip=PROMPT_TOOLTIP),
             ],
             outputs=[io.Conditioning.Output(display_name="positive")],
         )

@@ -775,6 +775,68 @@ def _compile_reference_records(
     return ref_items, ref_blocks
 
 
+# ---- What the reference nodes say about themselves --------------------------
+# A tooltip tells the person wiring the node what the input does, when to
+# change it and what it costs. Why a default is what it is (who chose it, on
+# which clips, which upstream it follows) is a comment beside the input and a
+# dated entry in `docs/wiki/decisions.md`, never tooltip text (owner,
+# 2026-10-04). Texts more than one node shows live here, one copy each.
+REFERENCES_CHAIN_TOOLTIP = (
+    "The reference chain so far, from another Append node. Leave it "
+    "unconnected on the first reference."
+)
+REFERENCES_LIST_TOOLTIP = (
+    "The reference chain, from the last Append node. Its order is the order "
+    "of the labels: the first still is <Picture 1>, the next <Picture 2>."
+)
+CLIP_TOOLTIP = "The H3 text encoder (Qwen3-VL)."
+PROMPT_TOOLTIP = (
+    "The prompt. Refer to each reference by its label: <Picture 1>, "
+    "<Video 1>, <Audio 1>, numbered in chain order."
+)
+WIDTH_TOOLTIP = "Width of the render, in pixels."
+HEIGHT_TOOLTIP = "Height of the render, in pixels."
+LENGTH_TOOLTIP = (
+    "Length of the render, in frames at 24 fps. Reference videos and audio "
+    "are cut to it."
+)
+VIDEO_VAE_TOOLTIP = (
+    "Video VAE. Wire it so the video model gets its own copy of each "
+    "reference still and video. Unwired, they reach the model only through "
+    "the text encoder's copy."
+)
+AUDIO_VAE_TOOLTIP = (
+    "Audio VAE. Wire it so the video model can hear reference audio. "
+    "Unwired, an audio reference is only its <Audio N> label in the prompt "
+    "(the text encoder never hears audio), and a reference video is used "
+    "without its soundtrack."
+)
+# `release` scales the video model's copy AND changes how the encoder samples
+# it; they are one policy because the upscale alone overshoots the encoder's
+# long-clip budget. Neither policy changes a native ComfyUI node.
+VIDEO_POLICY_TOOLTIP = (
+    "How reference videos are prepared. Stills are not affected.\n\n"
+    "comfy (default): what ComfyUI's own H3 node does. A small video is "
+    "never enlarged.\n\n"
+    "release: what the model's release pipeline does. The video is scaled "
+    "to the release's standard size, enlarged if it is smaller, and the "
+    "text encoder samples it the release's way. Costs more render time for "
+    "a small video."
+)
+# On the shipped encoder the two give the same sizes at every legal short
+# edge; `release` differs only for a still under the release's pixel floor,
+# where it applies the floor before the VAE so both copies are one size.
+IMAGE_POLICY_TOOLTIP = (
+    "How reference stills are fitted to the text encoder's size limits, "
+    "after each still's own size_policy.\n\n"
+    "comfy (default): what ComfyUI's own H3 node does.\n\n"
+    "release: what the model's release pipeline does. The result is the "
+    "same except for very small stills, which release enlarges to its "
+    "minimum size.\n\n"
+    "Leave it on comfy unless you use very small stills."
+)
+
+
 class MiniMaxH3AppendRefImage(io.ComfyNode):
     @classmethod
     def define_schema(cls):
@@ -783,23 +845,23 @@ class MiniMaxH3AppendRefImage(io.ComfyNode):
             display_name="Append MiniMax H3 Image Reference",
             category="MiniMaxH3/references",
             description=(
-                "Append one still to an ordered H3 reference list. Its list "
-                "position, not its socket, decides its <Picture N> label.\n\n"
-                "Every still is read twice. The VIDEO MODEL encodes a copy "
-                "through the video VAE into reference rows attended on every "
-                "sampling step; size_policy sizes that copy. The TEXT ENCODER "
-                "(Qwen3-VL) reads a copy as vision tokens placed in the text "
-                "segment ahead of your prompt; qwen_view sizes that one. "
-                "Wire the chain into MiniMax H3 Reference Report to see both "
-                "copies and what they cost before you queue."
+                "Add one still to the reference chain. Its place in the chain "
+                "decides its label in the prompt: the first still is "
+                "<Picture 1>, the next <Picture 2>. After a run, this node's "
+                "preview shows the label it got.\n\n"
+                "The still is used twice. The video model gets a full-size "
+                "copy, sized by size_policy. The text encoder reads a second "
+                "copy alongside your prompt, sized by qwen_view. Larger "
+                "copies cost render time."
             ),
             inputs=[
-                io.Image.Input("image"),
-                H3References.Input("references", optional=True),
+                io.Image.Input("image", tooltip="The still. If it holds several images, only the first is used."),
+                H3References.Input("references", optional=True, tooltip=REFERENCES_CHAIN_TOOLTIP),
                 # A DynamicCombo, not four flat widgets: `dit_short_edge` and
                 # `allow_upscale` are read ONLY under `max`, and nesting them
                 # under the branch that reads them makes the inert state
                 # unreachable rather than warned about (owner, 2026-08-27).
+                # `max` first: it is the release pipeline's rule.
                 io.DynamicCombo.Input(
                     "size_policy",
                     options=[
@@ -808,124 +870,120 @@ class MiniMaxH3AppendRefImage(io.ComfyNode):
                                 # `dit_short_edge`, not `short_edge`: it sits
                                 # beside `qwen_short_edge` and the pair size two
                                 # DIFFERENT copies, this one the video model's.
+                                # The default is the release pipeline's own
+                                # constant (comfy_extras REF_IMAGE_SHORT_EDGE).
                                 "dit_short_edge", default=REF_IMAGE_SHORT_EDGE,
                                 min=CANVAS_MULTIPLE, max=4096, step=32,
                                 tooltip=(
-                                    "Shorter side, in pixels, of the VIDEO "
-                                    "MODEL's copy, rounded to 32.\n\n"
-                                    "With allow_upscale on this is a target: "
-                                    "every still reaches it. With allow_upscale "
-                                    "off it is a ceiling: a source already "
-                                    "smaller passes through untouched and this "
-                                    "value does nothing for it.\n\n"
-                                    "DiT reference rows grow with the square of "
-                                    "this value and are attended on every "
-                                    "sampling step. The default is the release "
-                                    "pipeline's own constant "
-                                    "(comfy_extras REF_IMAGE_SHORT_EDGE)."
+                                    "Shorter side, in pixels, of the video "
+                                    "model's copy, rounded to 32.\n\n"
+                                    "With allow_upscale on, every still is "
+                                    "scaled to this size. With it off, this is "
+                                    "a ceiling: a smaller still is left as it "
+                                    "is.\n\n"
+                                    "Render time grows with the square of this "
+                                    "value."
                                 ),
                             ),
                             io.Boolean.Input(
+                                # On is what sglang, diffusers and DiffSynth
+                                # do; off is core ComfyUI's behaviour. Whether
+                                # upscaling helps identity is the
+                                # reference-view ablation's question
+                                # (docs/h3_references.md).
                                 "allow_upscale", default=True,
                                 tooltip=(
-                                    "Enlarge a still whose shorter side is "
-                                    "below dit_short_edge, as well as shrinking "
-                                    "a larger one.\n\n"
-                                    "On (default): every still reaches "
-                                    "dit_short_edge. This is what sglang, "
-                                    "diffusers and DiffSynth do.\n\n"
-                                    "Off: shrink only, which is core ComfyUI's "
-                                    "behaviour. Cheaper for a small source, by "
-                                    "the square of the scale it skips.\n\n"
-                                    "Upscaling adds rows, not detail the source "
-                                    "lacked. Whether it improves identity is "
-                                    "what the reference-view ablation measures "
-                                    "(docs/h3_references.md)."
+                                    "On (default): a still smaller than "
+                                    "dit_short_edge is enlarged to reach it.\n\n"
+                                    "Off: stills are only ever shrunk. A small "
+                                    "still stays small and costs less render "
+                                    "time.\n\n"
+                                    "Enlarging adds render time, not detail "
+                                    "the still did not have."
                                 ),
                             ),
                         ]),
                         io.DynamicCombo.Option("match", []),
                     ],
                     tooltip=(
-                        "How the VIDEO MODEL's copy is sized. This decides the "
-                        "DiT reference rows paid on every sampling step.\n\n"
-                        "max (default): scale so the shorter side is "
-                        "dit_short_edge, rounded to 32. The output canvas is "
-                        "ignored. This is the release pipeline's rule.\n\n"
-                        "match: cap the still at the output canvas's pixel "
-                        "area. Never enlarges. dit_short_edge and "
+                        "How big the video model's copy of this still is. A "
+                        "bigger copy keeps more detail and makes every "
+                        "sampling step slower.\n\n"
+                        "max (default): scale the still so its shorter side "
+                        "is dit_short_edge. The output size is ignored.\n\n"
+                        "match: shrink the still to fit the output's pixel "
+                        "area; never enlarges it. dit_short_edge and "
                         "allow_upscale do not apply."
                     ),
                 ),
                 # A DynamicCombo since 2026-08-31; it was an Int whose 0 meant
                 # "no separate view", a number quietly selecting a mode.
-                # The FIRST option is the default: what an API prompt that
-                # omits the input gets. `separate` first since 2026-10-03 (the
-                # owner, on two clips: h3_rules.REF_QWEN_SHORT_EDGE has the
-                # history); `shared` was first from 2026-09-13, which is what
-                # every serving implementation does.
+                # The FIRST option is what the UI pre-selects, and the
+                # generator writes the selection into every graph. An API
+                # prompt has to name it too: core substitutes nothing for an
+                # omitted DynamicCombo and `execute` then fails (driven through
+                # core's input building, 2026-10-04).
+                # `separate` first since 2026-10-03, the owner's decision on a
+                # few clips at one seed (docs/wiki/decisions.md;
+                # h3_rules.REF_QWEN_SHORT_EDGE has the history). `shared` was
+                # first from 2026-09-13 and is what every serving
+                # implementation does. Known of `separate`: on the one
+                # dialogue scene measured, the mix came out louder.
                 io.DynamicCombo.Input(
                     "qwen_view",
                     options=[
                         io.DynamicCombo.Option("separate", [
                             io.Int.Input(
+                                # The pre-filled value is the owner's choice,
+                                # not a measured optimum.
                                 "qwen_short_edge",
                                 default=REF_QWEN_SHORT_EDGE,
                                 min=CANVAS_MULTIPLE, max=4096, step=32,
                                 tooltip=(
-                                    "Shorter side, in pixels, of the TEXT "
-                                    "ENCODER's copy, rounded to 32. Scaled from "
-                                    "the source in both directions: below the "
-                                    "source it shrinks, above it enlarges.\n\n"
-                                    "Vision tokens grow with the square of this "
-                                    "value. The pre-filled value is the owner's "
-                                    "choice on two clips, not a measured optimum "
-                                    "(h3_rules.REF_QWEN_SHORT_EDGE)."
+                                    "Shorter side, in pixels, of the text "
+                                    "encoder's copy, rounded to 32. The still "
+                                    "is scaled to this size whether it starts "
+                                    "larger or smaller.\n\n"
+                                    "Smaller is faster: render time grows with "
+                                    "the square of this value. Raise it if the "
+                                    "prompt depends on fine detail in the "
+                                    "still."
                                 ),
                             ),
                         ]),
                         io.DynamicCombo.Option("shared", []),
                     ],
                     tooltip=(
-                        "How the TEXT ENCODER's copy is sized. Its vision "
-                        "tokens sit in the text segment ahead of your prompt, "
-                        "and their hidden states ride the DiT's text segment "
-                        "on every step.\n\n"
-                        "separate (default since 2026-10-03): the encoder gets "
-                        "its own copy scaled to qwen_short_edge from the "
-                        "source, while the video model keeps the size_policy "
-                        "copy. At the pre-filled size the encoder reads far "
-                        "fewer tokens, so every sampling step and every prompt "
-                        "edit is faster. Chosen by the owner on two clips at "
-                        "a few clips at one seed; not what the serving "
-                        "implementations do. Known cost: on the one dialogue "
-                        "scene measured, the mix came out louder at this view. "
-                        "Not looked at: several references, a small face in a "
-                        "wide still, text or a logo in the still.\n\n"
-                        "shared: the same copy the video model gets, sized by "
-                        "size_policy. One prepared image feeds both, which is "
-                        "what every serving implementation does, and the "
-                        "choice when the encoder needs the detail.\n\n"
-                        "A workflow saved before 2026-10-03 keeps the view it "
-                        "was saved with."
+                        "How big a copy of this still the text encoder "
+                        "reads.\n\n"
+                        "separate (default): a small copy, sized by "
+                        "qwen_short_edge. Faster renders and faster prompt "
+                        "edits. The video model still gets its full-size "
+                        "copy, so the picture itself is not reduced.\n\n"
+                        "shared: the same full-size copy the video model "
+                        "gets. Slower.\n\n"
+                        "The small copy can make the audio mix louder in a "
+                        "dialogue scene. It is untested with several "
+                        "references, a small face in a wide still, and text "
+                        "or a logo in the still. If one of those goes wrong, "
+                        "try shared.\n\n"
+                        "A workflow saved earlier keeps the setting it was "
+                        "saved with."
                     ),
                 ),
-                # Appended 2026-10-03.
+                # Appended 2026-10-03. On is what every serving implementation
+                # does. Off passed the owner's eye on one clip and is not
+                # measured beyond that.
                 io.Boolean.Input(
                     "use_vae", default=True, optional=True,
                     tooltip=(
-                        "On (default): the VIDEO MODEL gets its own copy of "
-                        "this still as reference rows, attended on every "
-                        "sampling step. This is what every serving "
-                        "implementation does.\n\n"
-                        "Off: this still reaches the model through the TEXT "
-                        "ENCODER only. Its reference rows are not built, so "
-                        "every step runs a shorter sequence and the render is "
-                        "faster; what the model knows of the still is what the "
-                        "encoder read. One clip rendered this way looked the "
-                        "same to the owner; it is not measured beyond that.\n\n"
+                        "On (default): the video model gets its own full-size "
+                        "copy of this still.\n\n"
+                        "Off: the still reaches the model only through the "
+                        "text encoder's copy. Faster, but the model sees less "
+                        "of the still. Lightly tested.\n\n"
                         "The same as leaving vae unwired on the conditioning "
-                        "node, for this one reference."
+                        "node, for this one still."
                     ),
                 ),
             ],
@@ -935,9 +993,11 @@ class MiniMaxH3AppendRefImage(io.ComfyNode):
     @classmethod
     # `qwen_view` before `references` because it is REQUIRED in the schema
     # and `references` is optional; a signature default on a required input
-    # is a UI-versus-API split (2026-08-31). `None` is what an API prompt
-    # omitting a DynamicCombo yields; it takes the schema's FIRST option, so
-    # the schema order above is the default and there is no second copy of it.
+    # is a UI-versus-API split (2026-08-31). So there is no default here and
+    # no None branch: a prompt that omits `size_policy` or `qwen_view` passes
+    # core's validation (the expansion drops an absent DynamicCombo from the
+    # required set) and fails at this call. The UI and the generator always
+    # send both.
     def execute(cls, image, size_policy, qwen_view, references=None, use_vae=True):
         # A DynamicCombo arrives as ONE nested dict: the selected key under the
         # input's own id, and the chosen option's inputs alongside it. NOT as
@@ -1018,15 +1078,25 @@ class MiniMaxH3AppendRefVideo(io.ComfyNode):
             display_name="Append MiniMax H3 Video Reference",
             category="MiniMaxH3/references",
             description=(
-                "Append one video and its optional soundtrack. Frames and "
-                "VHS metadata must come from the same loader; loaded_fps is "
-                "owned by the record and normalized to 24 fps at compilation."
+                "Add one video, and optionally its soundtrack, to the "
+                "reference chain as <Video N> (and <Audio N>). Connect "
+                "frames and video_info from the same video loader. Any frame "
+                "rate works: the video is converted to 24 fps and cut to the "
+                "length of the render. After a run, this node's preview "
+                "shows the labels it got."
             ),
             inputs=[
-                io.Image.Input("frames"),
-                VHSVideoInfo.Input("video_info"),
-                io.Audio.Input("soundtrack", optional=True),
-                H3References.Input("references", optional=True),
+                io.Image.Input("frames", tooltip="The video's frames, from a Video Helper Suite loader."),
+                VHSVideoInfo.Input(
+                    "video_info",
+                    tooltip="The same loader's video_info output. This node reads the frame rate from it."),
+                io.Audio.Input(
+                    "soundtrack", optional=True,
+                    tooltip=(
+                        "Optional: the video's audio. It adds an <Audio N> "
+                        "label to the prompt. The model hears it only when "
+                        "both VAEs are wired on the conditioning node.")),
+                H3References.Input("references", optional=True, tooltip=REFERENCES_CHAIN_TOOLTIP),
             ],
             outputs=[H3References.Output(display_name="references")],
         )
@@ -1053,10 +1123,19 @@ class MiniMaxH3AppendRefAudio(io.ComfyNode):
             node_id="MiniMaxH3AppendRefAudio",
             display_name="Append MiniMax H3 Audio Reference",
             category="MiniMaxH3/references",
-            description="Append one standalone audio reference in list order.",
+            description=(
+                "Add one audio clip to the reference chain as <Audio N>. "
+                "After a run, this node's preview shows the label it got."
+            ),
             inputs=[
-                io.Audio.Input("audio"),
-                H3References.Input("references", optional=True),
+                io.Audio.Input(
+                    "audio",
+                    tooltip=(
+                        "The audio clip, cut to the length of the render. The "
+                        "text encoder never hears it: the video model does, "
+                        "and only when an audio VAE is wired on the "
+                        "conditioning node.")),
+                H3References.Input("references", optional=True, tooltip=REFERENCES_CHAIN_TOOLTIP),
             ],
             outputs=[H3References.Output(display_name="references")],
         )
@@ -1077,95 +1156,58 @@ class MiniMaxH3ReferenceConditioning(io.ComfyNode):
             display_name="MiniMax H3 Reference Conditioning (Ordered)",
             category="MiniMaxH3",
             description=(
-                "Compile an ordered MINIMAX_H3_REFERENCES list into the Qwen "
-                "presentation and DiT reference payload. Works on the H3 "
-                "reference checkpoint and on fl2va; this node does not infer "
-                "checkpoint task identity. "
-                "The node's preview shows what each reference cost once it "
-                "has run; MiniMax H3 Reference Report shows it beforehand."
+                "Turn a reference chain and a prompt into the conditioning "
+                "for the sampler, plus an empty latent of the right size. "
+                "The prompt refers to each reference by its label: "
+                "<Picture 1>, <Video 1>, <Audio 1>, numbered in chain "
+                "order.\n\n"
+                "Works with the H3 reference checkpoint and with fl2va; it "
+                "does not check which one is loaded. After a run, the "
+                "preview shows each reference's size and cost."
             ),
             inputs=[
-                io.Clip.Input("clip"),
+                io.Clip.Input("clip", tooltip=CLIP_TOOLTIP),
                 # Both optional since 0.99.33, mirroring core's
                 # MiniMaxH3ReferenceToVideo after ComfyUI PR 16065. Absent,
                 # a reference of that kind conditions the text encoder only.
-                io.Vae.Input(
-                    "vae", optional=True,
-                    tooltip=(
-                        "Video VAE. Leave it unwired and reference stills and "
-                        "videos reach the text encoder only: same labels, "
-                        "same Qwen view, no reference latents for the DiT."
-                    ),
-                ),
-                io.Vae.Input(
-                    "audio_vae", optional=True,
-                    tooltip=(
-                        "Audio VAE. Leave it unwired and reference audio is "
-                        "only its <Audio j> label: the encoder never hears "
-                        "audio, so without this VAE an audio reference "
-                        "carries nothing. A sounded video keeps its label "
-                        "and becomes a silent video block."
-                    ),
-                ),
-                H3References.Input("references"),
-                io.String.Input("prompt", multiline=True, dynamic_prompts=True),
-                io.Int.Input("width", default=1344, min=32, max=16384, step=32),
-                io.Int.Input("height", default=768, min=32, max=16384, step=32),
-                io.Int.Input("length", default=124, min=5, max=3600, step=17),
+                io.Vae.Input("vae", optional=True, tooltip=VIDEO_VAE_TOOLTIP),
+                io.Vae.Input("audio_vae", optional=True, tooltip=AUDIO_VAE_TOOLTIP),
+                H3References.Input("references", tooltip=REFERENCES_LIST_TOOLTIP),
+                io.String.Input("prompt", multiline=True, dynamic_prompts=True, tooltip=PROMPT_TOOLTIP),
+                io.Int.Input("width", default=1344, min=32, max=16384, step=32, tooltip=WIDTH_TOOLTIP),
+                io.Int.Input("height", default=768, min=32, max=16384, step=32, tooltip=HEIGHT_TOOLTIP),
+                io.Int.Input("length", default=124, min=5, max=3600, step=17, tooltip=LENGTH_TOOLTIP),
                 io.Combo.Input(
                     "video_policy", options=list(VIDEO_POLICIES),
-                    default="comfy", optional=True,
-                    tooltip=(
-                        "Reference VIDEO preparation only.\n\n"
-                        "comfy (default): core ComfyUI's behaviour. The video "
-                        "model's copy is never enlarged, and the text encoder "
-                        "reads the 2 fps samples through core's per-pair "
-                        "processor.\n\n"
-                        "release: the release pipeline's rule. The video "
-                        "model's copy is scaled to the release canvas AND the "
-                        "2 fps samples go through the release's duration-aware "
-                        "processor. The two stages are one policy because the "
-                        "upscale alone overshoots the encoder's long-clip "
-                        "budget.\n\n"
-                        "Neither changes native ComfyUI nodes."
-                    ),
+                    default="comfy", optional=True, tooltip=VIDEO_POLICY_TOOLTIP,
                 ),
                 io.Combo.Input(
                     "image_policy", options=list(IMAGE_POLICIES),
-                    default="comfy", optional=True,
-                    tooltip=(
-                        "Reference STILL preparation, after each still's own "
-                        "size_policy.\n\n"
-                        "comfy (default): the still reaches the text encoder "
-                        "exactly as core hands it, and the encoder's own "
-                        "processor resizes it afterwards if its bounds bind, "
-                        "after the VAE has already encoded.\n\n"
-                        "release: pre-apply the release's declared pixel floor "
-                        "and ceiling before the VAE, so both readers encode "
-                        "one size.\n\n"
-                        "On the shipped encoder the two produce the same "
-                        "geometry at every legal short edge; release differs "
-                        "only for a still under the release's floor. The "
-                        "Reference Report shows which bounds moved a copy."
-                    ),
+                    default="comfy", optional=True, tooltip=IMAGE_POLICY_TOOLTIP,
                 ),
                 # Appended 2026-10-03. Off is the one-pass encode, unchanged.
+                # On differs from it in the last bits, far less than the int8
+                # encoder differs from bf16 (the owner accepted that,
+                # 2026-10-03). It is the two-node path
+                # (`reference_encode.py`) without rewiring, except that this
+                # node repeats the reference VAE encode on a prompt edit.
                 io.Boolean.Input(
                     "keep_references", default=False, optional=True,
                     tooltip=(
-                        "Keep the text encoder's reading of the references in "
-                        "memory for this session, so a prompt edit encodes "
-                        "only the prompt. Changing the last reference reuses "
-                        "the ones before it; the preview says what was kept.\n\n"
-                        "Off (default): references and prompt are encoded in "
-                        "one pass, as always.\n\n"
-                        "On: the conditioning differs from the one-pass "
-                        "result in the last bits, far less than the int8 "
-                        "encoder differs from bf16. The same thing as wiring "
-                        "MiniMax H3 Encode References into MiniMax H3 Prompt "
-                        "On References, without rewiring; those two also "
-                        "skip the reference VAE encode on a prompt edit, "
-                        "which this node repeats."
+                        "Speeds up prompt edits while the references stay "
+                        "the same.\n\n"
+                        "Off (default): references and prompt are encoded "
+                        "together on every run.\n\n"
+                        "On: the text encoder's work on the references is "
+                        "kept in memory for this session, so a prompt edit "
+                        "encodes only the prompt, and changing the last "
+                        "reference reuses the ones before it. The result is "
+                        "the same to within rounding. The preview says what "
+                        "was reused.\n\n"
+                        "Worth turning on for a still whose qwen_view is "
+                        "shared: its full-size copy is slow to encode and "
+                        "takes gigabytes of memory to keep. With the small "
+                        "default copy there is little to save."
                     ),
                 ),
             ],
@@ -1231,7 +1273,7 @@ class MiniMaxH3ReferenceConditioning(io.ComfyNode):
             "video_policy=%s, image_policy=%s",
             width, height, frame_count, len(records), labels,
             len(ref_blocks),
-            "" if ref_blocks else " (encoder only: no VAE wired)",
+            "" if ref_blocks else " (encoder only: no reference got a VAE copy)",
             video_policy, image_policy,
         )
         # The same pricing the report node shows beforehand, on the node
