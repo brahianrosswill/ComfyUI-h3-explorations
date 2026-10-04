@@ -4,6 +4,16 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.5
+
+### Changed
+
+- `docs/research/masking/2026-10-04_mrhf.md` gains the afternoon's work: the
+  answers on the paint-out test (region, how to read the result, what counts
+  as a pass), the routes for a subject who should turn with the group, and a
+  correction: core ships an H3 control adapter (`MiniMaxH3FunControlNetApply`),
+  whose inpaint path blanks the original before the VAE encode.
+
 ## 0.186.4
 
 ### Changed
