@@ -4,6 +4,20 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.18
+
+### Changed
+
+- `docs/research/masking/2026-10-04_mrhf.md`: SAM 3.1 has no DINOv3 (read in
+  `coderef/sam3`); its "DINO" is GroundingDINO's detection design. It already
+  carries a large shared vision encoder and a per-object pointer vector, so
+  recognising the chosen person across cuts could be tried with what it
+  computes, with no new weights.
+- The same note: every masked render so far is single-pass (one sampler in
+  the song node), so the two-sampler graphs are not the cause of what was
+  seen; the 8-step distill and Sol-Attn are on in all of them and no masked
+  window has been rendered on the baseline.
+
 ## 0.186.17
 
 ### Changed
