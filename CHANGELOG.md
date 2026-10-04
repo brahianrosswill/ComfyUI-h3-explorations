@@ -4,6 +4,15 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.11
+
+### Changed
+
+- `docs/research/masking/2026-10-04_mrhf.md`: the owner confirmed the bright
+  dot is a watermark in the reference still. The note now says plainly that
+  `f_img_outside_nomark.png` is a repaired copy, not a clean original, and
+  which arms name which still.
+
 ## 0.186.10
 
 ### Changed
