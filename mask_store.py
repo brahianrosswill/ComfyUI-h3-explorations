@@ -24,8 +24,19 @@ save, load or name. A mask is found by a key made from what decides it:
 - the size and modification time of any input file an upstream node names, so
   a mask painted in another program and saved again is a different key.
 
-A changed setting is a different key, so a kept mask cannot be stale for the
-settings it is asked for; it is only ever unused, and unused ones go first.
+- the `MASK_VERSION` of every upstream node whose class declares one. A
+  setting cannot say that the CODE that makes a mask changed, and this lane's
+  nodes are still being written: a node bumps the number when a change to it
+  would give a different mask from the same inputs and settings, and every
+  mask made by the old code stops matching. A change that leaves the mask
+  alone (a tooltip, the composite) bumps nothing, so a restart for it still
+  hits.
+
+A changed setting or version is a different key, so a kept mask is only ever
+unused, and unused ones go first. What the key cannot see: a model file
+replaced under the same name in the models folder, and a mask-changing code
+edit that forgot its version. The first is rare; the second is the reason the
+rule is written on the node that declares the number.
 
 **Exact.** The mask is stored as it was computed, float32, losslessly
 compressed. A hit returns the same bytes the tracker gave, so a render with a
@@ -46,6 +57,7 @@ import json
 import logging
 import os
 import re
+import sys
 import time
 import zipfile
 import zlib
@@ -142,7 +154,23 @@ def input_file_stats(prompt, node_id) -> list:
     return sorted(set(stats))
 
 
-def mask_key(prompt, node_id, frames: torch.Tensor, skip=()) -> str | None:
+def mask_versions(prompt, node_id, classes=None) -> list:
+    """(class_type, MASK_VERSION) for every upstream node whose class declares one.
+
+    `classes` is ComfyUI's registry of node classes by id; it is read from the
+    running server when not given, and is empty in a process that has none.
+    """
+    if classes is None:
+        classes = getattr(sys.modules.get("nodes"), "NODE_CLASS_MAPPINGS", None) or {}
+    found = set()
+    for node in _upstream(prompt, node_id):
+        version = getattr(classes.get(node.get("class_type")), "MASK_VERSION", None)
+        if version is not None:
+            found.add((str(node.get("class_type")), int(version)))
+    return sorted(found)
+
+
+def mask_key(prompt, node_id, frames: torch.Tensor, skip=(), classes=None) -> str | None:
     """The key a mask is kept under, or None when there is no queued prompt to read (a direct call).
 
     `skip` names the node's own inputs that do not change its mask.
@@ -151,7 +179,8 @@ def mask_key(prompt, node_id, frames: torch.Tensor, skip=()) -> str | None:
     if signature is None:
         return None
     blob = json.dumps({"graph": signature, "frames": frames_fingerprint(frames),
-                       "files": input_file_stats(prompt, node_id)}, sort_keys=True)
+                       "files": input_file_stats(prompt, node_id),
+                       "versions": mask_versions(prompt, node_id, classes)}, sort_keys=True)
     key = hashlib.blake2b(blob.encode(), digest_size=20).hexdigest()
     _LABELS[key] = source_label(prompt, node_id)
     return key

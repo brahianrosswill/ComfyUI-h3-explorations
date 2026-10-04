@@ -10,7 +10,10 @@ could happen, or one way the saving could quietly not happen.
 1. **The key moves with everything that changes the mask**: a setting on an
    upstream node (the tracker's threshold, the phrase, the object indices),
    the node's own `replace` and `part_*` settings, the frames' content, and
-   the size or time of an input file an upstream node names.
+   the size or time of an input file an upstream node names, and the
+   `MASK_VERSION` of an upstream node's class, which is how a change to the
+   code that makes a mask reaches the key. A class with no version adds
+   nothing.
 2. **The key does not move with what acts after the mask**: every name in
    `video_mask.MASK_KEY_SKIP`. And that list is exactly the node's inputs
    that `_settle_mask` never reads, so a new input cannot be left out of the
@@ -167,6 +170,19 @@ def check_key(problems):
             folder_paths.exists_annotated_filepath, folder_paths.get_annotated_filepath = real_exists, real_path
         if a == b or a == base:
             problems.append("the key does not move when an input file an upstream node names is replaced")
+    # the code that makes the mask: a class's MASK_VERSION, read from the node registry
+    def with_classes(**versions):
+        classes = {name: type(name, (), {"MASK_VERSION": v} if v is not None else {}) for name, v in versions.items()}
+        return ms.mask_key(_prompt(), NODE, frames, vm.MASK_KEY_SKIP, classes=classes)
+    v1 = with_classes(SAM3_VideoTrack=None, MiniMaxH3MaskedSource=1)
+    if v1 == with_classes(SAM3_VideoTrack=None, MiniMaxH3MaskedSource=2):
+        problems.append("the key does not move when an upstream node's MASK_VERSION changes")
+    if with_classes(SAM3_VideoTrack=None) != base or with_classes() != base:
+        problems.append("a class with no MASK_VERSION, or no registry, changes the key")
+    if v1 == base:
+        problems.append("declaring a MASK_VERSION does not enter the key")
+    if with_classes(SomeOtherNode=7) != base:
+        problems.append("the MASK_VERSION of a class that is not upstream entered the key")
     if ms.mask_key(None, NODE, frames) is not None or ms.mask_key(_prompt(), "999", frames) is not None:
         problems.append("a missing prompt or node gives a key; nothing should be kept without one")
 

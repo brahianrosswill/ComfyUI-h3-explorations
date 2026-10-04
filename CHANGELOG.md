@@ -4,6 +4,23 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.33
+
+### Fixed
+
+- **A kept mask could have outlived the code that made it.** 0.186.29 keyed a
+  kept mask on settings, frames and files, and said it could not be stale.
+  It could: a setting does not change when the code that computes the mask
+  does, and the nodes in this lane are still being written. The key now also
+  holds the `MASK_VERSION` of every upstream node whose class declares one
+  (`mask_store.mask_versions`, read from ComfyUI's node registry). A node
+  bumps the number when a change would give a different mask from the same
+  inputs and settings; a change that leaves the mask alone bumps nothing, so
+  a restart for it still hits. **No class declares one yet**: the masked
+  source and the subject tracker being written are the two that should.
+  Found while answering a peer's question about what the key covers; no
+  server had run the kept mask, so no stale mask was ever used.
+
 ## 0.186.32
 
 ### Changed
