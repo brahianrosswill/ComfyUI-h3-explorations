@@ -928,7 +928,10 @@ class MiniMaxH3AppendRefImage(io.ComfyNode):
                 # h3_rules.REF_QWEN_SHORT_EDGE has the history). `shared` was
                 # first from 2026-09-13 and is what every serving
                 # implementation does. Known of `separate`: on the one
-                # dialogue scene measured, the mix came out louder.
+                # dialogue scene measured, the mix came out louder. Not looked
+                # at: several references, a small face in a wide still, text
+                # or a logo in the still. None of that is tooltip text (owner,
+                # 2026-10-04: say what the input does and what its values do).
                 io.DynamicCombo.Input(
                     "qwen_view",
                     options=[
@@ -956,19 +959,10 @@ class MiniMaxH3AppendRefImage(io.ComfyNode):
                     tooltip=(
                         "How big a copy of this still the text encoder "
                         "reads.\n\n"
-                        "separate (default): a small copy, sized by "
-                        "qwen_short_edge. Faster renders and faster prompt "
-                        "edits. The video model still gets its full-size "
-                        "copy, so the picture itself is not reduced.\n\n"
+                        "separate (default): its own small copy, sized by "
+                        "qwen_short_edge. Faster.\n\n"
                         "shared: the same full-size copy the video model "
-                        "gets. Slower.\n\n"
-                        "The small copy can make the audio mix louder in a "
-                        "dialogue scene. It is untested with several "
-                        "references, a small face in a wide still, and text "
-                        "or a logo in the still. If one of those goes wrong, "
-                        "try shared.\n\n"
-                        "A workflow saved earlier keeps the setting it was "
-                        "saved with."
+                        "gets. Slower."
                     ),
                 ),
                 # Appended 2026-10-03. On is what every serving implementation
@@ -981,7 +975,7 @@ class MiniMaxH3AppendRefImage(io.ComfyNode):
                         "copy of this still.\n\n"
                         "Off: the still reaches the model only through the "
                         "text encoder's copy. Faster, but the model sees less "
-                        "of the still. Lightly tested.\n\n"
+                        "of the still.\n\n"
                         "The same as leaving vae unwired on the conditioning "
                         "node, for this one still."
                     ),
