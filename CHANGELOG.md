@@ -4,6 +4,15 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.12
+
+### Changed
+
+- `docs/research/masking/2026-10-04_mrhf.md`: the owner named
+  `f_img_outside_nomark.png` as the reference still to use and renamed the
+  watermarked one; an arm that still names `f_img_outside.jpg` fails at
+  `LoadImage`.
+
 ## 0.186.11
 
 ### Changed
