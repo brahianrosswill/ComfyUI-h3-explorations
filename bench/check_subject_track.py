@@ -14,6 +14,11 @@ item drives the module's own functions on made-up frames and masks.
    score does, or the gradient score is not buying anything.
 2. **The shots cover every frame once**, whatever the cuts given, including a
    cut at 0, one past the end and a repeated one.
+2a. **The phrase asks core for every person, not one.** Core's SAM 3 prompt
+   parser reads a bare phrase as one detection and `name:N` as up to N.
+   `counted` writes the second form, keeps a count the user wrote, and the
+   check reads the result back through core's own parser. The control: core
+   still reads a bare phrase as one.
 3. **The pick is the one the rule names**: the largest mask, the mask nearest
    the frame's centre, the highest score. No detections is no pick.
 3a. **The signature is taken from the head and shoulders.** `top_third`
@@ -131,6 +136,25 @@ def check_ranges(problems):
             problems.append(f"shot_ranges({n}, {cuts}) = {ranges} does not cover each frame once")
     if st.shot_ranges(10, [4]) != [(0, 4), (4, 10)]:
         problems.append(f"shot_ranges(10, [4]) = {st.shot_ranges(10, [4])}")
+
+
+def check_counted(problems):
+    """The phrase reaches core asking for more than one detection, in core's own syntax."""
+    from comfy.text_encoders.sam3_clip import _parse_prompts  # core's parser: the independent answer
+    for phrase, most, want in (("person", 16, [("person", 16)]), ("person:3", 16, [("person", 3)]),
+                               ("lead singer, drummer:2", 8, [("lead singer", 8), ("drummer", 2)])):
+        got = _parse_prompts(st.counted(phrase, most))
+        if got != want:
+            problems.append(f"counted({phrase!r}, {most}) is read by core as {got}, not {want}")
+    if _parse_prompts("person") != [("person", 1)]:
+        problems.append("the control failed: core no longer reads a bare phrase as one detection, so `counted` "
+                        "may not be needed and this item is not testing what it says")
+    try:
+        st.counted(" , ", 4)
+    except ValueError:
+        pass
+    else:
+        problems.append("an empty phrase was accepted")
 
 
 def check_choose(problems):
@@ -278,7 +302,7 @@ def check_schema(problems):
     schema = st.MiniMaxH3SubjectTrack.define_schema()
     inputs = {i.id: i for i in schema.inputs}
     for name, default in (("subject_phrase", st.SUBJECT_PHRASE), ("cut_threshold", st.CUT_THRESHOLD),
-                          ("match_threshold", st.MATCH_THRESHOLD),
+                          ("match_threshold", st.MATCH_THRESHOLD), ("max_people", st.MAX_PEOPLE),
                           ("detection_threshold", st.DETECTION_THRESHOLD), ("pick", st.PICK_LARGEST)):
         if name not in inputs:
             problems.append(f"the node has no `{name}` input: what SAM is asked and how it is judged must be visible")
@@ -297,7 +321,7 @@ def check_schema(problems):
 
 def main() -> int:
     problems: list[str] = []
-    for check in (check_cuts, check_ranges, check_choose, check_signature, check_follow, check_empty, check_schema):
+    for check in (check_cuts, check_ranges, check_counted, check_choose, check_signature, check_follow, check_empty, check_schema):
         check(problems)
     for p in problems:
         print(f"FAIL  {p}")

@@ -4,6 +4,23 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.37
+
+### Fixed
+
+- **`MiniMaxH3SubjectTrack` asks core's detector for every person, not one.**
+  Core keeps one detection per phrase unless the phrase carries a count
+  (`person:8`), so on its first card run the node reported one detection on a
+  frame of six people: the pick rule chose among one, and the comparison
+  relative to the pick frame's other people would never have had anyone to
+  subtract. mrpink found it. The node now writes the count itself
+  (`counted`), with `max_people` as a new input appended to the schema, and
+  `MASK_VERSION` is 3. The check reads the phrase back through core's own
+  parser.
+- The first card run is recorded in `docs/research/masking/2026-10-04_mrhf.md`:
+  the cuts matched the CPU probe's list, the lead was taken in his three
+  shots and nobody in the cutaways, and the tracker followed him as he turned.
+
 ## 0.186.36
 
 ### Changed

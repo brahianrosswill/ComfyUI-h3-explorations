@@ -31,6 +31,11 @@ core's `initial_mask` path and has none of the three behaviours above.
    every other frame (the ninth is a jump cut inside a cutaway).
 2. The pick: on `pick_frame`, SAM 3 is asked for `subject_phrase` and one of
    the detections is chosen by `pick` (`choose`). That mask is the subject.
+   Core's detector returns one detection per phrase unless the phrase carries
+   a count (`comfy/text_encoders/sam3_clip.py::_parse_prompts`, `person:8`),
+   so the node asks for up to `max_people` (`counted`). Without that there is
+   one person to choose among and nobody to compare with: the first card run
+   reported one detection on a frame of six people.
 3. Each other shot: the detections on a frame of that shot are compared with
    the subject by the vision trunk's features pooled under the top third of
    each mask, the head and shoulders (`top_third`, `signature`). The other
@@ -91,6 +96,7 @@ Nothing here patches core. It calls core's own nodes (`SAM3_Detect`,
 from __future__ import annotations
 
 import logging
+import re
 import time
 from dataclasses import dataclass
 from typing import Callable
@@ -123,6 +129,10 @@ MATCH_THRESHOLD = 0.71
 DETECTION_THRESHOLD = 0.5
 #: The default of `subject_phrase`.
 SUBJECT_PHRASE = "person"
+#: The default of `max_people`: the most detections of the phrase taken from a
+#: frame. Reasoned: more than a stage usually shows, and each one costs a mask
+#: refinement only on the few frames that are probed.
+MAX_PEOPLE = 16
 #: The side SAM 3's vision trunk takes. Inherited: core's detect node scales
 #: every frame to it (`comfy_extras/nodes_sam3.py::SAM3_Detect.execute`).
 TRUNK_SIDE = 1008
@@ -131,6 +141,18 @@ PICK_LARGEST = "largest"
 PICK_CENTRAL = "most central"
 PICK_SCORE = "best match for the phrase"
 PICKS = (PICK_LARGEST, PICK_CENTRAL, PICK_SCORE)
+
+
+def counted(phrase: str, most: int) -> str:
+    """`phrase` in core's SAM 3 prompt syntax, each comma-separated part asking for up to `most` detections.
+
+    A part that already carries its own `:N` keeps it. Core reads `name:N` as
+    at most N detections of `name`, and a bare `name` as one.
+    """
+    parts = [p.strip() for p in str(phrase).split(",") if p.strip()]
+    if not parts:
+        raise ValueError("subject_phrase is empty: say what SAM 3 should look for, for instance `person`")
+    return ", ".join(p if re.match(r"^.+?\s*:\s*[\d.]+\s*$", p) else f"{p}:{max(int(most), 1)}" for p in parts)
 
 
 def cut_scores(frames: torch.Tensor) -> torch.Tensor:
@@ -339,13 +361,14 @@ def preview(frames: torch.Tensor, mask: torch.Tensor, shots: list[Shot]) -> torc
     return torch.stack(tiles, dim=0) if tiles else frames[:1, ..., :3].to(torch.float32).cpu()
 
 
-def _sam_callables(segmenter, segmenter_clip, frames: torch.Tensor, phrase: str, detection_threshold: float):
+def _sam_callables(segmenter, segmenter_clip, frames: torch.Tensor, phrase: str, detection_threshold: float,
+                   max_people: int = MAX_PEOPLE):
     """`detect`, `sign` and `track` on core's SAM 3: its detect and track nodes, and the model's vision trunk."""
     import comfy.model_management
     import comfy.utils
     from comfy_extras.nodes_sam3 import SAM3_Detect, SAM3_TrackToMask, SAM3_VideoTrack  # core's nodes
 
-    cond = segmenter_clip.encode_from_tokens_scheduled(segmenter_clip.tokenize(phrase))
+    cond = segmenter_clip.encode_from_tokens_scheduled(segmenter_clip.tokenize(counted(phrase, max_people)))
     detections: dict[int, tuple[torch.Tensor, list[float]]] = {}
     features: dict[int, torch.Tensor] = {}
 
@@ -391,8 +414,9 @@ def _sam_callables(segmenter, segmenter_clip, frames: torch.Tensor, phrase: str,
 class MiniMaxH3SubjectTrack(io.ComfyNode):
     #: Part of a kept mask's key (`mask_store.mask_key`). Bump when the same
     #: inputs and settings would give a different mask. 2: the comparison became
-    #: relative to the pick frame's other people.
-    MASK_VERSION = 2
+    #: relative to the pick frame's other people. 3: every detection of the
+    #: phrase is taken, not core's one per phrase.
+    MASK_VERSION = 3
 
     @classmethod
     def define_schema(cls):
@@ -432,6 +456,12 @@ class MiniMaxH3SubjectTrack(io.ComfyNode):
                                         "raise it if it split a shot.")),
                 io.Float.Input("detection_threshold", default=DETECTION_THRESHOLD, min=0.0, max=1.0, step=0.01,
                                tooltip="SAM 3's score threshold for a detection of the phrase."),
+                # appended 2026-10-04
+                io.Int.Input("max_people", default=MAX_PEOPLE, min=1, max=64,
+                             tooltip=("The most matches of the phrase taken from one frame. The subject is "
+                                      "chosen among them and compared with the rest, so it has to be at "
+                                      "least the number of people on screen. A phrase written as `name:N` "
+                                      "keeps its own number.")),
             ],
             outputs=[
                 io.Mask.Output(display_name="mask", tooltip="One mask per frame at the frames' size; empty where the subject is absent."),
@@ -443,13 +473,14 @@ class MiniMaxH3SubjectTrack(io.ComfyNode):
     @classmethod
     def execute(cls, frames, segmenter, segmenter_clip, subject_phrase=SUBJECT_PHRASE, pick_frame=0,
                 pick=PICK_LARGEST, match_threshold=MATCH_THRESHOLD, cut_threshold=CUT_THRESHOLD,
-                detection_threshold=DETECTION_THRESHOLD) -> io.NodeOutput:
+                detection_threshold=DETECTION_THRESHOLD, max_people=MAX_PEOPLE) -> io.NodeOutput:
         if frames.ndim != 4:
             raise ValueError(f"frames must be [N, H, W, C]; got {tuple(frames.shape)}")
         n, h, w = int(frames.shape[0]), int(frames.shape[1]), int(frames.shape[2])
         began = time.perf_counter()
         cuts = find_cuts(cut_scores(frames), cut_threshold)
-        detect, sign, track = _sam_callables(segmenter, segmenter_clip, frames, subject_phrase, detection_threshold)
+        detect, sign, track = _sam_callables(segmenter, segmenter_clip, frames, subject_phrase, detection_threshold,
+                                             int(max_people))
         with torch.no_grad():
             pieces, shots, picked, others = follow(n, cuts, int(pick_frame), pick, float(match_threshold),
                                                    detect, sign, track)
