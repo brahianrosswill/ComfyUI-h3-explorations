@@ -58,18 +58,27 @@ core's `initial_mask` path and has none of the three behaviours above.
    scores when that gap lies above the floor: the widest gap is taken as the
    line between the subject and everybody else. The report prints the scores
    with the cut marked, so a wrong cut can be seen.
-6. A clip with one person in it. When the pick frame shows nobody else and
+6. Two places, not one. SAM 3 is also asked for `head_phrase` on every frame
+   that is looked at, and each person gets the head that lies inside their
+   mask (`head_of`). A person is compared with the subject under the top
+   third of the mask and under the head, and the lower of the two counts. A
+   person on whom no head is found is no match. Measured on three clips
+   (`docs/research/masking/2026-10-04_mrhf.md`): on a clip of young women in
+   a car the top third alone took two other women as the lead, and the head
+   alone took a wrong person on the band clip; the lower of the two took the
+   right shots on both.
+7. A clip with one person in it. When the pick frame shows nobody else and
    the match is automatic, there is nobody to mistake the subject for, and
    the similarity is the wrong judge: it fell to 0.73 for the same singer
-   between a full-length shot and a close-up, where the top third of the mask
-   is another part of him (mrblue's card run, 2026-10-04). So a shot under
-   the line is probed to its end, and its best frame showing exactly one
-   detection is taken, from `LONE_FLOOR` up. The best frame and not the
-   first: the detector marks a hanging microphone as a person in that clip's
-   empty opening. The report and the tile say the shot was taken this way. A
-   cutaway to a different lone person would be taken too; naming a value for
-   `match` turns the rule off.
-7. Tracking: from the seed frame forward to the shot's end and backward to its
+   between a full-length shot and a close-up (mrblue's card run,
+   2026-10-04). So a shot under the line is probed to its end, and its best
+   frame showing exactly one person with a head is taken, whatever it scores.
+   The head is what keeps a thing out: the detector marks a hanging
+   microphone as a person in that clip's empty opening, and on every frame it
+   was the one detection with no head. The report and the tile say the shot
+   was taken this way. A cutaway to a different lone person would be taken
+   too; naming a value for `match` turns the rule off.
+8. Tracking: from the seed frame forward to the shot's end and backward to its
    start, each a tracker call with the seed mask as `initial_mask`.
 
 **How far the matching can be trusted.** SAM 3's trunk is trained to say what
@@ -96,6 +105,8 @@ shown as the node's own UI, so nothing has to be wired to see them: a preview
 or save node on either output would make core run the tracker on every queue,
 whatever the Masked Source decided. The outputs exist; a shipped graph leaves
 them unwired.
+
+Every phrase SAM 3 is given is an input: `subject_phrase` and `head_phrase`.
 
 Nothing here patches core. It calls core's own nodes (`SAM3_Detect`,
 `SAM3_VideoTrack`, `SAM3_TrackToMask`) and the SAM 3 model's vision trunk.
@@ -153,14 +164,6 @@ PLAIN_FLOOR = 0.91
 #: spread among true matches seen so far and narrower than the gap to the
 #: wrong people.
 MIN_GAP = 0.1
-#: Automatic matching when the pick frame shows nobody else: a shot's best
-#: frame showing one detection is taken at or above this plain similarity.
-#: Measured on one clip on the card, 2026-10-04, the one-person clip against
-#: its full-length pick: the singer's shots framed closer have a best of 0.73
-#: to 0.83, and the hanging microphone the detector marks as a person in the
-#: empty opening scores 0.60 and 0.61. The middle. One clip, and the room is
-#: narrow: a frame of his scored 0.66.
-LONE_FLOOR = 0.67
 #: The default of `match_threshold`, used when `match` is `at a value`. The
 #: middle of the gap measured on the band clip on the card.
 MATCH_THRESHOLD = 0.82
@@ -173,6 +176,9 @@ PLAIN_SAME = 0.93
 DETECTION_THRESHOLD = 0.5
 #: The default of `subject_phrase`.
 SUBJECT_PHRASE = "person"
+#: The default of `head_phrase`: what SAM 3 is asked for to find each
+#: person's head, the second place a match has to hold.
+HEAD_PHRASE = "head"
 #: The default of `max_people`: the most detections of the phrase taken from a
 #: frame. Reasoned: more than a stage usually shows, and each one costs a mask
 #: refinement only on the few frames that are probed.
@@ -333,6 +339,33 @@ def similarity(a: torch.Tensor | None, b: torch.Tensor | None) -> float:
     return float((a * b).sum())
 
 
+def head_of(person: torch.Tensor, heads: torch.Tensor) -> torch.Tensor | None:
+    """The head that belongs to a person: of the heads lying mostly inside the person's mask, the highest.
+
+    `person` is [H, W] and `heads` [N, H, W]. None when no head does.
+    """
+    inside, best, best_top = person > 0.5, None, None
+    for head in heads:
+        on = head > 0.5
+        area = int(on.sum())
+        if area == 0 or int((on & inside).sum()) * 2 < area:
+            continue
+        top = int(on.any(dim=1).nonzero().min())
+        if best_top is None or top < best_top:
+            best, best_top = head, top
+    return best
+
+
+def _views(sig) -> tuple:
+    """A person's signatures as a tuple: one per place they are compared. A lone signature is one view."""
+    return tuple(sig) if isinstance(sig, (tuple, list)) else (sig,)
+
+
+def _has_head(sig) -> bool:
+    """Whether a person's last view exists: with SAM's callables that is the head."""
+    return _views(sig)[-1] is not None
+
+
 def _width(mask: torch.Tensor) -> int:
     """How many columns a [H, W] mask covers: a rough measure of how closely a person is framed."""
     return int((mask > 0.5).any(dim=0).sum())
@@ -368,6 +401,7 @@ class Shot:
     picked: bool = False         # the shot the pick was made in
     lone: bool = False           # taken under the line, as the only person on its frame
     width: int = 0               # columns the mask on `shown` covers
+    seen: int = 0                # the most detections on any frame looked at
 
 
 @dataclass
@@ -380,6 +414,8 @@ class Followed:
     match: float = 0.0               # the similarity a shot had to reach
     pick_width: int = 0              # columns the subject's mask covers on the pick frame
     looks: list[tuple[int, int, int, float]] = field(default_factory=list)   # (shot, frame, detections, best similarity)
+    views: int = 1                   # places a person is compared: head and shoulders, and the head
+    views_used: int = 1              # of those, how many the subject has on the pick frame
 
 
 def main_subject(shots: list[Shot], pick: str, detect, sign) -> tuple[int, int] | None:
@@ -394,7 +430,7 @@ def main_subject(shots: list[Shot], pick: str, detect, sign) -> tuple[int, int] 
         masks, scores = detect(shot.probe)
         i = choose(masks, scores, pick)
         if i is not None:
-            winners.append((shot, i, sign(shot.probe, masks[i]), int(masks.shape[0])))
+            winners.append((shot, i, _views(sign(shot.probe, masks[i]))[0], int(masks.shape[0])))
     if not winners:
         return None
 
@@ -417,7 +453,9 @@ def follow(n_frames: int, cuts: list[int], pick: str, pick_frame: int | None, ma
     """The subject's mask per frame, shot by shot. The model work is in three callables.
 
     `detect(frame)` returns that frame's detections, [N, H, W] and their
-    scores. `sign(frame, mask)` returns a mask's signature on that frame.
+    scores. `sign(frame, mask)` returns a mask's signature on that frame, or
+    a tuple of them, one per place a person is compared; a match is as good
+    as its worst view, and a person lacking a view the subject has is no match.
     `track(start, end, seed, mask)` returns the masks of frames `start` to
     `end` exclusive, tracked from `mask` on `seed`, in frame order.
 
@@ -441,23 +479,41 @@ def follow(n_frames: int, cuts: list[int], pick: str, pick_frame: int | None, ma
     frame0, which = entry
     masks0, _ = detect(frame0)
     picked = masks0[which]
-    others = [v for v in (sign(frame0, m) for i, m in enumerate(masks0) if i != which) if v is not None]
-    centre = torch.stack(others, dim=0).mean(dim=0) if others else None
-    reference = relative(sign(frame0, picked), centre)
+    mine = _views(sign(frame0, picked))
+    theirs = [_views(sign(frame0, m)) for i, m in enumerate(masks0) if i != which]
+    use = [k for k, v in enumerate(mine) if v is not None]         # the views the subject has
+    others = [t for t in theirs if t[0] is not None]
+    centres = []
+    for k in range(len(mine)):
+        have = [t[k] for t in theirs if t[k] is not None]
+        centres.append(torch.stack(have, dim=0).mean(dim=0) if have else None)
+    reference = tuple(relative(v, c) for v, c in zip(mine, centres))
     result.pick_frame, result.others, result.pick_width = frame0, len(others), _width(picked)
+    result.views, result.views_used = len(mine), len(use)
+
+    def alike(sig) -> float | None:
+        """A person's similarity to the subject: the lowest over the views the subject has. None when one is missing."""
+        views = _views(sig)
+        if not use or any(views[k] is None for k in use):
+            return None
+        return min(similarity(reference[k], relative(views[k], centres[k])) for k in use)
 
     def look(shot: Shot, f: int) -> tuple[float, int | None, int]:
-        """Frame `f`'s best similarity, which detection has it and how many there are; the shot remembers its best."""
+        """Frame `f`'s best similarity, which detection has it and how many there have a head; the shot remembers its best."""
         found, _ = detect(f)
-        sims = [similarity(reference, relative(sign(f, m), centre)) for m in found]
-        if not sims:
-            result.looks.append((shots.index(shot) + 1, f, 0, -1.0))
-            return -1.0, None, 0
-        i = max(range(len(sims)), key=lambda k: sims[k])
+        sigs = [sign(f, m) for m in found]
+        sims = [alike(v) for v in sigs]
+        heads = sum(1 for v in sigs if _has_head(v))
+        shot.seen = max(shot.seen, len(sims))
+        able = [k for k, v in enumerate(sims) if v is not None]
+        if not able:
+            result.looks.append((shots.index(shot) + 1, f, len(sims), -1.0))
+            return -1.0, None, heads
+        i = max(able, key=lambda k: sims[k])
         result.looks.append((shots.index(shot) + 1, f, len(sims), sims[i]))
         if sims[i] > shot.best:
             shot.best, shot.shown, shot.index, shot.candidates, shot.width = sims[i], f, i, len(sims), _width(found[i])
-        return sims[i], i, len(sims)
+        return sims[i], i, heads
 
     rest = [s for s in shots if not s.start <= frame0 < s.end]
     first = {id(s): look(s, s.probe) for s in rest}
@@ -475,13 +531,13 @@ def follow(n_frames: int, cuts: list[int], pick: str, pick_frame: int | None, ma
         taken = lone = None        # (similarity, frame, detection)
         later = [f for f in range(shot.start, shot.end, max(int(stride), 1)) if f != shot.probe]
         for f in [shot.probe] + later:
-            score, i, count = first[id(shot)] if f == shot.probe else look(shot, f)
+            score, i, heads = first[id(shot)] if f == shot.probe else look(shot, f)
             if i is None:
                 continue
             if score >= result.match:
                 taken = (score, f, i)
                 break
-            if alone and count == 1 and score >= LONE_FLOOR and (lone is None or score > lone[0]):
+            if alone and heads == 1 and (lone is None or score > lone[0]):
                 lone = (score, f, i)
         if taken is None and lone is not None:
             taken, shot.lone = lone, True
@@ -540,7 +596,11 @@ def report(found: Followed, cuts: list[int], pick: str, phrase: str, named_frame
             lines.append(f"similarity is relative to the {found.others} other(s) on that frame")
         else:
             lines.append("nobody else on that frame: plain similarity, where other people score about 0.8 to 0.9"
-                         + ("" if named_value else f"; a shot's best frame showing one `{phrase}` is taken from {LONE_FLOOR:.2f} up"))
+                         + ("" if named_value else "; a shot's best frame showing one person with a head is taken whatever it scores"))
+        if found.views > 1:
+            lines.append("a match has to hold in two places, the head and shoulders and the head; the lower one counts"
+                         if found.views_used == found.views else
+                         "no head was found on the subject on that frame: matched by the head and shoulders alone")
         scores = sorted((s.best for s in shots if not s.picked and s.best >= 0), reverse=True)
         above = " ".join(f"{v:.2f}" for v in scores if v >= found.match)
         below = " ".join(f"{v:.2f}" for v in scores if v < found.match)
@@ -551,11 +611,12 @@ def report(found: Followed, cuts: list[int], pick: str, phrase: str, named_frame
         if s.picked:
             lines.append(f"{span}: the picked shot, {s.candidates} detection(s) on frame {s.seed}")
         elif s.seed is not None:
-            how = "as the only one there, " if s.lone else ""
+            how = "as the only person there, " if s.lone else ""
             lines.append(f"{span}: taken on frame {s.seed}, {how}similarity {s.best:.2f}, "
                          f"{s.candidates} detection(s) there{_framing(s, found) if s.lone else ''}")
         else:
-            why = "no detection" if s.best < 0 else f"best similarity {s.best:.2f} on frame {s.shown}{_framing(s, found)}"
+            why = (f"best similarity {s.best:.2f} on frame {s.shown}{_framing(s, found)}" if s.best >= 0 else
+                   "no detection" if not s.seen else f"up to {s.seen} detection(s), none that could be compared")
             lines.append(f"{span}: absent ({why})")
     lines.append(f"{seconds:.0f} s")
     return "\n".join(lines)
@@ -611,13 +672,15 @@ def preview(frames: torch.Tensor, mask: torch.Tensor, shots: list[Shot], detect)
 
 
 def _sam_callables(segmenter, segmenter_clip, frames: torch.Tensor, phrase: str, detection_threshold: float,
-                   max_people: int = MAX_PEOPLE):
+                   max_people: int = MAX_PEOPLE, head_phrase: str = HEAD_PHRASE):
     """`detect`, `sign` and `track` on core's SAM 3: its detect and track nodes, and the model's vision trunk."""
     import comfy.model_management
     import comfy.utils
     from comfy_extras.nodes_sam3 import SAM3_Detect, SAM3_TrackToMask, SAM3_VideoTrack  # core's nodes
 
     cond = segmenter_clip.encode_from_tokens_scheduled(segmenter_clip.tokenize(counted(phrase, max_people)))
+    head_cond = segmenter_clip.encode_from_tokens_scheduled(segmenter_clip.tokenize(counted(head_phrase, max_people)))
+    head_masks: dict[int, torch.Tensor] = {}
     detections: dict[int, tuple[torch.Tensor, list[float]]] = {}
     features: dict[int, torch.Tensor] = {}
 
@@ -640,7 +703,12 @@ def _sam_callables(segmenter, segmenter_clip, frames: torch.Tensor, phrase: str,
             trunk = segmenter.model.diffusion_model.detector.backbone["vision_backbone"].trunk(x)
             trunk = trunk[-1] if isinstance(trunk, (list, tuple)) else trunk
             features[f] = trunk[0].to(torch.float32).cpu()
-        return signature(features[f], top_third(mask))
+        if f not in head_masks:
+            out = SAM3_Detect.execute(segmenter, frames[f:f + 1], conditioning=head_cond,
+                                      threshold=float(detection_threshold), individual_masks=True)
+            head_masks[f] = getattr(out, "args", out)[0].to(torch.float32).cpu()
+        head = head_of(mask, head_masks[f])
+        return signature(features[f], top_third(mask)), (None if head is None else signature(features[f], head))
 
     def run(images: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
         out = SAM3_VideoTrack.execute(images, segmenter, initial_mask=mask[None].to(torch.float32),
@@ -678,8 +746,9 @@ class MiniMaxH3SubjectTrack(io.ComfyNode):
     #: phrase is taken, not core's one per phrase. 4: the automatic pick and
     #: the automatic match, and each shot judged a few frames in. 5: the cut
     #: threshold from the clip's scores and inclusive, and a lone person taken
-    #: under the line when the pick frame shows nobody else.
-    MASK_VERSION = 5
+    #: under the line when the pick frame shows nobody else. 6: a match has to
+    #: hold on the head as well, and the lone person has to have a head.
+    MASK_VERSION = 6
 
     @classmethod
     def define_schema(cls):
@@ -737,6 +806,10 @@ class MiniMaxH3SubjectTrack(io.ComfyNode):
                                advanced=True, tooltip="SAM 3's score threshold for a detection of the phrase."),
                 io.Int.Input("max_people", default=MAX_PEOPLE, min=1, max=64, advanced=True,
                              tooltip="The most matches of the phrase taken from one frame."),
+                # appended 2026-10-04
+                io.String.Input("head_phrase", default=HEAD_PHRASE, advanced=True,
+                                tooltip=("What SAM 3 is asked to find on each person so they can be told apart. "
+                                         "A person in another shot has to match the subject there as well.")),
             ],
             outputs=[
                 io.Mask.Output(display_name="mask", tooltip="One mask per frame at the frames' size; empty where the subject is absent."),
@@ -747,7 +820,8 @@ class MiniMaxH3SubjectTrack(io.ComfyNode):
 
     @classmethod
     def execute(cls, frames, segmenter, segmenter_clip, pick_on, match, cuts, subject_phrase=SUBJECT_PHRASE,
-                pick=PICK_LARGEST, detection_threshold=DETECTION_THRESHOLD, max_people=MAX_PEOPLE) -> io.NodeOutput:
+                pick=PICK_LARGEST, detection_threshold=DETECTION_THRESHOLD, max_people=MAX_PEOPLE,
+                head_phrase=HEAD_PHRASE) -> io.NodeOutput:
         if frames.ndim != 4:
             raise ValueError(f"frames must be [N, H, W, C]; got {tuple(frames.shape)}")
         where, pick_frame = _selection(pick_on, "pick_on", "pick_frame")
@@ -768,7 +842,7 @@ class MiniMaxH3SubjectTrack(io.ComfyNode):
         cut_at = float(cut_threshold) if named_cut else auto_cuts(steps)
         found_cuts = find_cuts(steps, cut_at)
         detect, sign, track = _sam_callables(segmenter, segmenter_clip, frames, subject_phrase, detection_threshold,
-                                             int(max_people))
+                                             int(max_people), head_phrase)
         with torch.no_grad():
             found = follow(n, found_cuts, pick, int(pick_frame) if named_frame else None,
                            float(match_threshold) if named_value else None, detect, sign, track)

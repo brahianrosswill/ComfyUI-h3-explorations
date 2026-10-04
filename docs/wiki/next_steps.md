@@ -22,17 +22,22 @@ own below the rule.
   notes: [`../research/masking/`](../research/masking/README.md).
 - The Subject Track with nothing to set (automatic pick frame, match and
   cuts, a manual value beside each) is landed and in the shipped graph,
-  validated by three sessions on two clips. What that leaves, from the
-  validating session's report
-  (`../research/masking/2026-10-04_mrblue.md`): the floor for a shot showing
-  one person has little room above a non-person; a clip with several people
-  that cuts from a wide shot to a close-up of the subject can miss them (the
-  node's report says when the framing differs); a third clip.
+  validated by three sessions on two clips. A third clip then broke it (two
+  other women taken as the lead), and the node now compares a person in two
+  places, the top of the mask and the head SAM 3 finds, and asks a lone
+  person for a head: `../../bench/results/2026-10-04_subject_track_three_clips.md`.
+  What that leaves: the rule was chosen on the three clips it passes, so a
+  fourth; people who look alike, where one shot of the car clip cannot be
+  settled by these features (an identity model, or a way to correct one shot
+  by hand).
 - **The turn, with no prompt text** (owner: does not want to prompt
   movement). A late start carries the pose and the original's look together
-  (band record, "The turn without a prompt"). Next arm: the same late start
-  from a source degraded inside the region. After it, and only with the
-  owner's say-so, the generic clause narrowed to facing.
+  (band record, "The turn without a prompt"). The same late start from a
+  source softened inside the region was run as eight arms and is not a fix:
+  he turns, and his clothes change, and on one of two seeds his hair
+  (`../../bench/results/2026-10-04_masked_v2v_turn_soft_arms.md`, which also
+  lists what was not tried). What remains is the owner's to choose: the
+  generic clause narrowed to facing, or accepting different clothes.
 - **The scene's clothes on the new subject** (owner: where they want the band
   clip to go). Untried: a crop of the original's torso as a second
   reference.

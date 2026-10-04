@@ -4,6 +4,35 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.47
+
+### Changed
+
+- **The Subject Track compares a person in two places and asks a lone person
+  for a head.** On a third clip, a car scene with several young people, the
+  node took two other women as the lead. It now also asks SAM 3 for
+  `head_phrase` (a new input, appended, `head` by default) on every frame it
+  looks at, compares each person with the subject under the top third of
+  their mask and under their head, and counts the lower. A person on whom no
+  head is found is no match. With nobody else on the pick frame, a shot's
+  best frame showing one person with a head is taken whatever it scores:
+  the score floor that kept a microphone out by a narrow margin is gone,
+  since the microphone is the one detection with no head. `MASK_VERSION` is
+  6, so kept masks are tracked afresh. It costs one more detector pass per
+  frame looked at. The numbers on three clips, and the limits, are in
+  `bench/results/2026-10-04_subject_track_three_clips.md`: the rule was
+  chosen on the clips it passes, and one shot of the car clip is still
+  missed. `workflows/h3_config.py::SUBJECT_TRACK`, the node manifest and the
+  shipped masked graph carry the new input.
+
+### Docs
+
+- **The turn with no prompt is recorded as not fixed.** A late start from a
+  softened copy of the original turns the new subject and does not keep the
+  reference's clothes, or on one seed its hair:
+  `bench/results/2026-10-04_masked_v2v_turn_soft_arms.md`. The code those
+  arms ran on is saved beside the record and is not in the tree.
+
 ## 0.186.46
 
 ### Docs

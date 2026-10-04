@@ -312,6 +312,7 @@ def _solo_world():
     Four shots of 8 frames. Shot 1: a microphone alone on frames 0-3, with the person on 4-5, the person alone
     on 6-7. Shot 2: the person, full length. Shot 3: the person in close-up. Shot 4: a lamp and nobody.
     The person in close-up scores 0.75 against the full-length pick, the microphone 0.70, the lamp 0.3.
+    Each signature is two views, and only the person has the second, the head.
     """
     def unit(c: float, axis: int) -> torch.Tensor:
         v = torch.zeros(4); v[0] = c; v[axis] = (1 - c * c) ** 0.5
@@ -330,7 +331,8 @@ def _solo_world():
     def detect(f: int):
         return torch.stack(present(f), dim=0), [0.9] * len(present(f))
     def sign(_frame: int, mask: torch.Tensor):
-        return next(v for m, v in sigs if torch.equal(m, mask))
+        v = next(v for m, v in sigs if torch.equal(m, mask))
+        return v, (v if torch.equal(mask, close) or torch.equal(mask, full) else None)
     def track(start: int, end: int, seed: int, mask: torch.Tensor):
         tracked.append((start, end, seed, "person" if torch.equal(mask, close) or torch.equal(mask, full) else "thing"))
         return mask[None].repeat(end - start, 1, 1)
@@ -342,19 +344,20 @@ def check_alone(problems):
     detect, sign, track, tracked = _solo_world()
     cuts = [8, 16, 24]
     got = st.follow(32, cuts, st.PICK_LARGEST, 9, None, detect, sign, track, stride=2, offset=1)
-    want = [(0, 8, 6, "person"), (8, 16, 9, "person"), (16, 24, 17, "person")]
+    want = [(0, 8, 4, "person"), (8, 16, 9, "person"), (16, 24, 17, "person")]
     if tracked != want:
         problems.append(f"one person, framed differently per shot: tracked {tracked}, not {want}. Shot 1 opens on a "
-                        "microphone alone, so the shot's best lone frame is the seed and not its first; shot 4 holds a lamp")
+                        "microphone alone and then shows it beside the person: a thing has no head, so the person is the "
+                        "one with a head from frame 4; shot 4 holds a lamp, which scores under the line and has no head")
     if [s.lone for s in got.shots] != [True, False, True, False] or got.others != 0:
         problems.append(f"lone flags {[s.lone for s in got.shots]} with {got.others} other(s) on the pick frame")
-    if not abs(got.match - st.PLAIN_FLOOR) < 1e-9 or not 0.3 < st.LONE_FLOOR < 0.70:
-        problems.append(f"the line is {got.match} and the lone floor {st.LONE_FLOOR}; this case needs the plain floor, and a "
-                        "lone floor over the lamp's 0.3 and under the microphone's 0.70, so that the best frame and not "
-                        "the floor is what keeps the microphone out")
+    if not abs(got.match - st.PLAIN_FLOOR) < 1e-9:
+        problems.append(f"the line is {got.match}; with nobody else on the pick frame it is the plain floor {st.PLAIN_FLOOR}")
+    if got.views != 2 or got.views_used != 2:
+        problems.append(f"the subject is compared in {got.views_used} of {got.views} places; this world gives two and the person has both")
     text = st.report(got, cuts, st.PICK_LARGEST, "person", True, False, 1.0)
-    for need in ("taken on frame 6, as the only one there, similarity 0.75", "absent (best similarity 0.30",
-                 "framed differently, the mask is 4.0 times as wide", "is taken from"):
+    for need in ("taken on frame 4, as the only person there, similarity 0.75", "[4] frames 24-31: absent (up to 1 detection(s), none that could be compared)",
+                 "framed differently, the mask is 4.0 times as wide", "one person with a head is taken", "the lower one counts"):
         if need not in text:
             problems.append(f"the one-person report lacks {need!r}: {text!r}")
     if st._state(got.shots[0]) != "taken (only person)":
@@ -371,6 +374,50 @@ def check_alone(problems):
     if any(s.lone for s in got.shots) or [s.seed for s in got.shots] != [3, None, 20, 25]:
         problems.append(f"picked among other people, seeds {[s.seed for s in got.shots]} and lone {[s.lone for s in got.shots]}: "
                         "the lone rule applies only when the pick frame shows nobody else")
+
+
+def check_two_places(problems):
+    """A match has to hold on the head as well: someone alike at the shoulders and not at the head is left alone."""
+    subject, twin, other = _box(40, 10, 80, 60), _box(0, 20, 20, 50), _box(100, 20, 120, 50)
+    e = lambda *v: torch.tensor(v, dtype=torch.float32) / torch.tensor(v, dtype=torch.float32).norm()
+    # shoulders: the twin is the subject's double. head: the twin is somebody else
+    shoulders = [(subject, e(1.0, 0, 0)), (twin, e(1.0, 0.05, 0)), (other, e(0, 1.0, 0))]
+    heads = [(subject, e(1.0, 0, 0)), (twin, e(0, 0, 1.0)), (other, e(0, 1.0, 0))]
+    def detect(f: int):
+        people = [subject, other] if f < 8 else ([twin, other] if f < 16 else [subject, other])
+        return torch.stack(people, dim=0), [0.9, 0.8]
+    def find(table, mask):
+        return next(v for m, v in table if torch.equal(m, mask))
+    track = lambda start, end, seed, mask: mask[None].repeat(end - start, 1, 1)
+    both = st.follow(24, [8, 16], st.PICK_LARGEST, 2, None, detect, lambda _f, m: (find(shoulders, m), find(heads, m)),
+                     track, stride=4, offset=1)
+    if [s.seed for s in both.shots] != [2, None, 17]:
+        problems.append(f"compared in two places, seeds are {[s.seed for s in both.shots]}: shot 2 holds the subject's double "
+                        "at the shoulders with another head, and must be left alone; shot 3 holds the subject")
+    one = st.follow(24, [8, 16], st.PICK_LARGEST, 2, None, detect, lambda _f, m: find(shoulders, m), track, stride=4, offset=1)
+    if [s.seed for s in one.shots] != [2, 9, 17]:
+        problems.append(f"the control failed: compared at the shoulders alone, seeds are {[s.seed for s in one.shots]}; the "
+                        "double should be taken there, or the second place decides nothing in this case")
+    # a person on whom no head is found is no match, however alike at the shoulders
+    none = st.follow(24, [8, 16], st.PICK_LARGEST, 2, None, detect,
+                     lambda f, m: (find(shoulders, m), None if 16 <= f else find(heads, m)), track, stride=4, offset=1)
+    if [s.seed for s in none.shots] != [2, None, None]:
+        problems.append(f"with no head found in shot 3, seeds are {[s.seed for s in none.shots]}: a person without a head is no match")
+    # the subject has no head on the pick frame: the shoulders decide alone, and the report says so
+    bare = st.follow(24, [8, 16], st.PICK_LARGEST, 2, None, detect, lambda _f, m: (find(shoulders, m), None), track, stride=4, offset=1)
+    if [s.seed for s in bare.shots] != [2, 9, 17] or bare.views_used != 1:
+        problems.append(f"with no head on the subject, seeds are {[s.seed for s in bare.shots]} from {bare.views_used} place(s): "
+                        "the shoulders decide alone")
+    if "matched by the head and shoulders alone" not in st.report(bare, [8, 16], st.PICK_LARGEST, "person", True, False, 1.0):
+        problems.append("the report does not say that no head was found on the subject")
+    # head_of: the head mostly inside the person, the highest of them, and none for a thing
+    person = _box(40, 10, 80, 60)
+    hat, face, far = _box(50, 10, 70, 20), _box(50, 22, 70, 34), _box(0, 0, 20, 10)
+    got = st.head_of(person, torch.stack([far, face, hat], dim=0))
+    if got is None or not torch.equal(got, hat):
+        problems.append("head_of does not return the highest head lying inside the person")
+    if st.head_of(person, torch.stack([far], dim=0)) is not None or st.head_of(person, torch.zeros((0, H, W))) is not None:
+        problems.append("head_of found a head for a person who has none inside their mask")
 
 
 def check_empty(problems):
@@ -426,7 +473,7 @@ def check_signature(problems):
 def check_schema(problems):
     schema = st.MiniMaxH3SubjectTrack.define_schema()
     inputs = {i.id: i for i in schema.inputs}
-    for name, default in (("subject_phrase", st.SUBJECT_PHRASE),
+    for name, default in (("subject_phrase", st.SUBJECT_PHRASE), ("head_phrase", st.HEAD_PHRASE),
                           ("max_people", st.MAX_PEOPLE), ("detection_threshold", st.DETECTION_THRESHOLD),
                           ("pick", st.PICK_LARGEST)):
         if name not in inputs:
@@ -470,7 +517,7 @@ def check_schema(problems):
 def main() -> int:
     problems: list[str] = []
     for check in (check_cuts, check_ranges, check_counted, check_choose, check_signature, check_follow, check_automatic,
-                  check_alone, check_empty, check_schema):
+                  check_alone, check_two_places, check_empty, check_schema):
         check(problems)
     for p in problems:
         print(f"FAIL  {p}")

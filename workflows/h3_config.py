@@ -1215,7 +1215,7 @@ SEGMENTER = "sam3.1_multiplex_fp32.safetensors"
 #: and splits one subject into several objects across cuts, which had to be
 #: selected by typed index (`bench/results/2026-10-04_masked_v2v_band.md`).
 SUBJECT_TRACK = dict(subject_phrase="person", pick="largest", pick_on="automatic", match="automatic",
-                     cuts="automatic", detection_threshold=0.5, max_people=16)
+                     cuts="automatic", detection_threshold=0.5, max_people=16, head_phrase="head")
 #: `MiniMaxH3MaskedSource`'s inputs, equal to the node's defaults
 #: (`video_mask.py`). `grow_pixels` and `composite` are the owner's choice on
 #: the band clip, 2026-10-04: the wider margin "preserved identity better"
