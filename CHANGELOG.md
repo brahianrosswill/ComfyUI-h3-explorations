@@ -4,6 +4,19 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.22
+
+### Changed
+
+- `docs/research/masking/2026-10-04_mrblue.md` gains the result of the test
+  it proposed: the remnant beside the replaced subject is **not** painted at
+  decode, so a render already made cannot be repaired by decoding again. Also
+  from the cached decode: the band's edge is on the token grid, the
+  one-in-four pulse is in the decoded frames and not in the plate or the mp4,
+  and the video encode adds about one luma level of noise in the regenerated
+  area at the node's setting, the same without B-frames and less at a lower
+  crf. Measured on one window of one clip.
+
 ## 0.186.21
 
 ### Changed
