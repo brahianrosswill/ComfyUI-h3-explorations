@@ -25,9 +25,9 @@ own below the rule.
 - Owed after that: the original subject's shadow stays in the plate; the
   node that restores the plate between two samplers, so the daily graphs can
   take a mask, is written and held to core's sampler on a stub model
-  (`../../plate_restore.py`, `../../bench/check_plate_restore.py`) but is not
-  registered, is in no graph and has not run on H3; with it, a Masked Source
-  that feeds a plain sampler graph;
+  (`../../plate_restore.py`, `../../bench/check_plate_restore.py`) and
+  registered, but is in no graph and has not run on H3; what it waits for is
+  a Masked Source that feeds a plain sampler graph;
   the source is resampled twice on its way to the canvas (the loader, then
   the fit); a frozen-row cache for a partly masked video
   (`frozen_video_cache.py::_gate` takes a wholly frozen one only), which

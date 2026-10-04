@@ -26,7 +26,7 @@ fix, or one way it could be wrong without anyone seeing.
 6. **What a blend cannot fix is refused, by name**: a mask value between 0
    and 1, and a mask that keeps part of a patch.
 7. **A flat mask leaves the audio generating**, as core treats it, and no
-   mask restores nothing.
+   mask restores nothing. The node is in the pack's node list.
 
 The sampler is core's own `KSAMPLER` with `sample_euler`, on the packed
 video+audio latent, with `MiniMaxH3`'s own inpaint and audio-scale functions
@@ -45,6 +45,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import inspect
+import re
 import sys
 import types
 from pathlib import Path
@@ -300,6 +301,9 @@ def check_flat_and_none(problems):
     schema = pr.MiniMaxH3RestorePlate.define_schema()
     if [i.id for i in schema.inputs] != ["latent", "plate"] or any(not i.tooltip for i in schema.inputs):
         problems.append("the node's inputs are not `latent` and `plate`, each with a tooltip")
+    listed = re.search(r"^\s+MiniMaxH3RestorePlate[,\]]", (REPO / "nodes.py").read_text(), re.M)
+    if listed is None:
+        problems.append("MiniMaxH3RestorePlate is not in the pack's node list (nodes.py)")
 
 
 def main() -> int:

@@ -45,6 +45,7 @@ from .lora_branch import MiniMaxH3LoRABranch
 from .overlay_loader import MiniMaxH3OverlayLoader
 from .denoise_mask_probe import MiniMaxH3DenoiseMaskProbe
 from .video_mask import MiniMaxH3MaskedSource
+from .plate_restore import MiniMaxH3RestorePlate
 from .step_x0_observer import MiniMaxH3StepX0Observer
 from .core_sparse_capture import MiniMaxH3CoreSparseCapture
 from .preflight import MiniMaxH3Preflight
@@ -344,7 +345,10 @@ class H3ExplorationsExtension(ComfyExtension):
                 MiniMaxH3EncodeReferences, MiniMaxH3PromptOnReferences,
                 # appended 2026-10-04, a source video and subject mask for the song loop
                 # (video_mask.py)
-                MiniMaxH3MaskedSource]
+                MiniMaxH3MaskedSource,
+                # appended 2026-10-04, the kept rows put back between two samplers
+                # (plate_restore.py)
+                MiniMaxH3RestorePlate]
 
 
 async def comfy_entrypoint() -> H3ExplorationsExtension:

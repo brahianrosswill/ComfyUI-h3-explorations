@@ -426,6 +426,16 @@
       "summary"
     ]
   },
+  "MiniMaxH3RestorePlate": {
+    "inputs": [
+      "latent",
+      "plate"
+    ],
+    "node_id": "MiniMaxH3RestorePlate",
+    "outputs": [
+      "latent"
+    ]
+  },
   "MiniMaxH3SageAttention": {
     "inputs": [
       "model",

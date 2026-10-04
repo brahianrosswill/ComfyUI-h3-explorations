@@ -4,6 +4,17 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.25
+
+### Changed
+
+- **`MiniMaxH3RestorePlate` is registered** (`plate_restore.py`, added
+  unregistered in 0.186.9): appended to the node list and to
+  `bench/node_id_manifest.json`, and `bench/check_plate_restore.py` now holds
+  that it is listed. It is in no graph and has not run on H3. What a graph
+  needs before it can use it is a Masked Source that feeds a plain sampler
+  graph, which is still owed.
+
 ## 0.186.24
 
 ### Added
