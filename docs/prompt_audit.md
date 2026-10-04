@@ -1,6 +1,6 @@
 # Prompt audit: what follows the guides, and what to do about it
 
-last updated: 2026-10-01
+last updated: 2026-10-04
 
 The judgement half of [`prompt_catalogue.md`](prompt_catalogue.md), which is
 generated and states no opinion. This one is written by hand, keyed to the scene
@@ -157,6 +157,12 @@ Three t2va prompts written on 2026-09-12 for the shot-per-window chain
 | `t2va_song_flicker_lists` | t2va | **revise** | read 2026-10-01, when the catalogue began to read the song node's template: `non_diegetic_music` carries a mood word, "melancholic" (base §4.7 states no abstract mood words; `prompting.md` section 8). The rest conforms: two shots with no header times, the singer identified where she first appears with `(S1)` and no lyrics in the text by design, camera phrases inside the closed sets, and every text the two lists expand to grades clean. Not edited: changing the text changes a shipped graph, so it is the owner's call |
 | `t2va_dancer_shot_floor` | t2va | **keep** (text only) | one eight-second shot of the feet on the sprung floor, the chain's second window; grades clean; unrendered, so the render verdict is pending the shots graph |
 | `t2va_dancer_shot_face` | t2va | **keep** (text only) | one eight-second close-up with a slow push-in, the chain's third window and the repeat graph's shot; grades clean; unrendered, so the render verdict is pending |
+
+### Verdicts added 2026-10-04, masked video to video
+
+| scene | mode | verdict | why |
+|---|---|---|---|
+| `ref2va_masked_subject_swap` | ref2va | **keep** (text only) | the shipped prompt of `h3_video_to_video_masked_song_pdd8`; grades clean and sits inside the reference word budget. It names no setting, shot or cut, which is against section 5.10's rule that a prompt fits its scene, and is so on purpose: the source video's own frames hold the framing and the cuts outside the mask, and one text has to serve every window of any clip. Whether that costs anything is the open pair with `ref2va_masked_stage_singer` (`bench/masked_v2v_arms.json`); rendered once on the owner's clip and not judged (`bench/results/2026-10-04_masked_v2v_first_run.md`) |
 
 ### Misalignments: one closed, one withdrawn, one open
 

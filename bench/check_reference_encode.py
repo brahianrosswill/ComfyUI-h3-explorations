@@ -69,6 +69,7 @@ import hashlib
 import importlib
 import importlib.util
 import inspect
+import re
 import sys
 from pathlib import Path
 
@@ -314,7 +315,8 @@ def main() -> int:
     nodes = importlib.import_module("h3x.nodes")
     source = inspect.getsource(nodes)
     check("both are in the pack's node list",
-          "MiniMaxH3EncodeReferences, MiniMaxH3PromptOnReferences]" in source)
+          # in the list itself, not the import line: 2026-10-04, a node appended after them
+          re.search(r"^\s+MiniMaxH3EncodeReferences, MiniMaxH3PromptOnReferences[,\]]", source, re.M) is not None)
     a, b = enc.MiniMaxH3EncodeReferences.define_schema(), enc.MiniMaxH3PromptOnReferences.define_schema()
     check("both are marked experimental", bool(a.is_experimental and b.is_experimental))
     out_type = a.outputs[0].io_type if hasattr(a.outputs[0], "io_type") else getattr(a.outputs[0], "get_io_type", lambda: None)()

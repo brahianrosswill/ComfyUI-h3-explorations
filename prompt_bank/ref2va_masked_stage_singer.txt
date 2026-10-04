@@ -1,0 +1,18 @@
+subject_definitions:
+<Subject 1> is the man shown in <Picture 1>, preserving his facial identity, short dark stubble, black baseball cap and blue heathered crew-neck T-shirt. The outdoor market stand and blue sky of <Picture 1> are not present in the target video; below the T-shirt he wears dark jeans and dark shoes.
+
+summary:
+[reference generation] In three shots on a small studio stage with a hand-painted sunset backdrop, <Subject 1> walks into frame, stops beneath a microphone hanging from above and sings up into it, seen first from the chest up, then full-length across the stage, then in close-up.
+
+retention_analysis:
+<Subject 1> (appears in [Shot 1], [Shot 2] and [Shot 3]): fully_preserved - retain the same face, short dark stubble, black baseball cap and blue heathered T-shirt in every frame and at every distance from the camera; only the setting changes.
+
+detailed_description:
+The target video is a photorealistic live-action music video, softly and evenly lit from the front, on a hand-painted backdrop that fades from yellow-green at the top through a wide band of pink. <Subject 1> is the only person in it.
+[Shot 1] A medium close-up frames the empty backdrop across the fourteen-second take, a dark microphone hanging on its cable at the upper right and its soft shadow on the paint beside it. The camera holds a static shot. <Subject 1>, the man in the black baseball cap with short dark stubble and a blue heathered T-shirt, walks in from the left edge in profile, his shadow sliding across the pink band behind him, and stops with his face just below the microphone. He lifts his chin toward it, the brim of the cap tipping back, and takes a breath that raises his shoulders. <Subject 1> (S1) begins to sing the song's lead vocal up into the microphone, his jaw dropping on the first syllable, his lips shaping each word in time with the voice on the track and resting together whenever the voice pauses.
+[Shot 2] The shot cuts to a wide shot of the whole stage: the backdrop now shows a dark painted strip under the pink, above a polished wooden floor, and <Subject 1> stands full-length beneath the hanging microphone, small in the frame, in the blue T-shirt, dark jeans and dark shoes, the cap tilted up toward the microphone. He keeps singing with the track, his mouth still following the vocal line, and moves loosely with the beat, shifting his weight from one foot to the other, his knees bending in time and his forearms lifting and falling at his sides. The camera holds a static shot.
+[Shot 3] The shot cuts to a close-up of his head and shoulders from the side, his face tilted up so that the microphone hangs just in front of his mouth. His eyes close under the brim of the cap as he carries the phrase, the stubble along his jaw sharp in the soft light, his lips opening wide on the long notes and closing between them, and he sways slightly toward the microphone and back until the final frame.
+
+overall_soundscape: Quiet room tone of a small studio sits under the scene, with soft footsteps on the wooden floor as he walks in and the brush of his T-shirt as he moves.
+
+non_diegetic_music: N/A

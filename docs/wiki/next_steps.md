@@ -13,6 +13,25 @@ pointer goes; this list is stale the moment the roadmap disagrees with it.
 Items from the `mrpink` helper lane first; `evalman`'s render lane appends its
 own below the rule.
 
+**Masked video to video (owner, 2026-10-04): built, first renders out, not judged.**
+- What it is and what it is not: [`../h3_audio_freeze.md`](../h3_audio_freeze.md)
+  section 4, "a source video for the song node".
+- For the owner, on playback: the three clips of
+  `../../bench/masked_v2v_arms.json`, against the questions in
+  `../../bench/results/2026-10-04_masked_v2v_first_run.md` (likeness, the
+  mouth against the frozen vocal, the edge of the subject, the seams between
+  windows, and whether the clip-specific prompt beats the one that names no
+  shot).
+- Owed after that: the original subject's shadow stays in the plate; a
+  node that restores the plate between two samplers, so the daily graphs can
+  take a mask (mrblue's probe,
+  `internal/claude/2026-10-04_mrblue/masked_v2v_review_probe.py`, shows it on
+  a stub model), and with it a Masked Source that feeds a plain sampler graph;
+  the source is resampled twice on its way to the canvas (the loader, then
+  the fit); a frozen-row cache for a partly masked video
+  (`frozen_video_cache.py::_gate` takes a wholly frozen one only), which
+  is where the render time would come back, since most rows are frozen.
+
 **Encoder int8 against bf16 (owner, 2026-09-27): closed.** `ENCODER_INT8`
 stays the shipped default.
 - At the DiT, int8 moves the prediction no more than any small change, and a

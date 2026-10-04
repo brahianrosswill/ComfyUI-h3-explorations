@@ -44,6 +44,7 @@ from .frozen_video_cache import MiniMaxH3FrozenVideoCache
 from .lora_branch import MiniMaxH3LoRABranch
 from .overlay_loader import MiniMaxH3OverlayLoader
 from .denoise_mask_probe import MiniMaxH3DenoiseMaskProbe
+from .video_mask import MiniMaxH3MaskedSource
 from .step_x0_observer import MiniMaxH3StepX0Observer
 from .core_sparse_capture import MiniMaxH3CoreSparseCapture
 from .preflight import MiniMaxH3Preflight
@@ -340,7 +341,10 @@ class H3ExplorationsExtension(ComfyExtension):
                 MiniMaxH3OverlayLoader,
                 # appended 2026-10-03, references encoded apart from the prompt
                 # (reference_encode.py)
-                MiniMaxH3EncodeReferences, MiniMaxH3PromptOnReferences]
+                MiniMaxH3EncodeReferences, MiniMaxH3PromptOnReferences,
+                # appended 2026-10-04, a source video and subject mask for the song loop
+                # (video_mask.py)
+                MiniMaxH3MaskedSource]
 
 
 async def comfy_entrypoint() -> H3ExplorationsExtension:

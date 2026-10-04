@@ -277,6 +277,16 @@ DECLARED: dict[tuple[str, str], tuple] = {
                   "rate the model works at", 24.0),
     (h3_config.REF_VIDEO_LOADER, "frame_load_cap"):
         ("ARM", "the arm's frame count; h3_config.REF_VIDEO_LENGTH"),
+    (h3_config.REF_VIDEO_LOADER, "custom_width"):
+        ("ARM", "the canvas width on the masked video-to-video graph, where the "
+                "loader holds every frame of the source it loads, so they are "
+                "held at render size and not at the file's "
+                "(build_workflows.py, freeze_song_source). The reference graphs "
+                "leave it at the node default: the reference compiler fits a clip."),
+    ("CheckpointLoaderSimple", "ckpt_name"):
+        ("HOUSE", "h3_config.SEGMENTER, the SAM 3.1 checkpoint core's SAM3 nodes "
+                  "track the masked subject with; the only checkpoint-loader "
+                  "this pack's graphs carry", h3_config.SEGMENTER),
     ("MiniMaxH3SageAttention", "head_chunks"):
         ("ARM", "4 on h3_probe_head_chunks, the one graph that exists to "
                   "exercise head chunking. It is a MEASURED group count, not "

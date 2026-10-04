@@ -43,6 +43,22 @@ reference graphs. The prompt then follows the reference prompt format
 (`docs/prompting.md` section 2.2). The fl2va checkpoint takes references
 (owner, 2026-09-14).
 
+**A source video** (`source`, a Masked Source node; owner, 2026-10-04) turns
+the loop into masked video-to-video on the track's own picture: each window
+starts from the source's frames over the same span instead of an empty latent,
+only the masked subject regenerates, and after the decode the source's own
+pixels go back everywhere else. The mask joins the window node's by a minimum,
+so a later window's frozen context stays frozen whole. `video_mask.py` has the
+reduction and why the composite is needed; the audio is still the track's,
+frozen and muxed from the original. One sampler per window is what lets a mask
+through as wired: a two-sampler graph hands its second sampler a still-noisy
+latent, which core's inpaint step then treats as the clean plate
+(`comfy/samplers.py::KSamplerX0Inpaint`). A peer session reproduced that on
+core's own sampler classes with a stub model, and found that restoring the
+plate in the pinned rows between the two samplers fixes it; neither has run
+on H3. A window in which nothing is masked is not sampled: every row would be
+pinned and the pass would return the source.
+
 **Sampling** is what SamplerCustomAdvanced does, per window: a BasicGuider on
 the model with the window's conditioning, prepared noise at `seed + i`, the
 given sampler and sigmas, the nested noise mask from the window node.
@@ -76,6 +92,7 @@ import torch
 from comfy_api.latest import io, ui
 
 import comfy.model_management
+import comfy.nested_tensor
 import comfy.sample
 import comfy.utils
 import latent_preview
@@ -88,11 +105,12 @@ from . import loop_plan, loop_resume
 from .prompt_lists import H3PromptLists, fill_windows
 from .loop_output import CLEAN_OUTPUT_ARGS, join_and_mux, saved_outputs, window_dir, write_metadata_png
 from .reference_conditioning import H3References, MiniMaxH3ReferenceConditioning
+from . import video_mask
 
 logger = logging.getLogger(__name__)
 
 #: The inputs a preview does not ask for: every one runs a loader or a model.
-LAZY = ("model", "clip", "vae", "audio_vae", "sampler", "sigmas", "references")
+LAZY = ("model", "clip", "vae", "audio_vae", "sampler", "sigmas", "references", "source")
 
 
 def _write_frames_mp4(path: str, images: torch.Tensor, crf: int) -> int:
@@ -208,6 +226,12 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                 H3PromptLists.Input("lists", optional=True,
                                     tooltip=("Prompt List nodes filling __name__ placeholders in the prompt: one "
                                              "value per timeline entry, or per window with no timeline.")),
+                # appended 2026-10-04: masked video-to-video on the track's own picture
+                video_mask.H3MaskedSource.Input(
+                    "source", optional=True, lazy=True,
+                    tooltip=("A Masked Source node: the track's own video and a mask over one subject. Each "
+                             "window then keeps the source outside the mask and regenerates the subject, "
+                             "from the references and the prompt.")),
             ],
             outputs=[
                 io.String.Output(display_name="path"),
@@ -229,7 +253,7 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
     def execute(cls, model, clip, vae, audio_vae, audio, sampler, sigmas, prompt, timeline, preview,
                 width, height, window_frames, context_frames, extent, seed, audio_mask, level,
                 filename_prefix, crf, save_metadata_png=True, keep_windows=True, references=None,
-                reuse_windows=True, lists=None) -> io.NodeOutput:
+                reuse_windows=True, lists=None, source=None) -> io.NodeOutput:
         import folder_paths
         # A DynamicCombo arrives as one nested dict (the selection under its own
         # id, the option's inputs beside it) or, from an API prompt that sets
@@ -307,6 +331,16 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
             return io.NodeOutput("", report, (True, []), ui=ui.PreviewText(report))
 
         os.makedirs(work_dir, exist_ok=True)
+        if source is not None:
+            # refused before any encode: a wrong source would fail at its window, minutes in
+            have = int(source["frames"].shape[0])
+            beyond = [w.number for w in windows if int(round(w.start * FPS)) >= have]
+            if beyond:
+                raise ValueError(
+                    f"the source video has {have} frames and window {beyond[0]} of {n_windows} starts past "
+                    f"its end: load more of it at {FPS} fps (the loader's frame cap), or shorten `extent`")
+            lines.append(f"source video: {have} frames, mask grown {source['grow_pixels']} px, "
+                         f"blend {source['feather_pixels']} px")
         # Every rendering window's conditioning before any window samples; see
         # the module docstring for why the key is the text (and, with
         # references, the frame count) and nothing else.
@@ -342,6 +376,22 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
             i = w.number - 1
             comfy.model_management.throw_exception_if_processing_interrupted()
             latent, _count = _empty_av_latent(width, height, w.frames)
+            src_pixels = src_tokens = None
+            if source is not None:
+                # this window starts from the source's own frames over its span
+                empty_video, empty_audio = latent["samples"].unbind()
+                src_pixels, src_tokens, held = video_mask.window(
+                    source, int(round(w.start * FPS)), w.frames, width, height, *empty_video.shape[2:])
+                if held:
+                    reports.append(f"[{w.number}] the source ends {held} frames before this window does; "
+                                   "its last frame is held, unmasked")
+                z = vae.encode(src_pixels)
+                if tuple(z.shape) != tuple(empty_video.shape):
+                    raise ValueError(
+                        f"the video VAE returned {tuple(z.shape)} for a {w.frames}-frame window; the "
+                        f"window's latent is {tuple(empty_video.shape)}")
+                latent = {"samples": comfy.nested_tensor.NestedTensor(
+                    (z.to(device=empty_video.device, dtype=empty_video.dtype), empty_audio))}
             # Always the real value: the window node freezes nothing when
             # `previous` is None and keeps the widget for what the NEXT window
             # takes. Passing 0 for the first window was the zero-as-mode this
@@ -352,23 +402,45 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
             win = getattr(win, "args", win)
             wlatent, _clip_audio, _span, trim, next_start, wreport, _new_audio = win
             reports.append(f"[{w.number}] {wreport}")
+            if src_tokens is not None:
+                # a minimum, so the context the window node froze stays frozen whole
+                frozen_video, frozen_audio = wlatent["noise_mask"].unbind()
+                wlatent["noise_mask"] = comfy.nested_tensor.NestedTensor(
+                    (torch.minimum(frozen_video, src_tokens[None, None].to(frozen_video)), frozen_audio))
+                reports.append(f"[{w.number}] source kept outside the mask: "
+                               f"{100.0 * float(src_tokens.mean()):.1f}% of the window's video tokens regenerate")
 
-            guider = Guider_Basic(model)
-            guider.set_conds(conds[cond_keys[w.number]])
-            latent_image = comfy.sample.fix_empty_latent_channels(model, wlatent["samples"])
-            noise = comfy.sample.prepare_noise(latent_image, int(seed) + i)
-            x0_output = {}
-            callback = latent_preview.prepare_callback(model, sigmas.shape[-1] - 1, x0_output)
-            samples = guider.sample(noise, latent_image, sampler, sigmas, denoise_mask=wlatent.get("noise_mask"),
-                                    callback=callback, disable_pbar=False, seed=int(seed) + i)
-            samples = samples.to(comfy.model_management.intermediate_device())
+            untouched = src_tokens is not None and not bool(src_tokens.any())
+            if untouched:
+                # nothing is masked in this window (the subject is off screen): every
+                # row would be pinned, so the pass is skipped and the window is the source
+                samples = wlatent["samples"]
+                reports.append(f"[{w.number}] nothing masked in this window; not sampled, the source is written")
+            else:
+                guider = Guider_Basic(model)
+                guider.set_conds(conds[cond_keys[w.number]])
+                latent_image = comfy.sample.fix_empty_latent_channels(model, wlatent["samples"])
+                noise = comfy.sample.prepare_noise(latent_image, int(seed) + i)
+                x0_output = {}
+                callback = latent_preview.prepare_callback(model, sigmas.shape[-1] - 1, x0_output)
+                samples = guider.sample(noise, latent_image, sampler, sigmas,
+                                        denoise_mask=wlatent.get("noise_mask"),
+                                        callback=callback, disable_pbar=False, seed=int(seed) + i)
+                samples = samples.to(comfy.model_management.intermediate_device())
             prev = {"samples": samples}
 
-            # the video VAE takes the video stream; core's VAEDecode unbinds the pair the same way
-            video_stream = samples.unbind()[0] if getattr(samples, "is_nested", False) else samples
-            images = vae.decode(video_stream)
-            if images.ndim == 5:
-                images = images.reshape(-1, *images.shape[-3:])
+            if untouched and src_pixels is not None:
+                images = src_pixels.clone()
+            else:
+                # the video VAE takes the video stream; core's VAEDecode unbinds the pair the same way
+                video_stream = samples.unbind()[0] if getattr(samples, "is_nested", False) else samples
+                images = vae.decode(video_stream)
+                if images.ndim == 5:
+                    images = images.reshape(-1, *images.shape[-3:])
+            if src_pixels is not None and src_tokens is not None and not untouched:
+                alpha = video_mask.pixel_alpha(src_tokens, height, width, source["feather_pixels"])
+                images = video_mask.composite(images, src_pixels, alpha)
+                del alpha
             images = images[int(trim):]
             video_path, latent_path = loop_resume.window_paths(work_dir, filename, w.number)
             # the old latent goes first: a latent on disk must mean its video finished

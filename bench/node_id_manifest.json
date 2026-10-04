@@ -85,7 +85,8 @@
       "keep_windows",
       "references",
       "reuse_windows",
-      "lists"
+      "lists",
+      "source"
     ],
     "node_id": "MiniMaxH3AudioFreezeSong",
     "outputs": [
@@ -281,6 +282,18 @@
     "node_id": "MiniMaxH3LoRABranch",
     "outputs": [
       "model"
+    ]
+  },
+  "MiniMaxH3MaskedSource": {
+    "inputs": [
+      "frames",
+      "mask",
+      "grow_pixels",
+      "feather_pixels"
+    ],
+    "node_id": "MiniMaxH3MaskedSource",
+    "outputs": [
+      "source"
     ]
   },
   "MiniMaxH3OverlayLoader": {

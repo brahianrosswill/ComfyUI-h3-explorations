@@ -1151,6 +1151,22 @@
       "donor": "h3_image_ref_plus_text_to_video_pdd_api",
       "brief": "t2va_look_anchor carried to reference generation: <Picture 1> defines the violin maker (frame 120 of a PDD8 render of the anchor), <Picture 2> the workshop (frame 0). Wardrobe follows Picture 1 (pale collared shirt, cuffs at the wrist); set details follow Picture 2. The anchor's action, line, camera, soundscape and score are kept; detailed_description sits inside ref 5.2's 350-500 word budget.",
       "tests": "the look anchor's scene under ref2va with a character and an environment reference cut from its own render: likeness and set fidelity against a scene whose t2va and i2va forms exist, and a matched scene for comparing encoders or distills across modes."
+    },
+    {
+      "id": "ref2va_masked_subject_swap",
+      "mode": "ref2va",
+      "frames": 345,
+      "donor": "h3_probe_refview2_dancer_api",
+      "brief": "Masked video to video on the song node: <Picture 1> defines the one performer, and the prompt names no setting, shot or cut because the source video's own frames hold them outside the mask; the performer is the voice on a frozen track, written as (S1) with the lips following every phrase and no words in the text; one shot, static, so one text serves every window of any clip.",
+      "tests": "the shipped default of h3_video_to_video_masked_song_pdd8: whether a prompt that describes no plate lets a masked subject take the reference's identity, sit in the source's light and follow the frozen voice, against a clip-specific prompt at the same seed (bench/masked_v2v_arms.json)"
+    },
+    {
+      "id": "ref2va_masked_stage_singer",
+      "mode": "ref2va",
+      "frames": 345,
+      "donor": "h3_probe_refview2_dancer_api",
+      "brief": "Masked video to video, written for one clip: the first window of the owner's stage-singer music video, three shots in the source's own order (chest-up as the singer walks in, full-length across the stage, close-up at the microphone), with <Picture 1> defining the man who replaces the singer; he sings the frozen track as (S1) with no lyrics in the text.",
+      "tests": "the clip-specific arm of bench/masked_v2v_arms.json: whether describing the plate's shots, as the house rule asks of every generated scene, reads better than the clip-agnostic default when the plate is already in the target rows"
     }
   ]
 }

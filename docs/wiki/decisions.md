@@ -15,6 +15,22 @@ Older history lives elsewhere and is not copied here:
   decisions" and forward-plan sections.
 - `bench/results/`: the verdict records, each with its conditions.
 
+## 2026-10-04
+
+- **Masked video to video is built on the song node, not on a daily graph or
+  a ControlNet** (owner, 2026-10-04: "Not sure i wanna use a controlnet model
+  unless we absolutely have to"; "we should look to our frozen audio workflows
+  and prompts for reference because the lip sync worked great in them"). The
+  owner asked for the distilled daily graphs as the base; the PDD8 song chain
+  was used because a mask does not survive two samplers as wired
+  (`docs/h3_audio_freeze.md` section 4, with the fix a peer found). SAM 3.1 runs from Meta's original
+  checkpoint repacked here (`bench/convert_sam3_checkpoint.py`), at the
+  owner's word: "I wanted original weights so we have control over
+  conversion".
+- **`docs/h3_references.md` said "There is no mask"** of editing a source
+  video. Still true of the ref2va edit; a dated note there now points at the
+  masked path.
+
 ## 2026-10-03
 
 - **The graphs the owner renders with get their own folder, and the

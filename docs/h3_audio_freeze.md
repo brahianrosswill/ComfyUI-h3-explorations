@@ -1,6 +1,6 @@
 # Freezing a known audio track: audio-driven video on MiniMax H3
 
-last updated: 2026-09-27 (section 5 idea 9, the TaoMate adapter, removed with that lane); 2026-09-25 (dated notes in sections 3 and 5); 2026-09-15
+last updated: 2026-10-04 (section 4, the song node's `source`: masked video to video); 2026-09-27 (section 5 idea 9, the TaoMate adapter, removed with that lane); 2026-09-25 (dated notes in sections 3 and 5); 2026-09-15
 
 **The owner of this lane.** Opened 2026-09-12 by the owner: drop a song of any
 length, keep it exactly, and have the picture move to it, the way the owner's
@@ -246,6 +246,47 @@ the plan without loading a model (`loop_plan.py`). The example graph is
 `workflows/h3_text_to_video_audio_freeze_song_lists_pdd8_api.json`, on
 `just-a-flicker.mp3` with its sections as the timeline. The module docstrings
 hold the rules; `docs/wiki/next_steps.md` holds what is still owed.
+
+**2026-10-04, a source video for the song node** (owner: take a music video,
+keep its audio and everything outside one subject, replace the subject from a
+reference still). The node's `source` input takes a Masked Source
+(`video_mask.py`, `MiniMaxH3MaskedSource`): the track's own frames and a
+per-frame mask over the subject, which core's SAM 3 nodes track from a word.
+Each window then starts from the source's frames over its span, regenerates
+only the masked tokens, and after the decode gets the source's own pixels back
+outside them. The mechanism is core's (a latent mask is a per-token timestep,
+`comfy/ldm/minimax/model.py::mask_row_values`); the module docstring says what
+this pack adds and why stock `SetLatentNoiseMask` and core's mask resize are
+not enough. Three things a reader should know before trusting it:
+
+- **It is not a trained task.** The release trains t2va, fl2va and ref2va,
+  and its edit is ref2va with the source as a reference block
+  (`workflows/h3_ref_video_swap_api.json`). A spatial mask on a base
+  checkpoint is an inference-time method in every implementation read
+  (`docs/wiki/references.md`, the vllm-omni rows). What is new here is a mask
+  together with a reference still.
+- **One sampler per window is what carries the mask, as the graphs are
+  wired.** The song chain is one; the two-sampler graphs in `workflows/daily/`
+  are not, because the second sampler's starting latent is still noisy and
+  core's inpaint step uses it as the clean plate
+  (`comfy/samplers.py::KSamplerX0Inpaint`). A peer session (mrblue,
+  2026-10-04) reproduced that on core's sampler classes with a stub model,
+  and found the fix: restore the plate in the pinned rows of both streams
+  between the two samplers. Neither the failure nor the fix has run on H3,
+  and no node here does it yet.
+- **The mask is the body, not what the body does to the room.** The original
+  subject's shadow and reflections stay in the plate.
+- **The tracker's object cap counts every track it ever made**
+  (`h3_config.SEGMENTER_TRACK` says where in core). A subject lost after a
+  cut shows as a window whose report line says few or no tokens regenerate;
+  a window with none is written from the source without sampling.
+
+The graph is `workflows/h3_video_to_video_masked_song_pdd8_api.json`, on the
+placeholder clip and still, with a prompt that names no setting or shot
+(`prompt_bank/ref2va_masked_subject_swap.txt`) so one text serves every
+window of any clip. The first renders, on the owner's clip, are the arms in
+`bench/masked_v2v_arms.json`; their record and what the owner made of them
+are in `bench/results/2026-10-04_masked_v2v_first_run.md`.
 
 **Next, in order.**
 

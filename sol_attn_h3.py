@@ -707,9 +707,13 @@ def make_override(tau=1.0, min_tokens=12288,
             # looking at the output cannot see; hence the warning.
             #
             # Once per process, at WARNING, because it is unreachable on every
-            # shipped graph today (no node here writes `noise_mask` and no
-            # graph wires a mask-typed node) and would arrive quietly the day
-            # anyone adopts masked H3. Raised by a peer session 2026-08-30.
+            # shipped graph today: this is an ATTENTION mask, and core's H3
+            # blocks pass none (`comfy/ldm/minimax/model.py`, `mask=None`). A
+            # latent `noise_mask` does not arrive here. It becomes a per-token
+            # timestep, so the frozen-audio and masked-source graphs run on
+            # Sol. Raised by a peer session 2026-08-30; the last three
+            # sentences corrected 2026-10-04, when it still said no node here
+            # writes a `noise_mask`.
             _stats["dense_fallback"] += 1
             route("masked", "attention mask present")
             _log_once(("masked",),

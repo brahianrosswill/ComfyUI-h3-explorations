@@ -8,10 +8,10 @@ Scenes are ordered by how many graphs carry them, so the defaults that reach the
 
 | scene | bank id | graphs | words | shots | speakers | markers |
 |---|---|---|---|---|---|---|
-| [`LONG_T2V_PROMPT`](#long-t2v-prompt) | `t2va_covered_market` | 83 | 290 | 3 | 2 | `<d>` |
+| [`LONG_T2V_PROMPT`](#long-t2v-prompt) | `t2va_covered_market` | 84 | 290 | 3 | 2 | `<d>` |
 | [`ref2va_role_character_environment`](#ref2va-role-character-environment) | `ref2va_role_character_environment` | 11 | 135 | 1 | 0 | — |
-| [`I2V_PROMPT`](#i2v-prompt) | `i2va_lighthouse_keyframe` | 9 | 90 | 1 | 0 | — |
-| [`MARKET_REF2V_PROMPT`](#market-ref2v-prompt) | `ref2va_market_stallholder` | 9 | 598 | 3 | 2 | `<d>` |
+| [`I2V_PROMPT`](#i2v-prompt) | `i2va_lighthouse_keyframe` | 10 | 90 | 1 | 0 | — |
+| [`MARKET_REF2V_PROMPT`](#market-ref2v-prompt) | `ref2va_market_stallholder` | 10 | 598 | 3 | 2 | `<d>` |
 | [`ref2va_role_character_garment_environment`](#ref2va-role-character-garment-environment) | `ref2va_role_character_garment_environment` | 9 | 173 | 1 | 0 | — |
 | [`ref2va_image_video_audio_music`](#ref2va-image-video-audio-music) | `ref2va_image_video_audio_music` | 5 | 264 | 1 | 0 | — |
 | [`fl2va_interior_converge`](#fl2va-interior-converge) | `fl2va_interior_converge` | 3 | 159 | 1 | 0 | — |
@@ -33,6 +33,7 @@ Scenes are ordered by how many graphs carry them, so the defaults that reach the
 | [`ref2va_image_audio_music`](#ref2va-image-audio-music) | `ref2va_image_audio_music` | 1 | 184 | 1 | 0 | — |
 | [`ref2va_image_audio_voice`](#ref2va-image-audio-voice) | `ref2va_image_audio_voice` | 1 | 213 | 1 | 1 | `<d>` |
 | [`ref2va_image_video_structure`](#ref2va-image-video-structure) | `ref2va_image_video_structure` | 1 | 215 | 1 | 0 | — |
+| [`ref2va_masked_subject_swap`](#ref2va-masked-subject-swap) | `ref2va_masked_subject_swap` | 1 | 476 | 1 | 1 | — |
 | [`ref2va_night_porter_refs`](#ref2va-night-porter-refs) | `ref2va_night_porter_refs` | 1 | 568 | 2 | 1 | `<d>` |
 | [`ref2va_scene_kitchen`](#ref2va-scene-kitchen) | `ref2va_scene_kitchen` | 1 | 563 | 4 | 2 | `<d>`, `<|lyrics_start|>`, `<|caption_start|>`, `<|cutoff|>` |
 | [`ref2va_scene_subway`](#ref2va-scene-subway) | `ref2va_scene_subway` | 1 | 530 | 4 | 3 | `<d>`, `<|lyrics_start|>`, `<|caption_start|>`, `<|cutoff|>` |
@@ -50,7 +51,7 @@ Scenes are ordered by how many graphs carry them, so the defaults that reach the
 
 ## LONG_T2V_PROMPT
 
-Carried by **83** graph(s). Sections: `integrated_multimodal_description`, `overall_soundscape`, `non_diegetic_music`.
+Carried by **84** graph(s). Sections: `integrated_multimodal_description`, `overall_soundscape`, `non_diegetic_music`.
 
 <details><summary>graphs</summary>
 
@@ -120,6 +121,7 @@ Carried by **83** graph(s). Sections: `integrated_multimodal_description`, `over
 - `h3_probe_t2v_step_switch_pdd8_flashgen_h080_savelat_api`
 - `h3_probe_t2v_step_switch_pdd8_flashgen_late_h080_api`
 - `h3_probe_t2v_step_switch_pdd8_flashgen_late_h080_savelat_api`
+- `h3_t2v_pdd8_flashgen_finish_api`
 - `h3_text_to_video_api`
 - `h3_text_to_video_audio_freeze_2windows_api`
 - `h3_text_to_video_audio_freeze_api`
@@ -195,7 +197,7 @@ N/A
 
 ## I2V_PROMPT
 
-Carried by **9** graph(s). Sections: none.
+Carried by **10** graph(s). Sections: none.
 
 <details><summary>graphs</summary>
 
@@ -204,6 +206,7 @@ Carried by **9** graph(s). Sections: none.
 - `h3_first_frame_to_video_pdd_api`
 - `h3_first_frame_to_video_pdd_savelat_api`
 - `h3_first_frame_to_video_stamped_api`
+- `h3_i2v_pdd8_flashgen_finish_api`
 - `h3_probe_i2v_flashgen_4step_api`
 - `h3_probe_i2v_pdmd_4step_api`
 - `h3_probe_i2v_step_switch_pdd8_flashgen_h080_api`
@@ -223,7 +226,7 @@ non_diegetic_music: N/A
 
 ## MARKET_REF2V_PROMPT
 
-Carried by **9** graph(s). Sections: `subject_definitions`, `summary`, `retention_analysis`, `detailed_description`, `overall_soundscape`, `non_diegetic_music`.
+Carried by **10** graph(s). Sections: `subject_definitions`, `summary`, `retention_analysis`, `detailed_description`, `overall_soundscape`, `non_diegetic_music`.
 
 <details><summary>graphs</summary>
 
@@ -236,6 +239,7 @@ Carried by **9** graph(s). Sections: `subject_definitions`, `summary`, `retentio
 - `h3_ref2v_market_api`
 - `h3_ref2v_market_pdd_4step_api`
 - `h3_ref2v_market_pdd_api`
+- `h3_ref2v_pdd8_flashgen_finish_api`
 
 </details>
 
@@ -844,6 +848,35 @@ The ambience of <Audio 1> continues under the shot.
 
 non_diegetic_music:
 N/A
+```
+
+## ref2va_masked_subject_swap
+
+Carried by **1** graph(s). Sections: `subject_definitions`, `summary`, `retention_analysis`, `detailed_description`.
+
+<details><summary>graphs</summary>
+
+- `h3_video_to_video_masked_song_pdd8_api`
+
+</details>
+
+```text
+subject_definitions:
+<Subject 1> is the person shown in <Picture 1>, preserving their facial identity, hair, build and the clothing visible in <Picture 1>. The background, lighting and framing of <Picture 1> are not present in the target video.
+
+summary:
+[reference generation] <Subject 1> is the one performer on screen, placed in a scene that is already lit, framed and cut, and delivers the voice heard on the track to its timing.
+
+retention_analysis:
+<Subject 1> (appears in [Shot 1]): fully_preserved - retain the same face, hair, build and clothing in every frame and at every distance from the camera; only the setting changes.
+
+detailed_description:
+The target video is photorealistic live-action, and its setting, lighting and framing stay exactly as they already are from the first frame to the last. <Subject 1> is the only person in it.
+[Shot 1] <Subject 1> stands where the performer stands in the scene across the fourteen-second take, at the performer's distance from the lens and facing the way the performer faces, lit by the scene's own light: the same direction, the same colour and the same softness fall on the face, the hair and the clothing of <Subject 1> as fall on the wall and the floor around them, and the shadow <Subject 1> casts lies where that light sends it and moves when they move. Where the scene shows the performer whole, <Subject 1> is whole, with clothing from <Picture 1> on the upper body and plain dark trousers and shoes below; where it shows only the head and shoulders, the face of <Subject 1> fills that space at the same scale, sharp and evenly exposed, with the skin texture, the hairline and the eyes of <Picture 1>. <Subject 1> (S1) is the voice on the track and performs it on screen: the jaw drops and the lips open on the first syllable of every sung or spoken phrase, the mouth shapes each vowel and closes on each consonant in time with the voice, and the lips rest together, still, whenever the voice pauses. A breath lifts the chest and shoulders before each new phrase. The eyes stay on whatever the performer is looking at, blinking naturally, and the brows and cheeks carry the feeling of the line. The head tips and turns with the delivery, the shoulders loosen and sway with the rhythm, and the hands move with the phrasing, opening on a long note and falling back to the sides as it ends, the weight shifting from one foot to the other in time. Nothing else in the frame changes: the background, the floor and every object stay where they are, steady, undisturbed and in focus exactly as before. The camera holds a static shot.
+
+overall_soundscape: Quiet room tone sits under the scene, with the soft brush of clothing and the performer's footsteps as they move.
+
+non_diegetic_music: N/A
 ```
 
 ## ref2va_night_porter_refs

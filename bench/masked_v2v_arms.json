@@ -1,0 +1,31 @@
+{
+ "what": "Masked video to video on the song node (video_mask.py), first runs, owner's clip and reference still, 2026-10-04. One window of the PDD8 song chain at the shipped canvas, the source's audio frozen hard, the singer tracked by SAM 3.1 and regenerated from the still. generic_w1 is the shipped clip-agnostic prompt and the throwaway that proves the harness; specific_w1 is the same seed with a prompt written for the clip's first three shots; generic_30s is three windows over the first thirty seconds. Judged by the owner on playback: identity against the still, the mouth against the frozen vocal, the seam around the subject, and whether the plate and audio are intact. The tracker's detection threshold is raised from core's default for this clip: at the default it marks the hanging microphone as the man while the frame is still empty, and at this value it keeps the singer in every shot (two probe runs, read from overlay sheets).",
+ "arms": {
+  "generic_w1": "workflows/h3_video_to_video_masked_song_pdd8_api.json",
+  "specific_w1": "workflows/h3_video_to_video_masked_song_pdd8_api.json",
+  "generic_30s": "workflows/h3_video_to_video_masked_song_pdd8_api.json"
+ },
+ "patches": [
+  "generic_w1:VHS_LoadVideoFFmpeg.video=idontwannatalk.mp4",
+  "generic_w1:VHS_LoadVideoFFmpeg.frame_load_cap=768",
+  "generic_w1:LoadImage.image=f_img_outside.jpg",
+  "generic_w1:CLIPTextEncode.text=man",
+  "generic_w1:SAM3_VideoTrack.detection_threshold=0.7",
+  "generic_w1:MiniMaxH3AudioFreezeSong.extent.seconds=14.375",
+  "generic_w1:MiniMaxH3AudioFreezeSong.filename_prefix=Video/mrpink/masked_v2v_generic_w1",
+  "specific_w1:VHS_LoadVideoFFmpeg.video=idontwannatalk.mp4",
+  "specific_w1:VHS_LoadVideoFFmpeg.frame_load_cap=768",
+  "specific_w1:LoadImage.image=f_img_outside.jpg",
+  "specific_w1:CLIPTextEncode.text=man",
+  "specific_w1:SAM3_VideoTrack.detection_threshold=0.7",
+  "specific_w1:MiniMaxH3AudioFreezeSong.extent.seconds=14.375",
+  "specific_w1:MiniMaxH3AudioFreezeSong.prompt=@bank:ref2va_masked_stage_singer",
+  "specific_w1:MiniMaxH3AudioFreezeSong.filename_prefix=Video/mrpink/masked_v2v_specific_w1",
+  "generic_30s:VHS_LoadVideoFFmpeg.video=idontwannatalk.mp4",
+  "generic_30s:VHS_LoadVideoFFmpeg.frame_load_cap=768",
+  "generic_30s:LoadImage.image=f_img_outside.jpg",
+  "generic_30s:CLIPTextEncode.text=man",
+  "generic_30s:SAM3_VideoTrack.detection_threshold=0.7",
+  "generic_30s:MiniMaxH3AudioFreezeSong.filename_prefix=Video/mrpink/masked_v2v_generic_30s"
+ ]
+}

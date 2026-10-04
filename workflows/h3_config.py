@@ -1202,6 +1202,27 @@ AUDIO_REFINE = dict(steps=6, sampler="euler", scheduler="simple", denoise=0.5,
 FROZEN_VIDEO_CACHE = dict(precision="int4", refresh=False, refresh_every=2, verify=False)
 FROZEN_VIDEO_CACHE_NODE = "MiniMaxH3FrozenVideoCache"
 
+# ---- Masked video-to-video on the song node ----------------------------------
+#: The segmenter core's SAM3 nodes take from CheckpointLoaderSimple: Meta's
+#: `sam3.1_multiplex.pt` repacked by `bench/convert_sam3_checkpoint.py`, which
+#: changes no weight and checks that on readback. From the original rather
+#: than a repackage so the conversion is ours (owner, 2026-10-04).
+SEGMENTER = "sam3.1_multiplex_fp32.safetensors"
+#: `SAM3_VideoTrack`'s inputs. **Inherited**: core's own node defaults
+#: (`comfy_extras/nodes_sam3.py::SAM3_VideoTrack.define_schema`).
+#: `max_objects` is a cap on tracks ever made, not on tracks alive: core never
+#: frees one and stops detecting once the cap is reached
+#: (`comfy/ldm/sam3/tracker.py`, `run_det`). So on a clip with many cuts the
+#: subject can stop being found if each cut makes it a new object. Seen
+#: holding across the cuts of one clip (`bench/results/2026-10-04_masked_v2v_first_run.md`);
+#: the song node's per-window "tokens regenerate" line is where a lost subject shows.
+SEGMENTER_TRACK = dict(detection_threshold=0.5, max_objects=4, detect_interval=1)
+#: `MiniMaxH3MaskedSource`'s inputs, equal to the node's defaults
+#: (`video_mask.py`). **Reasoned**, not measured: the grow is one DiT token of
+#: canvas, so a replacement gets a token of room past the old outline, and the
+#: feather stays inside it.
+MASKED_SOURCE = dict(grow_pixels=32, feather_pixels=8)
+
 # ---- FastH3 8-step V2 ------------------------------------------------------------
 #: **Inherited** from ComfyUI's own template, Comfy-Org/workflow_templates
 #: `templates/video_fastvideo_fasth3_t2v.json` (read 2026-09-25): 8 `simple`

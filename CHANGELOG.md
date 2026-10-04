@@ -4,6 +4,80 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.0
+
+### Added
+
+- **Masked video to video on the song node** (owner, 2026-10-04: keep a music
+  video's audio and everything outside one subject, replace the subject from
+  a reference still). `MiniMaxH3AudioFreezeSong` takes an optional `source`,
+  appended last, from the new `MiniMaxH3MaskedSource` (`video_mask.py`): the
+  track's own frames and a per-frame subject mask. Each window starts from the
+  source's frames over its span, regenerates only the masked tokens, and gets
+  the source's pixels back outside them after the decode. The mechanism is
+  core's per-token timestep; this adds a reduction that drops no subject
+  frame inside a temporal run, a mask already on core's token grid, and the
+  composite. Not a trained task: `docs/h3_audio_freeze.md` section 4 says
+  what is and is not established.
+- **`workflows/h3_video_to_video_masked_song_pdd8_api.json`**, generated: the
+  PDD8 song chain with a reference still, the source video as the track, and
+  core's SAM 3 nodes tracking the subject from a word. Constants
+  `h3_config.SEGMENTER`, `SEGMENTER_TRACK` and `MASKED_SOURCE`. The daily
+  graphs were asked for as the base and not used: as wired, a mask does not
+  survive their two samplers (`comfy/samplers.py::KSamplerX0Inpaint`; a peer
+  session reproduced it on a stub model and found that restoring the plate
+  between the samplers fixes it; not run on H3, and no node does it yet).
+- **`bench/convert_sam3_checkpoint.py`**: Meta's SAM 3.1 checkpoint repacked
+  as safetensors with no weight changed, checked on readback. Core does the
+  key renames at load.
+- **Two bank prompts**: `ref2va_masked_subject_swap`, which names no setting
+  or shot so one text serves every window of any clip, and
+  `ref2va_masked_stage_singer`, written for the first window of the owner's
+  test clip. `bench/masked_v2v_arms.json` renders both at one seed, and the
+  first thirty seconds.
+- **`bench/check_video_mask.py`**, with core's own mask resize as the control
+  that loses a one-frame subject and a one-pixel line.
+- A window in which nothing is masked is written from the source and not
+  sampled, and the node refuses a mask whose shape is not its frames'. Both
+  from a peer session's review (mrblue), which found no fault in the mask or
+  composite arithmetic.
+
+### Changed
+
+- `bench/check_reference_encode.py` found the two reference nodes by the
+  text that closed the node list; a node appended after them moved it. It now
+  matches the list entry.
+- `bench/check_widget_deviations.py` declares the checkpoint loader's file
+  and the source loader's width.
+- A comment in `sol_attn_h3.py` said no node here writes a `noise_mask` and
+  read as if one would send a call to the dense fallback. That branch is for
+  an attention mask, which H3 never passes.
+
+### Rendered, not judged
+
+- The owner's clip, three arms: the first window on the shipped prompt, the
+  same window and seed on the clip-specific prompt, and the first thirty
+  seconds over three windows. What frames show and what playback has to
+  answer: `bench/results/2026-10-04_masked_v2v_first_run.md`. Rendered before
+  the review's changes, which do not alter what those arms compute; after
+  them and a restart, a short masked window rendered and a window with an
+  empty mask was written from the source without sampling.
+
+### Checks
+
+- Every `bench/check_*.py` ran, with the card masked and then with it for
+  those that need it. The ones this change broke are fixed:
+  `check_doc_inventory` (the index row), `check_literal_widgets` (a branch on
+  zero), `check_widget_deviations`, `check_reference_encode` (the node-list
+  match) and `check_prompt_docs_sync` (a missing audit verdict). What still
+  fails does so for reasons outside this change: `check_native_h3_presentation`,
+  `check_released_encoder_is_stock` and `check_sol_probe` need arguments;
+  `check_reload_invariance` needs `H3_OUTPUT_DIR`; `check_calibration_model_mapping`,
+  `check_calibration_selector`, `check_marker_corpus` and
+  `check_pool_media_integrity` need a dataset snapshot or source directory
+  that is not present; `check_model_contents` names a hybrid checkpoint that
+  is not on disk; `check_no_owner_paths` lists gitignored capture files.
+
 ## 0.185.25
 
 ### Measured

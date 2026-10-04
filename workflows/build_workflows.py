@@ -62,6 +62,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import sys
 import urllib.request
@@ -93,7 +94,7 @@ from h3_config import (  # noqa: E402
     CORE_LOADED_ENCODERS, IMAGE_VAE, DRAFT_VAE, STEP_SWITCH_PASS1_SIGMAS, STEP_SWITCH_PASS2_SIGMAS,
     STEP_SWITCH_REV, STEP_SWITCH_BASE, CANVAS, FPS, LENGTH, LONG_LENGTH, MODELS,
     SAMPLING, SAGE_NODE, DENSE_BACKEND_NODE, DENSE_CHAINS, DEFAULT_DENSE_CHAIN, SEED, SIGMA_SHIFT, SOL_CORE_NODE, SOL_CORE_DEFAULTS,
-    REF_VIDEO_LOADER, REF_QWEN_SHORT_EDGE,
+    REF_VIDEO_LOADER, REF_QWEN_SHORT_EDGE, SEGMENTER, SEGMENTER_TRACK, MASKED_SOURCE,
     CACHE_NODE, CACHE_NODE_CLASS,
     DISTILL_SAMPLING,
     REF_VIDEO_BUDGET,
@@ -1333,6 +1334,13 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
               # in <Picture N> order.
               freeze_song_refs: tuple[str, ...] | None = None,
               freeze_song_lists: tuple[tuple[str, str, str, int], ...] | None = None,
+              # Masked video-to-video on the song node (`video_mask.py`): the
+              # track comes from a source video, SAM 3 tracks the subject
+              # named by `freeze_song_source_subject`, and each window keeps
+              # the source outside that mask. The loader's frame cap is the
+              # song's extent plus one window, which is as far past the track
+              # as the plan can reach.
+              freeze_song_source: bool = False, freeze_song_source_subject: str = "person",
               # Audio-only refinement after the pass (audio_refine.py,
               # h3_config.AUDIO_REFINE): the sampled latent's video frozen and
               # its audio reopened, then a partial-denoise pass on the model
@@ -2113,6 +2121,9 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
         for nid in ("5", "6", "9", "10", "11", "12", "13", "26"):
             g.pop(nid, None)
         g["48"] = {"class_type": "LoadAudio", "inputs": {"audio": freeze_track}}
+        if freeze_song_source and freeze_song_seconds is None:
+            raise SystemExit("freeze_song_source needs freeze_song_seconds: the loader holds every frame "
+                             "it loads, so the graph says how much of the video it takes")
         g["74"] = {"class_type": "MiniMaxH3AudioFreezeSong",
                    "inputs": {"model": _model, "clip": ["2", 0], "vae": vae_enc, "audio_vae": ["4", 0],
                               "audio": ["48", 0], "sampler": ["7", 0], "sigmas": _sig,
@@ -2158,8 +2169,30 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
                                          **({"lists": chain} if chain is not None else {})}}
                 chain = [list_id, 0]
             g["74"]["inputs"]["lists"] = chain
-    elif freeze_song_refs or freeze_song_lists:
-        raise SystemExit("freeze_song_refs and freeze_song_lists need freeze_song")
+        if freeze_song_source:
+            # The video is the track: its frames at 24 fps and canvas width
+            # (the loader holds them all, so not at the file's own size), its
+            # audio in place of LoadAudio. Ids 100-104, used by nothing else.
+            g.pop("48")
+            g["28"] = {"class_type": REF_VIDEO_LOADER,
+                       "inputs": {"video": PLACEHOLDER_VIDEO, "force_rate": REF_VIDEO_FORCE_RATE,
+                                  "custom_width": cv["width"], "custom_height": 0,
+                                  "frame_load_cap": int(math.ceil(freeze_song_seconds * FPS)) + length,
+                                  "start_time": 0.0, "format": "AnimateDiff"}}
+            g["74"]["inputs"]["audio"] = ["28", 2]
+            g["100"] = {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": SEGMENTER}}
+            g["101"] = {"class_type": "CLIPTextEncode",
+                        "inputs": {"clip": ["100", 1], "text": freeze_song_source_subject}}
+            g["102"] = {"class_type": "SAM3_VideoTrack",
+                        "inputs": {"images": ["28", 0], "model": ["100", 0], "conditioning": ["101", 0],
+                                   **SEGMENTER_TRACK}}
+            g["103"] = {"class_type": "SAM3_TrackToMask",
+                        "inputs": {"track_data": ["102", 0], "object_indices": ""}}
+            g["104"] = {"class_type": "MiniMaxH3MaskedSource",
+                        "inputs": {"frames": ["28", 0], "mask": ["103", 0], **MASKED_SOURCE}}
+            g["74"]["inputs"]["source"] = ["104", 0]
+    elif freeze_song_refs or freeze_song_lists or freeze_song_source:
+        raise SystemExit("freeze_song_refs, freeze_song_lists and freeze_song_source need freeze_song")
 
     if refine_cache and not audio_refine:
         raise SystemExit("refine_cache needs audio_refine")
@@ -3651,6 +3684,24 @@ def main():
               freeze_mask=0.25, freeze_context=39, length=LONG_LENGTH,
               out_prefix="Video/h3_t2v_audio_freeze_song_lists_pdd8"),
          "a whole song on PDD8 on the song's sections, two prompt lists moving on once per section"),
+        # Masked video-to-video on the PDD8 song chain (owner, 2026-10-04):
+        # the track is a source video's own audio, SAM 3 tracks one subject,
+        # and each window keeps the source outside that mask and regenerates
+        # the subject from a reference still. The hard freeze, which is the
+        # lane's default for a voice (`docs/h3_audio_freeze.md` step 4). One
+        # prompt for every window that names no shot, because the plate
+        # already holds the framing and the cuts; a clip-specific prompt is
+        # an arm (`bench/masked_v2v_arms.json`). Not judged yet.
+        ("h3_video_to_video_masked_song_pdd8.json", "v2v-masked-song-pdd8", "t2v",
+         _bank_prompt("ref2va_masked_subject_swap"),
+         dict(pdd=True, sampler_name="euler",
+              unet=MODELS["unet_fl2va_pdd8_baked"],
+              lora=(PDD_FL2VA_STRIPPED_LORA, PDD_STRENGTH), steps=PDD_STEPS,
+              freeze_song=True, freeze_song_seconds=30.0,
+              freeze_song_refs=(PLACEHOLDER_IMAGE_A,), freeze_song_source=True,
+              freeze_mask=0.0, freeze_context=39, length=LONG_LENGTH,
+              out_prefix="Video/h3_v2v_masked_song_pdd8"),
+         "masked video to video: a source video's subject replaced from a reference still, audio kept"),
         # The PDD8 freeze with the audio attention gain node in front of the
         # guider, inert as shipped; bench arms patch key_gain / value_gain.
         ("h3_candidate_t2v_pdd8_baked_audio_freeze_gain.json", "t2v-candidate-pdd8-baked-audio-freeze-gain",

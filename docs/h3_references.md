@@ -1161,6 +1161,12 @@ whole-video relationships plus a subject-sourcing rule that yields a fourth.
 source; what holds the untouched parts still is `retention_analysis` saying
 precisely what survives.
 
+*2026-10-04: true of this relationship and no longer of the pack. A masked
+path exists on the song node, where the source is the starting latent and not
+a reference: [`h3_audio_freeze.md`](h3_audio_freeze.md) section 4, "a source
+video for the song node". It keeps the plate exactly and is not a trained
+task; this one is trained and keeps nothing exactly.*
+
 ```
 subject_definitions:
 <Subject 1> is the person in <Video 1>, whose face, build, and position in frame are kept in the target video.
