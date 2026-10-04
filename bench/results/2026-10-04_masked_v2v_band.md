@@ -74,6 +74,35 @@ original's movement: naming the shot works, a generic clause over-applies.
 Not tried: the source as a motion reference, which the model is trained for
 and which pays the reference's rows on every step.
 
+## The margin, the pose and the member nobody can see
+
+`band_changed_w1` (the composite that keeps only what changed, the mask grown
+twice as far, the cleaned still) against `band_generic_32s` (whole region,
+the default margin, the old still), stacked with the source as
+`compare_band_w1_stacked.mp4` on the output share. The owner's reading, from
+their annotated frames:
+
+- Both renders keep the visible band members "mostly the same", with changes
+  too small to notice unless the clips are stacked.
+- At the wider margin the replaced lead stands differently, and that uncovers
+  the member behind him on the left, whom the source hides behind the
+  original's height and long hair. The model invents him. At the default
+  margin a sliver of an invented face shows in the same place.
+- "The invented person on the left in the back keeps the same identity
+  throughout."
+
+**Why the pose differs** (inferred, endorsed by the owner, not yet isolated):
+the only thing telling the model where the original stood is the shape of the hole, so a wider hole lets him stand somewhere else. Two things differ between those renders, the margin and the
+still, and either changes the sample; `band_changed32_w1` puts only the
+margin back and says which. The composite cannot be the cause: it runs after
+sampling. The still is a close selfie and carries no height or build, so the
+subject's size and place come from the hole and the scene.
+
+**What it means for the method.** Replacing a subject with a smaller outline
+uncovers space the source never shows, whatever the margin. The margin sets
+how much: tight keeps the new subject in the original's footprint, wide gives
+a differently shaped subject room and exposes more. Nothing is built for it.
+
 ## Not established
 
 - Whether the regenerated tokens beside him alter the neighbours they

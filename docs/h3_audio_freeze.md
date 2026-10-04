@@ -303,6 +303,18 @@ clips (`bench/results/2026-10-04_masked_v2v_first_run.md`,
   facing the camera when the original turns away; naming the shot fixes it
   and is specific prompting; a generic "do what the people beside you do"
   turns him at the right moment and twice at wrong ones.
+- **The margin decides how far the new subject may differ from the old one,
+  in place as well as in outline.** Seen on the band clip: at the wider
+  margin the replaced lead stands further to one side than at the default,
+  which uncovers a band member the source never shows, and the model invents
+  him. The explanation the owner endorsed (2026-10-04, "it makes sense"),
+  inferred and awaiting the one render that isolates it
+  (`band_changed32_w1`): the only thing telling the model where the original stood is the shape of the hole, so a wider hole lets him stand somewhere else. The reference still carries no
+  height or build either, so the subject's size comes from the hole and the
+  scene around it. The invented member kept one identity through the shot
+  (owner, on playback), so this is a trade and not a fault: a tight margin
+  keeps the new subject in the original's footprint, a wide one stops a
+  differently shaped subject being cut off.
 - **One word does not isolate one person among several**; the band arms
   select the lead's tracked objects by index.
 

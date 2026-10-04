@@ -4,6 +4,18 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.30
+
+### Changed
+
+- **What the margin does is written down** (owner, 2026-10-04: "record that
+  in our docs, it makes sense"): the hole's shape is all that tells the model
+  where the original stood, so a wider one lets the new subject stand
+  somewhere else and uncover what the original hid. In
+  `docs/h3_audio_freeze.md` section 4, the band record and the masking notes,
+  marked inferred until `band_changed32_w1` isolates it; and in
+  `MiniMaxH3MaskedSource`'s `grow_pixels` tooltip, a text change only.
+
 ## 0.186.29
 
 ### Added

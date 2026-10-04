@@ -464,9 +464,10 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                 io.Mask.Input("mask", lazy=True, tooltip="One mask per frame, 1 on the subject to replace."),
                 io.Int.Input("grow_pixels", default=32, min=0, max=512,
                              tooltip=("How far the mask is widened before it reaches the model, in pixels of "
-                                      "the render canvas. Raise it when the replacement is a different shape "
-                                      "from the original; every pixel added is background the model has to "
-                                      "invent.")),
+                                      "the render canvas. Raise it when the replacement is cut off at its "
+                                      "edge. The hole's shape is all that tells the model where the original "
+                                      "stood, so a wider one lets the new subject stand somewhere else and "
+                                      "uncover what the original hid.")),
                 io.Int.Input("feather_pixels", default=8, min=0, max=128,
                              tooltip=("Width of the blend between the regenerated region and the source's "
                                       "own pixels, to each side of the boundary. Raise it if the boundary "
