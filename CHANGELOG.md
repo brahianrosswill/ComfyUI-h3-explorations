@@ -4,6 +4,17 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.6
+
+### Added
+
+- `docs/research/masking/2026-10-04_mrblue.md`: the parts of the morning's
+  code review that the masked lane can use, at the owner's request that the
+  sessions share what they found. Nothing rendered; each line says how it is
+  known. Listed in the folder's README. The note and the README line landed
+  in commit 90823ea5, whose subject says 0.186.5: another session had taken
+  that number minutes earlier (adcc8a93), so this entry is 0.186.6.
+
 ## 0.186.5
 
 ### Changed
