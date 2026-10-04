@@ -4,6 +4,14 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.44
+
+### Docs
+
+- **mrblue validated the reworked subject track draft**, schema and both
+  clips on the card, and the masking note says so, with one correction to
+  how my own two runs are read. Owed before it lands: mrpink's validation.
+
 ## 0.186.43
 
 ### Docs
