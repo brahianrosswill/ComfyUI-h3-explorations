@@ -4,6 +4,16 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.27
+
+### Changed
+
+- `docs/research/masking/2026-10-04_mrhf.md`: how much work Sapiens2 would
+  be, read from its repository and paper. Ordinary dependencies, a plain ViT
+  with a small head, per-image inference at a portrait working size, nothing
+  temporal. A port of roughly a thousand lines, to be checked against the
+  upstream output.
+
 ## 0.186.26
 
 ### Changed
