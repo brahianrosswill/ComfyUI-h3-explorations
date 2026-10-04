@@ -4,6 +4,17 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.32
+
+### Changed
+
+- `docs/research/masking/2026-10-04_mrhf.md`: what the latest SAM 3 commits
+  add. Upstream can now seed one tracker object from a caller's mask at any
+  frame, under the caller's own id, which is the per-shot seeding this note
+  proposed for cuts; it is not served by the multiplex model and is not in
+  ComfyUI core's port. Also an opt-in streaming mode that frees per-frame
+  outputs on long recordings.
+
 ## 0.186.31
 
 ### Changed
