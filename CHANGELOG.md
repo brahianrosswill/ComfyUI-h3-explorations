@@ -4,6 +4,17 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.38
+
+### Changed
+
+- **`MiniMaxH3SubjectTrack.match_threshold` defaults to 0.82, set from a card
+  run** (was 0.71, an estimate from a CPU probe). On the band clip with core's
+  detector the lead scored 0.92 and 0.94 on the first frame of his other two
+  shots and the best wrong person 0.71, three times; at 0.71 the node took one
+  cutaway. The new default is the middle of that gap. One clip. The run, as
+  mrpink reported it, is in `docs/research/masking/2026-10-04_mrhf.md`.
+
 ## 0.186.37
 
 ### Fixed

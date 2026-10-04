@@ -58,9 +58,11 @@ masks of an earlier track, `docs/research/masking/2026-10-04_mrhf.md`):
   to the pick as the lead in another shot does. Not usable.
 - under the top third, plain similarity: the lead facing the camera 0.945 and
   above, everyone else 0.89 and below. A gap of about 0.06.
-- under the top third, with the pick frame's other people subtracted: the lead
-  facing the camera 0.77 and above, 0.88 and above on the first frame of each
-  shot he is in; everyone else 0.65 and below. About three times the gap.
+- under the top third, with the pick frame's other people subtracted: about
+  three times that gap on the CPU probe. On the card, with core's detector
+  finding five others on the pick frame, the lead scored 0.92 and 0.94 on the
+  first frame of his other two shots and the best wrong person 0.71. The
+  default sits in the middle; at 0.71 it took one cutaway.
 - seen from behind he scores inside the others' range either way. A shot that
   opens on his back is not found, and the report shows it as absent with its
   best value. On that clip every shot he is in opens on his face, and the
@@ -118,12 +120,13 @@ CUT_THRESHOLD = 0.9
 #: Frames between probes of a shot when its first frame has no match.
 #: Reasoned: half a second at the pack's frame rate.
 PROBE_STRIDE = 12
-#: The default of `match_threshold`. Measured on one clip, the band segment,
-#: with the pick frame's other people subtracted: between everyone else (0.65
-#: and below) and the lead facing the camera (0.77 and above)
+#: The default of `match_threshold`. Measured on one clip on the card, the band
+#: segment with core's detector finding five other people on the pick frame:
+#: the lead scored 0.92 and 0.94 on the first frame of his other two shots and
+#: the best wrong person 0.71, three times. This is the middle of that gap
 #: (`docs/research/masking/2026-10-04_mrhf.md`). Not validated elsewhere, and
 #: on the wrong scale when the pick frame shows only the subject.
-MATCH_THRESHOLD = 0.71
+MATCH_THRESHOLD = 0.82
 #: The default of `detection_threshold`. Inherited: core's node default
 #: (`comfy_extras/nodes_sam3.py::SAM3_Detect.define_schema`).
 DETECTION_THRESHOLD = 0.5
