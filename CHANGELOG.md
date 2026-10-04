@@ -4,6 +4,16 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.16
+
+### Changed
+
+- `docs/research/masking/2026-10-04_mrhf.md`: what the VOID paper settles for
+  using it as a plate with nobody in it. A shadow outside the object mask has
+  to be marked as affected; a coarse affected region is what the model was
+  trained on; the second pass is not needed for this; close-ups are a stated
+  weak spot. Also which repo holds which weights.
+
 ## 0.186.15
 
 ### Changed
