@@ -4,6 +4,18 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.17
+
+### Changed
+
+- `docs/research/masking/2026-10-04_mrhf.md`: the two arms suggested for the
+  band clip were rendered and neither holds. Head and hair with the region
+  cut at the hair's lowest row still gives an oversized head. The generic
+  movement prompt turns the subject in the right shot and also turns him away
+  in two shots where nobody turns, and its clothing clause is not obeyed. A
+  later start on the schedule is recorded as the untried way to carry the
+  original's pose.
+
 ## 0.186.16
 
 ### Changed
