@@ -94,7 +94,7 @@ from h3_config import (  # noqa: E402
     CORE_LOADED_ENCODERS, IMAGE_VAE, DRAFT_VAE, STEP_SWITCH_PASS1_SIGMAS, STEP_SWITCH_PASS2_SIGMAS,
     STEP_SWITCH_REV, STEP_SWITCH_BASE, CANVAS, FPS, LENGTH, LONG_LENGTH, MODELS,
     SAMPLING, SAGE_NODE, DENSE_BACKEND_NODE, DENSE_CHAINS, DEFAULT_DENSE_CHAIN, SEED, SIGMA_SHIFT, SOL_CORE_NODE, SOL_CORE_DEFAULTS,
-    REF_VIDEO_LOADER, REF_QWEN_SHORT_EDGE, SEGMENTER, SEGMENTER_TRACK, MASKED_SOURCE,
+    REF_VIDEO_LOADER, REF_QWEN_SHORT_EDGE, SEGMENTER, SUBJECT_TRACK, MASKED_SOURCE,
     CACHE_NODE, CACHE_NODE_CLASS,
     DISTILL_SAMPLING,
     REF_VIDEO_BUDGET,
@@ -1335,12 +1335,13 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
               freeze_song_refs: tuple[str, ...] | None = None,
               freeze_song_lists: tuple[tuple[str, str, str, int], ...] | None = None,
               # Masked video-to-video on the song node (`video_mask.py`): the
-              # track comes from a source video, SAM 3 tracks the subject
-              # named by `freeze_song_source_subject`, and each window keeps
-              # the source outside that mask. The loader's frame cap is the
-              # song's extent plus one window, which is as far past the track
-              # as the plan can reach.
-              freeze_song_source: bool = False, freeze_song_source_subject: str = "person",
+              # track comes from a source video, the Subject Track node finds
+              # one subject across the clip's cuts from a phrase and one pick
+              # (`subject_track.py`), and each window keeps the source outside
+              # that mask. The loader's frame cap is the song's extent plus
+              # one window, which is as far past the track as the plan can
+              # reach.
+              freeze_song_source: bool = False,
               # Audio-only refinement after the pass (audio_refine.py,
               # h3_config.AUDIO_REFINE): the sampled latent's video frozen and
               # its audio reopened, then a partial-denoise pass on the model
@@ -2172,7 +2173,7 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
         if freeze_song_source:
             # The video is the track: its frames at 24 fps and canvas width
             # (the loader holds them all, so not at the file's own size), its
-            # audio in place of LoadAudio. Ids 100-104, used by nothing else.
+            # audio in place of LoadAudio. Ids 100-105, used by nothing else.
             g.pop("48")
             g["28"] = {"class_type": REF_VIDEO_LOADER,
                        "inputs": {"video": PLACEHOLDER_VIDEO, "force_rate": REF_VIDEO_FORCE_RATE,
@@ -2181,17 +2182,18 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
                                   "start_time": 0.0, "format": "AnimateDiff"}}
             g["74"]["inputs"]["audio"] = ["28", 2]
             g["100"] = {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": SEGMENTER}}
-            g["101"] = {"class_type": "CLIPTextEncode",
-                        "inputs": {"clip": ["100", 1], "text": freeze_song_source_subject}}
-            g["102"] = {"class_type": "SAM3_VideoTrack",
-                        "inputs": {"images": ["28", 0], "model": ["100", 0], "conditioning": ["101", 0],
-                                   **SEGMENTER_TRACK}}
-            g["103"] = {"class_type": "SAM3_TrackToMask",
-                        "inputs": {"track_data": ["102", 0], "object_indices": ""}}
+            # Subject, then what happens to them: two nodes on purpose (owner,
+            # 2026-10-04), so a change to the margin or the composite never
+            # runs the tracker again. Its `preview` and `report` outputs stay
+            # unwired: a consumer would run it on every queue and defeat the
+            # kept mask. Id 105; 101-103 were core's tracker chain until then.
+            g["105"] = {"class_type": "MiniMaxH3SubjectTrack",
+                        "inputs": {"frames": ["28", 0], "segmenter": ["100", 0], "segmenter_clip": ["100", 1],
+                                   **SUBJECT_TRACK}}
             g["104"] = {"class_type": "MiniMaxH3MaskedSource",
                         # the segmenter is wired whether or not `replace` reads it, so
                         # changing that one choice needs no rewiring
-                        "inputs": {"frames": ["28", 0], "mask": ["103", 0], **MASKED_SOURCE,
+                        "inputs": {"frames": ["28", 0], "mask": ["105", 0], **MASKED_SOURCE,
                                    "segmenter": ["100", 0], "segmenter_clip": ["100", 1]}}
             g["74"]["inputs"]["source"] = ["104", 0]
     elif freeze_song_refs or freeze_song_lists or freeze_song_source:

@@ -112,6 +112,39 @@ uncovers space the source never shows, whatever the margin. The margin sets
 how much: tight keeps the new subject in the original's footprint, wide gives
 a differently shaped subject room and exposes more. Nothing is built for it.
 
+## The shipped graph, version one
+
+`band_subject_w1`, then the same arm at thirty-two seconds (the label kept so
+the first window was reused): the shipped graph after it moved to
+`MiniMaxH3SubjectTrack`. One pick, the largest `person` on a frame of the
+warm group shot; no object indices. Stacked against the source as
+`compare_band_32s_v1.mp4`, and its first window against the typed-index
+render as `compare_band_w1_subject_node.mp4`.
+
+- The tracker's report on this clip: every cut found, the three shots the
+  lead is in taken, the rest absent, in under a minute for the clip
+  (`per_node_s`, node 105). At its first default threshold it also took one
+  cutaway; the default was then set from this run's numbers
+  (`subject_track.py::MATCH_THRESHOLD` says which).
+- (seen) The lead replaced in every shot he is in, the neighbours intact.
+- The owner: "looks pretty good", and "one problem: he doesnt turn around at
+  the end". That is the movement limit recorded above, on the generic prompt.
+- The kept mask was written on the first run. The second run did not track
+  again, but inside one server session core's own cache explains that; a
+  restart between runs is the test of the kept mask and has not been done.
+
+## Chains compared on one window
+
+Same window, seed, still, margin and composite; stacked as
+`compare_band_w1_chains.mp4` and `compare_band_w1_sol.mp4`. Times are in the
+rows.
+
+| arm | chain | the owner |
+|---|---|---|
+| `band_changed_w1` | PDD8 baked, Sol-Attn | "worked best" |
+| `band_baseline_w1` | undistilled, base step count, stock attention, `er_sde` | worse likeness; "er_sde inserts noise. thats why"; "not worth the long render time" |
+| `band_changed_dense_w1` | PDD8 baked, Sol's window closed so every step is the dense int8 fallback | "no sol changed the clothes" |
+
 ## Not established
 
 - Whether the regenerated tokens beside him alter the neighbours they

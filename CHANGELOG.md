@@ -4,6 +4,42 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.39
+
+### Changed
+
+- **The shipped masked workflow is two pack nodes and one pick** (owner,
+  2026-10-04: "Lets make that the shipped workflow"; version one).
+  `workflows/h3_video_to_video_masked_song_pdd8_api.json` now wires
+  `MiniMaxH3SubjectTrack` into `MiniMaxH3MaskedSource`; core's phrase
+  encoder, tracker and track-to-mask are gone from it, and with them the
+  typed object indices. `MiniMaxH3SubjectTrack` is registered.
+  `h3_config.SUBJECT_TRACK` replaces `SEGMENTER_TRACK`.
+- **`MiniMaxH3MaskedSource` defaults move to what the owner chose** on the
+  band clip: `grow_pixels` to `video_mask.GROW_PIXELS` and `composite` to
+  `only what changed`. `h3_config.MASKED_SOURCE` carries the same.
+- `bench/check_video_mask.py` follows the mask back through either tracker
+  and fails a graph that wires the Subject Track's preview or report, which
+  would run it on every queue.
+- Arms recorded before this in `bench/masked_v2v_arms.json` and
+  `bench/masked_v2v_band_arms.json` name nodes the shipped graph no longer
+  has; they are the record of what rendered on the graph at `fc2628f9`.
+
+### Rendered
+
+- `bench/results/2026-10-04_masked_v2v_band.md`: the shipped graph on the
+  band clip, one window and then thirty-two seconds (owner: "looks pretty
+  good"; "he doesnt turn around at the end"), and three chains on one window
+  (the distilled chain with Sol-Attn kept; the baseline and the Sol-off arm
+  dropped).
+
+### Checks
+
+- Every `bench/check_*.py` ran with the card masked after the generator
+  change. The one new failure, `check_widget_deviations`, was the running
+  server serving the tracker's earlier default; it passes after a restart.
+  The rest fail as they did this morning, for reasons outside this change.
+
 ## 0.186.38
 
 ### Changed

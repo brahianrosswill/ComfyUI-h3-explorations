@@ -197,44 +197,28 @@
       "ckpt_name": "sam3.1_multiplex_fp32.safetensors"
     }
   },
-  "101": {
-    "class_type": "CLIPTextEncode",
+  "105": {
+    "class_type": "MiniMaxH3SubjectTrack",
     "inputs": {
-      "clip": [
-        "100",
-        1
-      ],
-      "text": "person"
-    }
-  },
-  "102": {
-    "class_type": "SAM3_VideoTrack",
-    "inputs": {
-      "images": [
+      "frames": [
         "28",
         0
       ],
-      "model": [
+      "segmenter": [
         "100",
         0
       ],
-      "conditioning": [
-        "101",
-        0
+      "segmenter_clip": [
+        "100",
+        1
       ],
+      "subject_phrase": "person",
+      "pick_frame": 0,
+      "pick": "largest",
+      "match_threshold": 0.82,
+      "cut_threshold": 0.9,
       "detection_threshold": 0.5,
-      "max_objects": 4,
-      "detect_interval": 1
-    }
-  },
-  "103": {
-    "class_type": "SAM3_TrackToMask",
-    "inputs": {
-      "track_data": [
-        "102",
-        0
-      ],
-      "object_indices": ""
+      "max_people": 16
     }
   },
   "104": {
@@ -245,17 +229,17 @@
         0
       ],
       "mask": [
-        "103",
+        "105",
         0
       ],
-      "grow_pixels": 32,
+      "grow_pixels": 64,
       "feather_pixels": 8,
       "replace": "whole subject",
       "paint_out": false,
       "part_phrases": "hair, head",
       "part_threshold": 0.5,
       "part_margin": 8,
-      "composite": "whole region",
+      "composite": "only what changed",
       "change_threshold": 0.05,
       "reuse_mask": true,
       "segmenter": [

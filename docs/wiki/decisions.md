@@ -17,6 +17,20 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-04
 
+- **Masked video to video, version one, is the two-node design on the
+  distilled chain** (owner, 2026-10-04: "Yes I did say the two node design",
+  "Lets make that the shipped workflow", "if good, we can lock in and say
+  success for v1"). Subject Track picks one person once and follows them
+  across cuts; Masked Source says what happens to them, at the margin and
+  composite the owner chose; the PDD8 song chain with Sol-Attn renders it.
+  Decided against, with the owner's words where there are any: a ControlNet
+  ("I dont want a controlnet though"); the baseline chain for this work
+  ("i dont think its worth the long render time"); two samplers, parked for
+  another day; more work on the first clip ("not worth the effort", its dark
+  lines being seams in the source's own backdrop). Open at the time of
+  writing: the replaced subject does not follow the original's movement
+  unless the prompt names it (owner: "he doesnt turn around at the end").
+
 - **Masked video to video is built on the song node, not on a daily graph or
   a ControlNet** (owner, 2026-10-04: "Not sure i wanna use a controlnet model
   unless we absolutely have to"; "we should look to our frozen audio workflows

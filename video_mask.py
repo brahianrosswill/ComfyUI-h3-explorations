@@ -134,7 +134,12 @@ CHUNK = 48
 #: The `replace` choices. The second finds a part with core's SAM 3 detector.
 REPLACE_WHOLE = "whole subject"
 REPLACE_PART = "head and hair"
-#: The `composite` choices.
+#: The default of `grow_pixels`. The owner's choice on one clip, 2026-10-04:
+#: twice a DiT token of canvas "preserved identity better" than one, which
+#: was the first, reasoned value. One seed each.
+GROW_PIXELS = 64
+#: The `composite` choices. The second is the default: it is the composite of
+#: the render the owner called the best (2026-10-04, one clip).
 COMPOSITE_REGION = "whole region"
 COMPOSITE_CHANGED = "only what changed"
 #: The default of `change_threshold`: how far the render must differ from the
@@ -468,7 +473,7 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                 io.Image.Input("frames", tooltip="The source video's frames at 24 fps, from its start."),
                 # lazy since 2026-10-04: not asked for when a kept mask matches (`check_lazy_status`)
                 io.Mask.Input("mask", lazy=True, tooltip="One mask per frame, 1 on the subject to replace."),
-                io.Int.Input("grow_pixels", default=32, min=0, max=512,
+                io.Int.Input("grow_pixels", default=GROW_PIXELS, min=0, max=512,
                              tooltip=("How far the mask is widened before it reaches the model, in pixels of "
                                       "the render canvas. Raise it when the replacement is cut off at its "
                                       "edge. The hole's shape is all that tells the model where the original "
@@ -510,7 +515,7 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                                       "still count as the subject's, in pixels of the source frame. Raise it "
                                       "when the `mask` output clips the part at the subject's edge; lower it "
                                       "when it takes a neighbour's.")),
-                io.Combo.Input("composite", options=[COMPOSITE_REGION, COMPOSITE_CHANGED], default=COMPOSITE_REGION,
+                io.Combo.Input("composite", options=[COMPOSITE_REGION, COMPOSITE_CHANGED], default=COMPOSITE_CHANGED,
                                tooltip=("What is kept from the render. `whole region` keeps everything that was "
                                         "regenerated, margin included. `only what changed` keeps the render "
                                         "where it differs from the source (the new subject, and where the old "
@@ -566,9 +571,9 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
     @classmethod
     # `mask` has no default: it is required in the schema, and core hands a lazy input it was not asked to run
     # as None, which is what a hit on a kept mask looks like here.
-    def execute(cls, frames, mask, grow_pixels=32, feather_pixels=8, replace=REPLACE_WHOLE, paint_out=False,
+    def execute(cls, frames, mask, grow_pixels=GROW_PIXELS, feather_pixels=8, replace=REPLACE_WHOLE, paint_out=False,
                 segmenter=None, segmenter_clip=None, part_phrases=PART_PHRASES,
-                part_threshold=PART_THRESHOLD, part_margin=PART_MARGIN, composite=COMPOSITE_REGION,
+                part_threshold=PART_THRESHOLD, part_margin=PART_MARGIN, composite=COMPOSITE_CHANGED,
                 change_threshold=CHANGE_THRESHOLD, reuse_mask=True) -> io.NodeOutput:
         if frames.ndim != 4:
             raise ValueError(f"frames must be [N, H, W, C]; got {tuple(frames.shape)}")

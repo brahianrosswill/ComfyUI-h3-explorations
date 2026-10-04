@@ -46,6 +46,7 @@ from .overlay_loader import MiniMaxH3OverlayLoader
 from .denoise_mask_probe import MiniMaxH3DenoiseMaskProbe
 from .video_mask import MiniMaxH3MaskedSource
 from .plate_restore import MiniMaxH3RestorePlate
+from .subject_track import MiniMaxH3SubjectTrack
 from .step_x0_observer import MiniMaxH3StepX0Observer
 from .core_sparse_capture import MiniMaxH3CoreSparseCapture
 from .preflight import MiniMaxH3Preflight
@@ -348,7 +349,10 @@ class H3ExplorationsExtension(ComfyExtension):
                 MiniMaxH3MaskedSource,
                 # appended 2026-10-04, the kept rows put back between two samplers
                 # (plate_restore.py)
-                MiniMaxH3RestorePlate]
+                MiniMaxH3RestorePlate,
+                # appended 2026-10-04, one subject's mask across a clip's cuts
+                # (subject_track.py)
+                MiniMaxH3SubjectTrack]
 
 
 async def comfy_entrypoint() -> H3ExplorationsExtension:

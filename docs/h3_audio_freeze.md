@@ -292,7 +292,7 @@ clips (`bench/results/2026-10-04_masked_v2v_first_run.md`,
   from the source or the old subject stood and restores the source in the
   margin, so the margin can be generous. Built after the owner saw a cut-off
   cap and a cut-out look; from frames the cap is whole and the margin clean,
-  not yet judged on playback. `whole region` is still the default.
+  and the owner called the render that used it the best. It is the default.
 - **`replace` = `head and hair`** keeps the body as source pixels. On a
   long-haired original it gave a head half as wide again as the original's,
   twice (owner: "a giant bobblehead"): the model sizes what it paints to the
@@ -317,7 +317,26 @@ clips (`bench/results/2026-10-04_masked_v2v_first_run.md`,
   keeps the new subject in the original's footprint, a wide one stops a
   differently shaped subject being cut off, and on that pair the owner found
   the wide one kept the reference's identity better.
-- **One word does not isolate one person among several**; the band arms
+- **Two pack nodes, and one pick** (owner, 2026-10-04: two nodes, "Lets make
+  that the shipped workflow"). `MiniMaxH3SubjectTrack` (`subject_track.py`,
+  a peer session's) finds the clip's cuts, takes the subject on one frame by
+  a stated rule, finds them again at the start of every other shot and
+  tracks each shot from there; `MiniMaxH3MaskedSource` decides what happens
+  to them. Kept apart so a change to the margin or the composite never runs
+  the tracker again, and the finished mask is kept across runs
+  (`mask_store.py`, another peer's). The shipped graph carries no core
+  tracker and no object index. On the band clip one pick took the three
+  shots the lead is in and no cutaway, once the match threshold was set from
+  that run's own numbers.
+- **What was compared and dropped, same window and seed** (the band rows'
+  `per_node_s` have the times): the baseline chain, no distill and no Sol,
+  several times slower and to the owner's eye worse on likeness, with a
+  sampler that adds noise every step, so not a like-for-like test; the
+  distill with Sol's window closed, slower and with the reference's clothes
+  lost, which fits Sol keeping the conditioning rows exact
+  (`sink_conditioning`) where the dense int8 fallback does not. The owner:
+  "still seems like our original distill/sol worked best".
+- **One word does not isolate one person among several**; the first band arms
   select the lead's tracked objects by index.
 
 The graph is `workflows/h3_video_to_video_masked_song_pdd8_api.json`, on the

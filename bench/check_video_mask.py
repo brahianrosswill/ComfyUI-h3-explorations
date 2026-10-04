@@ -387,11 +387,21 @@ def check_graphs(problems):
                 problems.append(f"{path.name}: Masked Source {nid} feeds no song node's `source`")
                 continue
             frames_from = ins["frames"][0]
-            # walk the mask back to the frames its tracker saw
+            # walk the mask back to the frames its tracker saw: the pack's Subject Track
+            # takes them itself; core's chain reaches them through its track data
             mask_node = graph[ins["mask"][0]]
-            track = graph.get(mask_node["inputs"].get("track_data", [None])[0], {})
-            if track.get("inputs", {}).get("images", [None])[0] != frames_from:
+            if "track_data" in mask_node["inputs"]:
+                track = graph.get(mask_node["inputs"]["track_data"][0], {})
+                seen = track.get("inputs", {}).get("images", [None])[0]
+            else:
+                seen = mask_node["inputs"].get("frames", [None])[0]
+            if seen != frames_from:
                 problems.append(f"{path.name}: the mask of Masked Source {nid} was not tracked over its own frames")
+            for out in (1, 2):  # a consumer of the tracker's preview or report runs it on every queue
+                if mask_node.get("class_type") == "MiniMaxH3SubjectTrack" and any(
+                        v == [ins["mask"][0], out] for n in graph.values() if isinstance(n, dict)
+                        for v in n.get("inputs", {}).values()):
+                    problems.append(f"{path.name}: the Subject Track's preview or report is wired, which defeats the kept mask")
             for song in users:
                 if song["inputs"].get("audio", [None])[0] != frames_from:
                     problems.append(f"{path.name}: the song node's track is not the audio of the source video")

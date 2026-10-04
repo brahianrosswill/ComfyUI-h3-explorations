@@ -491,6 +491,26 @@
       "model"
     ]
   },
+  "MiniMaxH3SubjectTrack": {
+    "inputs": [
+      "frames",
+      "segmenter",
+      "segmenter_clip",
+      "subject_phrase",
+      "pick_frame",
+      "pick",
+      "match_threshold",
+      "cut_threshold",
+      "detection_threshold",
+      "max_people"
+    ],
+    "node_id": "MiniMaxH3SubjectTrack",
+    "outputs": [
+      "mask",
+      "preview",
+      "report"
+    ]
+  },
   "MiniMaxH3VAEPrecision": {
     "inputs": [
       "vae",

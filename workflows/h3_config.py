@@ -1208,25 +1208,28 @@ FROZEN_VIDEO_CACHE_NODE = "MiniMaxH3FrozenVideoCache"
 #: changes no weight and checks that on readback. From the original rather
 #: than a repackage so the conversion is ours (owner, 2026-10-04).
 SEGMENTER = "sam3.1_multiplex_fp32.safetensors"
-#: `SAM3_VideoTrack`'s inputs. **Inherited**: core's own node defaults
-#: (`comfy_extras/nodes_sam3.py::SAM3_VideoTrack.define_schema`).
-#: `max_objects` is a cap on tracks ever made, not on tracks alive: core never
-#: frees one and stops detecting once the cap is reached
-#: (`comfy/ldm/sam3/tracker.py`, `run_det`). So on a clip with many cuts the
-#: subject can stop being found if each cut makes it a new object. Seen
-#: holding across the cuts of one clip (`bench/results/2026-10-04_masked_v2v_first_run.md`);
-#: the song node's per-window "tokens regenerate" line is where a lost subject shows.
-SEGMENTER_TRACK = dict(detection_threshold=0.5, max_objects=4, detect_interval=1)
+#: `MiniMaxH3SubjectTrack`'s inputs, equal to the node's defaults
+#: (`subject_track.py`, which says where each comes from). The node replaced
+#: core's tracker chain in the shipped graph on 2026-10-04 (owner: "Lets make
+#: that the shipped workflow"): core's tracker spends a cap on every person
+#: and splits one subject into several objects across cuts, which had to be
+#: selected by typed index (`bench/results/2026-10-04_masked_v2v_band.md`).
+SUBJECT_TRACK = dict(subject_phrase="person", pick_frame=0, pick="largest", match_threshold=0.82,
+                     cut_threshold=0.9, detection_threshold=0.5, max_people=16)
 #: `MiniMaxH3MaskedSource`'s inputs, equal to the node's defaults
-#: (`video_mask.py`). **Reasoned**, not measured: the grow is one DiT token of
-#: canvas, so a replacement gets a token of room past the old outline, and the
-#: feather stays inside it. `replace` and `paint_out` are the node's defaults:
-#: neither alternative has been judged. `reuse_mask` on keeps the finished
-#: mask across runs (`mask_store.py`); a kept mask is the tracked one's bytes,
-#: so it changes how long a run takes and not what it renders.
-MASKED_SOURCE = dict(grow_pixels=32, feather_pixels=8, replace="whole subject", paint_out=False,
+#: (`video_mask.py`). `grow_pixels` and `composite` are the owner's choice on
+#: the band clip, 2026-10-04: the wider margin "preserved identity better"
+#: than one DiT token of canvas, which was the first, reasoned value, and
+#: "only what changed" is the composite of the render they called the best.
+#: One clip and one seed each; the feather is reasoned and unjudged.
+#: `replace` and `paint_out` are at the values that worked: head and hair
+#: gave an oversized head on a long-haired original, and painting out was
+#: judged worse. `reuse_mask` on keeps the finished mask across runs
+#: (`mask_store.py`); a kept mask is the tracked one's bytes, so it changes
+#: how long a run takes and not what it renders.
+MASKED_SOURCE = dict(grow_pixels=64, feather_pixels=8, replace="whole subject", paint_out=False,
                      part_phrases="hair, head", part_threshold=0.5, part_margin=8,
-                     composite="whole region", change_threshold=0.05, reuse_mask=True)
+                     composite="only what changed", change_threshold=0.05, reuse_mask=True)
 
 # ---- FastH3 8-step V2 ------------------------------------------------------------
 #: **Inherited** from ComfyUI's own template, Comfy-Org/workflow_templates
