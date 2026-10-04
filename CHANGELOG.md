@@ -4,6 +4,17 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.14
+
+### Changed
+
+- `docs/research/masking/2026-10-04_mrhf.md`: the first render cuts the
+  replaced subject off at the region's edge in the final close-up, the same
+  cause as the cut hat, because the region is the original's outline plus a
+  fixed margin. The second SAM pass is recorded as built (a `composite`
+  choice on the node), with where it could show an edge of its own and the
+  difference term suggested against that.
+
 ## 0.186.13
 
 ### Changed
