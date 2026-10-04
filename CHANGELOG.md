@@ -4,6 +4,16 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.28
+
+### Changed
+
+- `docs/research/masking/2026-10-04_mrhf.md`: Sapiens2 needs no port. The
+  installed transformers already has its segmentation and matting classes
+  and parses the downloaded configs; an earlier check of mine looked for the
+  wrong class name. The two weight files in each repository are the same
+  bytes, and `model.safetensors` is the one `from_pretrained` reads.
+
 ## 0.186.27
 
 ### Changed
