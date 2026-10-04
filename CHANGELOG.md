@@ -4,6 +4,19 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.3
+
+### Added
+
+- **`docs/research/masking/` holds every session's research notes on masked
+  video to video** (owner, 2026-10-04: keep them tracked and shared). One
+  dated file per session; the README has the convention and the list. The
+  first note, `2026-10-04_mrhf.md`: which Hugging Face models help beyond
+  SAM 3.1, how core's SAM3 tracker behaves with several people, the shot
+  table for the band segment, and what the flicker beside the replaced
+  subject in the first clip is, with a fix to test. No media is tracked.
+  Routed from `docs/wiki/index.md`.
+
 ## 0.186.2
 
 ### Changed
