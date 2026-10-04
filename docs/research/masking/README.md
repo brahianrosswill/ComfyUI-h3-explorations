@@ -35,3 +35,8 @@ that were rendered are `bench/masked_v2v_arms.json` and
   instruments, sub-part masks); how core's SAM3 tracker behaves with several
   people; the shot table for the band segment; what the flicker beside the
   subject in the first clip is, and a fix to test.
+- [`2026-10-04_mrblue.md`](2026-10-04_mrblue.md): what a code review of the
+  mask path established and what it leaves open: a test that needs no
+  sampling to tell whether the remnant is painted at decode or by the model,
+  the one node that would let the two-sampler graphs carry a mask, what a
+  soft band of mask values does, and two attributions nobody has made.
