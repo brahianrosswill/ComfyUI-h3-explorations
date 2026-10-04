@@ -4,6 +4,24 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.9
+
+### Added
+
+- **`plate_restore.py`, `MiniMaxH3RestorePlate`: the node that lets a masked
+  render be split across two samplers.** As wired, the second sampler takes
+  the first one's still-noisy output as the picture to keep. The node goes
+  between them and writes `mask * first + (1 - mask) * plate` per stream, so
+  the kept rows are clean again and the generated rows resume where they
+  stopped. It refuses a mask that is not all 0 and 1, or that keeps part of a
+  patch, since a latent swap cannot be right for either; a song graph with an
+  `audio_mask` above zero is such a case. **Not registered yet** (a peer has
+  `nodes.py` open), in no graph, and not run on H3.
+- **`bench/check_plate_restore.py`**: core's own `KSAMPLER` and
+  `KSamplerX0Inpaint` on a packed video+audio latent with a stub model, with
+  the unfixed split as the red control. It pins the three core functions the
+  node leans on by source hash.
+
 ## 0.186.8
 
 ### Added

@@ -22,11 +22,12 @@ own below the rule.
   mouth against the frozen vocal, the edge of the subject, the seams between
   windows, and whether the clip-specific prompt beats the one that names no
   shot).
-- Owed after that: the original subject's shadow stays in the plate; a
+- Owed after that: the original subject's shadow stays in the plate; the
   node that restores the plate between two samplers, so the daily graphs can
-  take a mask (mrblue's probe,
-  `internal/claude/2026-10-04_mrblue/masked_v2v_review_probe.py`, shows it on
-  a stub model), and with it a Masked Source that feeds a plain sampler graph;
+  take a mask, is written and held to core's sampler on a stub model
+  (`../../plate_restore.py`, `../../bench/check_plate_restore.py`) but is not
+  registered, is in no graph and has not run on H3; with it, a Masked Source
+  that feeds a plain sampler graph;
   the source is resampled twice on its way to the canvas (the loader, then
   the fit); a frozen-row cache for a partly masked video
   (`frozen_video_cache.py::_gate` takes a wholly frozen one only), which
