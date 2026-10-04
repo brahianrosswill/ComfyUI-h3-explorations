@@ -24,7 +24,10 @@ item drives the module's own functions on made-up frames and masks.
    signatures are known, the picked one is taken in each shot they are in, a
    shot holding only the others is left empty, a subject who enters after a
    shot's first frame is still found and tracked back to the shot's start, and
-   the picked shot is tracked both ways from the pick frame.
+   the picked shot is tracked both ways from the pick frame. The comparison is
+   relative to the other people on the pick frame, who then score 0; picked on
+   a frame with nobody else it is the plain similarity, and the report says
+   which.
 5. **The mask is one per frame, at the frames' size, and empty where the
    subject is absent.** A threshold nothing can pass leaves every shot but the
    picked one empty; nothing on the pick frame leaves everything empty and the
@@ -155,7 +158,7 @@ def _world():
     shot 2 (16-23): 0 enters at frame 20, with 2.   shot 3 (24-31): 0 alone.
     Each person has a fixed signature and a box that says who they are.
     """
-    sigs = {0: torch.tensor([1.0, 0.0, 0.0]), 1: torch.tensor([0.0, 1.0, 0.0]), 2: torch.tensor([0.6, 0.0, 0.8])}
+    sigs = {0: torch.tensor([1.0, 0.0, 0.0]), 1: torch.tensor([0.0, 1.0, 0.0]), 2: torch.tensor([0.0, 0.0, 1.0])}
     boxes = {0: _box(40, 10, 80, 60), 1: _box(0, 20, 20, 50), 2: _box(100, 20, 120, 50)}
     def present(f: int) -> list[int]:
         if f < 8: return [1, 0]
@@ -182,7 +185,7 @@ def _world():
 def check_follow(problems):
     boxes, detect, sign, track, calls = _world()
     cuts = [8, 16, 24]
-    pieces, shots, picked = st.follow(32, cuts, 3, st.PICK_LARGEST, 0.8, detect, sign, track, stride=4)
+    pieces, shots, picked, others = st.follow(32, cuts, 3, st.PICK_LARGEST, 0.8, detect, sign, track, stride=4)
     if picked is None or not torch.equal(picked, boxes[0]):
         problems.append("the largest person on the pick frame was not the one picked")
         return
@@ -203,8 +206,15 @@ def check_follow(problems):
         if not torch.equal(mask[f], boxes[0]):
             problems.append(f"frame {f} does not carry the subject's mask")
             break
-    text = st.report(shots, cuts, 3, st.PICK_LARGEST, "person", True, 0.8, 1.0)
-    if "absent" not in text or "found on frame 20" not in text or "cuts at frame(s) [8, 16, 24]" not in text:
+    if others != 1:
+        problems.append(f"the comparison was made relative to {others} other(s); the pick frame holds one other person")
+    # relative to the other person on the pick frame, that person scores 0 and a stranger 0.5: neither is the subject
+    if not abs(shots[1].best - 0.5) < 1e-4:
+        problems.append(f"the shot holding the two others has best similarity {shots[1].best:.3f}; relative to the pick "
+                        "frame's other person it is 0.5 (the stranger) and 0 (that person)")
+    text = st.report(shots, cuts, 3, st.PICK_LARGEST, "person", True, 0.8, 1.0, others)
+    if ("absent" not in text or "found on frame 20" not in text or "cuts at frame(s) [8, 16, 24]" not in text
+            or "relative to the 1 other" not in text):
         problems.append(f"the report does not say what happened: {text!r}")
     tiles = st.preview(torch.rand((32, H, W, 3)), mask, shots)
     if tuple(tiles.shape) != (4, H, W, 3):
@@ -213,14 +223,21 @@ def check_follow(problems):
 
 def check_empty(problems):
     boxes, detect, sign, track, _calls = _world()
-    pieces, shots, picked = st.follow(32, [8, 16, 24], 3, st.PICK_LARGEST, 1.5, detect, sign, track, stride=4)
+    pieces, shots, picked, _others = st.follow(32, [8, 16, 24], 3, st.PICK_LARGEST, 1.5, detect, sign, track, stride=4)
     mask = st.assemble(32, H, W, pieces)
     if [s.seed for s in shots] != [3, None, None, None] or float(mask[8:].sum()) != 0.0:
         problems.append("with a threshold nothing can pass, a shot other than the picked one was still filled")
     if not torch.equal(mask[0], boxes[0]):
         problems.append("the picked shot lost its mask when the threshold was raised")
     none = lambda _frame: (torch.zeros((0, H, W)), [])
-    pieces, shots, picked = st.follow(32, [8], 3, st.PICK_LARGEST, 0.5, none, sign, track)
+    # picked where the subject is alone (frame 26): nothing to subtract, so the plain similarity is used
+    pieces, shots, picked, others = st.follow(32, [8, 16, 24], 26, st.PICK_LARGEST, 0.8, detect, sign, track, stride=4)
+    if others != 0 or [s.seed for s in shots] != [0, None, 20, 26]:
+        problems.append(f"picked on a frame with nobody else: relative to {others} other(s), seeds {[s.seed for s in shots]}; "
+                        "the plain similarity finds the subject in shots 1, 3 and 4 and not in shot 2")
+    if "plain similarity" not in st.report(shots, [8, 16, 24], 26, st.PICK_LARGEST, "person", True, 0.8, 1.0, others):
+        problems.append("the report does not say that the plain similarity was used")
+    pieces, shots, picked, _others = st.follow(32, [8], 3, st.PICK_LARGEST, 0.5, none, sign, track)
     if picked is not None or pieces or float(st.assemble(32, H, W, pieces).sum()) != 0.0:
         problems.append("with nothing detected on the pick frame something was still masked")
     if "every mask is empty" not in st.report(shots, [8], 3, st.PICK_LARGEST, "person", False, 0.5, 1.0):
@@ -244,6 +261,10 @@ def check_signature(problems):
     feats_a, feats_b = torch.zeros((3, H, W)), torch.zeros((3, H, W))
     feats_a[0, 12:32], feats_b[1, 12:32] = 1.0, 1.0      # two different heads
     feats_a[2, 32:], feats_b[2, 32:] = 1.0, 1.0          # the same clothes
+    v = torch.tensor([0.6, 0.8, 0.0])
+    r = st.relative(v, torch.tensor([0.6, 0.0, 0.0]))
+    if r is None or not torch.allclose(r, torch.tensor([0.0, 1.0, 0.0])) or st.relative(v, None) is not v:
+        problems.append("relative does not subtract the centre and return unit length, or changes a signature with no centre")
     whole = st.similarity(st.signature(feats_a, body), st.signature(feats_b, body))
     heads = st.similarity(st.signature(feats_a, head), st.signature(feats_b, head))
     if not (whole > 0.5 and heads < 0.05):

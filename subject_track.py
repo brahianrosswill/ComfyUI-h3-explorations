@@ -33,25 +33,39 @@ core's `initial_mask` path and has none of the three behaviours above.
    the detections is chosen by `pick` (`choose`). That mask is the subject.
 3. Each other shot: the detections on a frame of that shot are compared with
    the subject by the vision trunk's features pooled under the top third of
-   each mask, the head and shoulders (`top_third`, `signature`,
-   `similarity`). The best one at or above `match_threshold` seeds the shot; a
-   shot with none is left empty. A shot is probed at its first frame and then
-   every `PROBE_STRIDE` frames, so a subject who walks in late is still found.
+   each mask, the head and shoulders (`top_third`, `signature`). The other
+   people on the pick frame are certainly not the subject, so their average
+   signature is subtracted from every signature before comparing (`relative`,
+   `similarity`): what is left is how a person differs from the people the
+   subject was standing among. The best one at or above `match_threshold`
+   seeds the shot; a shot with none is left empty. A shot is probed at its
+   first frame and then every `PROBE_STRIDE` frames, so a subject who walks in
+   late is still found.
 4. Tracking: from the seed frame forward to the shot's end and backward to its
    start, each a tracker call with the seed mask as `initial_mask`.
 
 **How far the matching can be trusted.** SAM 3's trunk is trained to say what
 a thing is, not who, so people in the same clothes score close together. On
-the owner's band clip (six people in one sweatshirt, measured on CPU with the
-masks of an earlier track): pooled under the whole mask, the lead in other
-shots scores 0.95 to 0.99 against the pick and a neighbour in the same shot
-0.92 to 0.94, too close to rely on. Under the top third the lead facing the
-camera scores 0.945 and above and everyone else 0.88 and below. Seen from
-behind he scores 0.86 to 0.87, inside the others' range: a shot that opens on
-his back is not found by this signature, and the report will show it as
-absent with its best value. On that clip every shot he is in opens on his
-face, and the tracker follows him as he turns. One clip; the threshold is an
-input for that reason.
+the owner's band clip (six people in one sweatshirt; measured on CPU with the
+masks of an earlier track, `docs/research/masking/2026-10-04_mrhf.md`):
+
+- pooled under the whole mask, a neighbour in the same frame scores as close
+  to the pick as the lead in another shot does. Not usable.
+- under the top third, plain similarity: the lead facing the camera 0.945 and
+  above, everyone else 0.89 and below. A gap of about 0.06.
+- under the top third, with the pick frame's other people subtracted: the lead
+  facing the camera 0.77 and above, 0.88 and above on the first frame of each
+  shot he is in; everyone else 0.65 and below. About three times the gap.
+- seen from behind he scores inside the others' range either way. A shot that
+  opens on his back is not found, and the report shows it as absent with its
+  best value. On that clip every shot he is in opens on his face, and the
+  tracker follows him as he turns.
+
+When the pick frame shows nobody else there is nothing to subtract and the
+plain similarity is used, on its own scale: other people then score about 0.8
+to 0.9, so `match_threshold` wants to be near 0.91 there. The report says
+which of the two was used. One clip; the threshold is an input for that
+reason.
 
 Everything that asks SAM for something is an input the user can read and
 change (`subject_phrase`, `detection_threshold`, `match_threshold`,
@@ -98,11 +112,12 @@ CUT_THRESHOLD = 0.9
 #: Frames between probes of a shot when its first frame has no match.
 #: Reasoned: half a second at the pack's frame rate.
 PROBE_STRIDE = 12
-#: The default of `match_threshold`. Measured on one clip, the band segment:
-#: between the lead facing the camera in other shots (0.945 and above) and
-#: everyone else (0.88 and below), on the top-third signature
-#: (`docs/research/masking/2026-10-04_mrhf.md`). Not validated elsewhere.
-MATCH_THRESHOLD = 0.91
+#: The default of `match_threshold`. Measured on one clip, the band segment,
+#: with the pick frame's other people subtracted: between everyone else (0.65
+#: and below) and the lead facing the camera (0.77 and above)
+#: (`docs/research/masking/2026-10-04_mrhf.md`). Not validated elsewhere, and
+#: on the wrong scale when the pick frame shows only the subject.
+MATCH_THRESHOLD = 0.71
 #: The default of `detection_threshold`. Inherited: core's node default
 #: (`comfy_extras/nodes_sam3.py::SAM3_Detect.define_schema`).
 DETECTION_THRESHOLD = 0.5
@@ -204,6 +219,14 @@ def signature(features: torch.Tensor, mask: torch.Tensor) -> torch.Tensor | None
     return v / v.norm().clamp(min=1e-6)
 
 
+def relative(sig: torch.Tensor | None, centre: torch.Tensor | None) -> torch.Tensor | None:
+    """A signature with `centre` subtracted, unit length again. Unchanged when there is no centre."""
+    if sig is None or centre is None:
+        return sig
+    v = sig - centre
+    return v / v.norm().clamp(min=1e-6)
+
+
 def similarity(a: torch.Tensor | None, b: torch.Tensor | None) -> float:
     """Cosine similarity of two signatures; -1 when either is missing."""
     if a is None or b is None:
@@ -225,7 +248,7 @@ def follow(n_frames: int, cuts: list[int], pick_frame: int, pick: str, match_thr
            detect: Callable[[int], tuple[torch.Tensor, list[float]]],
            sign: Callable[[int, torch.Tensor], torch.Tensor | None],
            track: Callable[[int, int, int, torch.Tensor], torch.Tensor],
-           stride: int = PROBE_STRIDE) -> tuple[dict[int, torch.Tensor], list[Shot], torch.Tensor | None]:
+           stride: int = PROBE_STRIDE) -> tuple[dict[int, torch.Tensor], list[Shot], torch.Tensor | None, int]:
     """The subject's mask per frame, shot by shot. The model work is in three callables.
 
     `detect(frame)` returns that frame's detections, [N, H, W] and their
@@ -234,8 +257,9 @@ def follow(n_frames: int, cuts: list[int], pick_frame: int, pick: str, match_thr
     `end` exclusive, tracked from `mask` on `seed`, in frame order.
 
     Returns the tracked pieces as {first frame: [n, H, W]}, one `Shot` per
-    shot, and the picked mask (None when nothing was detected on the pick
-    frame, in which case every shot is empty).
+    shot, the picked mask (None when nothing was detected on the pick frame,
+    in which case every shot is empty), and how many other people on the pick
+    frame the comparison was made relative to (0 is the plain similarity).
     """
     ranges = shot_ranges(n_frames, cuts)
     shots = [Shot(s, e) for s, e in ranges]
@@ -244,9 +268,11 @@ def follow(n_frames: int, cuts: list[int], pick_frame: int, pick: str, match_thr
     masks, scores = detect(int(pick_frame))
     which = choose(masks, scores, pick)
     if which is None:
-        return {}, shots, None
+        return {}, shots, None, 0
     picked = masks[which]
-    reference = sign(int(pick_frame), picked)
+    others = [v for v in (sign(int(pick_frame), m) for i, m in enumerate(masks) if i != which) if v is not None]
+    centre = torch.stack(others, dim=0).mean(dim=0) if others else None
+    reference = relative(sign(int(pick_frame), picked), centre)
     pieces: dict[int, torch.Tensor] = {}
     for shot in shots:
         seed, seed_mask = None, None
@@ -257,7 +283,7 @@ def follow(n_frames: int, cuts: list[int], pick_frame: int, pick: str, match_thr
             for f in range(shot.start, shot.end, max(int(stride), 1)):
                 found, _ = detect(f)
                 shot.candidates = int(found.shape[0])
-                sims = [similarity(reference, sign(f, m)) for m in found]
+                sims = [similarity(reference, relative(sign(f, m), centre)) for m in found]
                 if sims and max(sims) > shot.best:
                     shot.best = max(sims)
                 if sims and max(sims) >= float(match_threshold):
@@ -267,7 +293,7 @@ def follow(n_frames: int, cuts: list[int], pick_frame: int, pick: str, match_thr
             continue
         shot.seed = seed
         pieces[shot.start] = track(shot.start, shot.end, seed, seed_mask)
-    return pieces, shots, picked
+    return pieces, shots, picked, len(others)
 
 
 def assemble(n_frames: int, height: int, width: int, pieces: dict[int, torch.Tensor]) -> torch.Tensor:
@@ -279,13 +305,15 @@ def assemble(n_frames: int, height: int, width: int, pieces: dict[int, torch.Ten
 
 
 def report(shots: list[Shot], cuts: list[int], pick_frame: int, pick: str, phrase: str, picked: bool,
-           match_threshold: float, seconds: float) -> str:
+           match_threshold: float, seconds: float, others: int = 0) -> str:
     """What was found, in words: the cuts, the pick, each shot, the cost."""
     lines = [f"{len(shots)} shot(s); cuts at frame(s) {cuts if cuts else 'none'}"]
     if not picked:
         lines.append(f"nothing matched `{phrase}` on pick_frame {pick_frame}: no subject, every mask is empty")
     else:
         lines.append(f"subject: the {pick} `{phrase}` on frame {pick_frame}")
+        lines.append(f"similarity is relative to the {others} other(s) on that frame" if others else
+                     "nobody else on that frame: plain similarity, where other people score about 0.8 to 0.9")
     for n, s in enumerate(shots, 1):
         if s.seed is None:
             why = "no detection" if s.best < 0 else f"best similarity {s.best:.2f}, below {match_threshold:.2f}"
@@ -362,8 +390,9 @@ def _sam_callables(segmenter, segmenter_clip, frames: torch.Tensor, phrase: str,
 
 class MiniMaxH3SubjectTrack(io.ComfyNode):
     #: Part of a kept mask's key (`mask_store.mask_key`). Bump when the same
-    #: inputs and settings would give a different mask.
-    MASK_VERSION = 1
+    #: inputs and settings would give a different mask. 2: the comparison became
+    #: relative to the pick frame's other people.
+    MASK_VERSION = 2
 
     @classmethod
     def define_schema(cls):
@@ -393,9 +422,10 @@ class MiniMaxH3SubjectTrack(io.ComfyNode):
                                         "one SAM 3 scored highest for the phrase. The preview shows who it took.")),
                 io.Float.Input("match_threshold", default=MATCH_THRESHOLD, min=-1.0, max=1.0, step=0.01,
                                tooltip=("How alike a person in another shot has to be to count as the subject, "
-                                        "from -1 to 1. People in the same clothes score close together, so "
-                                        "the usable range is narrow. The report gives each shot's best value: "
-                                        "raise this if it took someone else, lower it if it missed them.")),
+                                        "from -1 to 1. The report gives each shot's best value: raise this if "
+                                        "it took someone else, lower it if it missed them. If the pick frame "
+                                        "shows nobody else the scale is different and about 0.91 is the value "
+                                        "to start from; the report says when that is so.")),
                 io.Float.Input("cut_threshold", default=CUT_THRESHOLD, min=0.0, max=2.0, step=0.01,
                                tooltip=("How different two consecutive frames have to be to count as a cut. "
                                         "The report lists the cuts it found: lower this if it missed one, "
@@ -421,10 +451,11 @@ class MiniMaxH3SubjectTrack(io.ComfyNode):
         cuts = find_cuts(cut_scores(frames), cut_threshold)
         detect, sign, track = _sam_callables(segmenter, segmenter_clip, frames, subject_phrase, detection_threshold)
         with torch.no_grad():
-            pieces, shots, picked = follow(n, cuts, int(pick_frame), pick, float(match_threshold), detect, sign, track)
+            pieces, shots, picked, others = follow(n, cuts, int(pick_frame), pick, float(match_threshold),
+                                                   detect, sign, track)
         mask = assemble(n, h, w, pieces)
         text = report(shots, cuts, int(pick_frame), pick, subject_phrase, picked is not None,
-                      float(match_threshold), time.perf_counter() - began)
+                      float(match_threshold), time.perf_counter() - began, others)
         logger.info("[h3] MiniMaxH3SubjectTrack: %s", text.replace("\n", "; "))
         tiles = preview(frames, mask, shots)
         shown = {**ui.PreviewImage(tiles, cls=cls).as_dict(), **ui.PreviewText(text).as_dict()}

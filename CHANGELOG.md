@@ -4,6 +4,20 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.36
+
+### Changed
+
+- **`MiniMaxH3SubjectTrack` compares people relative to the others on the
+  pick frame.** They are certainly not the subject, so their average
+  signature is subtracted before comparing. Measured on the band clip, that
+  widens the gap between the lead and everyone else about threefold. The
+  default of `match_threshold` moves from 0.91 to 0.71 with it, and
+  `MASK_VERSION` from 1 to 2. When the pick frame shows nobody else the plain
+  similarity is used, on its own scale, and the report says so. The node is
+  still not registered and has not run on the card.
+- `docs/research/masking/2026-10-04_mrhf.md` has the table behind it.
+
 ## 0.186.35
 
 ### Added
