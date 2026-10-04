@@ -4,6 +4,28 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.42
+
+### Rendered
+
+- **A late start carries the turn and the original's look with it.** Three
+  arms on one band window holding the shot where the group turns away, on
+  the generic prompt: the shipped graph, and the same with the sampler
+  started one and two knots into the distill's schedule. Both late arms turn
+  him at the original's moment with no prompt text; one knot gives a hybrid
+  of the reference and the original, two give the original back.
+  `bench/results/2026-10-04_masked_v2v_band.md`, "The turn without a
+  prompt"; the control is `turn_control` in
+  `bench/masked_v2v_band_arms.json`.
+
+### Docs
+
+- The day's wrap-up for the masking lane: `docs/wiki/next_steps.md` now says
+  version one shipped and lists what is next in order;
+  `docs/research/masking/2026-10-04_mrpink.md` gains version one, the turn
+  and the open items; `docs/h3_audio_freeze.md` section 4 records the late
+  start beside the other movement findings.
+
 ## 0.186.41
 
 ### Docs

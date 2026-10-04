@@ -145,7 +145,47 @@ rows.
 | `band_baseline_w1` | undistilled, base step count, stock attention, `er_sde` | worse likeness; "er_sde inserts noise. thats why"; "not worth the long render time" |
 | `band_changed_dense_w1` | PDD8 baked, Sol's window closed so every step is the dense int8 fallback | "no sol changed the clothes" |
 
+## The turn without a prompt: a late start
+
+The owner, on version one: "one problem: he doesnt turn around at the end",
+and "i really dont wanna prompt turns around". A peer session's suggestion:
+start the sampler a little way into its schedule, so some of the source
+survives under the mask as a pose hint. One window from 1:52, which holds the
+shot where the group turns away; the generic group prompt, the same seed, the
+shipped graph and two copies of it with core's `SplitSigmas` dropping the
+first knots of the distill's schedule. Rows `turn_control`, `turn_late1`,
+`turn_late2`; clips `masked_v2v_turn_turn_*` on the share. Read from frame
+tiles across the turn and one frame early in the window.
+
+| arm | knots dropped | the turn | who he is |
+|---|---|---|---|
+| `turn_control` | none | faces the camera while the others turn to the wall | the reference: cap, short hair, T-shirt |
+| `turn_late1` | one | turns with the group, at the original's moment | a hybrid: the reference's cap and roughly its face, the original's long hair, a hooded sweatshirt that is neither's |
+| `turn_late2` | two | turns with the group, at the original's moment | the original: long hair and the green sweatshirt. The owner: "he turns ... and has the hair and clothes from the original guy lol. but he does turn" |
+
+- **A late start carries the pose and the original with it.** On this
+  schedule there is no knot that follows the movement and keeps the
+  reference: one knot already brings the hair back and loses the clothes.
+  One window, one seed. A third arm at three knots was cancelled after the
+  second.
+- What it does establish: the pose can be carried with no prompt text, so
+  the question is how to let the coarse shape through without the look. The
+  peer's follow-up, untried: degrade the source inside the region (a hard
+  blur, no colour) before the late start, so facing survives and hair and
+  clothes do not (`docs/research/masking/2026-10-04_mrhf.md`).
+- The late arms were also quicker, since they sample fewer steps
+  (`per_node_s`). The second and third arms did not run the tracker or the
+  Masked Source again; inside one server session core's cache explains that.
+- A peer looked at the control shot and withdrew a second idea, keeping the
+  original's body below a row: the frame ends at his thighs for the whole
+  shot, so nothing that would be kept carries facing.
+
 ## Not established
+
+- **How to carry the original's movement with no prompt text and keep the
+  reference's look.** Open; the section above is where it stands.
+- Whether the kept mask is read back after a server restart. Every reuse seen
+  today was inside one session, where core's cache would do the same.
 
 - Whether the regenerated tokens beside him alter the neighbours they
   overlap. A peer's design for protecting them is in

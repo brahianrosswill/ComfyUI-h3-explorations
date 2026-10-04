@@ -13,26 +13,42 @@ pointer goes; this list is stale the moment the roadmap disagrees with it.
 Items from the `mrpink` helper lane first; `evalman`'s render lane appends its
 own below the rule.
 
-**Masked video to video (owner, 2026-10-04): built, first renders out, not judged.**
+**Masked video to video (owner, 2026-10-04): version one shipped; movement is the open problem.**
 - What it is and what it is not: [`../h3_audio_freeze.md`](../h3_audio_freeze.md)
-  section 4, "a source video for the song node".
-- For the owner, on playback: the three clips of
-  `../../bench/masked_v2v_arms.json`, against the questions in
-  `../../bench/results/2026-10-04_masked_v2v_first_run.md` (likeness, the
-  mouth against the frozen vocal, the edge of the subject, the seams between
-  windows, and whether the clip-specific prompt beats the one that names no
-  shot).
-- Owed after that: the original subject's shadow stays in the plate; the
-  node that restores the plate between two samplers, so the daily graphs can
-  take a mask, is written and held to core's sampler on a stub model
-  (`../../plate_restore.py`, `../../bench/check_plate_restore.py`) and
-  registered, but is in no graph and has not run on H3; what it waits for is
-  a Masked Source that feeds a plain sampler graph, **parked by the owner on
-  2026-10-04** (one pass for now, `decisions.md`);
-  the source is resampled twice on its way to the canvas (the loader, then
-  the fit); a frozen-row cache for a partly masked video
-  (`frozen_video_cache.py::_gate` takes a wholly frozen one only), which
-  is where the render time would come back, since most rows are frozen.
+  section 4. What was decided and against what: `decisions.md`, 2026-10-04.
+  The renders and the owner's verdicts:
+  `../../bench/results/2026-10-04_masked_v2v_band.md` and
+  `../../bench/results/2026-10-04_masked_v2v_first_run.md`. Each session's
+  notes: [`../research/masking/`](../research/masking/README.md).
+- **First: validate and land the subject-track draft with less to set**
+  (automatic pick frame and match, each with a manual option). The owner
+  asked that two sessions validate it before it lands. It changes the node's
+  inputs, so it lands in one commit with `h3_config.SUBJECT_TRACK`, the
+  generator's node block, `bench/check_node_ids.py --write` and a rebuild.
+  The known answer is the band segment's result in the band record.
+  `../research/masking/2026-10-04_mrhf.md` has the draft's state.
+- **The turn, with no prompt text** (owner: does not want to prompt
+  movement). A late start carries the pose and the original's look together
+  (band record, "The turn without a prompt"). Next arm: the same late start
+  from a source degraded inside the region. After it, and only with the
+  owner's say-so, the generic clause narrowed to facing.
+- **The scene's clothes on the new subject** (owner: where they want the band
+  clip to go). Untried: a crop of the original's torso as a second
+  reference.
+- The kept mask across a server restart: every reuse so far was inside one
+  session, where core's cache does the same.
+- Owed, lower: the original subject's shadow stays in the plate; the source
+  is resampled twice on its way to the canvas (the loader, then the fit); a
+  frozen-row cache for a partly masked video
+  (`frozen_video_cache.py::_gate` takes a wholly frozen one only), which is
+  where render time would come back, since most rows are frozen; the margin
+  as a share of the subject's size and not a pixel count.
+- Parked by the owner, 2026-10-04: two samplers. The node that restores the
+  plate between them is written and held to core's sampler on a stub model
+  (`../../plate_restore.py`, `../../bench/check_plate_restore.py`), is in no
+  graph and has not run on H3.
+- Not being built, by the owner's call: protecting the neighbours' pixels,
+  `paint_out` as a default, a ControlNet, the baseline chain for this lane.
 
 **Encoder int8 against bf16 (owner, 2026-09-27): closed.** `ENCODER_INT8`
 stays the shipped default.

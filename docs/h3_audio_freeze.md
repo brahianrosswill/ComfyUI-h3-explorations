@@ -302,7 +302,12 @@ clips (`bench/results/2026-10-04_masked_v2v_first_run.md`,
 - **Movement is not carried.** A generic prompt leaves the replaced subject
   facing the camera when the original turns away; naming the shot fixes it
   and is specific prompting; a generic "do what the people beside you do"
-  turns him at the right moment and twice at wrong ones.
+  turns him at the right moment and twice at wrong ones. Starting the
+  sampler part-way into its schedule, so the source shows through under the
+  mask, does carry the turn with no prompt text and brings the original's
+  hair and clothes with it, from the first knot dropped
+  (`bench/results/2026-10-04_masked_v2v_band.md`, "The turn without a
+  prompt"). **Open**: the owner does not want to prompt movement.
 - **The margin decides how far the new subject may differ from the old one,
   in place as well as in outline.** Seen on the band clip: at the wider
   margin the replaced lead stands further to one side than at the default,
