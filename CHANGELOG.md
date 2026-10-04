@@ -4,6 +4,21 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.40
+
+### Docs
+
+- **The masking note records a draft of the subject track with less to set,
+  and the turn's control arm.** The draft picks the frame and the similarity
+  cut automatically, each with a manual option beside it, judges a shot a few
+  frames in, and writes each shot's verdict on its preview tile. It is not in
+  the tree: it removes two inputs the shipped graph carries, so it waits for
+  a commit that changes `workflows/h3_config.py::SUBJECT_TRACK` and rebuilds
+  with it. `docs/research/masking/2026-10-04_mrhf.md` has what it does, what
+  mrblue's review added and what is untested. The same note records that the
+  subject does not turn in the control arm, and an idea for it, keeping the
+  original's body below a row, withdrawn after looking at the shot.
+
 ## 0.186.39
 
 ### Changed
