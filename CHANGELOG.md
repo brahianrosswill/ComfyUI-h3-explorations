@@ -4,6 +4,18 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.10
+
+### Changed
+
+- `docs/research/masking/2026-10-04_mrhf.md`: the prompted turn works on the
+  band clip; `head and hair` on a long-haired original gives an oversized head
+  with no neck, because the regenerated region is the head plus all of the
+  hair and the model fills it (seen on matched frames; the owner rejected the
+  render). Two arms suggested, neither run. The owner's later requirements are
+  recorded: whole subject is the default, the generic H3 prompt is the bar,
+  and any SAM phrase used to mask or track is visible and editable.
+
 ## 0.186.9
 
 ### Added
