@@ -4,6 +4,16 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.15
+
+### Changed
+
+- `docs/research/masking/2026-10-04_mrhf.md`: Meta's other models looked at
+  again against the day's actual failures. One was missed in the first
+  survey, Sapiens2's human matting model; Sapiens2's body-part classes and an
+  appearance embedding (DINOv3, which core already loads, or Perception
+  Encoder) are the other two candidates. None was run.
+
 ## 0.186.14
 
 ### Changed
