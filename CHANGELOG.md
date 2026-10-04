@@ -4,6 +4,16 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.20
+
+### Changed
+
+- `docs/research/masking/2026-10-04_mrhf.md`: the mp4 encoder is withdrawn as
+  the cause of the single-frame bump, since mrblue's figures were taken on
+  decoded tensors and show it too. Recorded what a re-encode test still needs:
+  the window latents are saved, but `crf` is in a window's reuse key, so the
+  node cannot re-export; the stored latents have to be decoded outside it.
+
 ## 0.186.19
 
 ### Changed
