@@ -4,6 +4,20 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.26
+
+### Changed
+
+- `docs/research/masking/2026-10-04_mrhf.md`: the owner's theory of the lines
+  on the first clip, and a correction: my comparisons of the band render
+  against its source used the wrong aspect for that clip, so the "frame or
+  two" of lead I reported was my scaling error. With the right fit the two
+  line up, and the regenerated area on four frames is the lead and the strip
+  where his hair was.
+- The same note: which Sapiens2 files fit the lane, that each repository
+  holds its weights twice, and a clause of the Sapiens2 licence (no use "to
+  create deepfakes") flagged to the owner before any download.
+
 ## 0.186.25
 
 ### Changed
