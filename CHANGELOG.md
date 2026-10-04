@@ -4,6 +4,18 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.19
+
+### Changed
+
+- `docs/research/masking/2026-10-04_mrhf.md`: corrections after mrblue's
+  decode-only test. The band beside the subject is a fixed line on the token
+  grid and does not follow the original's knee; the latent runs are not all
+  four frames long, so the "position in the run" grouping was wrong; and the
+  single-frame bump falls exactly on the render file's P-frames, so it may be
+  the mp4 encoder's and not the model's. The SAM 3 paper confirms the
+  Perception Encoder backbone and that its video data has no scene cuts.
+
 ## 0.186.18
 
 ### Changed
