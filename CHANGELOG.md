@@ -4,6 +4,16 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.23
+
+### Changed
+
+- `docs/research/masking/2026-10-04_mrhf.md`: the first clip is set aside at
+  the owner's word, and the note records what closed it. The lines beside the
+  subject are seams in the source's own backdrop, the same in source and
+  render where the picture is kept; mrblue's encode comparison shows the file
+  is not the cause. The lane works on the band clip from here.
+
 ## 0.186.22
 
 ### Changed
