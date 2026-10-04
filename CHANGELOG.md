@@ -4,6 +4,16 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.7
+
+### Changed
+
+- `docs/research/masking/2026-10-04_mrhf.md`: the white dot on the replaced
+  subject's shirt is the reference still's own sparkle mark, and a cleaned
+  still (`f_img_outside_nomark.png`) is in the input folder; the owner's two
+  decisions of the day are recorded (the replaced region is a choice on the
+  node, whole person or head and hair; no ControlNet).
+
 ## 0.186.6
 
 ### Added
