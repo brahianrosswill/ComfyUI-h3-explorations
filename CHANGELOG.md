@@ -4,6 +4,32 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.35
+
+### Added
+
+- **`subject_track.py`, a node that follows one person through a clip with
+  cuts** (`MiniMaxH3SubjectTrack`; owner, 2026-10-04: "if we can make our
+  nodes better than core may as well"). Not registered yet. It finds the
+  cuts, takes one pick on a frame the user names, finds the same person on
+  each other shot by SAM 3's trunk features under the top third of each
+  detection, and tracks every shot from that person's mask with no text
+  prompt, which is core's `initial_mask` path. It replaces the hand-typed
+  object indices of the band arms. Output: one mask per frame at the frames'
+  size, empty where the subject is absent; a preview and a report shown on
+  the node. The phrase and the three thresholds are inputs. It carries
+  `MASK_VERSION` for `mask_store.py` and is not an output node.
+- The matching has a narrow working range, stated in the module: measured on
+  the band clip, the lead facing the camera scores well above the others and
+  the lead seen from behind does not. `match_threshold` is an input for that
+  reason, and its default is from that one clip.
+- `bench/check_subject_track.py`, indexed in `docs/checks.md`: the module's
+  own logic with stand-ins for SAM 3. The detector, the tracker and the
+  node's time have not been run on the card.
+- `docs/research/masking/2026-10-04_mrhf.md` records the two measurements
+  behind the node, the cut score and the identity probe, and fixes three
+  citations of the SAM 3 checkout that `check_doc_links.py` refused.
+
 ## 0.186.34
 
 ### Changed
