@@ -4,6 +4,15 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.8
+
+### Added
+
+- `docs/research/masking/2026-10-04_mrpink.md`: the build session's notes on
+  masked video to video, in the shared folder, with a correction kept beside
+  the claim it corrects (the clip-specific prompt was not shown to reduce
+  flicker; the flickering shot lies outside that clip).
+
 ## 0.186.7
 
 ### Changed

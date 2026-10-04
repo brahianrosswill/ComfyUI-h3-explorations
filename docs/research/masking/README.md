@@ -40,3 +40,7 @@ that were rendered are `bench/masked_v2v_arms.json` and
   sampling to tell whether the remnant is painted at decode or by the model,
   the one node that would let the two-sampler graphs carry a mask, what a
   soft band of mask values does, and two attributions nobody has made.
+- [`2026-10-04_mrpink.md`](2026-10-04_mrpink.md): the build session's notes:
+  what the mechanism is, what the two clips showed, why one word does not
+  isolate one person among several, the turn that a generic prompt missed,
+  the `replace` choice (whole subject, or head and hair) and what is open.
