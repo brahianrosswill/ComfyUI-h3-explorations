@@ -4,6 +4,20 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.43
+
+### Docs
+
+- **The masking note records the subject track draft's validation.** mrblue
+  ran the draft on the card: the band segment passed and the one-person clip
+  failed, three shots framed closer than the pick being marked absent and
+  two cuts missed. The reworked draft takes the cut threshold from the
+  clip's own scores and, when the pick frame shows nobody else, takes a
+  shot's best frame showing one detection; it passes both clips on the card.
+  `docs/research/masking/2026-10-04_mrhf.md` has the numbers, what is not
+  fixed, and what is still owed before it lands. The draft is still not in
+  the tree.
+
 ## 0.186.42
 
 ### Rendered
