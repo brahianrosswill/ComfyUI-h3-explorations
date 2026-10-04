@@ -257,6 +257,7 @@
       "part_margin": 8,
       "composite": "whole region",
       "change_threshold": 0.05,
+      "reuse_mask": true,
       "segmenter": [
         "100",
         0

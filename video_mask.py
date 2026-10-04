@@ -92,6 +92,17 @@ original's trace in the kept tokens also tells the model where the subject
 is and how big, and a hole smaller than the original's hair leaves a fringe
 the model continues as dark lines.
 
+**The mask is kept across runs** (`reuse_mask`; owner, 2026-10-04: "save the
+mask"). Tracking the subject, and finding the part for `head and hair`, cost
+more than a window of sampling after every restart, and a clip's mask does
+not change between the arms of a test. The node keeps its finished mask on
+disk under a key made from everything that decides it, and asks core for
+`mask`, `segmenter` and `segmenter_clip` only when nothing kept matches, so on
+a hit the tracker and the detector never run. A hit is the same bytes as the
+tracked mask. `mask_store.py` has the key, the format and the budget;
+`MASK_KEY_SKIP` below is the list of this node's inputs that do not change
+its mask.
+
 Design from two third-party nodes, read and not run:
 `coderef/comfyui_dagthomas/nodes/h3/mouth_guard.py` (pixel grow, max-pool,
 max per run; it protects where this regenerates) and
@@ -148,6 +159,15 @@ PART_MARGIN = 8
 #: Inherited: core's node default
 #: (`comfy_extras/nodes_sam3.py::SAM3_Detect.define_schema`).
 PART_THRESHOLD = 0.5
+#: This node's inputs that do not change the mask it settles on: they act on
+#: the mask afterwards (the grow, the feather, the composite) or on the frames.
+#: Everything else on the node, and everything upstream of it, is in the key a
+#: kept mask is found by (`mask_store.mask_key`). Reasoned, from `execute`: the
+#: mask is final before any of these is read. `bench/check_mask_store.py`
+#: holds both directions.
+MASK_KEY_SKIP = ("grow_pixels", "feather_pixels", "paint_out", "composite", "change_threshold", "reuse_mask")
+#: The inputs core is asked for only when no kept mask matches.
+LAZY_FOR_MASK = ("mask", "segmenter", "segmenter_clip")
 
 
 def run_lengths(latent_t: int) -> list[int]:
@@ -440,7 +460,8 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                 "as SAM3 Track to Mask gives it."),
             inputs=[
                 io.Image.Input("frames", tooltip="The source video's frames at 24 fps, from its start."),
-                io.Mask.Input("mask", tooltip="One mask per frame, 1 on the subject to replace."),
+                # lazy since 2026-10-04: not asked for when a kept mask matches (`check_lazy_status`)
+                io.Mask.Input("mask", lazy=True, tooltip="One mask per frame, 1 on the subject to replace."),
                 io.Int.Input("grow_pixels", default=32, min=0, max=512,
                              tooltip=("How far the mask is widened before it reaches the model, in pixels of "
                                       "the render canvas. Raise it when the replacement is a different shape "
@@ -463,9 +484,9 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                                           "encoded, so the kept picture around the mask carries no trace of "
                                           "them. Turn it on if a faint remnant of the original shows beside "
                                           "the new subject. Costs a fill per frame, no sampling time.")),
-                io.Model.Input("segmenter", optional=True,
+                io.Model.Input("segmenter", optional=True, lazy=True,
                                tooltip="The SAM 3 model that tracked the mask. Read only for `head and hair`."),
-                io.Clip.Input("segmenter_clip", optional=True,
+                io.Clip.Input("segmenter_clip", optional=True, lazy=True,
                               tooltip="The SAM 3 checkpoint's text encoder. Read only for `head and hair`."),
                 io.String.Input("part_phrases", default=PART_PHRASES,
                                 tooltip=("What SAM 3 is asked to find on the subject for `head and hair`, "
@@ -494,7 +515,16 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                                         "source to be kept, as a fraction of full brightness. Lower it if parts "
                                         "of the new subject go missing; raise it if flicker around the subject "
                                         "remains.")),
+                # appended 2026-10-04 (`mask_store.py`)
+                io.Boolean.Input("reuse_mask", default=True, optional=True,
+                                 tooltip=("On (default): the finished mask is kept on disk, and a later run with "
+                                          "the same video and the same mask settings uses it without tracking "
+                                          "again, also after a restart. Any change to the video or to a setting "
+                                          "that affects the mask tracks afresh.\n\n"
+                                          "Off: track every time and keep nothing. Costs the tracker, and the "
+                                          "part detection for `head and hair`, on every run after a restart.")),
             ],
+            hidden=[io.Hidden.prompt, io.Hidden.unique_id],
             outputs=[H3MaskedSource.Output(display_name="source"),
                      io.Mask.Output(display_name="mask",
                                     tooltip=("The mask this node used, one per source frame, before grow_pixels: "
@@ -502,13 +532,83 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
         )
 
     @classmethod
+    def _mask_key(cls, frames, reuse_mask):
+        """The key this node's mask is kept under, or None: turned off, or no queued prompt to read (a direct call)."""
+        hidden = getattr(cls, "hidden", None)
+        prompt, node_id = getattr(hidden, "prompt", None), getattr(hidden, "unique_id", None)
+        if not reuse_mask or frames is None or not isinstance(prompt, dict) or node_id is None:
+            return None
+        from . import mask_store
+        return mask_store.mask_key(prompt, node_id, frames, skip=MASK_KEY_SKIP)
+
+    @classmethod
+    def check_lazy_status(cls, frames=None, replace=REPLACE_WHOLE, reuse_mask=True, **kwargs):
+        # None is a connected input core has not run yet; an unconnected
+        # optional input is absent. `frames` is not lazy, so it is here.
+        wanted = LAZY_FOR_MASK if replace == REPLACE_PART else LAZY_FOR_MASK[:1]
+        missing = [name for name in wanted if name in kwargs and kwargs[name] is None]
+        if not missing:
+            return []
+        key = cls._mask_key(frames, reuse_mask)
+        if key is not None:
+            from . import mask_store
+            if mask_store.has(key, tuple(frames.shape[:3])):
+                return []           # a kept mask matches: the tracker and the detector do not run
+        return missing
+
+    @classmethod
+    # `mask` has no default: it is required in the schema, and core hands a lazy input it was not asked to run
+    # as None, which is what a hit on a kept mask looks like here.
     def execute(cls, frames, mask, grow_pixels=32, feather_pixels=8, replace=REPLACE_WHOLE, paint_out=False,
                 segmenter=None, segmenter_clip=None, part_phrases=PART_PHRASES,
                 part_threshold=PART_THRESHOLD, part_margin=PART_MARGIN, composite=COMPOSITE_REGION,
-                change_threshold=CHANGE_THRESHOLD) -> io.NodeOutput:
+                change_threshold=CHANGE_THRESHOLD, reuse_mask=True) -> io.NodeOutput:
+        if frames.ndim != 4:
+            raise ValueError(f"frames must be [N, H, W, C]; got {tuple(frames.shape)}")
+        if int(feather_pixels) > int(grow_pixels):
+            raise ValueError(
+                f"feather_pixels {int(feather_pixels)} is wider than grow_pixels {int(grow_pixels)}: the blend "
+                "would reach the subject's own pixels and bring the original back at its edge")
+        if replace not in (REPLACE_WHOLE, REPLACE_PART):
+            raise ValueError(f"unknown replace {replace!r}; one of {[REPLACE_WHOLE, REPLACE_PART]}")
+        if composite not in (COMPOSITE_REGION, COMPOSITE_CHANGED):
+            raise ValueError(f"unknown composite {composite!r}; one of {[COMPOSITE_REGION, COMPOSITE_CHANGED]}")
+        key = cls._mask_key(frames, reuse_mask)
+        kept = None
+        if key is not None:
+            from . import mask_store
+            kept = mask_store.load(key, tuple(frames.shape[:3]))
+        if kept is not None:
+            mask, note = kept, ", mask kept from an earlier run (nothing tracked)"
+        else:
+            if mask is None:
+                # `check_lazy_status` found a kept mask and it did not read here: it has been removed
+                raise ValueError(
+                    "the mask kept for this video could not be read and has been removed: queue the "
+                    "workflow again and it will be tracked afresh")
+            mask, note = cls._settle_mask(frames, mask, replace, segmenter, segmenter_clip, part_phrases,
+                                          part_threshold, part_margin)
+            if key is not None:
+                seconds = mask_store.save(key, mask)
+                note += f", mask kept for the next run ({seconds:.0f} s to write)"
+        covered = float((mask > 0.5).any(dim=0).float().mean())
+        logger.info("[h3] MiniMaxH3MaskedSource: %d frames, replacing the %s%s, the mask touches %.1f%% of the "
+                    "frame over the clip, grow %d px, feather %d px%s, composite keeps the %s", int(frames.shape[0]),
+                    replace, note, 100.0 * covered, int(grow_pixels), int(feather_pixels),
+                    ", subject painted out before the encode" if paint_out else "", composite)
+        return io.NodeOutput({"frames": frames, "mask": mask, "grow_pixels": int(grow_pixels),
+                              "feather_pixels": int(feather_pixels), "paint_out": bool(paint_out),
+                              "composite": composite, "change_threshold": float(change_threshold)},
+                             mask.to(torch.float32))
+
+    @classmethod
+    def _settle_mask(cls, frames, mask, replace, segmenter, segmenter_clip, part_phrases, part_threshold,
+                     part_margin):
+        """The mask this node uses, from the tracked one: checked against the frames, and cut to the part for
+        `head and hair`. Returns it with what the log line says about it."""
         if mask.ndim == 4 and int(mask.shape[-1]) == 1:
             mask = mask[..., 0]
-        if frames.ndim != 4 or mask.ndim != 3:
+        if mask.ndim != 3:
             raise ValueError(f"frames must be [N, H, W, C] and mask [N, H, W]; got {tuple(frames.shape)} and {tuple(mask.shape)}")
         if int(mask.shape[0]) != int(frames.shape[0]):
             raise ValueError(
@@ -519,14 +619,6 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                 f"the mask is {int(mask.shape[2])}x{int(mask.shape[1])} and the frames are "
                 f"{int(frames.shape[2])}x{int(frames.shape[1])}: each is cropped to the canvas by its own "
                 "shape, so a mask of another shape would land shifted. Track the mask on these frames")
-        if int(feather_pixels) > int(grow_pixels):
-            raise ValueError(
-                f"feather_pixels {int(feather_pixels)} is wider than grow_pixels {int(grow_pixels)}: the blend "
-                "would reach the subject's own pixels and bring the original back at its edge")
-        if replace not in (REPLACE_WHOLE, REPLACE_PART):
-            raise ValueError(f"unknown replace {replace!r}; one of {[REPLACE_WHOLE, REPLACE_PART]}")
-        if composite not in (COMPOSITE_REGION, COMPOSITE_CHANGED):
-            raise ValueError(f"unknown composite {composite!r}; one of {[COMPOSITE_REGION, COMPOSITE_CHANGED]}")
         note = ""
         if replace == REPLACE_PART:
             phrases = tuple(p.strip() for p in str(part_phrases).split(",") if p.strip())
@@ -552,12 +644,4 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
             note = (f", from {list(phrases)} at threshold {float(part_threshold):g}, found on {int(where.numel()) - carried} of the {int(where.numel())} "
                     f"frames the subject is in" + (f" and carried from the nearest frame on {carried}" if carried else ""))
             mask = region
-        covered = float((mask > 0.5).any(dim=0).float().mean())
-        logger.info("[h3] MiniMaxH3MaskedSource: %d frames, replacing the %s%s, the mask touches %.1f%% of the "
-                    "frame over the clip, grow %d px, feather %d px%s, composite keeps the %s", int(frames.shape[0]),
-                    replace, note, 100.0 * covered, int(grow_pixels), int(feather_pixels),
-                    ", subject painted out before the encode" if paint_out else "", composite)
-        return io.NodeOutput({"frames": frames, "mask": mask, "grow_pixels": int(grow_pixels),
-                              "feather_pixels": int(feather_pixels), "paint_out": bool(paint_out),
-                              "composite": composite, "change_threshold": float(change_threshold)},
-                             mask.to(torch.float32))
+        return mask, note

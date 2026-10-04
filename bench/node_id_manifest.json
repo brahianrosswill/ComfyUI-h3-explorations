@@ -298,7 +298,8 @@
       "part_threshold",
       "part_margin",
       "composite",
-      "change_threshold"
+      "change_threshold",
+      "reuse_mask"
     ],
     "node_id": "MiniMaxH3MaskedSource",
     "outputs": [

@@ -27,7 +27,8 @@ own below the rule.
   take a mask, is written and held to core's sampler on a stub model
   (`../../plate_restore.py`, `../../bench/check_plate_restore.py`) and
   registered, but is in no graph and has not run on H3; what it waits for is
-  a Masked Source that feeds a plain sampler graph;
+  a Masked Source that feeds a plain sampler graph, **parked by the owner on
+  2026-10-04** (one pass for now, `decisions.md`);
   the source is resampled twice on its way to the canvas (the loader, then
   the fit); a frozen-row cache for a partly masked video
   (`frozen_video_cache.py::_gate` takes a wholly frozen one only), which

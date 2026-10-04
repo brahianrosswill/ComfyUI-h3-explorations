@@ -1221,10 +1221,12 @@ SEGMENTER_TRACK = dict(detection_threshold=0.5, max_objects=4, detect_interval=1
 #: (`video_mask.py`). **Reasoned**, not measured: the grow is one DiT token of
 #: canvas, so a replacement gets a token of room past the old outline, and the
 #: feather stays inside it. `replace` and `paint_out` are the node's defaults:
-#: neither alternative has been judged.
+#: neither alternative has been judged. `reuse_mask` on keeps the finished
+#: mask across runs (`mask_store.py`); a kept mask is the tracked one's bytes,
+#: so it changes how long a run takes and not what it renders.
 MASKED_SOURCE = dict(grow_pixels=32, feather_pixels=8, replace="whole subject", paint_out=False,
                      part_phrases="hair, head", part_threshold=0.5, part_margin=8,
-                     composite="whole region", change_threshold=0.05)
+                     composite="whole region", change_threshold=0.05, reuse_mask=True)
 
 # ---- FastH3 8-step V2 ------------------------------------------------------------
 #: **Inherited** from ComfyUI's own template, Comfy-Org/workflow_templates

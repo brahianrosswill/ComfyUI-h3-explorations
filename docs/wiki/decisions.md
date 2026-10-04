@@ -37,6 +37,15 @@ Older history lives elsewhere and is not copied here:
   using it"; and of the widget names, "I like the widget names as-is because
   its part of the pipeline"). Applied to the reference nodes (0.186.1); the
   input ids stay.
+- **The masked source keeps its mask across runs, and nothing is saved or
+  loaded by hand** (owner, 2026-10-04, asked whether pre-encoding could speed
+  up testing, and shown that the tracker and the part detection cost more
+  than a window of sampling after a restart: "save the mask, not the
+  latent"). `MiniMaxH3MaskedSource.reuse_mask`, on by default, `mask_store.py`.
+- **Masked renders are one pass for now; two samplers are for another day**
+  (owner, 2026-10-04: "its more complexity than we need ... just focus on one
+  pass"). `MiniMaxH3RestorePlate` stays registered and unused; the latent
+  output and the daily-chain graph it would need are not being built.
 - **An omitted `qwen_view` or `size_policy` stays a loud failure, with no
   None branch** (owner, 2026-10-04, on the two options put to them). Comments
   in `reference_conditioning.py` and a docstring in

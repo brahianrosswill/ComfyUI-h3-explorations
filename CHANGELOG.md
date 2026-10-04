@@ -4,6 +4,44 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.29
+
+### Added
+
+- **The masked source keeps its mask across runs** (owner, 2026-10-04: "save
+  the mask, not the latent"). After a restart the tracker and, for `head and
+  hair`, the part detection cost more than a window of sampling
+  (`per_node_s` in `bench/results/2026-10-04_masked_v2v_band_arms.jsonl`),
+  and a clip's mask does not change between the arms of a test.
+  `MiniMaxH3MaskedSource` gains `reuse_mask`, appended and on by default: the
+  finished mask is kept on disk and found again by a key made from the nodes
+  upstream of it and their settings, the node's own `replace` and `part_*`
+  settings, a fingerprint of the frames, and the size and time of any input
+  file named upstream. `mask`, `segmenter` and `segmenter_clip` are now lazy
+  and are asked for only when nothing kept matches, so on a hit core runs
+  neither the SAM loader, the tracker nor the detection. Nothing to save,
+  load or name. A kept mask is the tracked one's bytes, so the render is the
+  same; only the time changes. `mask_store.py`; kept under ComfyUI's user
+  directory, least recently used out past `mask_store.STORE_BYTES`.
+- **`bench/check_mask_store.py`**: the key moves with everything that changes
+  the mask and with nothing that acts after it, the round trip is exact, the
+  budget holds, a hit asks core for nothing, and a kept file that does not
+  read is removed with a message.
+
+### Changed
+
+- `workflows/h3_video_to_video_masked_song_pdd8_api.json` is rebuilt with
+  `reuse_mask` written (`h3_config.MASKED_SOURCE`).
+
+### Not run
+
+- On a live server. The running server holds the old code until its next
+  restart, so the rebuild was validated against its node list with this
+  node's entry replaced by the local schema, and that a hit skips the tracker
+  rests on core's lazy evaluation as read in `execution.py`. The first render
+  after a restart shows it: the node's log line says "kept" or "tracked", and
+  `SAM3_VideoTrack` is absent from the second run's node timings.
+
 ## 0.186.28
 
 ### Changed
