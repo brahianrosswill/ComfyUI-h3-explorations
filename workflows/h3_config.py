@@ -1220,8 +1220,11 @@ SEGMENTER_TRACK = dict(detection_threshold=0.5, max_objects=4, detect_interval=1
 #: `MiniMaxH3MaskedSource`'s inputs, equal to the node's defaults
 #: (`video_mask.py`). **Reasoned**, not measured: the grow is one DiT token of
 #: canvas, so a replacement gets a token of room past the old outline, and the
-#: feather stays inside it.
-MASKED_SOURCE = dict(grow_pixels=32, feather_pixels=8)
+#: feather stays inside it. `replace` and `paint_out` are the node's defaults:
+#: neither alternative has been judged.
+MASKED_SOURCE = dict(grow_pixels=32, feather_pixels=8, replace="whole subject", paint_out=False,
+                     part_phrases="hair, head", part_threshold=0.5, part_margin=8,
+                     composite="whole region", change_threshold=0.05)
 
 # ---- FastH3 8-step V2 ------------------------------------------------------------
 #: **Inherited** from ComfyUI's own template, Comfy-Org/workflow_templates

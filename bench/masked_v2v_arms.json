@@ -1,9 +1,11 @@
 {
- "what": "Masked video to video on the song node (video_mask.py), first runs, owner's clip and reference still, 2026-10-04. One window of the PDD8 song chain at the shipped canvas, the source's audio frozen hard, the singer tracked by SAM 3.1 and regenerated from the still. generic_w1 is the shipped clip-agnostic prompt and the throwaway that proves the harness; specific_w1 is the same seed with a prompt written for the clip's first three shots; generic_30s is three windows over the first thirty seconds. Judged by the owner on playback: identity against the still, the mouth against the frozen vocal, the seam around the subject, and whether the plate and audio are intact. The tracker's detection threshold is raised from core's default for this clip: at the default it marks the hanging microphone as the man while the frame is still empty, and at this value it keeps the singer in every shot (two probe runs, read from overlay sheets).",
+ "what": "Masked video to video on the song node (video_mask.py), first runs, owner's clip and reference still, 2026-10-04. One window of the PDD8 song chain at the shipped canvas, the source's audio frozen hard, the singer tracked by SAM 3.1 and regenerated from the still. generic_w1 is the shipped clip-agnostic prompt and the throwaway that proves the harness; specific_w1 is the same seed with a prompt written for the clip's first three shots; generic_30s is three windows over the first thirty seconds. Judged by the owner on playback: identity against the still, the mouth against the frozen vocal, the seam around the subject, and whether the plate and audio are intact. The tracker's detection threshold is raised from core's default for this clip: at the default it marks the hanging microphone as the man while the frame is still empty, and at this value it keeps the singer in every shot (two probe runs, read from overlay sheets). generic_paint_out (later the same day): generic_30s's first two windows at the same seeds with the subject painted out of the source before the encode, the proof arm for a peer session's reading of the faint remnant beside the trousers near the twenty-second mark; read with that session's patch probe, not by eye. generic_changed: after the owner judged generic_paint_out much worse (dark lines beside him, the cap cut off, a cut-out look), the fill stays off and this arm changes the composite instead: the render is kept only where it differs from the source or the old subject stood, the source is restored in the margin, the mask is grown twice as far so the cap has room, the singer's tracked object is selected alone so the microphone leaves the mask, and the reference is the cleaned still. Several things move at once against generic_30s on purpose: it is a candidate, not a matched pair.",
  "arms": {
   "generic_w1": "workflows/h3_video_to_video_masked_song_pdd8_api.json",
   "specific_w1": "workflows/h3_video_to_video_masked_song_pdd8_api.json",
-  "generic_30s": "workflows/h3_video_to_video_masked_song_pdd8_api.json"
+  "generic_30s": "workflows/h3_video_to_video_masked_song_pdd8_api.json",
+  "generic_paint_out": "workflows/h3_video_to_video_masked_song_pdd8_api.json",
+  "generic_changed": "workflows/h3_video_to_video_masked_song_pdd8_api.json"
  },
  "patches": [
   "generic_w1:VHS_LoadVideoFFmpeg.video=idontwannatalk.mp4",
@@ -26,6 +28,24 @@
   "generic_30s:LoadImage.image=f_img_outside.jpg",
   "generic_30s:CLIPTextEncode.text=man",
   "generic_30s:SAM3_VideoTrack.detection_threshold=0.7",
-  "generic_30s:MiniMaxH3AudioFreezeSong.filename_prefix=Video/mrpink/masked_v2v_generic_30s"
+  "generic_30s:MiniMaxH3AudioFreezeSong.filename_prefix=Video/mrpink/masked_v2v_generic_30s",
+  "generic_paint_out:VHS_LoadVideoFFmpeg.video=idontwannatalk.mp4",
+  "generic_paint_out:VHS_LoadVideoFFmpeg.frame_load_cap=768",
+  "generic_paint_out:LoadImage.image=f_img_outside.jpg",
+  "generic_paint_out:CLIPTextEncode.text=man",
+  "generic_paint_out:SAM3_VideoTrack.detection_threshold=0.7",
+  "generic_paint_out:MiniMaxH3MaskedSource.paint_out=true",
+  "generic_paint_out:MiniMaxH3AudioFreezeSong.extent.seconds=27.0",
+  "generic_paint_out:MiniMaxH3AudioFreezeSong.filename_prefix=Video/mrpink/masked_v2v",
+  "generic_changed:VHS_LoadVideoFFmpeg.video=idontwannatalk.mp4",
+  "generic_changed:VHS_LoadVideoFFmpeg.frame_load_cap=768",
+  "generic_changed:CLIPTextEncode.text=man",
+  "generic_changed:SAM3_VideoTrack.detection_threshold=0.7",
+  "generic_changed:LoadImage.image=f_img_outside_nomark.png",
+  "generic_changed:SAM3_TrackToMask.object_indices=\"1\"",
+  "generic_changed:MiniMaxH3MaskedSource.grow_pixels=64",
+  "generic_changed:MiniMaxH3MaskedSource.composite=only what changed",
+  "generic_changed:MiniMaxH3AudioFreezeSong.extent.seconds=30.0",
+  "generic_changed:MiniMaxH3AudioFreezeSong.filename_prefix=Video/mrpink/masked_v2v"
  ]
 }

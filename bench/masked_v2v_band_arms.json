@@ -1,7 +1,10 @@
 {
- "what": "Masked video to video, second clip (owner, 2026-10-04): 1:35 to 2:07 of a six-person band video with coloured lighting changes and cutaways, the lead singer replaced from the same reference still as bench/masked_v2v_arms.json, on the clip-agnostic prompt for a subject among other people. The tracker's phrase and object selection were chosen from probes: tracking every person spends the object cap before the main shot, and the phrase 'lead singer' also takes the most prominent person of each cutaway, so the three objects that are the lead are selected by index. The indices hold only for this loader start, frame cap and phrase.",
+ "what": "Masked video to video, second clip (owner, 2026-10-04): 1:35 to 2:07 of a six-person band video with coloured lighting changes and cutaways, the lead singer replaced from the same reference still as bench/masked_v2v_arms.json, on the clip-agnostic prompt for a subject among other people. The tracker's phrase and object selection were chosen from probes: tracking every person spends the object cap before the main shot, and the phrase 'lead singer' also takes the most prominent person of each cutaway, so the three objects that are the lead are selected by index. The indices hold only for this loader start, frame cap and phrase. Later the same day, on the reference still with its watermark sparkle cloned out by a peer session (the original still, which band_generic_32s used, has been withdrawn by the owner, so that arm cannot be re-run as written). band_head_w1: the node's `replace` set to head and hair, first window, on the clip-agnostic head prompt; the first attempt at this regenerated the head-and-hair outline alone and gave a head half as wide again as the original's ('a giant bobblehead', owner), so the node now regenerates the subject down to where the hair ends. band_follows_32s: whole subject on a clip-agnostic prompt that takes his facing, his movement and his clothes from the people beside him, to see whether he turns with the group unprompted. band_changed_w1: whole subject on the plain clip-agnostic group prompt, first window, with the composite that keeps only what changed and the mask grown twice as far; the reference for band_baseline_w1, which is the same on the baseline chain (the undistilled checkpoint at the base step count, stock attention, no Sol), built from the generator's own builder and kept under internal/ because no shipped graph is on that chain (owner: try without Sol and without the distill, both, first).",
  "arms": {
-  "band_generic_32s": "workflows/h3_video_to_video_masked_song_pdd8_api.json"
+  "band_generic_32s": "workflows/h3_video_to_video_masked_song_pdd8_api.json",
+  "band_head_w1": "workflows/h3_video_to_video_masked_song_pdd8_api.json",
+  "band_follows_32s": "workflows/h3_video_to_video_masked_song_pdd8_api.json",
+  "band_changed_w1": "workflows/h3_video_to_video_masked_song_pdd8_api.json"
  },
  "patches": [
   "band_generic_32s:VHS_LoadVideoFFmpeg.video=thinkaboutthings_compressed.mp4",
@@ -13,6 +16,39 @@
   "band_generic_32s:SAM3_TrackToMask.object_indices=\"4,6,10\"",
   "band_generic_32s:MiniMaxH3AudioFreezeSong.prompt=@bank:ref2va_masked_lead_swap",
   "band_generic_32s:MiniMaxH3AudioFreezeSong.extent.seconds=32.0",
-  "band_generic_32s:MiniMaxH3AudioFreezeSong.filename_prefix=Video/mrpink/masked_v2v_band"
+  "band_generic_32s:MiniMaxH3AudioFreezeSong.filename_prefix=Video/mrpink/masked_v2v_band",
+  "band_head_w1:VHS_LoadVideoFFmpeg.video=thinkaboutthings_compressed.mp4",
+  "band_head_w1:VHS_LoadVideoFFmpeg.start_time=95.0",
+  "band_head_w1:VHS_LoadVideoFFmpeg.frame_load_cap=810",
+  "band_head_w1:CLIPTextEncode.text=lead singer",
+  "band_head_w1:SAM3_VideoTrack.max_objects=16",
+  "band_head_w1:SAM3_TrackToMask.object_indices=\"4,6,10\"",
+  "band_head_w1:LoadImage.image=f_img_outside_nomark.png",
+  "band_head_w1:MiniMaxH3MaskedSource.replace=head and hair",
+  "band_head_w1:MiniMaxH3AudioFreezeSong.prompt=@bank:ref2va_masked_head_swap",
+  "band_head_w1:MiniMaxH3AudioFreezeSong.extent.seconds=14.375",
+  "band_head_w1:MiniMaxH3AudioFreezeSong.filename_prefix=Video/mrpink/masked_v2v_band",
+  "band_follows_32s:VHS_LoadVideoFFmpeg.video=thinkaboutthings_compressed.mp4",
+  "band_follows_32s:VHS_LoadVideoFFmpeg.start_time=95.0",
+  "band_follows_32s:VHS_LoadVideoFFmpeg.frame_load_cap=810",
+  "band_follows_32s:CLIPTextEncode.text=lead singer",
+  "band_follows_32s:SAM3_VideoTrack.max_objects=16",
+  "band_follows_32s:SAM3_TrackToMask.object_indices=\"4,6,10\"",
+  "band_follows_32s:LoadImage.image=f_img_outside_nomark.png",
+  "band_follows_32s:MiniMaxH3AudioFreezeSong.prompt=@bank:ref2va_masked_lead_follows",
+  "band_follows_32s:MiniMaxH3AudioFreezeSong.extent.seconds=32.0",
+  "band_follows_32s:MiniMaxH3AudioFreezeSong.filename_prefix=Video/mrpink/masked_v2v_band",
+  "band_changed_w1:VHS_LoadVideoFFmpeg.video=thinkaboutthings_compressed.mp4",
+  "band_changed_w1:VHS_LoadVideoFFmpeg.start_time=95.0",
+  "band_changed_w1:VHS_LoadVideoFFmpeg.frame_load_cap=810",
+  "band_changed_w1:LoadImage.image=f_img_outside_nomark.png",
+  "band_changed_w1:CLIPTextEncode.text=lead singer",
+  "band_changed_w1:SAM3_VideoTrack.max_objects=16",
+  "band_changed_w1:SAM3_TrackToMask.object_indices=\"4,6,10\"",
+  "band_changed_w1:MiniMaxH3MaskedSource.grow_pixels=64",
+  "band_changed_w1:MiniMaxH3MaskedSource.composite=only what changed",
+  "band_changed_w1:MiniMaxH3AudioFreezeSong.prompt=@bank:ref2va_masked_lead_swap",
+  "band_changed_w1:MiniMaxH3AudioFreezeSong.extent.seconds=14.375",
+  "band_changed_w1:MiniMaxH3AudioFreezeSong.filename_prefix=Video/mrpink/masked_v2v_band"
  ]
 }

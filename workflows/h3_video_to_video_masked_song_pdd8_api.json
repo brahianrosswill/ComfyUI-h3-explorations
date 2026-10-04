@@ -249,7 +249,22 @@
         0
       ],
       "grow_pixels": 32,
-      "feather_pixels": 8
+      "feather_pixels": 8,
+      "replace": "whole subject",
+      "paint_out": false,
+      "part_phrases": "hair, head",
+      "part_threshold": 0.5,
+      "part_margin": 8,
+      "composite": "whole region",
+      "change_threshold": 0.05,
+      "segmenter": [
+        "100",
+        0
+      ],
+      "segmenter_clip": [
+        "100",
+        1
+      ]
     }
   }
 }

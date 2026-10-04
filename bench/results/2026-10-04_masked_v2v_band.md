@@ -1,6 +1,6 @@
 # Masked video to video: a subject among other people
 
-last updated: 2026-10-04
+last updated: 2026-10-04 (later arms added the same day)
 
 **Status: rendered, not judged.** Read from a one-frame-per-second sheet and
 three single frames; lip sync, edges at full size and the audio are the
@@ -50,6 +50,29 @@ start, frame cap and phrase, and a different clip needs the probe again.
   camera. The prompt names no action, and nothing told him to turn.
 - He wears the still's T-shirt and cap among five green sweatshirts. The
   prompt asked for that; it is a choice, not a failure.
+
+## Later the same day: the turn, the clothes, and what `replace` can do
+
+All on the cleaned still (`f_img_outside_nomark.png`; the first still carried
+a watermark sparkle that the model painted on the shirt as a bright dot, and
+the owner withdrew it, so `band_generic_32s` cannot be re-run as written).
+Read from sheets and single frames; the owner's words are quoted.
+
+| arm | what changed | what the frames show |
+|---|---|---|
+| a third-window prompt block (`ref2va_masked_lead_turns_away`), windows 1 and 2 reused; run from `internal/`, not in the manifest | the prompt names the turn | he turns away with the group, a little after the original does. It works and it is specific prompting, which the owner does not want as the answer |
+| head and hair, outline only (interrupted after one window) | `replace` = head and hair, the region the head-and-hair outline | sweatshirt, its print and the neighbours intact, the hair gone from the chest; the head about half as wide again as the original's, on the collar with no neck. Owner: "a giant bobblehead. doesnt work" |
+| `band_head_w1` | the region extended down to where the hair ends, so neck and shoulders are drawn too | the same oversized head. The part detection also cost several minutes before sampling (`per_node_s` in the rows: the Masked Source node) |
+| `band_follows_32s` | whole subject; the prompt ties his facing, movement and clothes to the people beside him (`ref2va_masked_lead_follows`) | he turns with the group at the right moment, and also turns his back twice when nobody else does; a plain grey-green T-shirt for most of the clip and a green long-sleeved top only from behind. No dot on the shirt |
+
+**What this says.** The model frames what it paints to the hole: a
+whole-body hole gives a person in proportion, a head-and-chest hole gives a
+head-and-shoulders portrait that fills it. Nothing in the per-token-timestep
+method anchors scale, so head-only replacement on a long-haired original is
+not reachable by shaping the region. And a prompt cannot reliably carry the
+original's movement: naming the shot works, a generic clause over-applies.
+Not tried: the source as a motion reference, which the model is trained for
+and which pays the reference's rows on every step.
 
 ## Not established
 

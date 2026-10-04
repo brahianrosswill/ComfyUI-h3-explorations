@@ -88,6 +88,32 @@ per second over the first 32 seconds:
    clip's shots worth writing per clip.
 6. Whether the audio is the source's, unchanged.
 
+## The owner's verdicts, and the paint-out
+
+- On the three first clips: "pretty good". Flicker beside the subject near
+  the twenty-second mark of `generic_30s`, a shot the fourteen-second clips
+  do not reach, so the pair of prompts says nothing about flicker. In the
+  last second of `generic_30s` "the person is only partially there", with
+  dark lines during movement.
+- A peer session measured that flicker and the cut-off subject
+  (`docs/research/masking/2026-10-04_mrhf.md`): a faint remnant of the
+  original beside the legs with the mask edge fixed; the cap and the back cut
+  on the region's edge in the close-ups, because the region is the old
+  subject's outline and the replacement sits differently; the microphone
+  regenerated wherever the tracker marks it.
+- **`generic_paint_out`** (the subject filled in before the encode, same
+  seeds, two windows): by that session's patch probe not a pass, better above
+  the cap and worse at the shin and the microphone. The owner, on its second
+  window: "tons of flicker ... cut off hat, black lines appearing to the left
+  of the man every time he moves - much worse than before", and "looks like
+  someone used a lasso tool and cut the man out poorly and quickly and pasted
+  him onto the video". The fill also cost a large share of a window's time on
+  the CPU (the song node's seconds in the rows). `paint_out` stays off.
+- **`generic_changed`** is the response: the composite keeps the render only
+  where it differs from the source or the old subject stood, the margin is
+  doubled, the singer's object is selected alone and the still is the
+  cleaned one. Its result is recorded below when it lands.
+
 ## Not run
 
 - The unmasked trained path on the same clip

@@ -1,0 +1,16 @@
+subject_definitions:
+<Subject 1> is the person shown in <Picture 1>, preserving their facial identity, hair, build and anything worn on the head in <Picture 1>. The clothing, background, lighting and framing of <Picture 1> are not present in the target video; <Subject 1> is dressed as the people beside them are dressed.
+
+summary:
+[reference generation] <Subject 1> is the lead performer at the front of a group, placed in a scene that is already lit, framed and cut, dressed as the others are and moving as they move, and delivers the lead voice heard on the track to its timing while everyone else in the scene stays as they are.
+
+retention_analysis:
+<Subject 1> (appears in [Shot 1]): fully_preserved - retain the same face, hair, build and headwear in every frame and at every distance from the camera; the clothing and the setting are the scene's own.
+
+detailed_description:
+The target video is photorealistic live-action, and its setting, its framing and every other person in it stay exactly as they already are from the first frame to the last. <Subject 1> is the performer at the front and centre of the group.
+[Shot 1] <Subject 1> stands where the lead performer stands across the fourteen-second take, in front of the others, at the lead performer's distance from the lens, and does what the people on either side do at the same moment they do it: <Subject 1> faces the way they face, turns when they turn and by as much, and whenever they have their backs to the camera so does <Subject 1>, seen from behind with no face in view. The scene's own light falls on <Subject 1> exactly as it falls on the people beside them: the same direction, the same softness and the same colour on the face, the hair and the clothing, and whenever the light in the room changes colour or brightness, the light on <Subject 1> changes with it at the same moment. Where the scene shows the lead performer whole, <Subject 1> is whole, wearing the same top as the people beside them, in the same colour and cut, with plain dark trousers and shoes below; where it shows only the head and shoulders, the face of <Subject 1> fills that space at the same scale, sharp and evenly exposed, with the skin texture, the hairline and the eyes of <Picture 1>. <Subject 1> (S1) is the lead voice on the track and performs it on screen: the jaw drops and the lips open on the first syllable of every sung or spoken phrase, the mouth shapes each vowel and closes on each consonant in time with the voice, and the lips rest together, still, whenever the voice pauses. A breath lifts the chest and shoulders before each new phrase, and the eyes stay on whatever the lead performer is looking at, blinking naturally. The head tips with the delivery, and the arms, hands and weight move in step with the people on either side, matching their timing and their gestures. The people behind and beside <Subject 1> are untouched: wherever <Subject 1> does not cover them they are visible exactly as before, and nothing of the walls, the pictures, the furniture or the floor behind them changes. The camera holds a static shot.
+
+overall_soundscape: Quiet room tone sits under the scene, with the soft brush of clothing and the group's footsteps as they move.
+
+non_diegetic_music: N/A

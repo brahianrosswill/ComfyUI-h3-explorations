@@ -1,0 +1,16 @@
+subject_definitions:
+<Subject 1> is the person shown in <Picture 1>, preserving their facial identity, their hair and anything worn on the head in <Picture 1>. The clothing, background, lighting and framing of <Picture 1> are not present in the target video.
+
+summary:
+[reference generation] <Subject 1> is the lead performer in a scene that is already lit, framed and cut: the head is theirs, on the lead performer's own body and in the lead performer's own clothes, and it delivers the lead voice heard on the track to its timing while everything else stays as it is.
+
+retention_analysis:
+<Subject 1> (appears in [Shot 1]): fully_preserved - retain the same face, hair and headwear in every frame and at every distance from the camera; the body, the clothing and the setting are the scene's own.
+
+detailed_description:
+The target video is photorealistic live-action, and its setting, its framing, every other person in it and the lead performer's own body, clothing and movement stay exactly as they already are from the first frame to the last. Only the lead performer's head changes: it is the head of <Subject 1>.
+[Shot 1] The head of <Subject 1> sits on the lead performer's neck across the fourteen-second take, at the same size and in the same place, and meets the collar of the lead performer's clothing with no gap and no second neckline. The head always faces the way the body beneath it faces: when the body turns, the head turns with it at the same moment and by the same amount, and when the body has its back to the camera the camera sees only the back of the head of <Subject 1> and what they wear on it, never the face. No long hair hangs below the head: the shoulders, the chest and the back of the lead performer's clothing are clear where hair once lay, the cloth, its print and its folds carrying on unbroken across them. The scene's own light falls on the head exactly as it falls on the body below it and on the people beside it: the same direction, the same softness and the same colour, and whenever the light in the room changes colour or brightness, the light on the face changes with it at the same moment. Where the camera is close, the face is sharp and evenly exposed, with the skin texture, the hairline and the eyes of <Picture 1>. <Subject 1> (S1) is the lead voice on the track and performs it on screen: the jaw drops and the lips open on the first syllable of every sung or spoken phrase, the mouth shapes each vowel and closes on each consonant in time with the voice, and the lips rest together, still, whenever the voice pauses. The eyes stay on whatever the lead performer is looking at, blinking naturally, and the head tips and nods with the delivery while the body carries on moving exactly as before. The people behind and beside <Subject 1> are untouched, and nothing of the walls, the furniture or the floor changes. The camera holds a static shot.
+
+overall_soundscape: Quiet room tone sits under the scene, with the soft brush of clothing and footsteps as the performers move.
+
+non_diegetic_music: N/A

@@ -289,11 +289,21 @@
       "frames",
       "mask",
       "grow_pixels",
-      "feather_pixels"
+      "feather_pixels",
+      "replace",
+      "paint_out",
+      "segmenter",
+      "segmenter_clip",
+      "part_phrases",
+      "part_threshold",
+      "part_margin",
+      "composite",
+      "change_threshold"
     ],
     "node_id": "MiniMaxH3MaskedSource",
     "outputs": [
-      "source"
+      "source",
+      "mask"
     ]
   },
   "MiniMaxH3OverlayLoader": {

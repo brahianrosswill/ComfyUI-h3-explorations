@@ -28,7 +28,30 @@ that could happen.
    one-pixel line must survive a large downscale (the control: core's
    bilinear resize of the same mask drops it below one half), and the node
    refuses a mask whose shape is not its frames'.
-7. **Every graph that wires a Masked Source wires it whole**: into a song
+7. **The paint-out hides the subject from the encode and nothing else.**
+   With `paint_out` the frames to encode differ from the fitted frames only
+   under the hole, the hole covers every subject pixel, no filled pixel lies
+   outside the regenerated tokens (so none can be shown), and a bright
+   subject on a flat ground is gone from the encode frames. Off, the encode
+   frames are the fitted frames.
+8. **A part is taken only from the subject, and a missed frame is never
+   left showing the original.** `select_part` keeps a part where it lies on
+   the subject's mask and drops the same part on a neighbour. The region is
+   the subject down to the part's lowest row (`above`), so it holds the
+   subject's own pixels above that row and none below. A frame with no part
+   takes the nearest found frame's row and is counted (`carry_missing`); with
+   nothing found anywhere nothing is invented. The node refuses a part with
+   no segmenter wired, an empty phrase list and an unknown choice, and its
+   second output is the mask it used.
+9. **`only what changed` keeps a subject and restores the margin.** With a
+   render that equals the source except where the new subject is, the weight
+   is 1 on the new subject and on every old-subject pixel inside the
+   regenerated tokens, 0 in margin further than the feather and the
+   difference's own blur from either, never above the whole-region weight,
+   and 0 everywhere when the render repainted the source faithfully (a
+   tracker's false positive). A difference under the ramp's foot is not
+   kept. The node refuses an unknown choice.
+10. **Every graph that wires a Masked Source wires it whole**: into a song
    node's `source`, its mask tracked over the same frames it carries, and the
    song node's track taken from the same loader as those frames.
 
@@ -185,12 +208,14 @@ def check_window(problems):
     mask = torch.zeros(have, 72, 128)
     mask[:, 20:40, 40:60] = 1.0
     source = {"frames": frames, "mask": mask, "grow_pixels": 0, "feather_pixels": 0}
-    pixels, tokens, held = vm.window(source, 0, FRAMES, W, H, LATENT_T, LAT_H, LAT_W)
+    pixels, encode, tokens, _mask, held = vm.window(source, 0, FRAMES, W, H, LATENT_T, LAT_H, LAT_W)
     if tuple(pixels.shape) != (FRAMES, H, W, 3) or tuple(tokens.shape) != (LATENT_T, LAT_H, LAT_W) or held:
         problems.append(f"a whole window came back as {tuple(pixels.shape)}, {tuple(tokens.shape)}, held {held}")
+    if encode is not pixels:
+        problems.append("with paint_out off the frames to encode are not the fitted frames themselves")
     # the last window of a loop: the source runs out inside it
     start = have - 12
-    pixels, tokens, held = vm.window(source, start, FRAMES, W, H, LATENT_T, LAT_H, LAT_W)
+    pixels, _encode, tokens, _mask, held = vm.window(source, start, FRAMES, W, H, LATENT_T, LAT_H, LAT_W)
     if held != FRAMES - 12:
         problems.append(f"a window 12 frames from the source's end reported {held} held frames, expected {FRAMES - 12}")
     elif not torch.equal(pixels[12:], pixels[11:12].expand(FRAMES - 12, -1, -1, -1)):
@@ -234,6 +259,119 @@ def check_fit(problems):
         pass
 
 
+def check_paint_out(problems):
+    grow_px = 32
+    frames = torch.full((FRAMES, H, W, 3), 0.2)
+    mask = torch.zeros(FRAMES, H, W)
+    mask[:, 48:80, 80:112] = 1.0
+    frames[:, 48:80, 80:112] = 1.0  # a bright subject on a flat ground
+    source = {"frames": frames, "mask": mask, "grow_pixels": grow_px, "feather_pixels": 8, "paint_out": True}
+    pixels, encode, tokens, _mask, _held = vm.window(source, 0, FRAMES, W, H, LATENT_T, LAT_H, LAT_W)
+    if not torch.equal(pixels, frames):
+        problems.append("paint_out changed the frames the composite restores")
+    changed = (encode != pixels).any(dim=-1)
+    hole = vm.grow(mask, grow_px // 2) > 0.5
+    if bool((changed & ~hole).any()):
+        problems.append("paint_out changed pixels outside its hole")
+    if bool(((mask > 0.5) & ~changed).any()):
+        problems.append("a subject pixel survived the paint-out")
+    region = torch.nn.functional.interpolate(tokens.unsqueeze(1), size=(H, W), mode="nearest")[:, 0]
+    region = region.repeat_interleave(torch.tensor(vm.run_lengths(LATENT_T)), dim=0) > 0.5
+    if bool((changed & ~region).any()):
+        problems.append("a filled pixel lies outside the regenerated tokens: the composite would not hide it")
+    if float(encode.max()) > 0.25:
+        problems.append(f"the bright subject is still in the frames to encode (max {float(encode.max()):.3f})")
+    # a fill of nothing is nothing
+    if not torch.equal(vm.fill_subject(frames, torch.zeros(FRAMES, H, W)), frames):
+        problems.append("fill_subject changed frames with an empty hole")
+
+
+def check_part(problems):
+    subject = torch.zeros(4, 64, 96)
+    subject[:, 10:50, 20:40] = 1.0
+    part = torch.zeros(4, 64, 96)
+    part[0, 10:20, 22:38] = 1.0   # the subject's own, down to row 19
+    part[0, 10:20, 70:86] = 1.0   # a neighbour's, far from the subject
+    part[3, 10:30, 22:38] = 1.0   # frames 1 and 2 have none
+    got = vm.select_part(subject, part)
+    if float(got[0, 10:20, 22:38].min()) != 1.0:
+        problems.append("select_part dropped the part that lies on the subject")
+    if float(got[:, :, 60:].max()) != 0.0:
+        problems.append("select_part kept a neighbour's part")
+    bottoms = vm.part_bottom(got)
+    if bottoms.tolist() != [19, -1, -1, 29]:
+        problems.append(f"part_bottom read {bottoms.tolist()}, expected [19, -1, -1, 29]")
+    filled, carried = vm.carry_missing(bottoms)
+    if carried != 2 or filled.tolist() != [19, 19, 29, 29]:
+        problems.append(f"carry_missing gave {filled.tolist()} carrying {carried}; each miss takes its nearest found frame")
+    none, n = vm.carry_missing(torch.tensor([-1, -1]))
+    if n != 0 or none.tolist() != [-1, -1]:
+        problems.append("carry_missing invented a part where no frame had one")
+    region = vm.above(subject, filled)
+    if float(region[0, 10:20, 20:40].min()) != 1.0 or float(region[0, 20:].max()) != 0.0:
+        problems.append("above does not hold exactly the subject's rows down to the part's lowest row")
+    if float(region[:, :, 60:].max()) != 0.0 or float(region[1, 10:20, 20:40].min()) != 1.0:
+        problems.append("above took pixels off the subject, or left a carried frame empty")
+    for kwargs, what in (({"replace": "head and hair"}, "a part with no segmenter wired"),
+                         ({"replace": "left arm"}, "an unknown replace"),
+                         ({"replace": "head and hair", "segmenter": object(), "segmenter_clip": object(),
+                           "part_phrases": " , "}, "an empty phrase list")):
+        try:
+            vm.MiniMaxH3MaskedSource.execute(torch.zeros(2, 8, 8, 3), torch.ones(2, 8, 8), **kwargs)
+            problems.append(f"the node accepted {what}")
+        except ValueError:
+            pass
+    out = vm.MiniMaxH3MaskedSource.execute(torch.zeros(2, 8, 8, 3), torch.ones(2, 8, 8))
+    out = getattr(out, "args", out)
+    if len(out) != 2 or not torch.equal(out[1], out[0]["mask"].to(torch.float32)):
+        problems.append("the node's second output is not the mask it used")
+
+
+def check_changed_alpha(problems):
+    grow_px, feather = 32, 8
+    old = torch.zeros(FRAMES, H, W)
+    old[:, 48:80, 80:112] = 1.0
+    tokens = vm.token_mask(vm.grow(old, grow_px), LATENT_T, LAT_H, LAT_W)
+    source = torch.full((FRAMES, H, W, 3), 0.5)
+    new = torch.zeros(FRAMES, H, W, dtype=torch.bool)
+    new[:, 40:72, 96:128] = True        # the new subject, shifted: part inside the old outline, part in margin
+    render = source.clone()
+    render[new] = 0.9
+    blank = torch.zeros(FRAMES, H, W)
+    t = vm.CHANGE_THRESHOLD
+    alpha = vm.changed_alpha(render, source, tokens, old, feather, grow_px // 2, t)
+    whole = vm.pixel_alpha(tokens, H, W, feather)
+    region = vm.pixel_alpha(tokens, H, W, 0) > 0.5
+    deep = whole >= 1.0                 # further than the feather inside the region
+    if tuple(alpha.shape) != (FRAMES, H, W):
+        problems.append(f"changed_alpha returned {tuple(alpha.shape)}")
+        return
+    if bool((alpha > whole + 1e-6).any()):
+        problems.append("the changed-only weight exceeds the whole-region weight somewhere")
+    if float(alpha[new & deep].min()) != 1.0:
+        problems.append("a new-subject pixel well inside the region is not fully kept")
+    if float(alpha[(old > 0.5) & deep].min()) != 1.0:
+        problems.append("an old-subject pixel is not fully kept: the original would show through")
+    kept = new | (vm.grow(old, grow_px // 2) > 0.5)
+    margin = region & ~(vm.grow(kept.float(), 2 * feather + vm.CHANGE_BLUR) > 0.5)
+    if not bool(margin.any()):
+        problems.append("the changed-alpha case has no margin to test")
+    elif float(alpha[margin].max()) != 0.0:
+        problems.append("margin the render left as the source keeps the render")
+    # a faithful repaint with no old subject under it: everything is restored
+    if float(vm.changed_alpha(source.clone(), source, tokens, blank, feather, grow_px // 2, t).max()) != 0.0:
+        problems.append("a faithful repaint of the source keeps some of the render")
+    # a difference under the ramp's foot is noise, not change
+    faint = source + 0.5 * t
+    if float(vm.changed_alpha(faint, source, tokens, blank, feather, grow_px // 2, t).max()) != 0.0:
+        problems.append("a difference of half the threshold was kept")
+    try:
+        vm.MiniMaxH3MaskedSource.execute(torch.zeros(2, 8, 8, 3), torch.ones(2, 8, 8), composite="the nice bits")
+        problems.append("the node accepted an unknown composite")
+    except ValueError:
+        pass
+
+
 def check_graphs(problems):
     seen = 0
     for path in h3_config.graph_paths(WORKFLOWS, include_bench=True):
@@ -257,22 +395,25 @@ def check_graphs(problems):
             for song in users:
                 if song["inputs"].get("audio", [None])[0] != frames_from:
                     problems.append(f"{path.name}: the song node's track is not the audio of the source video")
+                if "segmenter" not in ins or "segmenter_clip" not in ins:
+                    problems.append(f"{path.name}: Masked Source {nid} has no segmenter wired, so `replace` cannot be changed without rewiring")
                 if "references" not in song["inputs"]:
                     problems.append(f"{path.name}: a masked source with no reference still to replace the subject from")
     if not seen:
-        problems.append("no shipped graph wires a Masked Source; item 7 checked nothing")
+        problems.append("no shipped graph wires a Masked Source; item 10 checked nothing")
 
 
 def main() -> int:
     problems: list[str] = []
-    for check in (check_temporal, check_token_grid, check_feather, check_composite, check_window, check_fit, check_graphs):
+    for check in (check_temporal, check_token_grid, check_feather, check_composite, check_window, check_fit, check_paint_out, check_part, check_changed_alpha, check_graphs):
         check(problems)
     for p in problems:
         print(f"FAIL  {p}")
     if not problems:
         print("ok    the masked source keeps every subject frame, sits on core's token grid, feathers off the "
-              "subject, composites exactly, holds a short source, crops the mask as the frames, and is wired "
-              "whole in every graph")
+              "subject, composites exactly, holds a short source, crops the mask as the frames, paints out only "
+              "inside the regenerated tokens, takes a part only from the subject, restores the margin under "
+              "`only what changed`, and is wired whole in every graph")
     return 1 if problems else 0
 
 

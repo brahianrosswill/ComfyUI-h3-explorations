@@ -281,6 +281,31 @@ not enough. Three things a reader should know before trusting it:
   cut shows as a window whose report line says few or no tokens regenerate;
   a window with none is written from the source without sampling.
 
+**What the afternoon of 2026-10-04 added and what it ruled out**, on two
+clips (`bench/results/2026-10-04_masked_v2v_first_run.md`,
+`bench/results/2026-10-04_masked_v2v_band.md`):
+
+- **The node says what it masks.** `replace`, `composite`, the detector's
+  phrases, threshold and margin are inputs, and the mask the node used is an
+  output for a preview (owner: "we should unhide the detection stuff").
+- **`composite` = `only what changed`** keeps the render where it differs
+  from the source or the old subject stood and restores the source in the
+  margin, so the margin can be generous. Built after the owner saw a cut-off
+  cap and a cut-out look; from frames the cap is whole and the margin clean,
+  not yet judged on playback. `whole region` is still the default.
+- **`replace` = `head and hair`** keeps the body as source pixels. On a
+  long-haired original it gave a head half as wide again as the original's,
+  twice (owner: "a giant bobblehead"): the model sizes what it paints to the
+  hole. Kept as an option, not a recommendation, until a short-haired
+  original shows otherwise.
+- **`paint_out`** made things worse and stays off.
+- **Movement is not carried.** A generic prompt leaves the replaced subject
+  facing the camera when the original turns away; naming the shot fixes it
+  and is specific prompting; a generic "do what the people beside you do"
+  turns him at the right moment and twice at wrong ones.
+- **One word does not isolate one person among several**; the band arms
+  select the lead's tracked objects by index.
+
 The graph is `workflows/h3_video_to_video_masked_song_pdd8_api.json`, on the
 placeholder clip and still, with a prompt that names no setting or shot
 (`prompt_bank/ref2va_masked_subject_swap.txt`) so one text serves every

@@ -75,6 +75,14 @@ def _parse_value(s: str):
     # 2026-09-03); a missing id fails here, before any render is queued.
     if s.startswith("@bank:"):
         return _prompts.text(s[len("@bank:"):])
+    # `@bank-blocks:<label>=<id>,<label>=<id>` is a song node's block prompt,
+    # one `--- label` block per timeline label, each block a bank entry: the
+    # same single-source rule for a prompt that differs by window.
+    if s.startswith("@bank-blocks:"):
+        pairs = [part.split("=", 1) for part in s[len("@bank-blocks:"):].split(",")]
+        if not all(len(pair) == 2 and pair[0].strip() and pair[1].strip() for pair in pairs):
+            raise SystemExit(f"{s!r}: write @bank-blocks:<label>=<bank id>,<label>=<bank id>")
+        return "\n".join(f"--- {label.strip()}\n{_prompts.text(pid.strip())}" for label, pid in pairs)
     try:
         return json.loads(s)
     except json.JSONDecodeError:
@@ -245,7 +253,7 @@ def main() -> int:
         # strip is a no-op for a bank value today (it was not before 0.160.0, when
         # the files ended in a newline); stripped is the convention (below), so
         # the shortcut strips unless the unstripped bytes are asked for by flag.
-        if raw.startswith("@bank:") and isinstance(value, str) and not args.allow_unstripped_prompt:
+        if raw.startswith(("@bank:", "@bank-blocks:")) and isinstance(value, str) and not args.allow_unstripped_prompt:
             value = value.strip()
         # One character in a prompt is a different sample. On 2026-09-17 prompt
         # files were passed with their trailing newline while an earlier batch

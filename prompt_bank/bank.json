@@ -1175,6 +1175,30 @@
       "donor": "h3_probe_refview2_dancer_api",
       "brief": "Masked video to video for a subject among other people: ref2va_masked_subject_swap with the claim that the subject is alone removed. <Picture 1> defines the lead performer at the front of a group; the others stay as they are; the light on the subject changes with the room's; no setting, shot or cut is named, so one text serves every window of any clip.",
       "tests": "the second clip of the masked video-to-video lane (bench/masked_v2v_band_arms.json): a six-person scene with coloured lighting changes and cutaways, where only the tracked lead is replaced"
+    },
+    {
+      "id": "ref2va_masked_lead_turns_away",
+      "mode": "ref2va",
+      "frames": 192,
+      "donor": "h3_probe_refview2_dancer_api",
+      "brief": "Masked video to video, one window's action: ref2va_masked_lead_swap with the one thing the plate cannot tell a masked subject, that the group turns its back and the lead turns with it and stays turned away; still names no setting or cut.",
+      "tests": "the third window of the band clip (bench/masked_v2v_band_arms.json, arm band_turn_block): on the clip-agnostic prompt the replaced lead kept facing the camera while the group turned away; does a block that states the turn fix it, with the first two windows reused"
+    },
+    {
+      "id": "ref2va_masked_head_swap",
+      "mode": "ref2va",
+      "frames": 345,
+      "donor": "h3_probe_refview2_dancer_api",
+      "brief": "Masked video to video with `replace` set to head and hair: <Picture 1> defines the head only, on the lead performer's own body and clothes; the head faces the way the kept body faces, the cloth carries on where long hair lay, the light on the face follows the room's; names no setting, shot, action or cut, so one text serves every window of any clip.",
+      "tests": "the head-and-hair arm of bench/masked_v2v_band_arms.json: whether keeping the body as source pixels makes the action follow the original with nothing prompted, including the shot where the group turns its back"
+    },
+    {
+      "id": "ref2va_masked_lead_follows",
+      "mode": "ref2va",
+      "frames": 345,
+      "donor": "h3_probe_refview2_dancer_api",
+      "brief": "Masked video to video, whole subject among other people, with the action taken from the neighbours instead of named: ref2va_masked_lead_swap where the subject faces the way the people beside them face, turns when they turn, and is dressed as they are; names no setting, shot or cut.",
+      "tests": "arm band_follows_32s of bench/masked_v2v_band_arms.json: on ref2va_masked_lead_swap the replaced lead kept facing the camera when the group turned its back, because the prompt tied his facing to a lead the model cannot see; does tying it to the visible neighbours turn him, and does `dressed as they are` put him in the band's top"
     }
   ]
 }

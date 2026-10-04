@@ -34,6 +34,64 @@ source's own pixels go back, with the boundary feathered. `grow_pixels` is
 what keeps the feather on background: the blend reaches `feather_pixels` into
 the regenerated region, and the subject sits at least `grow_pixels` inside it.
 
+**What gets replaced** (`replace`, owner 2026-10-04: "it should be a choice on
+a node"). `whole subject` regenerates the tracked person. `head and hair`
+keeps the body below the hair, its clothes and its movement as the source's
+own pixels, so nothing about the action has to be prompted: the body turns
+because it is the original's. The part is found by core's SAM 3 detector on
+the frames the subject is in, from phrases the user can read and change
+(`part_phrases`), and kept only where it lies on the subject's own mask, so a
+neighbour's hair is not taken.
+
+The region is **everything of the subject down to where the part ends**, not
+the part's own outline. The first render regenerated the outline alone (head
+plus a mass of long hair), and the model filled it with a head that size: "a
+giant bobblehead" (owner). Nothing in a head-shaped hole pins the head's
+scale. Drawing the neck and shoulders with it does, because they have to
+meet the kept torso (a peer session's suggestion,
+`docs/research/masking/2026-10-04_mrhf.md`). With short hair the region is
+little more than the head.
+
+A frame the detector misses would otherwise regenerate nothing and show the
+original's head, so a miss takes the nearest found frame's cut, and the log
+says how many did. The node's `mask` output is the mask it used, for a
+preview.
+
+**Painting the subject out before the encode** (`paint_out`; a peer session's
+finding, `docs/research/masking/2026-10-04_mrhf.md`). The video VAE's encoder
+is convolutional, so a kept token beside the mask was encoded with the old
+subject inside its receptive field, and those tokens are re-injected clean on
+every step. A faint remnant of the original measured beside the regenerated
+subject is the suspected result. With `paint_out` the subject's pixels are
+filled from their surroundings (`fill_subject`) in the frames that are
+encoded; the composite still restores the true source. Core's own H3 inpaint
+path hides the original before its encode too
+(`comfy_extras/nodes_minimax_h3.py::MiniMaxH3FunControlPatch`). Off by
+default until a matched render says it helps.
+
+**What the composite keeps** (`composite`; owner's notes on the first clip
+and a peer's measurements and design, `docs/research/masking/2026-10-04_mrhf.md`).
+The regenerated tokens hold three kinds of pixel: the new subject, where the
+old subject stood, and margin that is neither. The margin is background the
+model had to invent, and it is where the flicker and the cut-out look were:
+the grown border, the backdrop a moving original swept, and anything the
+tracker marked by mistake. `whole region` keeps all three from the render.
+`only what changed` keeps the render where it differs from the source by
+more than `change_threshold` (the new subject and its shadow; the old
+subject's place, which is also forced by its mask) and restores the source
+where the model merely repainted the backdrop. No second detector pass and
+no phrase: a neighbour the model reproduced faithfully simply stays source.
+Then a generous `grow_pixels` costs nothing visible, so a replacement that
+reaches past the original's outline is not cut off. It does not fix where
+the old subject stood and the new one does not: that needs a plate with
+nobody in it.
+
+**Painting out, as built, made things worse** (owner, on the proof render:
+"much worse than before"). It stays off. The likely reason (inferred): the
+original's trace in the kept tokens also tells the model where the subject
+is and how big, and a hole smaller than the original's hair leaves a fringe
+the model continues as dark lines.
+
 Design from two third-party nodes, read and not run:
 `coderef/comfyui_dagthomas/nodes/h3/mouth_guard.py` (pixel grow, max-pool,
 max per run; it protects where this regenerates) and
@@ -61,6 +119,35 @@ H3MaskedSource = io.Custom("H3_MASKED_SOURCE")
 #: Frames per chunk for the pixel-space pools and blends: bounds the transient
 #: memory of a window. Reasoned, not measured.
 CHUNK = 48
+
+#: The `replace` choices. The second finds a part with core's SAM 3 detector.
+REPLACE_WHOLE = "whole subject"
+REPLACE_PART = "head and hair"
+#: The `composite` choices.
+COMPOSITE_REGION = "whole region"
+COMPOSITE_CHANGED = "only what changed"
+#: The default of `change_threshold`: how far the render must differ from the
+#: source, as a fraction of full scale averaged over the colour channels and a
+#: small neighbourhood, to be kept. Reasoned from a peer's measurements on the
+#: first clip (invented backdrop a few levels from the source, a subject tens
+#: of levels), not tuned.
+CHANGE_THRESHOLD = 0.05
+#: The neighbourhood the difference is averaged over, in pixels to each side.
+#: Reasoned, not measured.
+CHANGE_BLUR = 4
+#: The default of `part_phrases`: the union of the detections is the part.
+#: "hair" as well as "head" because long hair lies on the chest and back,
+#: outside any head. Reasoned, not measured.
+PART_PHRASES = "hair, head"
+#: The default of `part_margin`: a part is kept where it lies on the subject's
+#: mask widened by this many pixels of the source frame, because the two masks
+#: come from different passes and their edges do not coincide. Reasoned, not
+#: measured.
+PART_MARGIN = 8
+#: The default of `part_threshold`, the detector's score threshold for a part.
+#: Inherited: core's node default
+#: (`comfy_extras/nodes_sam3.py::SAM3_Detect.define_schema`).
+PART_THRESHOLD = 0.5
 
 
 def run_lengths(latent_t: int) -> list[int]:
@@ -102,13 +189,35 @@ def fit_mask(mask: torch.Tensor, width: int, height: int) -> torch.Tensor:
     return F.interpolate(m, size=(height, width), mode="bilinear", align_corners=False)[:, 0]
 
 
+#: A dilation of at least this many pixels is done on a mask reduced by
+#: `GROW_COARSE`, which costs a small fraction of the full-size pool. The
+#: result covers at least the asked distance and at most `GROW_COARSE - 1`
+#: pixels more. Reasoned: the reduction is far below a DiT token.
+GROW_COARSE_FROM = 16
+GROW_COARSE = 4
+
+
 def grow(mask: torch.Tensor, pixels: int) -> torch.Tensor:
-    """Dilate a [N, H, W] mask by `pixels` in every direction (a square max-pool, one axis at a time)."""
+    """Dilate a [N, H, W] mask by at least `pixels` in every direction (a square max-pool).
+
+    Exact below `GROW_COARSE_FROM`. From there the mask is max-pooled down by
+    `GROW_COARSE`, dilated there and brought back, so it never covers less
+    than asked and the cost stays flat as the distance grows.
+    """
     p = int(pixels)  # zero is a kernel of one, which returns the mask
+    coarse = p >= GROW_COARSE_FROM
+    k = -(-p // GROW_COARSE) if coarse else p
     parts = []
     for i in range(0, mask.shape[0], CHUNK):
-        m = F.max_pool2d(mask[i:i + CHUNK].unsqueeze(1), (1, 2 * p + 1), stride=1, padding=(0, p))
-        parts.append(F.max_pool2d(m, (2 * p + 1, 1), stride=1, padding=(p, 0))[:, 0])
+        m = mask[i:i + CHUNK].unsqueeze(1)
+        if coarse:
+            m = F.max_pool2d(m, GROW_COARSE, ceil_mode=True)
+        m = F.max_pool2d(m, (1, 2 * k + 1), stride=1, padding=(0, k))
+        m = F.max_pool2d(m, (2 * k + 1, 1), stride=1, padding=(k, 0))
+        if coarse:
+            m = m.repeat_interleave(GROW_COARSE, dim=-2).repeat_interleave(GROW_COARSE, dim=-1)
+            m = m[..., :mask.shape[-2], :mask.shape[-1]]
+        parts.append(m[:, 0])
     return torch.cat(parts, dim=0)
 
 
@@ -154,6 +263,41 @@ def pixel_alpha(tokens: torch.Tensor, height: int, width: int, feather_pixels: i
     return torch.cat(out, dim=0)
 
 
+def changed_alpha(images: torch.Tensor, source: torch.Tensor, tokens: torch.Tensor,
+                  old_subject: torch.Tensor, feather_pixels: int, old_margin: int,
+                  threshold: float) -> torch.Tensor:
+    """The blend weight that keeps the render only where it changed the picture. [F, H, W].
+
+    The change is the absolute difference from the source, averaged over the
+    channels and over `CHANGE_BLUR` pixels, ramped from 0 at 0.6 of
+    `threshold` to 1 at 1.4 of it, so a pixel hovering near the threshold
+    fades and does not switch. The old subject's mask widened by `old_margin`
+    is always kept. The result is held at its maximum over each temporal run
+    (the mask's own grain), cut to the regenerated tokens, widened by the
+    feather to close small holes and blurred by it, and never exceeds the
+    whole-region weight.
+    """
+    f, t = int(feather_pixels), float(threshold)
+    height, width = int(images.shape[1]), int(images.shape[2])
+    region = pixel_alpha(tokens, height, width, 0) > 0.5
+    b = CHANGE_BLUR
+    parts = []
+    for i in range(0, images.shape[0], CHUNK):
+        d = (images[i:i + CHUNK] - source[i:i + CHUNK].to(images.device, images.dtype)).abs().mean(dim=-1).unsqueeze(1)
+        d = F.avg_pool2d(F.pad(d, (b, b, b, b), mode="replicate"), 2 * b + 1, stride=1)[:, 0]
+        parts.append(((d - 0.6 * t) / max(0.8 * t, 1e-6)).clamp(0.0, 1.0))
+    keep = torch.maximum(torch.cat(parts, dim=0), (grow(old_subject.to(torch.float32), old_margin) > 0.5).float())
+    keep = keep * region
+    held, at = [], 0
+    for n in run_lengths(tokens.shape[0]):
+        held.append(keep[at:at + n].amax(dim=0, keepdim=True).expand(n, -1, -1))
+        at += n
+    wide = grow(torch.cat(held, dim=0), f)
+    soft = [F.avg_pool2d(F.pad(wide[i:i + CHUNK].unsqueeze(1), (f, f, f, f), mode="replicate"), 2 * f + 1, stride=1)[:, 0]
+            for i in range(0, wide.shape[0], CHUNK)]
+    return torch.minimum(torch.cat(soft, dim=0), pixel_alpha(tokens, height, width, f))
+
+
 def composite(images: torch.Tensor, source: torch.Tensor, alpha: torch.Tensor) -> torch.Tensor:
     """`alpha * images + (1 - alpha) * source`, [F, H, W, 3] with alpha [F, H, W]."""
     if tuple(images.shape[:3]) != tuple(source.shape[:3]) or tuple(images.shape[:3]) != tuple(alpha.shape):
@@ -167,9 +311,77 @@ def composite(images: torch.Tensor, source: torch.Tensor, alpha: torch.Tensor) -
     return out
 
 
+def _push_pull(image: torch.Tensor, weight: torch.Tensor) -> torch.Tensor:
+    """Fill where `weight` is 0 from where it is not: halve until the hole closes, then come back up.
+
+    `image` is [N, C, H, W] already multiplied by `weight` [N, 1, H, W].
+    """
+    known = weight > 0
+    estimate = image / weight.clamp(min=1e-6)
+    if bool(known.all()) or min(image.shape[-2:]) <= 1:
+        return estimate
+    coarse = _push_pull(F.avg_pool2d(image, 2, ceil_mode=True), F.avg_pool2d(weight, 2, ceil_mode=True))
+    up = F.interpolate(coarse, size=image.shape[-2:], mode="bilinear", align_corners=False)
+    return torch.where(known, estimate, up)
+
+
+def fill_subject(pixels: torch.Tensor, hole: torch.Tensor) -> torch.Tensor:
+    """[F, H, W, 3] with the pixels under `hole` [F, H, W] replaced by a fill from their surroundings.
+
+    Low frequency on purpose: these pixels are regenerated and never shown,
+    and the fill only has to stop a kept token's encoder seeing the subject.
+    Each frame is filled alone. Outside the hole nothing changes.
+    """
+    out = pixels.clone()
+    for i in range(0, pixels.shape[0], CHUNK):
+        h = (hole[i:i + CHUNK] > 0.5).to(pixels.dtype).unsqueeze(1)
+        if not bool(h.any()):
+            continue
+        img = pixels[i:i + CHUNK].movedim(-1, 1)
+        fill = _push_pull(img * (1.0 - h), 1.0 - h)
+        out[i:i + CHUNK] = (img * (1.0 - h) + fill * h).movedim(1, -1)
+    return out
+
+
+def select_part(subject: torch.Tensor, part: torch.Tensor, margin: int = PART_MARGIN) -> torch.Tensor:
+    """The part of a subject: `part` where it lies on `subject` widened by `margin` pixels. [N, H, W] each."""
+    return ((part > 0.5) & (grow(subject.to(torch.float32), margin) > 0.5)).to(torch.float32)
+
+
+def part_bottom(part: torch.Tensor) -> torch.Tensor:
+    """Per frame, the lowest row a part reaches, or -1 where the frame has none. [N] long."""
+    rows = (part > 0.5).any(dim=-1)                       # [N, H]
+    index = torch.arange(rows.shape[-1], device=part.device)
+    return torch.where(rows, index, torch.full_like(index, -1)).amax(dim=-1)
+
+
+def carry_missing(bottoms: torch.Tensor) -> tuple[torch.Tensor, int]:
+    """Give each frame with no part (-1) the nearest found frame's value; (filled, how many were carried)."""
+    found = (bottoms >= 0).nonzero().flatten()
+    missing = (bottoms < 0).nonzero().flatten()
+    if not found.numel() or not missing.numel():
+        return bottoms, 0
+    nearest = found[(missing[:, None] - found[None, :]).abs().argmin(dim=1)]
+    out = bottoms.clone()
+    out[missing] = bottoms[nearest]
+    return out, int(missing.numel())
+
+
+def above(subject: torch.Tensor, bottoms: torch.Tensor) -> torch.Tensor:
+    """The subject's mask down to row `bottoms[n]` inclusive, per frame. [N, H, W]."""
+    rows = torch.arange(subject.shape[-2], device=subject.device)[None, :, None]
+    return ((subject > 0.5) & (rows <= bottoms[:, None, None])).to(torch.float32)
+
+
 def window(source: dict, first_frame: int, frames: int, width: int, height: int,
            latent_t: int, lat_h: int, lat_w: int):
-    """One window of a source: its fitted frames [frames, height, width, 3], its token mask, frames padded.
+    """One window of a source: its fitted frames, the frames to encode, its token mask, its fitted mask, frames held.
+
+    The frames to encode are the fitted frames themselves, or with `paint_out`
+    a copy with the subject filled in: the mask widened by half of
+    `grow_pixels`, which takes the soft edge SAM leaves on a fast limb and
+    keeps the other half of the margin real background for the kept tokens.
+    That hole is inside the regenerated tokens, so no filled pixel is shown.
 
     A loop's last window ends at or past the end of its track
     (`loop_plan.py`, "Lengths"), so the source can run out inside it. The
@@ -191,7 +403,26 @@ def window(source: dict, first_frame: int, frames: int, width: int, height: int,
         pixels = torch.cat([pixels, pixels[-1:].expand(short, -1, -1, -1)], dim=0)
         mask = torch.cat([mask, torch.zeros((short,) + tuple(mask.shape[1:]), dtype=mask.dtype, device=mask.device)], dim=0)
     tokens = token_mask(grow(mask, source["grow_pixels"]), latent_t, lat_h, lat_w)
-    return pixels, tokens, short
+    encode = pixels
+    if source.get("paint_out"):
+        encode = fill_subject(pixels, grow(mask, int(source["grow_pixels"]) // 2))
+    return pixels, encode, tokens, mask, short
+
+
+def detect_part(segmenter, segmenter_clip, frames: torch.Tensor, where: torch.Tensor,
+                phrases: tuple[str, ...], threshold: float = PART_THRESHOLD) -> torch.Tensor:
+    """The union of core's SAM 3 detections of `phrases` on frames `where`, one mask each, [len(where), H, W]."""
+    from comfy_extras.nodes_sam3 import SAM3_Detect  # core's node; imported here so a check needs no SAM
+    parts = []
+    for i in range(0, where.shape[0], CHUNK):
+        chunk = frames[where[i:i + CHUNK]]
+        union = torch.zeros(tuple(chunk.shape[:3]), dtype=torch.float32)
+        for phrase in phrases:
+            cond = segmenter_clip.encode_from_tokens_scheduled(segmenter_clip.tokenize(phrase))
+            out = SAM3_Detect.execute(segmenter, chunk, conditioning=cond, threshold=float(threshold))
+            union = torch.maximum(union, getattr(out, "args", out)[0].to(union))
+        parts.append(union)
+    return torch.cat(parts, dim=0)
 
 
 class MiniMaxH3MaskedSource(io.ComfyNode):
@@ -212,17 +443,69 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                 io.Mask.Input("mask", tooltip="One mask per frame, 1 on the subject to replace."),
                 io.Int.Input("grow_pixels", default=32, min=0, max=512,
                              tooltip=("How far the mask is widened before it reaches the model, in pixels of "
-                                      "the render canvas. Room for a replacement with a different outline, "
-                                      "and the margin the feather blends inside of.")),
+                                      "the render canvas. Raise it when the replacement is a different shape "
+                                      "from the original; every pixel added is background the model has to "
+                                      "invent.")),
                 io.Int.Input("feather_pixels", default=8, min=0, max=128,
                              tooltip=("Width of the blend between the regenerated region and the source's "
-                                      "own pixels, to each side of the boundary. Keep it below grow_pixels.")),
+                                      "own pixels, to each side of the boundary. Raise it if the boundary "
+                                      "shows; it cannot exceed grow_pixels.")),
+                # appended 2026-10-04
+                io.Combo.Input("replace", options=[REPLACE_WHOLE, REPLACE_PART], default=REPLACE_WHOLE,
+                               tooltip=("What is regenerated. `whole subject` replaces the person, clothes "
+                                        "and movement included, so the prompt has to say what they do. "
+                                        "`head and hair` replaces the subject from the top of the head down "
+                                        "to where the hair ends and keeps the rest of the body, its clothes "
+                                        "and its movement; it needs `segmenter` and `segmenter_clip`, and "
+                                        "costs a detector pass per phrase on each frame the subject is in.")),
+                io.Boolean.Input("paint_out", default=False,
+                                 tooltip=("Fill the subject in with its surroundings before the source is "
+                                          "encoded, so the kept picture around the mask carries no trace of "
+                                          "them. Turn it on if a faint remnant of the original shows beside "
+                                          "the new subject. Costs a fill per frame, no sampling time.")),
+                io.Model.Input("segmenter", optional=True,
+                               tooltip="The SAM 3 model that tracked the mask. Read only for `head and hair`."),
+                io.Clip.Input("segmenter_clip", optional=True,
+                              tooltip="The SAM 3 checkpoint's text encoder. Read only for `head and hair`."),
+                io.String.Input("part_phrases", default=PART_PHRASES,
+                                tooltip=("What SAM 3 is asked to find on the subject for `head and hair`, "
+                                         "separated by commas; everything found is used together. Change "
+                                         "it when the `mask` output shows the wrong region. Each phrase "
+                                         "costs one more detector pass.")),
+                io.Float.Input("part_threshold", default=PART_THRESHOLD, min=0.0, max=1.0, step=0.01,
+                               tooltip=("How sure SAM 3 has to be before a detection of a phrase counts, for "
+                                        "`head and hair`. Lower it when the log says many frames were "
+                                        "carried from a neighbour; raise it when the `mask` output takes "
+                                        "something that is not the part.")),
+                io.Int.Input("part_margin", default=PART_MARGIN, min=0, max=256,
+                             tooltip=("How far past the subject's own mask a detected part may reach and "
+                                      "still count as the subject's, in pixels of the source frame. Raise it "
+                                      "when the `mask` output clips the part at the subject's edge; lower it "
+                                      "when it takes a neighbour's.")),
+                io.Combo.Input("composite", options=[COMPOSITE_REGION, COMPOSITE_CHANGED], default=COMPOSITE_REGION,
+                               tooltip=("What is kept from the render. `whole region` keeps everything that was "
+                                        "regenerated, margin included. `only what changed` keeps the render "
+                                        "where it differs from the source (the new subject, and where the old "
+                                        "one stood) and puts the source back where the model only repainted "
+                                        "the background: choose it when the area around the subject flickers "
+                                        "or looks cut out. Costs a comparison per frame, no model.")),
+                io.Float.Input("change_threshold", default=CHANGE_THRESHOLD, min=0.0, max=1.0, step=0.005,
+                               tooltip=("For `only what changed`: how different the render must be from the "
+                                        "source to be kept, as a fraction of full brightness. Lower it if parts "
+                                        "of the new subject go missing; raise it if flicker around the subject "
+                                        "remains.")),
             ],
-            outputs=[H3MaskedSource.Output(display_name="source")],
+            outputs=[H3MaskedSource.Output(display_name="source"),
+                     io.Mask.Output(display_name="mask",
+                                    tooltip=("The mask this node used, one per source frame, before grow_pixels: "
+                                             "preview it to see what will be replaced."))],
         )
 
     @classmethod
-    def execute(cls, frames, mask, grow_pixels=32, feather_pixels=8) -> io.NodeOutput:
+    def execute(cls, frames, mask, grow_pixels=32, feather_pixels=8, replace=REPLACE_WHOLE, paint_out=False,
+                segmenter=None, segmenter_clip=None, part_phrases=PART_PHRASES,
+                part_threshold=PART_THRESHOLD, part_margin=PART_MARGIN, composite=COMPOSITE_REGION,
+                change_threshold=CHANGE_THRESHOLD) -> io.NodeOutput:
         if mask.ndim == 4 and int(mask.shape[-1]) == 1:
             mask = mask[..., 0]
         if frames.ndim != 4 or mask.ndim != 3:
@@ -240,9 +523,41 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
             raise ValueError(
                 f"feather_pixels {int(feather_pixels)} is wider than grow_pixels {int(grow_pixels)}: the blend "
                 "would reach the subject's own pixels and bring the original back at its edge")
+        if replace not in (REPLACE_WHOLE, REPLACE_PART):
+            raise ValueError(f"unknown replace {replace!r}; one of {[REPLACE_WHOLE, REPLACE_PART]}")
+        if composite not in (COMPOSITE_REGION, COMPOSITE_CHANGED):
+            raise ValueError(f"unknown composite {composite!r}; one of {[COMPOSITE_REGION, COMPOSITE_CHANGED]}")
+        note = ""
+        if replace == REPLACE_PART:
+            phrases = tuple(p.strip() for p in str(part_phrases).split(",") if p.strip())
+            if not phrases:
+                raise ValueError("part_phrases is empty: name what SAM 3 should find on the subject, e.g. `hair, head`")
+            if segmenter is None or segmenter_clip is None:
+                raise ValueError(
+                    f"replace `{replace}` finds the part with SAM 3: wire the SAM 3 checkpoint's model into "
+                    "`segmenter` and its text encoder into `segmenter_clip`")
+            where = (mask > 0.5).flatten(1).any(dim=1).nonzero().flatten()
+            region = torch.zeros_like(mask, dtype=torch.float32)
+            carried = 0
+            if where.numel():
+                subject = mask[where].to(torch.float32)
+                found = select_part(subject, detect_part(segmenter, segmenter_clip, frames, where, phrases,
+                                                         part_threshold).to(mask.device), int(part_margin))
+                bottoms, carried = carry_missing(part_bottom(found))
+                if bool((bottoms < 0).all()):
+                    raise ValueError(
+                        f"SAM 3 found none of {list(phrases)} on the subject in any frame: change `part_phrases`, "
+                        "or set `replace` to whole subject")
+                region[where] = above(subject, bottoms)
+            note = (f", from {list(phrases)} at threshold {float(part_threshold):g}, found on {int(where.numel()) - carried} of the {int(where.numel())} "
+                    f"frames the subject is in" + (f" and carried from the nearest frame on {carried}" if carried else ""))
+            mask = region
         covered = float((mask > 0.5).any(dim=0).float().mean())
-        logger.info("[h3] MiniMaxH3MaskedSource: %d frames, the mask touches %.1f%% of the frame over the clip, "
-                    "grow %d px, feather %d px", int(frames.shape[0]), 100.0 * covered,
-                    int(grow_pixels), int(feather_pixels))
+        logger.info("[h3] MiniMaxH3MaskedSource: %d frames, replacing the %s%s, the mask touches %.1f%% of the "
+                    "frame over the clip, grow %d px, feather %d px%s, composite keeps the %s", int(frames.shape[0]),
+                    replace, note, 100.0 * covered, int(grow_pixels), int(feather_pixels),
+                    ", subject painted out before the encode" if paint_out else "", composite)
         return io.NodeOutput({"frames": frames, "mask": mask, "grow_pixels": int(grow_pixels),
-                              "feather_pixels": int(feather_pixels)})
+                              "feather_pixels": int(feather_pixels), "paint_out": bool(paint_out),
+                              "composite": composite, "change_threshold": float(change_threshold)},
+                             mask.to(torch.float32))

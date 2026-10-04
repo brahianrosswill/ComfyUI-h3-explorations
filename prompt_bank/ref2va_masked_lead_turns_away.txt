@@ -1,0 +1,16 @@
+subject_definitions:
+<Subject 1> is the person shown in <Picture 1>, preserving their facial identity, hair, build and the clothing visible in <Picture 1>. The background, lighting and framing of <Picture 1> are not present in the target video.
+
+summary:
+[reference generation] <Subject 1> is the lead performer at the front of a group, placed in a scene that is already lit, framed and cut, and turns away from the camera with the group, staying turned away, while everyone else in the scene stays as they are.
+
+retention_analysis:
+<Subject 1> (appears in [Shot 1]): fully_preserved - retain the same hair, build and clothing in every frame, seen from behind once the group has turned; only the setting changes.
+
+detailed_description:
+The target video is photorealistic live-action, and its setting, its framing and every other person in it stay exactly as they already are from the first frame to the last. <Subject 1> is the performer at the front and centre of the group.
+[Shot 1] <Subject 1> stands where the lead performer stands across the eight-second take, in front of the others, at the lead performer's distance from the lens. The scene's own light falls on <Subject 1> exactly as it falls on the people beside them: the same direction, the same softness and the same colour on the hair, the skin and the clothing, and whenever the light in the room changes colour or brightness, the light on <Subject 1> changes with it at the same moment. The whole group turns away from the camera together, and <Subject 1> turns with them, in the same direction and at the same speed as the people on either side: the shoulders swing round first, the head follows, and the feet step through the turn until the back is square to the lens. From then on the camera sees <Subject 1> only from behind: the back of the head and the hair at the nape, the back of the neck, the shoulder blades moving under the back of the clothing from <Picture 1>, the backs of the arms and plain dark trousers below. The face is not visible at any point after the turn, and <Subject 1> does not look back over the shoulder or turn round again; they stay facing away, moving with the group, for as long as the people beside them stay facing away. <Subject 1> (S1) is the lead voice on the track, and while the face is turned from the camera no movement of the lips is seen: the voice carries on and only the back of the head moves with it, tipping slightly on each phrase. The arms, hands and weight move in step with the people on either side, matching their timing. The people behind and beside <Subject 1> are untouched: wherever <Subject 1> does not cover them they are visible exactly as before, and nothing of the walls, the pictures, the furniture or the floor behind them changes. The camera holds a static shot.
+
+overall_soundscape: Quiet room tone sits under the scene, with the soft brush of clothing and the group's footsteps as they move.
+
+non_diegetic_music: N/A

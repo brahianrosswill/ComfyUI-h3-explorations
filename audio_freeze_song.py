@@ -340,7 +340,8 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                     f"the source video has {have} frames and window {beyond[0]} of {n_windows} starts past "
                     f"its end: load more of it at {FPS} fps (the loader's frame cap), or shorten `extent`")
             lines.append(f"source video: {have} frames, mask grown {source['grow_pixels']} px, "
-                         f"blend {source['feather_pixels']} px")
+                         f"blend {source['feather_pixels']} px"
+                         + (", subject painted out before the encode" if source.get("paint_out") else ""))
         # Every rendering window's conditioning before any window samples; see
         # the module docstring for why the key is the text (and, with
         # references, the frame count) and nothing else.
@@ -376,16 +377,17 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
             i = w.number - 1
             comfy.model_management.throw_exception_if_processing_interrupted()
             latent, _count = _empty_av_latent(width, height, w.frames)
-            src_pixels = src_tokens = None
+            src_pixels = src_tokens = src_mask = None
             if source is not None:
                 # this window starts from the source's own frames over its span
                 empty_video, empty_audio = latent["samples"].unbind()
-                src_pixels, src_tokens, held = video_mask.window(
+                src_pixels, src_encode, src_tokens, src_mask, held = video_mask.window(
                     source, int(round(w.start * FPS)), w.frames, width, height, *empty_video.shape[2:])
                 if held:
                     reports.append(f"[{w.number}] the source ends {held} frames before this window does; "
                                    "its last frame is held, unmasked")
-                z = vae.encode(src_pixels)
+                z = vae.encode(src_encode)
+                del src_encode
                 if tuple(z.shape) != tuple(empty_video.shape):
                     raise ValueError(
                         f"the video VAE returned {tuple(z.shape)} for a {w.frames}-frame window; the "
@@ -438,7 +440,17 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                 if images.ndim == 5:
                     images = images.reshape(-1, *images.shape[-3:])
             if src_pixels is not None and src_tokens is not None and not untouched:
-                alpha = video_mask.pixel_alpha(src_tokens, height, width, source["feather_pixels"])
+                if source.get("composite") == video_mask.COMPOSITE_CHANGED:
+                    # the render is kept only where it changed the picture or the old subject stood
+                    alpha = video_mask.changed_alpha(images, src_pixels, src_tokens, src_mask,
+                                                     source["feather_pixels"], int(source["grow_pixels"]) // 2,
+                                                     source["change_threshold"])
+                    whole = float(video_mask.pixel_alpha(src_tokens, height, width, 0).mean())
+                    reports.append(f"[{w.number}] composite keeps only what changed: "
+                                   f"{100.0 * float((alpha > 0.5).float().mean()) / max(whole, 1e-6):.0f}% of the "
+                                   "regenerated pixels, the source restored in the rest")
+                else:
+                    alpha = video_mask.pixel_alpha(src_tokens, height, width, source["feather_pixels"])
                 images = video_mask.composite(images, src_pixels, alpha)
                 del alpha
             images = images[int(trim):]

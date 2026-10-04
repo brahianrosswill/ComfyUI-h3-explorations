@@ -4,6 +4,55 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.24
+
+### Added
+
+- **`MiniMaxH3MaskedSource` says what it masks and what it keeps.** Inputs
+  appended, all at defaults that reproduce 0.186.0: `replace` (whole subject,
+  or head and hair), `paint_out`, `segmenter` and `segmenter_clip`,
+  `part_phrases`, `part_threshold`, `part_margin`, `composite` (whole region,
+  or only what changed) and `change_threshold`; and a `mask` output, the mask
+  the node used, for a preview (owner: "it should be a choice on a node";
+  "we should unhide the detection stuff"). The generated graph wires the
+  segmenter so a choice needs no rewiring.
+- **`composite` = `only what changed`**: the render is kept where it differs
+  from the source or the old subject stood, and the source is restored in the
+  margin, so `grow_pixels` can be generous and a replacement that reaches
+  past the original's outline is not cut off. A peer session's design
+  (`docs/research/masking/2026-10-04_mrhf.md`); no detector pass.
+- Three bank prompts for the masked lane: `ref2va_masked_head_swap`,
+  `ref2va_masked_lead_follows` and `ref2va_masked_lead_turns_away`.
+- `bench/run_graph_arms.py` takes `@bank-blocks:<label>=<id>,...`, a song
+  node's block prompt assembled from bank entries.
+
+### Changed
+
+- A window with nothing masked, a mask of another shape and a large
+  dilation: unchanged in behaviour, but `video_mask.grow` now does a dilation
+  of `GROW_COARSE_FROM` pixels or more on a reduced mask. It never covers
+  less than asked.
+
+### Rendered and judged by the owner
+
+- `bench/results/2026-10-04_masked_v2v_first_run.md` and
+  `bench/results/2026-10-04_masked_v2v_band.md`, later arms. `paint_out`
+  made things worse ("much worse than before") and stays off. `head and
+  hair` gave an oversized head on a long-haired original, twice ("a giant
+  bobblehead"); it stays as an option and is not recommended. The dark lines
+  beside the first clip's subject are seams in the source's own backdrop
+  (owner's annotations), and that clip is set aside for the band clip.
+  `only what changed` has rendered once and is not judged.
+
+### Checks
+
+- Every `bench/check_*.py` ran with the card masked after the `replace` and
+  `paint_out` inputs landed, with no failure this lane did not have this
+  morning; the checks nearest the change ran again after `composite`. The
+  card-side checks were not repeated: nothing here touches attention or the
+  distill. `bench/check_doc_links.py` fails on a citation in another
+  session's note, which is theirs.
+
 ## 0.186.23
 
 ### Changed
