@@ -4,6 +4,15 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.46
+
+### Docs
+
+- **The masking note closes its open item on the subject track**: validated
+  by mrblue and mrpink and landed in 0.186.45. What stays open there is the
+  lone-person floor's narrow room, the signature under a change of framing,
+  and a third clip.
+
 ## 0.186.45
 
 ### Changed
