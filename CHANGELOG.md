@@ -4,6 +4,36 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.2
+
+### Changed
+
+- The `qwen_view` tooltip says what the input does and what its two values
+  do, and nothing else (owner, 2026-10-04: "just say what the qwen_view does
+  and what values do dont add all that prose"). The louder mix seen on one
+  dialogue scene and the cases nobody has looked at stay in the comment
+  beside the input. `use_vae` loses "Lightly tested" for the same reason.
+
+## 0.186.2
+
+### Added
+
+- **`ref2va_masked_lead_swap`**, the clip-agnostic masked prompt for a
+  subject among other people: it drops the claim that the subject is alone
+  and ties the light on the subject to the room's.
+- **`bench/masked_v2v_band_arms.json`**: the second clip of the masked lane, a
+  six-person scene with lighting changes and cutaways.
+
+### Rendered, not judged
+
+- `bench/results/2026-10-04_masked_v2v_band.md`. One word is not enough to
+  track one person among several: the tracker's object cap is spent on the
+  others, and the phrase that finds the lead also takes the cutaways' leads.
+  The arm selects the lead's objects by index, which is bookkeeping for one
+  clip. From frames, the light on the replaced subject follows the room's
+  colour changes; the shot where the group turns away is wrong, because the
+  prompt names no action.
+
 ## 0.186.1
 
 ### Changed

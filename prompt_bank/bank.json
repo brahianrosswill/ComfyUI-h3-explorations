@@ -1167,6 +1167,14 @@
       "donor": "h3_probe_refview2_dancer_api",
       "brief": "Masked video to video, written for one clip: the first window of the owner's stage-singer music video, three shots in the source's own order (chest-up as the singer walks in, full-length across the stage, close-up at the microphone), with <Picture 1> defining the man who replaces the singer; he sings the frozen track as (S1) with no lyrics in the text.",
       "tests": "the clip-specific arm of bench/masked_v2v_arms.json: whether describing the plate's shots, as the house rule asks of every generated scene, reads better than the clip-agnostic default when the plate is already in the target rows"
+    },
+    {
+      "id": "ref2va_masked_lead_swap",
+      "mode": "ref2va",
+      "frames": 345,
+      "donor": "h3_probe_refview2_dancer_api",
+      "brief": "Masked video to video for a subject among other people: ref2va_masked_subject_swap with the claim that the subject is alone removed. <Picture 1> defines the lead performer at the front of a group; the others stay as they are; the light on the subject changes with the room's; no setting, shot or cut is named, so one text serves every window of any clip.",
+      "tests": "the second clip of the masked video-to-video lane (bench/masked_v2v_band_arms.json): a six-person scene with coloured lighting changes and cutaways, where only the tracked lead is replaced"
     }
   ]
 }

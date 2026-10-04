@@ -1,0 +1,18 @@
+{
+ "what": "Masked video to video, second clip (owner, 2026-10-04): 1:35 to 2:07 of a six-person band video with coloured lighting changes and cutaways, the lead singer replaced from the same reference still as bench/masked_v2v_arms.json, on the clip-agnostic prompt for a subject among other people. The tracker's phrase and object selection were chosen from probes: tracking every person spends the object cap before the main shot, and the phrase 'lead singer' also takes the most prominent person of each cutaway, so the three objects that are the lead are selected by index. The indices hold only for this loader start, frame cap and phrase.",
+ "arms": {
+  "band_generic_32s": "workflows/h3_video_to_video_masked_song_pdd8_api.json"
+ },
+ "patches": [
+  "band_generic_32s:VHS_LoadVideoFFmpeg.video=thinkaboutthings_compressed.mp4",
+  "band_generic_32s:VHS_LoadVideoFFmpeg.start_time=95.0",
+  "band_generic_32s:VHS_LoadVideoFFmpeg.frame_load_cap=810",
+  "band_generic_32s:LoadImage.image=f_img_outside.jpg",
+  "band_generic_32s:CLIPTextEncode.text=lead singer",
+  "band_generic_32s:SAM3_VideoTrack.max_objects=16",
+  "band_generic_32s:SAM3_TrackToMask.object_indices=\"4,6,10\"",
+  "band_generic_32s:MiniMaxH3AudioFreezeSong.prompt=@bank:ref2va_masked_lead_swap",
+  "band_generic_32s:MiniMaxH3AudioFreezeSong.extent.seconds=32.0",
+  "band_generic_32s:MiniMaxH3AudioFreezeSong.filename_prefix=Video/mrpink/masked_v2v_band"
+ ]
+}
