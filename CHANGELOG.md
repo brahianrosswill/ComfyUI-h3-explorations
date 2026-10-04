@@ -4,6 +4,19 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.41
+
+### Docs
+
+- **The masking note records what the late start did to the turn.** On
+  mrpink's three arms the subject stays facing the camera in the shipped
+  graph, and follows the original's turn once knots of the schedule are
+  dropped, with the original's hair and clothes arriving along with its
+  pose. `docs/research/masking/2026-10-04_mrhf.md` has which arms I saw and
+  which are as reported, the untried arm that follows (a late start from a
+  blurred, desaturated source inside the region), and the subject track
+  draft's validation as an open item.
+
 ## 0.186.40
 
 ### Docs
