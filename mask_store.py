@@ -31,9 +31,12 @@ settings it is asked for; it is only ever unused, and unused ones go first.
 compressed. A hit returns the same bytes the tracker gave, so a render with a
 kept mask is the render with a tracked one.
 
-**Where.** ComfyUI's user directory, `h3_masked_source/`: local disk, not the
-media share, kept across restarts (the temp directory is emptied at start).
-`STORE_BYTES` caps it, least recently used out first.
+**Where.** `masks/` in ComfyUI's output folder, beside `latents/` (owner,
+2026-10-04; it was ComfyUI's user directory for one commit, which is for
+settings and not somewhere anyone would look). A file is named after the
+source video an upstream loader names, then its key, so a clip's masks can be
+told apart by eye. `STORE_BYTES` caps what this module keeps there, least
+recently used out first; a file it did not write is never counted or removed.
 """
 
 from __future__ import annotations
@@ -42,6 +45,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import time
 import zipfile
 import zlib
@@ -59,7 +63,14 @@ logger = logging.getLogger(__name__)
 #: the only part that is not runs of zeros and ones), so this holds every clip
 #: of a working week and is small beside one checkpoint.
 STORE_BYTES = 4 * 1024 ** 3
-DIRNAME = "h3_masked_source"
+DIRNAME = "masks"
+#: A kept mask's file name: an optional label, then the key's 40 hex digits.
+#: Only files of this shape are this module's to count, read or remove.
+KEPT_NAME = re.compile(r"^(?:.+_)?[0-9a-f]{40}\.npz$")
+#: The label a key's file gets, noted by `mask_key` (which has the prompt) for
+#: `save` (which does not). Process-local and only a name: a key with no label
+#: here is saved under its key alone, and found again either way.
+_LABELS: dict[str, str] = {}
 #: Frames sampled for the fingerprint, and the spatial stride. Reasoned: enough
 #: that two different clips cannot share a key by accident, small enough to
 #: hash in milliseconds; it is not a proof of equality, the settings and the
@@ -72,7 +83,16 @@ UNREADABLE = (OSError, KeyError, ValueError, EOFError, zipfile.BadZipFile, zlib.
 
 def root() -> Path:
     import folder_paths
-    return Path(folder_paths.get_user_directory()) / DIRNAME
+    return Path(folder_paths.get_output_directory()) / DIRNAME
+
+
+def source_label(prompt, node_id) -> str:
+    """A name for the mask's file: the stem of the source video an upstream node names, or ""."""
+    names = [name for name, _size, _time in input_file_stats(prompt, node_id)]
+    videos = [n for n in names if n.lower().rsplit(".", 1)[-1] in ("mp4", "mov", "mkv", "webm", "avi", "gif")]
+    pick = (videos or names or [""])[0]
+    stem = Path(pick.split("[")[0].strip()).stem          # an annotated name ends " [input]"
+    return re.sub(r"[^A-Za-z0-9.-]+", "-", stem).strip("-.")[:60]
 
 
 def frames_fingerprint(frames: torch.Tensor) -> str:
@@ -132,11 +152,25 @@ def mask_key(prompt, node_id, frames: torch.Tensor, skip=()) -> str | None:
         return None
     blob = json.dumps({"graph": signature, "frames": frames_fingerprint(frames),
                        "files": input_file_stats(prompt, node_id)}, sort_keys=True)
-    return hashlib.blake2b(blob.encode(), digest_size=20).hexdigest()
+    key = hashlib.blake2b(blob.encode(), digest_size=20).hexdigest()
+    _LABELS[key] = source_label(prompt, node_id)
+    return key
+
+
+def _kept_files() -> list[Path]:
+    try:
+        return [p for p in root().iterdir() if p.is_file() and KEPT_NAME.match(p.name)]
+    except OSError:
+        return []
 
 
 def _path(key: str) -> Path:
-    return root() / f"{key}.npz"
+    """Where `key`'s mask is, whatever label its file carries, or where a new one goes."""
+    for p in _kept_files():
+        if p.name.endswith(f"{key}.npz"):
+            return p
+    label = _LABELS.get(key, "")
+    return root() / (f"{label}_{key}.npz" if label else f"{key}.npz")
 
 
 def has(key: str | None, shape) -> bool:
@@ -193,7 +227,7 @@ def evict(budget: int | None = None) -> list[str]:
     """Remove the least recently used kept masks until the folder is inside the budget. Names removed."""
     budget = STORE_BYTES if budget is None else int(budget)
     try:
-        files = sorted(root().glob("*.npz"), key=lambda p: p.stat().st_mtime)
+        files = sorted(_kept_files(), key=lambda p: p.stat().st_mtime)
     except OSError:
         return []
     total = sum(p.stat().st_size for p in files)

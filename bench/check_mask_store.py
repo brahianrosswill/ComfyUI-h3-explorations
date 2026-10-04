@@ -19,6 +19,9 @@ could happen, or one way the saving could quietly not happen.
    mask of another shape under the same key is not returned.
 4. **The store stays inside its budget**, least recently used out first, a
    read counting as use. RED CONTROL: with room for all, nothing is removed.
+   It lives in `masks/` of the output folder, a file carries its source
+   video's name, and a file it did not write there is never counted or
+   removed.
 5. **On a hit core is asked for nothing**: `check_lazy_status` returns no
    input, `execute` runs with no mask and no segmenter, never calls the part
    detection, and returns what the tracked run returned. On a miss it asks
@@ -168,31 +171,61 @@ def check_key(problems):
         problems.append("a missing prompt or node gives a key; nothing should be kept without one")
 
 
-def check_store(problems):
+def check_store(problems, real_root):
+    import folder_paths as fp
+    if real_root() != Path(fp.get_output_directory()) / "masks":
+        problems.append(f"kept masks go to {real_root()}, not `masks/` in the output folder")
     mask = _mask()
-    ms.save("k1", mask)
-    back = ms.load("k1", (N, H, W))
+    k1, a, b, c, absent = ("1" * 40, "a" * 40, "b" * 40, "c" * 40, "d" * 40)
+    ms.save(k1, mask)
+    back = ms.load(k1, (N, H, W))
     if back is None or back.dtype != torch.float32 or not torch.equal(back, mask):
         problems.append("a kept mask is not the tracked mask's bytes")
-    if ms.load("k1", (N + 1, H, W)) is not None or ms.has("k1", (N, H, W + 1)):
+    if ms.load(k1, (N + 1, H, W)) is not None or ms.has(k1, (N, H, W + 1)):
         problems.append("a kept mask of another shape is returned")
-    if not ms.has("k1", (N, H, W)) or ms.has("absent", (N, H, W)) or ms.load(None, (N, H, W)) is not None:
+    if not ms.has(k1, (N, H, W)) or ms.has(absent, (N, H, W)) or ms.load(None, (N, H, W)) is not None:
         problems.append("`has` and `load` disagree with what is on disk")
-    # the budget: three files, the oldest read last, so the middle one is least recently used
-    for i, key in enumerate(("a", "b", "c")):
-        ms.save(key, mask)
-        os.utime(ms._path(key), (time.time() - 100 + i, time.time() - 100 + i))
-    ms.load("a", (N, H, W))
-    size = ms._path("a").stat().st_size
-    k1 = ms._path("k1")
-    k1.unlink()
+    # a file is named after its source video and found again by its key alone
+    frames = _frames()
+    real_exists, real_path = folder_paths.exists_annotated_filepath, folder_paths.get_annotated_filepath
+    with tempfile.TemporaryDirectory() as d:
+        f = Path(d) / "clip.mp4"
+        f.write_bytes(b"x")
+        folder_paths.exists_annotated_filepath = lambda name: name == "my clip (1).mp4"
+        folder_paths.get_annotated_filepath = lambda name, default_dir=None: str(f)
+        try:
+            key = ms.mask_key(_prompt(video="my clip (1).mp4"), NODE, frames, vm.MASK_KEY_SKIP)
+        finally:
+            folder_paths.exists_annotated_filepath, folder_paths.get_annotated_filepath = real_exists, real_path
+    ms.save(key, mask)
+    name = ms._path(key).name
+    if name != f"my-clip-1_{key}.npz":
+        problems.append(f"a kept mask's file is named {name}, not after its source video and its key")
+    ms._LABELS.clear()                                  # another process: the label is not known, the key still finds it
+    if not ms.has(key, (N, H, W)) or ms.load(key, (N, H, W)) is None:
+        problems.append("a kept mask is not found by its key once its label is forgotten")
+    ms._path(key).unlink()
+    # the budget: three files, the oldest read last, so the middle one is least recently used;
+    # and a file this module did not write, which must not be counted or removed
+    stranger = ms.root() / "someone_elses.npz"
+    stranger.write_bytes(b"0" * 4096)
+    os.utime(stranger, (time.time() - 1000, time.time() - 1000))
+    for i, k in enumerate((a, b, c)):
+        ms.save(k, mask)
+        os.utime(ms._path(k), (time.time() - 100 + i, time.time() - 100 + i))
+    ms.load(a, (N, H, W))
+    size = ms._path(a).stat().st_size
+    ms._path(k1).unlink()
     if ms.evict(budget=10 * size):
         problems.append("RED CONTROL failed: with room for all three something was removed")
     gone = ms.evict(budget=2 * size)
-    if gone != ["b.npz"]:
+    if gone != [f"{b}.npz"]:
         problems.append(f"past the budget the least recently used should go (b), got {gone}")
-    for key in ("a", "c"):
-        ms._path(key).unlink(missing_ok=True)
+    if not stranger.exists():
+        problems.append("a file this module did not write was removed from the masks folder")
+    stranger.unlink(missing_ok=True)
+    for k in (a, c):
+        ms._path(k).unlink(missing_ok=True)
 
 
 def check_node(problems):
@@ -298,7 +331,7 @@ def main() -> int:
         ms.root = lambda: Path(d)
         try:
             check_key(problems)
-            check_store(problems)
+            check_store(problems, real)
             check_node(problems)
         finally:
             ms.root = real

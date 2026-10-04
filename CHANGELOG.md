@@ -4,6 +4,19 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.31
+
+### Changed
+
+- **Kept masks go to `masks/` in ComfyUI's output folder**, beside
+  `latents/` (owner, 2026-10-04). 0.186.29 put them in ComfyUI's user
+  directory, which is for settings and not somewhere anyone would look. A
+  file is named after the source video an upstream loader names, then its
+  key, so a clip's masks can be told apart; it is found by the key alone.
+  Only files of that shape count against `mask_store.STORE_BYTES` or are
+  removed: anything else in the folder is left alone. No server had run
+  0.186.29, so nothing was written to the old place.
+
 ## 0.186.30
 
 ### Changed

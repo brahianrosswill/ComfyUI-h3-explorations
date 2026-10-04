@@ -42,6 +42,9 @@ Older history lives elsewhere and is not copied here:
   up testing, and shown that the tracker and the part detection cost more
   than a window of sampling after a restart: "save the mask, not the
   latent"). `MiniMaxH3MaskedSource.reuse_mask`, on by default, `mask_store.py`.
+  They are kept in the output folder's `masks/` (owner, the same day: "output
+  folder in a masks folder like latents is"), not in ComfyUI's user folder,
+  where the first commit put them.
 - **Masked renders are one pass for now; two samplers are for another day**
   (owner, 2026-10-04: "its more complexity than we need ... just focus on one
   pass"). `MiniMaxH3RestorePlate` stays registered and unused; the latent
