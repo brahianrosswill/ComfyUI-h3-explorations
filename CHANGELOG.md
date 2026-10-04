@@ -4,6 +4,17 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.21
+
+### Changed
+
+- `docs/research/masking/2026-10-04_mrhf.md`: mrblue's measurements on the
+  decoded tensors, as reported. The one-in-four brighter frame is in what the
+  model generated, not the decoder, the file or the plate. One of my
+  statements is corrected: the composite edge moves between x 656 and 704 and
+  is not fixed. The open question is now whether the distill or Sol-Attn is
+  responsible, which the owner's control renders test.
+
 ## 0.186.20
 
 ### Changed
