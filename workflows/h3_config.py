@@ -1214,8 +1214,8 @@ SEGMENTER = "sam3.1_multiplex_fp32.safetensors"
 #: that the shipped workflow"): core's tracker spends a cap on every person
 #: and splits one subject into several objects across cuts, which had to be
 #: selected by typed index (`bench/results/2026-10-04_masked_v2v_band.md`).
-SUBJECT_TRACK = dict(subject_phrase="person", pick_frame=0, pick="largest", match_threshold=0.82,
-                     cut_threshold=0.9, detection_threshold=0.5, max_people=16)
+SUBJECT_TRACK = dict(subject_phrase="person", pick="largest", pick_on="automatic", match="automatic",
+                     cuts="automatic", detection_threshold=0.5, max_people=16)
 #: `MiniMaxH3MaskedSource`'s inputs, equal to the node's defaults
 #: (`video_mask.py`). `grow_pixels` and `composite` are the owner's choice on
 #: the band clip, 2026-10-04: the wider margin "preserved identity better"

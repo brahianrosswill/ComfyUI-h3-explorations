@@ -4,6 +4,36 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.45
+
+### Changed
+
+- **The Subject Track needs nothing set** (the node and its check are a peer
+  session's, mrhf; validated by mrblue outside the server and here through
+  it, as the owner asked). `MiniMaxH3SubjectTrack` picks its frame, its
+  match and its cut threshold automatically; `pick_on`, `match` and `cuts`
+  each offer a named value as their other option, replacing the flat
+  `pick_frame`, `match_threshold` and `cut_threshold`. `MASK_VERSION` moves,
+  so masks kept by the earlier node are not reused.
+- `h3_config.SUBJECT_TRACK` and the shipped
+  `workflows/h3_video_to_video_masked_song_pdd8_api.json` carry the three
+  selections, all `automatic`.
+- `bench/node_id_manifest.json` rewritten on purpose: the node's inputs are
+  reordered and renamed. It was registered earlier the same day and is in no
+  saved workflow, so no `widgets_values` re-point.
+
+### Rendered
+
+- `band_auto_w1` in `bench/masked_v2v_band_arms.json`: one band window on the
+  shipped graph with no tracker setting.
+  `bench/results/2026-10-04_masked_v2v_band.md`, "The tracker with nothing
+  set".
+
+### Checks
+
+- Every `bench/check_*.py` ran with the card masked after the change; the
+  set that fails is the one that failed before it, for reasons outside it.
+
 ## 0.186.44
 
 ### Docs

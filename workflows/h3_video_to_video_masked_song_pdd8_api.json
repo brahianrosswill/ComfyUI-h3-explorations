@@ -213,10 +213,10 @@
         1
       ],
       "subject_phrase": "person",
-      "pick_frame": 0,
       "pick": "largest",
-      "match_threshold": 0.82,
-      "cut_threshold": 0.9,
+      "pick_on": "automatic",
+      "match": "automatic",
+      "cuts": "automatic",
       "detection_threshold": 0.5,
       "max_people": 16
     }

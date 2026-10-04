@@ -145,6 +145,30 @@ rows.
 | `band_baseline_w1` | undistilled, base step count, stock attention, `er_sde` | worse likeness; "er_sde inserts noise. thats why"; "not worth the long render time" |
 | `band_changed_dense_w1` | PDD8 baked, Sol's window closed so every step is the dense int8 fallback | "no sol changed the clothes" |
 
+## The tracker with nothing set
+
+`band_auto_w1`: `band_subject_w1` with no tracker setting at all, after the
+Subject Track took its pick frame, its match and its cut threshold
+automatically (a peer's rework, validated by a second peer outside the
+server on this clip and the first one). This is the run through a server
+and the shipped graph.
+
+- Mask-only probes first, both clips, every setting automatic. Band: every
+  cut found, the lead taken in the three shots he is in, the six other shots
+  absent. Solo: every cut found, the singer taken in all seven shots. The
+  thresholds, the pick frames and the per-shot scores the node reported are
+  the ones both peers recorded from their own runs
+  (`docs/research/masking/2026-10-04_mrhf.md`). Seconds: `per_node_s`, node
+  105.
+- The window: the song node's report gives the same share of regenerated
+  tokens as `band_subject_w1`, and the Masked Source the same share of the
+  frame touched over the clip, to the digit each prints.
+- (seen, one frame) The lead replaced, the neighbours intact. The sample is
+  not the earlier one: the tracker now starts from a different frame, so the
+  mask differs by a few pixels and he stands a little further right, with
+  the invented member behind him showing. Stacked as
+  `compare_band_w1_auto.mp4`. Not judged by the owner.
+
 ## The turn without a prompt: a late start
 
 The owner, on version one: "one problem: he doesnt turn around at the end",

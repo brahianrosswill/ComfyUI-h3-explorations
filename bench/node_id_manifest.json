@@ -497,10 +497,10 @@
       "segmenter",
       "segmenter_clip",
       "subject_phrase",
-      "pick_frame",
       "pick",
-      "match_threshold",
-      "cut_threshold",
+      "pick_on",
+      "match",
+      "cuts",
       "detection_threshold",
       "max_people"
     ],

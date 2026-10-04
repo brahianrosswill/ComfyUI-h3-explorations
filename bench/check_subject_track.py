@@ -60,8 +60,10 @@ import types
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-REPO = HERE.parent
+REPO = next(p for p in HERE.parents if (p / "nodes.py").exists() and (p / "workflows").is_dir())
 COMFY = REPO.parent.parent
+# a draft of the module checked beside its own copy of this file, before it replaces the repo's
+MODULE = HERE / "subject_track.py" if (HERE / "subject_track.py").exists() else REPO / "subject_track.py"
 sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(COMFY))
 
@@ -76,7 +78,7 @@ def _load():
     pkg = types.ModuleType("_h3pack")
     pkg.__path__ = [str(REPO)]
     sys.modules.setdefault("_h3pack", pkg)
-    spec = importlib.util.spec_from_file_location("_h3pack.subject_track", REPO / "subject_track.py")
+    spec = importlib.util.spec_from_file_location("_h3pack.subject_track", MODULE)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules["_h3pack.subject_track"] = module
@@ -126,6 +128,27 @@ def check_cuts(problems):
                         "the gradient score is, so the score buys nothing on this case")
     if st.find_cuts(st.cut_scores(frames[:1]), st.CUT_THRESHOLD) != []:
         problems.append("a one-frame clip has a cut")
+    if st.find_cuts(torch.tensor([0.2, 0.9, 0.89]), 0.9) != [2]:
+        problems.append("a step scoring exactly the threshold is not a cut: the comparison must be inclusive")
+    # the threshold from the scores. The two lists are the highest steps of the two clips measured on 2026-10-04:
+    # the band segment, whose cuts score 0.99 and above, and the one-person clip, two of whose cuts score under 0.9.
+    low = [0.17] * 40
+    band = [1.08, 1.02, 1.02, 1.01, 1.01, 1.01, 1.00, 0.99, 0.76, 0.71, 0.65, 0.64, 0.63] + low
+    solo = [0.99, 0.98, 0.95, 0.93, 0.90, 0.84, 0.46, 0.46, 0.45, 0.44] + low
+    for name, scores, n_cuts in (("the band clip", band, 8), ("the one-person clip", solo, 6)):
+        at = st.auto_cuts(scores)
+        found = len(st.find_cuts(torch.tensor(scores), at))
+        if found != n_cuts:
+            problems.append(f"the automatic cut threshold on {name}'s scores is {at:.2f} and finds {found} cut(s), not {n_cuts}")
+    if len(st.find_cuts(torch.tensor(solo), st.CUT_THRESHOLD)) == 6:
+        problems.append("the control failed: the fixed threshold finds all six cuts of the one-person clip, "
+                        "so the automatic threshold buys nothing on this case")
+    for scores, why in (([0.46, 0.41, 0.30, 0.05], "no step near a cut"), ([0.95, 0.93, 0.90, 0.86, 0.83, 0.79], "no clear gap"),
+                        ([], "no steps")):
+        if st.auto_cuts(scores) != st.CUT_THRESHOLD:
+            problems.append(f"the automatic cut threshold is {st.auto_cuts(scores):.2f} with {why}; it falls back to {st.CUT_THRESHOLD}")
+    if "0.99 0.95 | 0.40" not in st.cuts_line([0.4, 0.99, 0.95], 0.9, False) or "automatic, 0.90" not in st.cuts_line([0.4], 0.9, False):
+        problems.append("the report's cut line does not print the steps in order with the threshold marked")
 
 
 def check_ranges(problems):
@@ -209,19 +232,21 @@ def _world():
 def check_follow(problems):
     boxes, detect, sign, track, calls = _world()
     cuts = [8, 16, 24]
-    pieces, shots, picked, others = st.follow(32, cuts, 3, st.PICK_LARGEST, 0.8, detect, sign, track, stride=4)
-    if picked is None or not torch.equal(picked, boxes[0]):
-        problems.append("the largest person on the pick frame was not the one picked")
-        return
-    want = [(0, 8, 3, 0), (16, 24, 20, 0), (24, 32, 24, 0)]
+    # a frame named, a value named; each shot is first judged `offset` frames in
+    got = st.follow(32, cuts, st.PICK_LARGEST, 3, 0.8, detect, sign, track, stride=4, offset=1)
+    shots = got.shots
+    if got.pick_frame != 3 or got.others != 1 or abs(got.match - 0.8) > 1e-9:
+        problems.append(f"named frame 3 and value 0.8 gave pick_frame {got.pick_frame}, {got.others} other(s), cut {got.match}")
+    want = [(0, 8, 3, 0), (16, 24, 20, 0), (24, 32, 25, 0)]
     if calls["track"] != want:
         problems.append(f"tracked {calls['track']}; the subject's shots, seeds and identity are {want}")
-    if [s.seed for s in shots] != [3, None, 20, 24]:
-        problems.append(f"seeds per shot are {[s.seed for s in shots]}; shot 2 holds only other people")
-    if not shots[1].best < 0.8 <= shots[2].best:
-        problems.append(f"best similarity per shot is {[round(s.best, 2) for s in shots]}; the empty shot's must be "
-                        "below the threshold and the found one's at or above it")
-    mask = st.assemble(32, H, W, pieces)
+    if [s.seed for s in shots] != [3, None, 20, 25] or [s.probe for s in shots] != [1, 9, 17, 25]:
+        problems.append(f"seeds {[s.seed for s in shots]} and probe frames {[s.probe for s in shots]}; shot 2 holds only "
+                        "other people, shot 3's subject enters at frame 20, and each shot is first judged one frame in")
+    # relative to the other person on the pick frame, that person scores 0 and a stranger 0.5: neither is the subject
+    if not abs(shots[1].best - 0.5) < 1e-4:
+        problems.append(f"the shot holding the two others has best similarity {shots[1].best:.3f}, not 0.5")
+    mask = st.assemble(32, H, W, got.pieces)
     if tuple(mask.shape) != (32, H, W):
         problems.append(f"the mask is {tuple(mask.shape)}, not one per frame at the frames' size")
     if float(mask[8:16].sum()) != 0.0:
@@ -230,44 +255,144 @@ def check_follow(problems):
         if not torch.equal(mask[f], boxes[0]):
             problems.append(f"frame {f} does not carry the subject's mask")
             break
-    if others != 1:
-        problems.append(f"the comparison was made relative to {others} other(s); the pick frame holds one other person")
-    # relative to the other person on the pick frame, that person scores 0 and a stranger 0.5: neither is the subject
-    if not abs(shots[1].best - 0.5) < 1e-4:
-        problems.append(f"the shot holding the two others has best similarity {shots[1].best:.3f}; relative to the pick "
-                        "frame's other person it is 0.5 (the stranger) and 0 (that person)")
-    text = st.report(shots, cuts, 3, st.PICK_LARGEST, "person", True, 0.8, 1.0, others)
-    if ("absent" not in text or "found on frame 20" not in text or "cuts at frame(s) [8, 16, 24]" not in text
-            or "relative to the 1 other" not in text):
-        problems.append(f"the report does not say what happened: {text!r}")
-    tiles = st.preview(torch.rand((32, H, W, 3)), mask, shots)
-    if tuple(tiles.shape) != (4, H, W, 3):
-        problems.append(f"the preview is {tuple(tiles.shape)}, not one frame per shot")
+    text = st.report(got, cuts, st.PICK_LARGEST, "person", True, True, 1.0,
+                     cutting=st.cuts_line([0.99, 0.95, 0.4], 0.9, True))
+    for need in ("cuts at frame(s) [8, 16, 24]", "relative to the 1 other", "absent (best similarity 0.50", "taken on frame 20",
+                 "the value named, 0.80", "1.00 1.00 | 0.50", "cut threshold: the value named, 0.90"):
+        if need not in text:
+            problems.append(f"the report lacks {need!r}: {text!r}")
+    tiles = st.preview(torch.rand((32, H, W, 3)), mask, shots, detect)
+    if tiles.shape[0] != 4 or tiles.shape[2] != st.TILE_WIDTH or tiles.shape[3] != 3:
+        problems.append(f"the preview is {tuple(tiles.shape)}, not one tile per shot at the tile width")
+    if not (float(tiles.min()) >= 0.0 and float(tiles.max()) <= 1.0):
+        problems.append("the preview leaves 0..1")
+
+
+def check_automatic(problems):
+    """Nothing named: the pick is the person the rule favours for most of the clip, the cut comes from the scores."""
+    boxes, detect, sign, track, calls = _world()
+    got = st.follow(32, [8, 16, 24], st.PICK_LARGEST, None, None, detect, sign, track, stride=4, offset=1)
+    # the largest person on each shot's probe frame: 0, 1 or 2 (a tie in size, the first), 2, 0. Person 0 wins the most frames
+    if got.pick_frame != 1 or got.others != 1:
+        problems.append(f"automatic pick took frame {got.pick_frame} with {got.others} other(s); person 0 is the largest in "
+                        "shots 1 and 4, and of those frames the one showing the most people is frame 1")
+    if [s.seed for s in got.shots] != [1, None, 20, 25]:
+        problems.append(f"automatic: seeds {[s.seed for s in got.shots]}; the subject is in shots 1, 3 and 4")
+    if not abs(got.match - st.MATCH_FLOOR) < 1e-9 and not (0.5 < got.match <= 1.0):
+        problems.append(f"automatic cut is {got.match}")
+    text = st.report(got, [8, 16, 24], st.PICK_LARGEST, "person", False, False, 1.0)
+    if "chosen automatically" not in text or "match: automatic" not in text:
+        problems.append(f"the report does not say the pick and the match were automatic: {text!r}")
+    # the cut rule alone
+    floor = st.MATCH_FLOOR
+    for scores, want, why in (
+            ([0.94, 0.92, 0.71, 0.71, 0.66, 0.51], (0.92 + 0.71) / 2, "a clear gap above the floor moves the cut to its middle"),
+            ([0.94, 0.92, 0.90, 0.85], floor, "the subject in every shot: no clear gap, so everything above the floor"),
+            ([0.71, 0.71, 0.66, 0.51, 0.46], floor, "the subject in no other shot: a gap among wrong people is below the floor"),
+            ([0.93], floor, "one other shot"),
+            ([], floor, "no other shot"),
+            ([0.95, 0.83, 0.40], floor, "the widest gap decides, and here it lies below both: the two above the floor are kept"),
+            ([0.95, 0.83, 0.78], (0.95 + 0.83) / 2, "the widest gap lies above the floor, so the cut moves up into it"),
+            ([0.82, 0.40], floor, "a gap whose middle is under the floor does not lower the cut")):
+        got_cut = st.auto_match(scores, floor)
+        if abs(got_cut - want) > 1e-9:
+            problems.append(f"auto_match({scores}) is {got_cut:.3f}, not {want:.3f}: {why}")
+    # picked where the subject is alone: nothing to subtract, the plain floor applies
+    got = st.follow(32, [8, 16, 24], st.PICK_LARGEST, 26, None, detect, sign, track, stride=4, offset=1)
+    if got.others != 0 or abs(got.match - st.PLAIN_FLOOR) > 1e-9 or [s.seed for s in got.shots] != [1, None, 20, 26]:
+        problems.append(f"picked on a frame with nobody else: {got.others} other(s), cut {got.match}, seeds "
+                        f"{[s.seed for s in got.shots]}; the plain floor applies and the subject is in shots 1, 3 and 4")
+    if "plain similarity" not in st.report(got, [8, 16, 24], st.PICK_LARGEST, "person", True, False, 1.0):
+        problems.append("the report does not say that the plain similarity was used")
+
+
+def _solo_world():
+    """One person, framed differently from shot to shot, and two things the detector takes for a person.
+
+    Four shots of 8 frames. Shot 1: a microphone alone on frames 0-3, with the person on 4-5, the person alone
+    on 6-7. Shot 2: the person, full length. Shot 3: the person in close-up. Shot 4: a lamp and nobody.
+    The person in close-up scores 0.75 against the full-length pick, the microphone 0.70, the lamp 0.3.
+    """
+    def unit(c: float, axis: int) -> torch.Tensor:
+        v = torch.zeros(4); v[0] = c; v[axis] = (1 - c * c) ** 0.5
+        return v
+    full, close = _box(50, 5, 70, 65), _box(20, 5, 100, 70)
+    mic, lamp = _box(0, 0, 10, 30), _box(110, 0, 125, 30)
+    sigs = [(full, torch.tensor([1.0, 0, 0, 0])), (close, unit(0.75, 1)), (mic, unit(0.70, 2)), (lamp, unit(0.3, 3))]
+    def present(f: int) -> list[torch.Tensor]:
+        if f < 4: return [mic]
+        if f < 6: return [mic, close]
+        if f < 8: return [close]
+        if f < 16: return [full]
+        if f < 24: return [close]
+        return [lamp]
+    tracked = []
+    def detect(f: int):
+        return torch.stack(present(f), dim=0), [0.9] * len(present(f))
+    def sign(_frame: int, mask: torch.Tensor):
+        return next(v for m, v in sigs if torch.equal(m, mask))
+    def track(start: int, end: int, seed: int, mask: torch.Tensor):
+        tracked.append((start, end, seed, "person" if torch.equal(mask, close) or torch.equal(mask, full) else "thing"))
+        return mask[None].repeat(end - start, 1, 1)
+    return detect, sign, track, tracked
+
+
+def check_alone(problems):
+    """A clip with one person: taken in every shot they are in, whatever the framing, and a thing is not."""
+    detect, sign, track, tracked = _solo_world()
+    cuts = [8, 16, 24]
+    got = st.follow(32, cuts, st.PICK_LARGEST, 9, None, detect, sign, track, stride=2, offset=1)
+    want = [(0, 8, 6, "person"), (8, 16, 9, "person"), (16, 24, 17, "person")]
+    if tracked != want:
+        problems.append(f"one person, framed differently per shot: tracked {tracked}, not {want}. Shot 1 opens on a "
+                        "microphone alone, so the shot's best lone frame is the seed and not its first; shot 4 holds a lamp")
+    if [s.lone for s in got.shots] != [True, False, True, False] or got.others != 0:
+        problems.append(f"lone flags {[s.lone for s in got.shots]} with {got.others} other(s) on the pick frame")
+    if not abs(got.match - st.PLAIN_FLOOR) < 1e-9 or not 0.3 < st.LONE_FLOOR < 0.70:
+        problems.append(f"the line is {got.match} and the lone floor {st.LONE_FLOOR}; this case needs the plain floor, and a "
+                        "lone floor over the lamp's 0.3 and under the microphone's 0.70, so that the best frame and not "
+                        "the floor is what keeps the microphone out")
+    text = st.report(got, cuts, st.PICK_LARGEST, "person", True, False, 1.0)
+    for need in ("taken on frame 6, as the only one there, similarity 0.75", "absent (best similarity 0.30",
+                 "framed differently, the mask is 4.0 times as wide", "is taken from"):
+        if need not in text:
+            problems.append(f"the one-person report lacks {need!r}: {text!r}")
+    if st._state(got.shots[0]) != "taken (only person)":
+        problems.append("the tile does not say a shot was taken as the only person")
+    # the control: with a value named the rule is off, and the same clip loses the two shots framed differently
+    detect, sign, track, tracked = _solo_world()
+    got = st.follow(32, cuts, st.PICK_LARGEST, 9, st.PLAIN_FLOOR, detect, sign, track, stride=2, offset=1)
+    if [s.seed for s in got.shots] != [None, 9, None, None] or any(s.lone for s in got.shots):
+        problems.append(f"with a value named, seeds are {[s.seed for s in got.shots]}: the lone rule must be off, and without "
+                        "it this clip's two other shots are missed, which is the failure the rule exists for")
+    # not alone on the pick frame: a lone person in another shot is not presumed to be the subject
+    boxes, detect, sign, track, calls = _world()
+    got = st.follow(32, [8, 16, 24], st.PICK_LARGEST, 3, None, detect, sign, track, stride=4, offset=1)
+    if any(s.lone for s in got.shots) or [s.seed for s in got.shots] != [3, None, 20, 25]:
+        problems.append(f"picked among other people, seeds {[s.seed for s in got.shots]} and lone {[s.lone for s in got.shots]}: "
+                        "the lone rule applies only when the pick frame shows nobody else")
 
 
 def check_empty(problems):
     boxes, detect, sign, track, _calls = _world()
-    pieces, shots, picked, _others = st.follow(32, [8, 16, 24], 3, st.PICK_LARGEST, 1.5, detect, sign, track, stride=4)
-    mask = st.assemble(32, H, W, pieces)
-    if [s.seed for s in shots] != [3, None, None, None] or float(mask[8:].sum()) != 0.0:
+    got = st.follow(32, [8, 16, 24], st.PICK_LARGEST, 3, 1.5, detect, sign, track, stride=4, offset=1)
+    mask = st.assemble(32, H, W, got.pieces)
+    if [s.seed for s in got.shots] != [3, None, None, None] or float(mask[8:].sum()) != 0.0:
         problems.append("with a threshold nothing can pass, a shot other than the picked one was still filled")
     if not torch.equal(mask[0], boxes[0]):
         problems.append("the picked shot lost its mask when the threshold was raised")
     none = lambda _frame: (torch.zeros((0, H, W)), [])
-    # picked where the subject is alone (frame 26): nothing to subtract, so the plain similarity is used
-    pieces, shots, picked, others = st.follow(32, [8, 16, 24], 26, st.PICK_LARGEST, 0.8, detect, sign, track, stride=4)
-    if others != 0 or [s.seed for s in shots] != [0, None, 20, 26]:
-        problems.append(f"picked on a frame with nobody else: relative to {others} other(s), seeds {[s.seed for s in shots]}; "
-                        "the plain similarity finds the subject in shots 1, 3 and 4 and not in shot 2")
-    if "plain similarity" not in st.report(shots, [8, 16, 24], 26, st.PICK_LARGEST, "person", True, 0.8, 1.0, others):
-        problems.append("the report does not say that the plain similarity was used")
-    pieces, shots, picked, _others = st.follow(32, [8], 3, st.PICK_LARGEST, 0.5, none, sign, track)
-    if picked is not None or pieces or float(st.assemble(32, H, W, pieces).sum()) != 0.0:
-        problems.append("with nothing detected on the pick frame something was still masked")
-    if "every mask is empty" not in st.report(shots, [8], 3, st.PICK_LARGEST, "person", False, 0.5, 1.0):
-        problems.append("the report does not say that nothing was picked")
+    for frame in (3, None):
+        got = st.follow(32, [8], st.PICK_LARGEST, frame, None, none, sign, track)
+        if got.pick_frame is not None or got.pieces or float(st.assemble(32, H, W, got.pieces).sum()) != 0.0:
+            problems.append("with nothing detected something was still masked")
+        if "every mask is empty" not in st.report(got, [8], st.PICK_LARGEST, "person", frame is not None, False, 1.0):
+            problems.append("the report does not say that nothing was picked")
+        tiles = st.preview(torch.rand((32, H, W, 3)), st.assemble(32, H, W, got.pieces), got.shots, none)
+        if tiles.shape[0] != 2:
+            problems.append("the preview of a clip with no subject is not one tile per shot")
     try:
-        st.follow(32, [], 40, st.PICK_LARGEST, 0.5, detect, sign, track)
+        st.follow(32, [], st.PICK_LARGEST, 40, 0.5, detect, sign, track)
     except ValueError:
         pass
     else:
@@ -301,27 +426,51 @@ def check_signature(problems):
 def check_schema(problems):
     schema = st.MiniMaxH3SubjectTrack.define_schema()
     inputs = {i.id: i for i in schema.inputs}
-    for name, default in (("subject_phrase", st.SUBJECT_PHRASE), ("cut_threshold", st.CUT_THRESHOLD),
-                          ("match_threshold", st.MATCH_THRESHOLD), ("max_people", st.MAX_PEOPLE),
-                          ("detection_threshold", st.DETECTION_THRESHOLD), ("pick", st.PICK_LARGEST)):
+    for name, default in (("subject_phrase", st.SUBJECT_PHRASE),
+                          ("max_people", st.MAX_PEOPLE), ("detection_threshold", st.DETECTION_THRESHOLD),
+                          ("pick", st.PICK_LARGEST)):
         if name not in inputs:
             problems.append(f"the node has no `{name}` input: what SAM is asked and how it is judged must be visible")
         elif getattr(inputs[name], "default", None) != default:
             problems.append(f"`{name}` defaults to {getattr(inputs[name], 'default', None)!r}, not the module's {default!r}")
-    for name in ("pick_frame", "frames", "segmenter", "segmenter_clip"):
+    for name in ("frames", "segmenter", "segmenter_clip"):
         if name not in inputs:
             problems.append(f"the node has no `{name}` input")
+    # the two choices: automatic first, and the named value under its own option
+    for name, other, nested, default in (("pick_on", st.PICK_ON_FRAME, "pick_frame", 0),
+                                         ("match", st.AT_VALUE, "match_threshold", st.MATCH_THRESHOLD),
+                                         ("cuts", st.AT_VALUE, "cut_threshold", st.CUT_THRESHOLD)):
+        combo = inputs.get(name)
+        if combo is None:
+            problems.append(f"the node has no `{name}` choice")
+            continue
+        options = {o.key: o for o in combo.options}
+        if list(options) != [st.AUTOMATIC, other]:
+            problems.append(f"`{name}` offers {list(options)}, not automatic first and then `{other}`")
+            continue
+        under = {i.id: i for i in options[other].inputs}
+        if list(under) != [nested] or getattr(under[nested], "default", None) != default:
+            problems.append(f"`{name}` -> `{other}` does not reveal `{nested}` at {default!r}")
+        if options[st.AUTOMATIC].inputs:
+            problems.append(f"`{name}` -> automatic asks for something")
+    for flat in ("pick_frame", "match_threshold", "cut_threshold"):
+        if flat in inputs:
+            problems.append(f"`{flat}` is also a top-level input: two inputs for one thing")
     if len(schema.outputs) != 3 or schema.outputs[0].io_type != "MASK":
         problems.append("the node's outputs are not mask, preview, report with the mask first")
     if getattr(schema, "is_output_node", False):
         problems.append("the node is an output node: core would run the tracker on every queue, kept mask or not")
     if not isinstance(getattr(st.MiniMaxH3SubjectTrack, "MASK_VERSION", None), int):
         problems.append("the node declares no integer MASK_VERSION, so a kept mask would survive a change to how it is made")
+    sel = st._selection({"match": st.AT_VALUE, "match_threshold": 0.5}, "match", "match_threshold")
+    if sel != (st.AT_VALUE, 0.5) or st._selection(st.AUTOMATIC, "match", "match_threshold") != (st.AUTOMATIC, None):
+        problems.append("a DynamicCombo's nested dict, or a bare selection, is not read as the choice and its value")
 
 
 def main() -> int:
     problems: list[str] = []
-    for check in (check_cuts, check_ranges, check_counted, check_choose, check_signature, check_follow, check_empty, check_schema):
+    for check in (check_cuts, check_ranges, check_counted, check_choose, check_signature, check_follow, check_automatic,
+                  check_alone, check_empty, check_schema):
         check(problems)
     for p in problems:
         print(f"FAIL  {p}")

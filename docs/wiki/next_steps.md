@@ -20,13 +20,14 @@ own below the rule.
   `../../bench/results/2026-10-04_masked_v2v_band.md` and
   `../../bench/results/2026-10-04_masked_v2v_first_run.md`. Each session's
   notes: [`../research/masking/`](../research/masking/README.md).
-- **First: validate and land the subject-track draft with less to set**
-  (automatic pick frame and match, each with a manual option). The owner
-  asked that two sessions validate it before it lands. It changes the node's
-  inputs, so it lands in one commit with `h3_config.SUBJECT_TRACK`, the
-  generator's node block, `bench/check_node_ids.py --write` and a rebuild.
-  The known answer is the band segment's result in the band record.
-  `../research/masking/2026-10-04_mrhf.md` has the draft's state.
+- The Subject Track with nothing to set (automatic pick frame, match and
+  cuts, a manual value beside each) is landed and in the shipped graph,
+  validated by three sessions on two clips. What that leaves, from the
+  validating session's report
+  (`../research/masking/2026-10-04_mrblue.md`): the floor for a shot showing
+  one person has little room above a non-person; a clip with several people
+  that cuts from a wide shot to a close-up of the subject can miss them (the
+  node's report says when the framing differs); a third clip.
 - **The turn, with no prompt text** (owner: does not want to prompt
   movement). A late start carries the pose and the original's look together
   (band record, "The turn without a prompt"). Next arm: the same late start
