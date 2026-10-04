@@ -446,6 +446,12 @@ def detect_part(segmenter, segmenter_clip, frames: torch.Tensor, where: torch.Te
 
 
 class MiniMaxH3MaskedSource(io.ComfyNode):
+    #: Part of a kept mask's key (`mask_store.py`). Raise it when a change
+    #: would give a different mask from the same inputs and settings: that is
+    #: `_settle_mask` and what it calls. The grow, the feather and the
+    #: composite act after the mask and do not count.
+    MASK_VERSION = 1
+
     @classmethod
     def define_schema(cls):
         return io.Schema(

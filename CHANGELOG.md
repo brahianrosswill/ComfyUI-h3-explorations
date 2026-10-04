@@ -4,6 +4,21 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.34
+
+### Changed
+
+- **The margin is confirmed as what moves the new subject**, by the one
+  render that changes it alone (`band_changed32_w1`), and the records say so;
+  the owner found the wider margin kept the reference's identity better, so
+  the same control trades likeness against place.
+- `MiniMaxH3MaskedSource` declares `MASK_VERSION`, which a kept mask's key
+  reads (`mask_store.py`).
+- The baseline chain on one band window: about six to seven times the
+  distilled window's time (`per_node_s` in the band rows) and, to the owner's
+  eye, worse likeness; its sampler adds noise at every step, so it is not a
+  like-for-like test, and it is not pursued.
+
 ## 0.186.33
 
 ### Fixed

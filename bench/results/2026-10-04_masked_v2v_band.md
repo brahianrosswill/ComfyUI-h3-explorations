@@ -91,12 +91,21 @@ their annotated frames:
 - "The invented person on the left in the back keeps the same identity
   throughout."
 
-**Why the pose differs** (inferred, endorsed by the owner, not yet isolated):
+**Why the pose differs** (inferred, endorsed by the owner, and confirmed below):
 the only thing telling the model where the original stood is the shape of the hole, so a wider hole lets him stand somewhere else. Two things differ between those renders, the margin and the
 still, and either changes the sample; `band_changed32_w1` puts only the
 margin back and says which. The composite cannot be the cause: it runs after
 sampling. The still is a close selfie and carries no height or build, so the
 subject's size and place come from the hole and the scene.
+
+**Confirmed by `band_changed32_w1`** (the same window, seed, still and
+composite, the margin alone put back to the default; stacked with the wider
+one as `compare_band_w1_margin.mp4`): at the default margin he stands in the
+original's footprint and the member behind him stays hidden. The owner, on
+that pair: the wider margin "preserved identity better". So the same control
+trades likeness against place: a tight hole makes the new subject take the
+original's outline, a wide one lets him keep his own proportions and stand
+where they put him. One seed each.
 
 **What it means for the method.** Replacing a subject with a smaller outline
 uncovers space the source never shows, whatever the margin. The margin sets
