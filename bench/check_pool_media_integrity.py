@@ -33,6 +33,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from _lib import home_relative, needs  # noqa: E402
 from build_h3_calibration_pool import (  # noqa: E402
     EXCLUDED,
     POOL,
@@ -130,7 +131,11 @@ def violation_arm() -> list[str]:
 
 
 def main() -> int:
-    root, revision = pinned_snapshot()
+    try:
+        root, revision = pinned_snapshot()
+    except FileNotFoundError as exc:
+        needs("the StellarVoyager/H3-IR dataset in the Hugging Face cache, "
+              f"whose files this check hashes ({home_relative(exc)})")
     print(f"pinned snapshot revision {revision}")
 
     print("violation arm:")

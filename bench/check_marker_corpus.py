@@ -437,9 +437,14 @@ def main() -> int:
         print(f"{args.compiled} is absent; run compile_marker_corpus.py first")
         return 2
 
+    from _lib import home_relative, needs
     from build_h3_calibration_pool import pinned_snapshot
 
-    root, _ = pinned_snapshot()
+    try:
+        root, _ = pinned_snapshot()
+    except FileNotFoundError as exc:
+        needs("the StellarVoyager/H3-IR dataset in the Hugging Face cache, "
+              f"which holds the media the corpus names ({home_relative(exc)})")
     pool_media: dict[str, str] = {}
     pool_path = BENCH / "results" / "archive" / "v2_encoder" / "2026-08-24_h3_calibration_pool.jsonl"
     for line in pool_path.read_text().splitlines():

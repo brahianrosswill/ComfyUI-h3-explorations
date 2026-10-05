@@ -446,11 +446,21 @@ ARMS = (
 
 
 def main() -> int:
+    from _lib import home_relative, needs
+    from build_h3_calibration_pool import pinned_snapshot
+
     source = source_dir()
-    if source is None:
-        print(f"FAIL no tokenizer directory: set H3_BF16_ENCODER_DIR or place the "
-              f"released encoder at {DEFAULT_SOURCE.relative_to(REPO)}")
-        return 1
+    needs("the released tokenizer directory: set H3_BF16_ENCODER_DIR or place "
+          f"the released encoder at {DEFAULT_SOURCE.relative_to(REPO)}",
+          source is not None)
+    # Four of the six arms run the selector on the real pool, and the selector
+    # reads image geometry from the pinned dataset snapshot. Without it those
+    # arms fail on the missing files, which says nothing about the selector.
+    try:
+        pinned_snapshot()
+    except FileNotFoundError as exc:
+        needs("the StellarVoyager/H3-IR dataset in the Hugging Face cache, "
+              f"which the selector reads image geometry from ({home_relative(exc)})")
     failures: list[str] = []
     unevaluated: list[str] = []
     with tempfile.TemporaryDirectory() as tmpdir:

@@ -41,7 +41,16 @@ import numpy as np
 
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "bench"))
-import run_audio_carry_arms as R  # noqa: E402
+from _lib import home_relative, in_sweep, needs  # noqa: E402
+
+try:
+    import run_audio_carry_arms as R  # noqa: E402
+except SystemExit as exc:
+    # `h3_config.output_dir()` runs at that import and refuses a directory it
+    # cannot vouch for. That is this box not saying where renders go, not a
+    # render that changed across an unload, so it is not a red.
+    print(home_relative(exc))
+    needs("H3_OUTPUT_DIR, the directory the server writes renders to")
 
 SEED, TAG, ARM = 111222333, "_reload", "u4_off"
 
@@ -59,6 +68,10 @@ def existing():
 def main() -> int:
     path = existing()
     if path is None:
+        # A sweep reads the repo's state; it never queues a render on the
+        # shared server. Run by hand, this script still posts.
+        needs(f"the {ARM}{TAG} render on disk; a sweep does not queue one, run "
+              "this script by itself to post it", not in_sweep())
         print(f"no {ARM}{TAG} render on disk; posting it")
         try:
             g = R.build(ARM, seed=SEED, tag=TAG)
@@ -66,10 +79,11 @@ def main() -> int:
                                     "client_id": f"reload-{SEED}"})["prompt_id"]
         except Exception as e:                       # noqa: BLE001
             print(f"could not post: {e}")
-            return 1
+            needs(f"a ComfyUI server at {R.SRV} to post the render to")
         print(f"posted {pid}. It renders behind whatever else is queued.")
         print("Re-run this script once it lands and it will grade and record.")
-        return 0
+        # Exit 2, not 0: the render is queued and nothing has been graded yet.
+        return 2
 
     x = R.audio(path)
     rms = float(x.std())

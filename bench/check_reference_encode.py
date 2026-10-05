@@ -172,10 +172,10 @@ def small_model_cases(enc, check):
 
 
 def load_pack():
-    import comfy.cli_args as cli_args
-    import torch
-    if not torch.cuda.is_available():
-        cli_args.args.cpu = True
+    from _lib import bootstrap
+    # The ComfyUI root, which this check used to need from PYTHONPATH, and
+    # core's CPU path when no card is visible (unchanged: the same rule).
+    bootstrap(front=False)
     spec = importlib.util.spec_from_file_location(
         "h3x", REPO / "__init__.py", submodule_search_locations=[str(REPO)])
     module = importlib.util.module_from_spec(spec)

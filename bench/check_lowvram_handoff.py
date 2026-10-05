@@ -43,8 +43,10 @@ import torch
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
-# .../ComfyUI/custom_nodes/<this repo>/bench -> the ComfyUI root
-sys.path.insert(0, str(HERE.parents[2]))
+
+from _lib import bootstrap, case, finish  # noqa: E402
+
+bootstrap(cpu=True)          # the ComfyUI root; stubs only, this check uses no device
 
 import attention  # noqa: E402
 from attention import make_minimax_attn_forward  # noqa: E402
@@ -70,15 +72,8 @@ def run(x, kernel):
 
 
 def main():
-    failures = []
-
     def check(name, fn):
-        try:
-            fn()
-            print(f"  ok    {name}")
-        except Exception as exc:
-            failures.append(name)
-            print(f"  FAIL  {name}: {type(exc).__name__}: {exc}")
+        case(name, fn, indent="  ")
 
     def good_kernel(qkv, **kw):
         q, _k, _v = qkv
@@ -168,8 +163,7 @@ def main():
     check("head chunking reassembles identically", head_chunks_partition)
     check("head chunks honoured from transformer_options", head_chunks_from_options)
 
-    print(f"\n{len(failures)} failure(s)" if failures else "\nall ok")
-    return 1 if failures else 0
+    return finish()
 
 
 if __name__ == "__main__":

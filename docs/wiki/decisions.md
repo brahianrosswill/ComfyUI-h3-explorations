@@ -17,6 +17,14 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-05
 
+- **`docs/checks.md` "Running them" said exactly two checks need
+  `PYTHONPATH`** (`check_clone_v_wiring.py`, `check_correctness.py`; 0.189.4).
+  A sweep without the variable found `check_reference_encode.py` needed it
+  too, and now none does: each calls `bench/_lib::bootstrap`. Its Gaps item 3
+  used to list the split as open. The index rows for the first two used to
+  read "CUDA, `PYTHONPATH`"; both returned 0 with "skipping" when masked and
+  now exit 2. The `check_reload_invariance.py` row used to say only that it
+  renders; it now says when it exits 2 and that a sweep never posts.
 - **The at-the-call LoRA node reads Kohya-style keys** (owner, 2026-10-05,
   on the sglang read: "may as well"; 0.189.0). `lora_branch.py::native_keys`
   renames them through core's table. It replaced a refusal that pointed such

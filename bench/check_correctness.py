@@ -25,6 +25,12 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from _lib import bootstrap, needs  # noqa: E402
+
+needs("a CUDA device with about 2 GiB free (the sage kernel runs for real); "
+      "run it unmasked on a free card", torch.cuda.is_available())
+bootstrap(cpu=False, front=False)   # the ComfyUI root, which used to come from PYTHONPATH
+
 HIDDEN = 5376
 HEADS = 56
 HEAD_DIM = 128
@@ -90,9 +96,6 @@ def main() -> int:
     # inference_mode, not no_grad: comfy-kitchen's in-place rms_rope kernel
     # refuses to run under autograd, and inference is the mode the node
     # actually runs in.
-    if not torch.cuda.is_available():
-        print("CUDA not available; skipping.", file=sys.stderr)
-        return 0
     device, dtype = torch.device("cuda"), torch.bfloat16
 
     print(f"MiniMax H3 Attention, seq={SEQ}, heads={HEADS}, head_dim={HEAD_DIM}")

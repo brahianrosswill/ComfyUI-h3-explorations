@@ -268,8 +268,9 @@ def main() -> int:
     parser.add_argument("--no-load", action="store_true",
                         help="skip the real materialising load (weaker claim)")
     args = parser.parse_args()
-    if not args.source_dir:
-        raise SystemExit("--source-dir or H3_BF16_ENCODER_DIR is required")
+    from _lib import needs
+    needs("the released text-encoder directory: pass --source-dir or set "
+          "H3_BF16_ENCODER_DIR", bool(args.source_dir))
     root = Path(args.source_dir).expanduser().resolve()
 
     print("reading the checkpoint index and shard headers")

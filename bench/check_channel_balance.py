@@ -42,7 +42,10 @@ import torch
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT.parent))          # custom_nodes, so the pack imports as a package
-sys.path.insert(0, str(ROOT.parent.parent))   # ComfyUI root, for comfy_api (no server, no GPU)
+
+from _lib import bootstrap, case, finish  # noqa: E402
+
+bootstrap(cpu=True)                           # ComfyUI root, for comfy_api (no server, no GPU)
 PACK = ROOT.name
 
 cb = __import__(f"{PACK}.channel_balance", fromlist=["*"])
@@ -162,18 +165,9 @@ CASES = [test_fold_is_exact, test_fold_is_rope_safe, test_factor_is_scale_free,
 
 
 def main() -> int:
-    failed = 0
     for fn in CASES:
-        try:
-            fn()
-            print(f"ok    {fn.__name__}")
-        except AssertionError as exc:
-            failed += 1
-            print(f"FAIL  {fn.__name__}: {exc}")
-        except Exception as exc:
-            failed += 1
-            print(f"FAIL  {fn.__name__}: {type(exc).__name__}: {exc}")
-    return 1 if failed else 0
+        case(fn.__name__, fn)
+    return finish()
 
 
 if __name__ == "__main__":

@@ -36,7 +36,10 @@ import torch
 
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
-sys.path.insert(0, str(REPO.parent.parent))          # ComfyUI root, for comfy.*
+
+from _lib import bootstrap  # noqa: E402
+
+bootstrap(cpu=True)          # ComfyUI root, for comfy.*; this check uses no device
 
 from comfy.ldm.minimax.model import time_shift_sigma  # noqa: E402
 

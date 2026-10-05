@@ -27,8 +27,9 @@ from pathlib import Path
 
 import torch
 
-# ComfyUI root: custom_nodes/<this repo>/bench -> up three
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
+from _lib import bootstrap  # noqa: E402
+
+bootstrap(cpu=True)          # ComfyUI root; geometry only, this check uses no device
 
 from comfy_extras.nodes_minimax_h3 import CANVAS_MULTIPLE, MAX_PIXELS, adapt_canvas, _resize
 

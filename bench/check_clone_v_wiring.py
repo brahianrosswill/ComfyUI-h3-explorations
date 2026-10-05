@@ -58,6 +58,14 @@ import torch
 _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO.parent))
 
+from _lib import bootstrap, needs  # noqa: E402
+
+# Before the imports below, not in main(): sage resolves the device arch when
+# `attention` is imported, so without a card there is nothing to import.
+needs("a CUDA device (sage resolves the device arch at import); run it "
+      "unmasked on a free card", torch.cuda.is_available())
+bootstrap(cpu=False, front=False)   # the ComfyUI root, which used to come from PYTHONPATH
+
 attn_mod = importlib.import_module(f"{_REPO.name}.attention")
 node_mod = importlib.import_module(f"{_REPO.name}.nodes")
 
@@ -429,9 +437,6 @@ def check_unchunked_path_hands_over_ownership():
 
 
 def main() -> int:
-    if not torch.cuda.is_available():
-        print("CUDA not available; skipping.", file=sys.stderr)
-        return 0
     # Surface the module under check, so a rename shows up here rather than
     # as a quietly skipped case.
     assert hasattr(attn_mod, "mode_releases_qkv"), (

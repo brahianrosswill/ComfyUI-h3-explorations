@@ -72,6 +72,12 @@ sys.path.insert(0, str(_HERE.parent))
 
 import torch  # noqa: E402
 
+from _lib import bootstrap  # noqa: E402
+
+# The measurement script imports core at module level. This check runs it on a
+# synthetic capture on the CPU, so core must not pick a device first.
+bootstrap(cpu=True)
+
 import measure_dit_prefix_attention as M  # noqa: E402
 
 # Synthetic capture geometry. Deliberately not a legal H3 canvas: `PackedLayout`

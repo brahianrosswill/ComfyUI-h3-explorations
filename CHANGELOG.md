@@ -4,6 +4,49 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.189.4
+
+### Added
+
+- **`bench/_lib`**, the shared helper for checks: `bootstrap()` puts the
+  ComfyUI root on `sys.path` and core on its CPU path when no card is
+  visible; `needs(what, present)` exits 2 with "nothing graded: needs ...";
+  `case(name, fn)` and `finish()` print one line per case and return the exit
+  code. Its docstring is the reference, and `docs/checks.md` "Running them"
+  points at it.
+
+### Fixed
+
+- **Checks that use no device no longer crash when the card is masked.**
+  `check_audio_carry_inversion.py`, `check_channel_balance.py`,
+  `check_dit_prefix_attention.py`, `check_keyframe_canvas.py` and
+  `check_lowvram_handoff.py` imported ComfyUI core without putting it on its
+  CPU path, so `CUDA_VISIBLE_DEVICES=` made each a traceback. They call
+  `bootstrap(cpu=True)` and grade. What each asserts is unchanged; the last
+  two print their cases through `case` / `finish`.
+- **A missing resource is exit 2, not red and not green.**
+  `check_clone_v_wiring.py` and `check_correctness.py` need the card; both
+  returned 0 with "skipping" without one (the first never got that far when
+  masked, it crashed at import). `check_calibration_selector.py`,
+  `check_marker_corpus.py` and `check_pool_media_integrity.py` need the
+  `StellarVoyager/H3-IR` dataset in the Hugging Face cache, and
+  `check_calibration_model_mapping.py` needs the released text-encoder
+  directory. `check_reload_invariance.py` exits 2 when `h3_config.output_dir()`
+  refuses, when the server is not there to post to, and after posting a
+  render it has not graded yet; it returned 1, 1 and 0.
+- **No check needs `PYTHONPATH`.** `check_clone_v_wiring.py`,
+  `check_correctness.py` and `check_reference_encode.py` took the ComfyUI
+  root from it; the third was not listed anywhere as needing it.
+- `check_reload_invariance.py` does not queue a render when
+  `H3_CHECK_SWEEP` is set (`bench/_lib::SWEEP_ENV`). Run by hand it still
+  posts.
+
+### Docs
+
+- `docs/checks.md`: "Running them" drops the `PYTHONPATH` invocation and
+  describes `bench/_lib`; Gaps item 3 is closed; three index rows corrected.
+  What the prose used to say is in `docs/wiki/decisions.md`.
+
 ## 0.189.3
 
 ### Docs
