@@ -391,7 +391,7 @@ def check_resume(problems):
 
     for label, edit, same in (
             ("a checkpoint change", setter("1", "unet_name", "b.safetensors"), False),
-            ("a sampler change", setter("7", "sampler_name", "er_sde"), False),
+            ("a sampler change", setter("7", "sampler_name", "res_multistep"), False),
             ("a crf change", setter("74", "crf", 23), False),
             ("a canvas change", setter("74", "width", 1152), False),
             ("a prompt edit", setter("74", "prompt", "a dancer, closer"), True),

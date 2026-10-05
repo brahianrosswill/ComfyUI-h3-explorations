@@ -282,7 +282,9 @@ that would judge it is built and unrendered: `bench/refview2_arms.json`, six
 arms on five scene graphs (`h3_config.REFVIEW2_SCENES`). **This is the
 strongest open candidate in this document.**
 
-**2. `er_sde` against deterministic Euler.** sglang runs eta-0 Euler with no
+**2. Closed 2026-10-05: the base runs Euler** (owner decision,
+`workflows/h3_config.py::SAMPLING`; no shipped graph names `er_sde`). As
+written until then: **`er_sde` against deterministic Euler.** sglang runs eta-0 Euler with no
 noise after the initial draw. We run a stochastic multistep SDE that injects
 fresh noise every step, and H3 declares no noise-scale override, so the term is
 live. Deliberate and recorded in `workflows/h3_config.py::SAMPLING`; **enforced by
@@ -337,6 +339,11 @@ independent schedules. The conversion is exact for a first-order update, but
 `er_sde`'s higher-order corrections **and its injected noise** are built from
 video-schedule quantities and applied to audio rows too. Nothing in this repo
 covers it, and it is cheap to check at the call rather than at the output.
+**Dated note, 2026-10-05:** no shipped graph samples on `er_sde` any more.
+Every graph but the two FastH3 ones on `h3_config.FASTH3_SAMPLER` steps with
+Euler, the first-order update this item calls exact; that constant's
+`res_multistep` is the one higher-order sampler left, and the item stands
+for it.
 
 **7. The SLA router does not cover what the SLA LoRA was distilled on**
 (*measured*, from the artifact header). The Turbo-SLA LoRA carries modules for

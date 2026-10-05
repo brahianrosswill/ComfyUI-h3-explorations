@@ -4,6 +4,49 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.187.0
+
+### Changed
+
+- **The base sampler is `euler`; no shipped graph names `er_sde`** (owner,
+  2026-10-05: "any workflow that uses er_sde - to now use euler. no er_sde
+  anywhere"). `workflows/h3_config.py::SAMPLING` carries it, and every graph
+  with no distill was rebuilt from it. It replaced `er_sde`, the owner's pick
+  of 2026-08-15 over core's base-template `res_multistep`. What prompted it:
+  vllm-omni added an opt-in `res_multistep` on 2026-10-04 and left Euler its
+  default, and sglang and diffusers also step the base with Euler at eta 0.
+  Core's template still ships `res_multistep`, so the upstreams disagree and
+  this is the owner's call, not the adopt-upstream rule. No eval of ours
+  gates it. **What it costs, unmeasured:** Euler is first order where `er_sde`
+  was a multistep solver, and no render here has judged the base at
+  `SAMPLING["steps"]` on Euler. **What it buys:** the base is deterministic
+  after the initial draw, so a base clip and a distill clip share starting
+  noise at one seed, and the step cache's re-noising caveat no longer binds
+  the default. A base clip rendered before this change is not seed-comparable
+  to one rendered after it. The two FastH3 graphs on
+  `h3_config.FASTH3_SAMPLER` are the only ones left on another sampler; a walk
+  of `h3_config.graph_paths` for `sampler_name` is the observable.
+
+### Removed
+
+- **Three probe graphs the change turned into duplicates**, found by hashing
+  every rebuilt graph with its output name removed: `h3_probe_euler` (now
+  `h3_probe_sol_on_all_refs`), `h3_probe_euler_cache` (now
+  `h3_probe_cache_easy`), and `h3_probe_t2v_base_euler16` with its `_savelat`
+  twin (now `h3_text_to_video` and its twin). Each existed to name the
+  difference between the base on `er_sde` and the base on Euler.
+  `h3_probe_t2v_base_euler32` stays: it differs by its step count.
+
+### Docs
+
+- Dated notes where a reader would otherwise trust the old default:
+  `docs/h3_distills.md` (base and distill clips now share starting noise),
+  `docs/custom_node_gaps.md` items 2 and 6, and
+  `docs/research/h3_dit_implementations.md`. `bench/check_audio_freeze.py`'s
+  sampler-change case and `bench/generate_capture_manifest.py`'s fallback no
+  longer name `er_sde`. `docs/prompt_bank.md` and `docs/prompt_catalogue.md`
+  were regenerated.
+
 ## 0.186.48
 
 ### Docs

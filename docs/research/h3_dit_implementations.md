@@ -236,6 +236,12 @@ latent. **Three of the four inherited a misleading name from the vendor and
 none of them inherited the behaviour** — good evidence that eta=0 is the
 release's intent rather than four independent simplifications.
 
+**Dated note, 2026-10-05:** the owner moved the base to Euler
+(`workflows/h3_config.py::SAMPLING`), so the divergence this section prices is
+closed for every graph except the two FastH3 ones on
+`h3_config.FASTH3_SAMPLER`. The
+text below is as written.
+
 The shipped graphs here split between `er_sde` and `euler`
 (*measured*, over `h3_config.graph_paths`). `er_sde` is a third-order multistep
 solver that **adds fresh noise every step** —

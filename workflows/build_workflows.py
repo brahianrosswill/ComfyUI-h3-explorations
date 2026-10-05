@@ -1908,7 +1908,7 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
         # part of it. On a reused step nothing downstream of the
         # wrapper runs -- sage and Sol included -- which is the mechanism, not
         # a conflict. See CACHE_NODE in h3_config.py for why this arm exists
-        # and its er_sde caveat. Node id 44: 28-33 are the reference loaders
+        # and its re-noising-sampler caveat. Node id 44: 28-33 are the reference loaders
         # and split path, 34-39 the reference image slots, 40-43 the plain
         # chain `split_at` builds.
         g["44"] = {"class_type": CACHE_NODE_CLASS,
@@ -4893,28 +4893,14 @@ def main():
               out_prefix="Video/h3_probe_cache_easy"),
          "the all-refs Sol arm plus EasyCache step reuse"),
 
-        # The euler pair, owner-requested 2026-08-18. Same workload as the
-        # two graphs above with only the sampler changed: euler is
-        # deterministic, so it is the arm where step caching works at the
-        # stock threshold (measured the same day on res_multistep: 7 of 16
-        # steps reused, 1.74x on the sampler, where the shipped er_sde
-        # reused nothing at 0.2 -- bench/results/2026-08-18_cache_arms.jsonl)
-        # and where a cache-on/off pair is a valid numeric A/B under the
-        # CLAUDE.md deterministic-sampler rule. Two graphs, not one, so the
-        # pair varies exactly the cache node.
-        ("h3_probe_euler.json", "r2v-all-euler", "r2v",
-         _ref_prompt(images=True, video=True, video_audio=True, audio=True),
-         dict(**REF_VIDEO_BUDGET, ref_video=True, ref_audio=True, sol_on=True,
-              sampler_name="euler",
-              out_prefix="Video/h3_probe_euler"),
-         "the all-refs workload on euler -- the deterministic-sampler arm"),
-
-        ("h3_probe_euler_cache.json", "r2v-all-euler-cache", "r2v",
-         _ref_prompt(images=True, video=True, video_audio=True, audio=True),
-         dict(**REF_VIDEO_BUDGET, ref_video=True, ref_audio=True, sol_on=True,
-              sampler_name="euler", cache=CACHE_NODE,
-              out_prefix="Video/h3_probe_euler_cache"),
-         "the euler arm plus EasyCache -- the cache-payoff twin"),
+        # Until 2026-10-05 an "euler pair" followed here (`h3_probe_euler`,
+        # `h3_probe_euler_cache`, owner-requested 2026-08-18): the two graphs
+        # above with only the sampler changed, because the base then sampled
+        # on `er_sde`, which re-noises and reused nothing at the stock cache
+        # threshold (bench/results/2026-08-18_cache_arms.jsonl). The base
+        # runs Euler now (h3_config.SAMPLING), so the pair became those two
+        # graphs byte for byte and was retired: `h3_probe_sol_on_all_refs`
+        # against `h3_probe_cache_easy` is the deterministic cache pair.
 
         # --- the single-frame image gen/edit path -------------------------
         #
@@ -4977,11 +4963,11 @@ def main():
          dict(sampler_name="euler", steps=32, out_prefix="Video/h3_probe_t2v_base_euler32"),
          "the base on Euler at 32 steps: PDD's teacher path, sharing the distills' starting noise"),
         # The fair base-versus-distill pair (P4 in
-        # bench/results/2026-09-26_distill_run_predictions.md): the base at its
-        # own 16 steps, but on Euler, so it shares the distills' starting noise.
-        ("h3_probe_t2v_base_euler16.json", "t2v-base-euler16", "t2v", LONG_T2V_PROMPT,
-         dict(sampler_name="euler", out_prefix="Video/h3_probe_t2v_base_euler16"),
-         "the base on Euler at 16 steps, sharing the distills' starting noise"),
+        # bench/results/2026-09-26_distill_run_predictions.md) was
+        # `h3_probe_t2v_base_euler16`: the base at its own 16 steps, but on
+        # Euler, so it shared the distills' starting noise. Since 2026-10-05
+        # that is `h3_text_to_video` itself (h3_config.SAMPLING), so the probe
+        # and its `_savelat` twin were retired as duplicates of it.
         # FastH3 at its contract with VSA off (dense on the kitchen backend), for
         # the "low bitrate" texture question (docs/h3_distills.md): off its
         # training regime by design, a probe only.

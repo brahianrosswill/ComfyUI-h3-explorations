@@ -56,6 +56,11 @@ claim that a test refutes keeps its text and gains an annotation saying so.
 
 ### Why the same seed gives a different scene
 
+- **Dated note, 2026-10-05: this bullet describes base clips rendered through
+  2026-10-05.** The base samples with Euler since then
+  (`workflows/h3_config.py::SAMPLING`, owner decision), so a seed-matched base
+  clip and distill clip now start from the same noise. Every comparison below
+  that pairs a base clip with a distill clip was rendered before the change.
 - **Code: the base and the distills do not share starting noise, even at the
   same seed.**
   - Both draw the same starting tensor from the seed (`Noise_RandomNoise`).

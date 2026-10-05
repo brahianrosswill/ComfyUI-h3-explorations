@@ -15,6 +15,21 @@ Older history lives elsewhere and is not copied here:
   decisions" and forward-plan sections.
 - `bench/results/`: the verdict records, each with its conditions.
 
+## 2026-10-05
+
+- **The base samples with Euler; `er_sde` is gone from every graph** (owner,
+  2026-10-05: "lets change our default sampler for all base / non-distill
+  workflows - or rather, any workflow that uses er_sde - to now use euler. no
+  er_sde anywhere"; 0.187.0). It replaced `er_sde` / `simple`, the default
+  since 2026-08-15. The prompt was vllm-omni keeping Euler its default when it
+  added `res_multistep`. Not measured here: the base at its step count on
+  Euler. `workflows/h3_config.py::SAMPLING` has the provenance. Prose
+  corrected with it: `docs/h3_distills.md` said the base and the distills do
+  not share starting noise at one seed, `docs/custom_node_gaps.md` item 2
+  listed the sampler as an open gap against the reference engines, and
+  `docs/research/h3_dit_implementations.md` said the shipped graphs split
+  between `er_sde` and `euler`. Each keeps its text under a dated note.
+
 ## 2026-10-04
 
 - **The Subject Track sets itself, and was validated by two other sessions

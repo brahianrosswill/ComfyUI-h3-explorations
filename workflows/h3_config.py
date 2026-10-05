@@ -135,26 +135,30 @@ CORE_LOADED_ENCODERS = frozenset({
     "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
 })
 
-# `er_sde` / `simple`, the default since 2026-08-15. The owner's call, and a
-# default rather than a finding: `res_multistep` / `simple` were core's
-# base-template values carried unquestioned, and `er_sde` looked more
-# interesting on the clips actually rendered. Treated like every other default
-# in this file -- swap it, but know what it costs.
+# `euler` / `simple`. **Owner decision 2026-10-05: no `er_sde` anywhere; every
+# graph that carried it runs Euler.** A default rather than a finding, like the
+# one it replaces: `er_sde` was the owner's pick on 2026-08-15 over core's
+# base-template `res_multistep` because it "looked more interesting on the
+# clips actually rendered". What moved it is that every reference
+# implementation steps the base with Euler at eta 0 (sglang, vllm-omni and
+# diffusers' `MiniMaxH3Scheduler`; vllm-omni's 2026-10-04 `res_multistep` is
+# opt-in and leaves Euler the default), and that a stochastic sampler was the
+# standing obstacle to every numeric A/B here. Core's base template still
+# ships `res_multistep`, so this is upstreams that disagree: an ordinary
+# judgement call, not the adopt-upstream rule.
 #
-#   er_sde     One model eval per step, so it costs what `res_multistep` and
-#              `euler` cost. Read in `comfy/k_diffusion/sampling.py`. Note this
-#              is NOT true of the whole sampler list: `heun`, `dpm_2` and the
-#              `2s`/`3s`/`res_Ns` families are 2-6 evals per step.
-#
-#              It is stochastic. `s_noise` defaults to 1.0 and each iteration
-#              adds fresh noise, the first such default here. `noise_sampler`
-#              is seeded from the sampler seed, so two arms at one seed still
-#              draw the same noise and an A/B stays paired -- but a knob that
-#              perturbs attention numerics will read as more "reseeded" than it
-#              did under a deterministic ODE. `SamplerER_SDE` exposes
-#              `solver_type="ODE"`, which zeroes the noise and runs the same
-#              solver deterministically; the graphs wire plain `KSamplerSelect`
-#              and do not expose it yet.
+#   euler      One model eval per step, the same cost as `er_sde` and
+#              `res_multistep`. Read in `comfy/k_diffusion/sampling.py`.
+#              Deterministic: no noise after the initial draw, so the base and
+#              the distills now share starting noise at one seed, and the
+#              step cache's deterministic-sampler caveat (CACHE_NODE below) no
+#              longer applies to the shipped default. First order, where
+#              `er_sde` was a third-order multistep: at `steps` below the
+#              discretization error is larger per step, and **no render here
+#              has judged 16 Euler steps on the base** (the references run
+#              their Euler at their own, larger, default step count). Reasoned,
+#              not measured; the step count is the knob to revisit if base
+#              clips soften.
 #
 #   simple     Kept, and not by inertia. Sol-Attn's window is a percent band
 #              that `percent_to_sigma` resolves off the sigma curve with no
@@ -183,12 +187,14 @@ CORE_LOADED_ENCODERS = frozenset({
 #              shot at 00:10 never happens. Not smeared, no late-clip artifact,
 #              invisible in stills and to a convergence check. Any future step
 #              reduction needs prompt adherence as a gate. That judgement was
-#              made on `res_multistep` and has not been re-run on `er_sde`.
+#              made on `res_multistep` and has not been re-run on `euler`.
 #
 # Every timing recorded in this repo before 2026-08-15 was taken on
-# `res_multistep`. The sampler is step-cost-neutral so they should carry, but
-# they were not re-taken.
-SAMPLING = dict(sampler="er_sde", scheduler="simple", steps=16, denoise=1.0)
+# `res_multistep`, and every base render from then to 2026-10-05 on `er_sde`.
+# The three are step-cost-neutral so timings should carry, but they were not
+# re-taken; a base clip rendered before the change is not seed-comparable to
+# one rendered after it.
+SAMPLING = dict(sampler="euler", scheduler="simple", steps=16, denoise=1.0)
 
 # SolAttn knobs, pinned so neither a graph nor a bench arm inherits whatever
 # the node currently defaults to. Pinning is load-bearing and has already
@@ -1002,9 +1008,10 @@ DEFAULT_DENSE_CHAIN = "kitchen"
 # the only record of how many steps a run actually reused; a timing without
 # that count is uninterpretable.
 #
-# Two standing cautions, both from CLAUDE.md rules: the shipped sampler
-# `er_sde` re-noises every step, which inflates adjacent-step input deltas
-# and can suppress reuse -- a null result on er_sde is a sampler artifact
+# Two cautions, written while the base sampler was `er_sde` (it is `euler`
+# since 2026-10-05, `SAMPLING` above, so neither binds the shipped default
+# now): a sampler that re-noises every step inflates adjacent-step input
+# deltas and can suppress reuse -- a null result on one is a sampler artifact
 # until reproduced on a deterministic sampler; and any cache-on/off quality
 # judgement is a numeric-perturbation A/B, which must run on a deterministic
 # sampler. Keep the key order matching the node's declared inputs: the
@@ -1061,7 +1068,10 @@ SIGMA_SHIFT = dict(shift_video=12.0, shift_audio=3.0)
 
 # The sampler for every distilled arm (inherited: the lightx2v turbo vendor
 # shipped it on both its graphs, since retired), against `SAMPLING`'s
-# res_multistep which came from core's base template. A distilled model is
+# res_multistep which came from core's base template. **Since 2026-10-05 the
+# base runs Euler too (`SAMPLING`), so this constant and that one agree; it
+# stays separate because it is the distills' contract, which a later change
+# to the base default must not move.** The history below is as written. A distilled model is
 # trained so one Euler step from sigma_i lands at sigma_i+1, so a multistep
 # integrator corrects a discretization error that is not the dominant error
 # here. That was an argument rather than a measurement, which is why it was a

@@ -8,13 +8,13 @@ Scenes are ordered by how many graphs carry them, so the defaults that reach the
 
 | scene | bank id | graphs | words | shots | speakers | markers |
 |---|---|---|---|---|---|---|
-| [`LONG_T2V_PROMPT`](#long-t2v-prompt) | `t2va_covered_market` | 84 | 290 | 3 | 2 | `<d>` |
+| [`LONG_T2V_PROMPT`](#long-t2v-prompt) | `t2va_covered_market` | 82 | 290 | 3 | 2 | `<d>` |
 | [`ref2va_role_character_environment`](#ref2va-role-character-environment) | `ref2va_role_character_environment` | 11 | 135 | 1 | 0 | — |
 | [`I2V_PROMPT`](#i2v-prompt) | `i2va_lighthouse_keyframe` | 10 | 90 | 1 | 0 | — |
 | [`MARKET_REF2V_PROMPT`](#market-ref2v-prompt) | `ref2va_market_stallholder` | 10 | 598 | 3 | 2 | `<d>` |
 | [`ref2va_role_character_garment_environment`](#ref2va-role-character-garment-environment) | `ref2va_role_character_garment_environment` | 9 | 173 | 1 | 0 | — |
-| [`ref2va_image_video_audio_music`](#ref2va-image-video-audio-music) | `ref2va_image_video_audio_music` | 5 | 264 | 1 | 0 | — |
 | [`fl2va_interior_converge`](#fl2va-interior-converge) | `fl2va_interior_converge` | 3 | 159 | 1 | 0 | — |
+| [`ref2va_image_video_audio_music`](#ref2va-image-video-audio-music) | `ref2va_image_video_audio_music` | 3 | 264 | 1 | 0 | — |
 | [`BENCH_T2V_PROMPT`](#bench-t2v-prompt) | `t2va_frontier_standoff` | 2 | 385 | 3 | 2 | `<d>` |
 | [`DIALOGUE_REF2V_PROMPT`](#dialogue-ref2v-prompt) | `ref2va_stairwell_dialogue` | 2 | 640 | 3 | 2 | `<d>` |
 | [`ref2va_studio_dancer_close_refs`](#ref2va-studio-dancer-close-refs) | `ref2va_studio_dancer_close_refs` | 2 | 568 | 2 | 0 | — |
@@ -51,7 +51,7 @@ Scenes are ordered by how many graphs carry them, so the defaults that reach the
 
 ## LONG_T2V_PROMPT
 
-Carried by **84** graph(s). Sections: `integrated_multimodal_description`, `overall_soundscape`, `non_diegetic_music`.
+Carried by **82** graph(s). Sections: `integrated_multimodal_description`, `overall_soundscape`, `non_diegetic_music`.
 
 <details><summary>graphs</summary>
 
@@ -65,8 +65,6 @@ Carried by **84** graph(s). Sections: `integrated_multimodal_description`, `over
 - `h3_probe_canvas_ultrawide_api`
 - `h3_probe_head_chunks_api`
 - `h3_probe_square_canvas_api`
-- `h3_probe_t2v_base_euler16_api`
-- `h3_probe_t2v_base_euler16_savelat_api`
 - `h3_probe_t2v_base_euler32_api`
 - `h3_probe_t2v_base_euler32_savelat_api`
 - `h3_probe_t2v_base_euler32_x0_api`
@@ -309,15 +307,35 @@ non_diegetic_music:
 N/A
 ```
 
+## fl2va_interior_converge
+
+Carried by **3** graph(s). Sections: none.
+
+<details><summary>graphs</summary>
+
+- `h3_first_last_frame_to_video_api`
+- `h3_first_last_frame_to_video_pdd_4step_api`
+- `h3_first_last_frame_to_video_pdd_api`
+
+</details>
+
+```text
+How the reference pictures align with the target video — Picture 1 (from Shot 1) aligns with the 0.00-second mark of the target video; Picture 2 (from Shot 1) aligns with the 14.38-second mark of the target video.
+
+integrated_multimodal_description: [Shot 1] Live-action, cinematic, one continuous shot that begins in the exact state of the opening frame and ends in the exact state of the closing frame. The subject holds the opening position, framing, lighting and colors, then moves steadily through the space while the camera trucks right with small amplitude at slow speed. Wardrobe, palette and the surrounding scene stay continuous throughout, and the subject's pose, placement and the camera's position, angle and framing converge on the closing composition, reaching it only at the final frame.
+
+overall_soundscape: Quiet room tone with a low ambient hum continues throughout, joined by soft physical sounds from the subject's movement and a single settling sound as the motion comes to rest.
+
+non_diegetic_music: N/A
+```
+
 ## ref2va_image_video_audio_music
 
-Carried by **5** graph(s). Sections: `subject_definitions`, `summary`, `retention_analysis`, `detailed_description`, `overall_soundscape`, `non_diegetic_music`.
+Carried by **3** graph(s). Sections: `subject_definitions`, `summary`, `retention_analysis`, `detailed_description`, `overall_soundscape`, `non_diegetic_music`.
 
 <details><summary>graphs</summary>
 
 - `h3_probe_cache_easy_api`
-- `h3_probe_euler_api`
-- `h3_probe_euler_cache_api`
 - `h3_probe_sol_on_all_refs_api`
 - `h3_ref_image_video_audio_api`
 
@@ -350,28 +368,6 @@ The ambience of <Audio 1> continues under the shot.
 
 non_diegetic_music:
 A slow instrumental score follows the tempo and instrumentation of <Audio 2>.
-```
-
-## fl2va_interior_converge
-
-Carried by **3** graph(s). Sections: none.
-
-<details><summary>graphs</summary>
-
-- `h3_first_last_frame_to_video_api`
-- `h3_first_last_frame_to_video_pdd_4step_api`
-- `h3_first_last_frame_to_video_pdd_api`
-
-</details>
-
-```text
-How the reference pictures align with the target video — Picture 1 (from Shot 1) aligns with the 0.00-second mark of the target video; Picture 2 (from Shot 1) aligns with the 14.38-second mark of the target video.
-
-integrated_multimodal_description: [Shot 1] Live-action, cinematic, one continuous shot that begins in the exact state of the opening frame and ends in the exact state of the closing frame. The subject holds the opening position, framing, lighting and colors, then moves steadily through the space while the camera trucks right with small amplitude at slow speed. Wardrobe, palette and the surrounding scene stay continuous throughout, and the subject's pose, placement and the camera's position, angle and framing converge on the closing composition, reaching it only at the final frame.
-
-overall_soundscape: Quiet room tone with a low ambient hum continues throughout, joined by soft physical sounds from the subject's movement and a single settling sound as the motion comes to rest.
-
-non_diegetic_music: N/A
 ```
 
 ## BENCH_T2V_PROMPT

@@ -46,7 +46,7 @@ comfy.cli_args.args.cpu = True   # importing comfy_extras must not need a card; 
 from reference_geometry import REF_IMAGE_SHORT_EDGE, fit_reference_image, latent_rows  # noqa: E402
 
 sys.path.insert(0, str(_REPO / "workflows"))
-from h3_config import LORA_LOADER_CLASSES, graph_schedule  # noqa: E402
+from h3_config import LORA_LOADER_CLASSES, SAMPLING, graph_schedule  # noqa: E402
 import prompts as _prompts  # noqa: E402  -- bank id, prompt sha, canvas, length, seed from the graph
 from sol_observe import graph_sha256  # noqa: E402  -- the hash provenance.py and the route record use
 
@@ -583,7 +583,7 @@ def extract_from_workflow(wf: dict, input_base: Path):
                 # describe both.
                 models["vae_quantization"] = infer_quantization(vae_name)
         elif ct == "KSamplerSelect":
-            sampling["sampler_name"] = str(inputs.get("sampler_name", "er_sde"))
+            sampling["sampler_name"] = str(inputs.get("sampler_name", SAMPLING["sampler"]))
         elif ct == "BasicScheduler":
             sampling["scheduler"] = str(inputs.get("scheduler", "simple"))
             sampling["steps"] = int(inputs.get("steps", 16))
