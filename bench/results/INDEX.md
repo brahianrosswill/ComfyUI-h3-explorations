@@ -16,7 +16,7 @@ replaces `docs/evidence.md`, which says what the records established.
 
 | date | lane | record | verdict |
 |---|---|---|---|
-| 2026-10-05 | masking | [A clean plate from VOID on the band clip's turn window: a first probe (2026-10-05)](2026-10-05_void_plate_turn.md) | rendered, not judged; the lead is removed in both shots, and the turn shot's plate is not clean under either prompt |
+| 2026-10-05 | masking | [A clean plate from VOID on the band clip's turn window: a first probe (2026-10-05)](2026-10-05_void_plate_turn.md) | the turn shot judged by the owner: neither arm is a plate; the empty prompt is the nearer one, the scene prompt "looks horrible" |
 | 2026-10-05 | masking | [VOID pass 1 converted from upstream for core's loader (2026-10-05)](2026-10-05_void_checkpoint_conversion.md) | a pure rename; the converted file matches Comfy-Org's repack by header and by sampled bytes, and core loads it |
 | 2026-10-05 | masking | [Sapiens2 parts on the band clip: class order, time per frame, hair against SAM 3 (2026-10-05)](2026-10-05_sapiens2_first_frame.md) | the class order is upstream's for the classes on the frame; hair found on every frame, where SAM 3's phrase missed four of 48 |
 | 2026-10-05 | sam3d | [SAM 3D Body: Meta's original files repacked for core, and what the repack holds that Meta did not publish (2026-10-05)](2026-10-05_sam3d_body_conversion.md) |  |
@@ -43,7 +43,7 @@ replaces `docs/evidence.md`, which says what the records established.
 | 2026-10-01 | lora | [Where a LoRA at the call spends its time (2026-10-01)](2026-10-01_lora_branch_profile.md) |  |
 | 2026-10-01 | kitchen | [comfy-kitchen: h3-frontier merged to upstream main, 2026-10-01](2026-10-01_kitchen_merge_aade8d5.md) |  |
 
-Data files dated this month and not listed: 54.
+Data files dated this month and not listed: 55.
 
 ## 2026-09
 

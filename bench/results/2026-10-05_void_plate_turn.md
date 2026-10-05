@@ -1,12 +1,31 @@
 # A clean plate from VOID on the band clip's turn window: a first probe (2026-10-05)
 
 lane: masking
-verdict: rendered, not judged; the lead is removed in both shots, and the turn shot's plate is not clean under either prompt
+verdict: the turn shot judged by the owner: neither arm is a plate; the empty prompt is the nearer one, the scene prompt "looks horrible"
 
-Session mrorange, the board's `build-void-plate`. **Status: rendered, not
-judged.** What follows was read from still frames at VOID's size, three per
-shot and a ten-frame sheet; playback is the owner's to judge. One clip, one
-window, one seed, two prompts.
+Session mrorange, the board's `build-void-plate`. **Status: the turn shot is
+judged by the owner (below); shot 1 is rendered, not judged.** What is
+described under "What the frames show" was read from still frames at VOID's
+size, three per shot and a ten-frame sheet. One clip, one window, one seed,
+two prompts.
+
+## Judged by the owner, 2026-10-05
+
+The two turn-shot clips, on playback, in the owner's words as relayed by
+mryellow:
+
+- the empty prompt: "some ghosting at the start and end and shadows are
+  still there but gone... but you can see glitchy at the very last frames";
+- the scene prompt: "looks horrible. deformed / morphing faces/bodies
+  everywhere."
+
+mryellow, from contact sheets of every sixth frame, agrees, and adds for the
+empty arm: a flat translucent panel exactly the size of the subject's cell
+region with the neon tube drawn across it, the man behind him smeared beside
+the woman on the right, grey streaks in the last frames, and **the cast
+shadow outside the one-cell grey ring**. So the affected region did not hold
+the shadow: one cell beyond the cells he touches covers the lane's hole and
+not what he casts on the wall. The ring's width is `GRID_GROW` in the probe.
 
 The numbers are in `2026-10-05_void_plate_turn.json`. The script and its
 graph are `internal/claude/2026-10-05_mrorange/void_plate_turn.py`, not
@@ -100,6 +119,65 @@ became a small square of "remove".
    cannot replace the frame.
 3. **Core cannot load the upstream checkpoint.** See the conversion record.
 
+## The quadmask's polarity, read
+
+Asked by mryellow after the judgment: a flat panel in the shape of the
+subject's region is what an inverted or self-repainting mask would give. Read
+in core and in upstream's own inference code (`netflix/void-model`, `main` at
+e3914f8f551d, fetched 2026-10-05; copies under
+`internal/claude/2026-10-05_mrorange/upstream_void/`). **The polarity is
+right.**
+
+- Upstream (`get_video_mask_input`, in its own utils module): the quadmask
+  on disk is 0 on the object, 63 on the overlap, 127 on the affected area and
+  255 where the frame is kept. It is quantised to those four values and then
+  inverted, `255 - mask`, and divided by 255. So the mask the pipeline
+  receives is 1.0 on the object, about 0.5 on the affected area and 0.0 on
+  what is kept.
+- Core's `VOIDQuadmaskPreprocess` is the same quantisation and inversion, and
+  its docstring says 1.0 is "remove". Core's template skips that node and
+  wires a plain mask, 1 on the subject, into the conditioning node.
+- The probe's quadmask is 1.0 on the object, 0.5 on the ring and 0.0
+  elsewhere: the same convention.
+- Both then encode `1 - mask` with the VAE as the mask channels (core:
+  `VOIDInpaintConditioning`, `vae.encode(inverted_mask_3ch)`; upstream:
+  `1 - mask_condition_tile` with `use_vae_mask`), which is the paper's
+  picture: black object, grey affected area, white kept.
+- seen, and independent of the reading: in shot 1, on the same nodes, the lead
+  is gone and the wall behind him is drawn. An inverted mask would have kept
+  him.
+
+## Where core's port differs from upstream's own inference
+
+Found by the same reading. None of this was tested; each is a candidate for
+the panel, and the first is the one that fits mryellow's description.
+
+1. **What the model is shown under the mask.** Upstream's shipped config sets
+   `zero_out_mask_region = False`, and the pipeline then conditions on the
+   whole, unmasked video (`masked_video = init_video`). Core's node always
+   multiplies the video by `1 - mask`: the object is blacked out and **the
+   affected ring is shown at half brightness**. Even upstream's other path
+   (`zero_out_mask_region = True`) blacks only the object and leaves the
+   affected area as it is. So in core the ring is a dimmed copy of the source,
+   which neither upstream path produces.
+2. **Guidance.** Upstream's config has `guidance_scale = 1.0`, with a negative
+   prompt about quality; core's template uses cfg 6 with an empty negative.
+   The probe used the template's. Both use 30 steps (upstream's script passes
+   30 and ignores its config's 50).
+3. **Windows.** Upstream's script calls the pipeline with `num_frames` set to
+   its `temporal_window_size`, 85, and a multidiffusion stride in the config.
+   Core's node samples the whole window at once; the probe gave it 189 and 45
+   frames. How upstream stitches its windows was not read.
+4. Upstream quantises the mask to three levels inside the pipeline whatever
+   the config says (`use_trimask = True` is passed literally), so its overlap
+   level becomes "object". The probe has no overlap level, so nothing follows
+   for it.
+
+An arm at cfg 1 needs only a changed number in the probe's graph. Showing the
+model the unmasked video needs a conditioning node that does not multiply,
+which core's does not offer; nothing in this pack patches core, so that would
+be a node here.
+
 ## Time
 
 Sampling took about four minutes for the 189-frame window and about forty
@@ -111,14 +189,16 @@ six minutes.
 
 - Whether the plate is good enough under the hole in shot 1: nobody has
   watched it play, and the hole is about a fifth of the frame.
-- Anything about the shadow or reflections. The lead casts no clear shadow in
-  these shots at this size; the affected ring was regenerated, and what it
-  removed was not looked for.
+- Anything about removing a shadow. corrected: this line first said the lead
+  casts no clear shadow at this size. He does in the turn shot, on the wall,
+  and it lies outside the ring (the owner's judgment above), so the probe
+  never asked VOID to remove it.
 - Whether the turn shot fails because it is short, because the subject is
-  close and moving fast, or because of the prompt. The paper names close
-  subjects as a weak spot. Untried: a sentence that describes the room and
-  no people; a window that carries the turn shot together with more context;
-  pass 2; a wider or a tighter affected region; a second seed.
+  close and moving fast, because of the prompt, or because of how core's
+  node conditions (the section above). The paper names close subjects as a
+  weak spot. Untried: upstream's guidance; a ring wide enough to hold the
+  shadow; a sentence that describes the room and no people; a window that
+  carries the turn shot together with more context; pass 2; a second seed.
 - Whether a window that runs past its cut harms the shot's last frames. The
   sheet's last two columns for each window are the shot's last frames and
   show nothing the earlier ones do not; that is five frames, by eye.

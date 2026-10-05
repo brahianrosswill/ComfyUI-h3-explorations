@@ -4,6 +4,23 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.190.14
+
+### Docs
+
+- **`bench/results/2026-10-05_void_plate_turn.md` carries the owner's
+  judgment of the turn shot and what was read after it.** Neither prompt arm
+  is a plate (the owner's words are in the record), and the cast shadow lay
+  outside the affected ring, which corrects the record's line that he casts
+  none. The quadmask's polarity was then read in core's nodes and in
+  upstream VOID's own inference code and is right. The same reading found
+  where core's port differs from upstream's inference: core shows the model
+  the video multiplied by `1 - mask`, so the affected ring is a half-bright
+  copy of the source, where upstream's shipped config shows the whole video;
+  core's template uses cfg 6 where upstream's config uses 1; upstream samples
+  in windows of 85 frames. None of it is tested. The verdict line and
+  `bench/results/INDEX.md` follow.
+
 ## 0.190.13
 
 ### Docs
