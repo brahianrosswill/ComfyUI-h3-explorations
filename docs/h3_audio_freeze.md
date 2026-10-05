@@ -356,6 +356,10 @@ placeholder clip and still, with a prompt that names no setting or shot
 window of any clip. The first renders, on the owner's clip, are the arms in
 `bench/masked_v2v_arms.json`; their record and what the owner made of them
 are in `bench/results/2026-10-04_masked_v2v_first_run.md`.
+A second graph, `workflows/h3_video_to_video_masked_song_ref2va_motion_api.json`
+(2026-10-05), carries the original's movement to the replaced subject through
+the Masked Source's motion reference on the ref2va base; what it costs and
+why it is ref2va: `bench/results/2026-10-05_masked_v2v_motion_arms.md`.
 
 **Next, in order.**
 

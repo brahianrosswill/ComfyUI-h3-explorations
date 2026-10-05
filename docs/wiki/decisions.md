@@ -17,6 +17,24 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-05
 
+- **The masked lane gets a second shipped graph on ref2va for shots that
+  need the original's movement** (owner, 2026-10-05, on the masking board:
+  "For this you just need my approval? If so yes").
+  `workflows/h3_video_to_video_masked_song_ref2va_motion_api.json`: the
+  Masked Source's motion reference on, the ref2va base at
+  `h3_config.MASKED_MOTION_STEPS`. Against what: eleven arms on the band
+  clip's turn (`bench/results/2026-10-05_masked_v2v_motion_arms.md`): fl2va
+  ignores an encoder-only video reference of the subject at any step count,
+  distilled or not; ref2va carries it at 12 and 16 and loses it at 8 with or
+  without its PDD bake. The fl2va PDD8 graph stays the default. The owner
+  asked where 12 comes from: the lowest count on a three-point ladder (8,
+  12, 16) seen to carry the reference, one seed at 8 and 12.
+- **A check may run a coderef file as a one-off numeric reference; nothing
+  shipped depends on coderef** (owner, 2026-10-05, on the masking board:
+  "yes you can test it just dont write code that relies on it here - just
+  one offs"). Raised by mrteal's `bench/check_sam3d_body_vith.py`, which
+  runs Meta's backbone file in a child process to compare against. The
+  clause is in `AGENTS.md`, "Reference implementations".
 - **A clip that starts on a still gets the FlashGen finish: the docs now say
   what the code ships** (owner, 2026-10-05, on the masking board: "Please
   resolve this so it reflects current state code"). `h3_config.DAILY_GRAPHS`

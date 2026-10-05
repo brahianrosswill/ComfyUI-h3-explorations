@@ -13,7 +13,14 @@ pointer goes; this list is stale the moment the roadmap disagrees with it.
 Items from the `mrpink` helper lane first; `evalman`'s render lane appends its
 own below the rule.
 
-**Masked video to video (owner, 2026-10-04): version one shipped; movement is the open problem.**
+**Masked video to video (owner, 2026-10-04): version one shipped; movement from the source is answered on ref2va (2026-10-05) and open on fl2va.**
+- A shot that needs the original's movement renders on
+  `workflows/h3_video_to_video_masked_song_ref2va_motion_api.json`; why, and
+  at what cost: `../../bench/results/2026-10-05_masked_v2v_motion_arms.md`
+  and `masked_v2v.md`, "What it is". The fl2va-side route (mrhf's per-token
+  late start), the Sapiens2 part menu wired into the Masked Source, click
+  corrections per shot and the per-shot table are the four items the owner
+  set running on 2026-10-05; the masking board carries them.
 - How it works, its limits and the wider set of directions:
   [`masked_v2v.md`](masked_v2v.md). The dated account:
   [`../h3_audio_freeze.md`](../h3_audio_freeze.md) section 4. What was

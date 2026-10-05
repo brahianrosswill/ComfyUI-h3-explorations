@@ -124,3 +124,33 @@ eleven rows, the server stopped at 15:35.
   cost; the song-node seconds in the rows price it against the shipped
   eight-step fl2va graph. Whether the lane moves its moving shots there is
   the owner's call on the board.
+
+## Appended 16:45: the control with no reference, and the shipped graph's own render
+
+| arm | chain | steps | reference | turn | look |
+|---|---|---|---|---|---|
+| `ref2va_base12_noref_s1` | ref2va undistilled, the generic prompt as mrhf wrote it, `motion_reference` none | 12 | **none** | no; faces the camera through the shot | kept |
+| `ship_ref2va_motion_s1` | `workflows/h3_video_to_video_masked_song_ref2va_motion_api.json` as generated, the band clip, seed one, one window | 12 | same as motion | yes, a partial one: side-on by frame 257, three-quarter back by 267, the face still partly visible at 277 where the arm shows his back | kept |
+
+The control is the question the owner asked ("if you just use the ref2va
+model and dont pass in the video reference"): on ref2va at twelve steps with
+nothing but the plate, the still and the generic prompt he does not turn. So
+the reference is what carries the turn, and ref2va above eight steps is what
+lets it through. The shipped graph's own render turns him less fully than the
+arm at the same seed; the two differ only in the prompt's base text (the
+shipped `ref2va_masked_subject_swap` against mrhf's generic male prompt,
+each with the same three `<Video 1>` lines). One seed each; the base text is
+the next knob if a fuller turn is wanted from the shipped graph.
+
+## Verdict, revised
+
+- fl2va does not take an encoder-only video reference of the subject here,
+  distilled or not, at eight or sixteen steps.
+- ref2va takes it at twelve and sixteen steps and loses it at eight with or
+  without its PDD8 bake, and at six evaluations. Without the reference,
+  ref2va at twelve does not turn him. The step count and the reference are
+  both needed; the distill is not the variable.
+- The route ships as `h3_video_to_video_masked_song_ref2va_motion_api.json`
+  (and `daily/h3_mask_ref2va_motion_api.json`), verified on one render of
+  the generated graph; the fl2va PDD8 graph stays the default for a shot
+  that needs no movement from the source.

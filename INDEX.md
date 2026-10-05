@@ -130,13 +130,13 @@ with none is a helper the others import.
 | `assets/` | 1 | [below](#assets) |
 | `bench/` | 1353 | [`bench/INDEX.md`](bench/INDEX.md) and [`bench/results/INDEX.md`](bench/results/INDEX.md) for the records |
 | `docs/` | 165 | [`docs/wiki/index.md`](docs/wiki/index.md), the hand-written router |
-| `prompt_bank/` | 162 | [`docs/prompt_bank.md`](docs/prompt_bank.md), the prompt catalogue |
+| `prompt_bank/` | 163 | [`docs/prompt_bank.md`](docs/prompt_bank.md), the prompt catalogue |
 | `sparse_tables/` | 1 | [below](#sparse_tables) |
 | `standalone/` | 25 | [below](#standalone) |
 | `vendor/` | 6 | [below](#vendor) |
 | `vendor_config/` | 8 | [below](#vendor_config) |
 | `vendor_guides/` | 4 | [below](#vendor_guides) |
-| `workflows/` | 166 | [`workflows/INDEX.md`](workflows/INDEX.md) |
+| `workflows/` | 169 | [`workflows/INDEX.md`](workflows/INDEX.md) |
 
 ## .claude/
 

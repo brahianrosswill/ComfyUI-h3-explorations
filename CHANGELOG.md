@@ -4,6 +4,34 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.191.7
+
+- **A second shipped masked graph, on ref2va, for a shot that needs the
+  original's movement** (owner's approval on the masking board, 2026-10-05):
+  `workflows/h3_video_to_video_masked_song_ref2va_motion_api.json`, the
+  Masked Source's `motion_reference` on (`h3_config.MASKED_MOTION_SOURCE`)
+  and the ref2va base at `h3_config.MASKED_MOTION_STEPS`, provenance beside
+  each. Its prompt is `prompt_bank/ref2va_masked_subject_motion.txt`: the
+  shipped masked prompt with `<Video 1>` named as the source of the
+  subject's motion and nothing else. The generator takes a `masked_source`
+  dict per graph. Why ref2va and why that count:
+  `bench/results/2026-10-05_masked_v2v_motion_arms.md`. The fl2va PDD8 graph
+  stays the default. Both masked graphs are also in `workflows/daily/` as
+  `h3_mask_pdd8` and `h3_mask_ref2va_motion` (owner: a daily section for
+  mask), through `h3_config.DAILY_GRAPHS`.
+- `reference_order.motion_records`: the static label plan now counts the
+  `<Video N>` the song node appends at run time for a Masked Source with a
+  motion reference, so `bench/check_ref_prompt_labels.py` grades the new
+  graph instead of reporting a phantom label; `bench/check_video_mask.py`
+  asserts the two modules' literals agree and the plan gains exactly one
+  video. The same check had a counter shadowed by a string inside its graph
+  walk, which a second masked graph exposed; renamed.
+- `AGENTS.md`, "Reference implementations": a check may run a coderef file
+  as a one-off numeric reference; nothing shipped depends on coderef
+  (owner, 2026-10-05). `docs/wiki/decisions.md` has both decisions,
+  `docs/wiki/masked_v2v.md`, `docs/wiki/next_steps.md`,
+  `docs/h3_audio_freeze.md` and `docs/prompt_audit.md` the pointers.
+
 ## 0.191.6
 
 ### Docs

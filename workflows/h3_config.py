@@ -1246,6 +1246,18 @@ MASKED_SOURCE = dict(grow_pixels=64, feather_pixels=8, replace="whole subject", 
                      part_phrases="hair, head", part_threshold=0.5, part_margin=8,
                      composite="only what changed", change_threshold=0.05, reuse_mask=True,
                      motion_reference="none", motion_short_edge=384, motion_vae=False)
+#: **Measured** 2026-10-05 (`bench/results/2026-10-05_masked_v2v_motion_arms.md`):
+#: with the subject's own frames as an encoder-only video reference, ref2va
+#: carries the original's turn at 12 and 16 steps and loses it at 8 with or
+#: without its PDD bake, and fl2va never takes it at any count. 12 is the
+#: lowest count seen to carry it, one seed on that ladder; the shipped fl2va
+#: PDD8 graph stays the default for shots that need no movement from the
+#: source.
+MASKED_MOTION_STEPS = 12
+#: The Masked Source as the ref2va motion graph ships it: the subject's own
+#: frames on grey as the encoder-only motion reference (the masking board's
+#: route 1, measured above), every other value `MASKED_SOURCE`'s.
+MASKED_MOTION_SOURCE = dict(MASKED_SOURCE, motion_reference="subject only")
 
 # ---- FastH3 8-step V2 ------------------------------------------------------------
 #: **Inherited** from ComfyUI's own template, Comfy-Org/workflow_templates
@@ -1966,8 +1978,8 @@ CAPTURE_REF_IMAGES = (
 #: `distill_experiment=True`. The shipped distill graphs stay at the root.
 #: **`daily` added 2026-10-03** (owner, of the ref2va finish graph: "if we're
 #: using something regularly ... why keep that in distill experiments?").
-#: `DAILY_GRAPHS` says which graphs those are and which probe each was promoted
-#: from; a fact about use, so it is declared here and nowhere else. The rest
+#: `DAILY_GRAPHS` says which graphs those are and which probe or shipped graph
+#: each was promoted from; a fact about use, so it is declared here and nowhere else. The rest
 #: of the by-purpose layout the owner chose the same day is prepared on the
 #: branch `workflows-by-purpose` and has not landed.
 DAILY_DIR = "daily"
@@ -1980,6 +1992,12 @@ DAILY_GRAPHS: dict[str, str] = {
     "h3_ref2v_pdd8_flashgen_finish": "h3_probe_r2v_step_switch_pdd8_flashgen_h080.json",
     "h3_t2v_pdd8_flashgen_finish": "h3_probe_t2v_step_switch_pdd8_flashgen_h080.json",
     "h3_i2v_pdd8_flashgen_finish": "h3_probe_i2v_step_switch_pdd8_flashgen_h080.json",
+    # The masked lane (owner, 2026-10-05: "make sure we have a daily section
+    # for mask"): the default graph, and the ref2va motion graph for a shot
+    # that needs the original's movement (`MASKED_MOTION_STEPS`). Promoted
+    # from shipped root graphs, not probes; both stay at the root as well.
+    "h3_mask_pdd8": "h3_video_to_video_masked_song_pdd8.json",
+    "h3_mask_ref2va_motion": "h3_video_to_video_masked_song_ref2va_motion.json",
 }
 GRAPH_DIRS: tuple[str, ...] = ("", "distill_experiments", DAILY_DIR)
 

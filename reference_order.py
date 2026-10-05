@@ -299,9 +299,38 @@ def plan_for(inputs, graph=None) -> list:
                 f"{link[0]!r}; an append node's plan is slot 0. A different "
                 f"slot is a different value and cannot be a chain")
 
-    if typed:
-        return resolve_chain(graph, str(inputs[CHAIN_INPUT][0]))
-    return legacy_plan(inputs)
+    plan = resolve_chain(graph, str(inputs[CHAIN_INPUT][0])) if typed else legacy_plan(inputs)
+    return plan + motion_records(inputs, graph)
+
+
+#: The Masked Source's class and the `motion_reference` value that means no
+#: reference, as literals: `video_mask.py` holds them (`MOTION_NONE`) but
+#: imports torch, and this module is read by static checks without it.
+#: `bench/check_video_mask.py` asserts the two agree.
+MASKED_SOURCE_CLASS = "MiniMaxH3MaskedSource"
+MOTION_NONE = "none"
+
+
+def motion_records(inputs, graph=None) -> list:
+    """The song node's own appended reference, so static readers see it too.
+
+    Since 2026-10-05 (`audio_freeze_song.py`) a song node whose `source` is a
+    Masked Source with `motion_reference` other than none builds one
+    `RuntimeVideoReference` per window from the source and appends it AFTER
+    the wired chain, so the tokenizer emits one more `<Video N>` than the
+    chain alone says. A prompt that names it is right and a label check that
+    does not know it reports a phantom; this is the one place that knows.
+    Encoder-only or with the VAE copy, the label is the same.
+    """
+    link = inputs.get("source")
+    if graph is None or not (isinstance(link, list) and len(link) == 2):
+        return []
+    node = graph.get(str(link[0]))
+    if not isinstance(node, dict) or node.get("class_type") != MASKED_SOURCE_CLASS:
+        return []
+    if node.get("inputs", {}).get("motion_reference", MOTION_NONE) == MOTION_NONE:
+        return []
+    return [VideoRef(name="motion reference")]
 
 
 def resolve_chain_entries(graph: dict, node_id: str) -> list[tuple[str, dict, str]]:

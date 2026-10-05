@@ -1,6 +1,6 @@
 # Masked video to video: how it works, what it cannot do, where to go next
 
-last updated: 2026-10-05 (the Sapiens2 nodes named); 2026-10-04 (first written, after the Subject Track's third clip)
+last updated: 2026-10-05 (the ref2va motion graph; the Sapiens2 nodes named); 2026-10-04 (first written, after the Subject Track's third clip)
 
 Written by hand. This is the lane's map for a reader who has not followed
 it: the pieces in the order a render meets them, the limits each one has
@@ -19,6 +19,20 @@ Take a video with its own audio, keep everything outside one person, and
 replace that person from a reference still. The shipped graph is
 `workflows/h3_video_to_video_masked_song_pdd8_api.json`: a video loader, the
 SAM 3 checkpoint, two pack nodes, and the PDD8 song chain with Sol-Attn.
+
+A second shipped graph, `workflows/h3_video_to_video_masked_song_ref2va_motion_api.json`
+(2026-10-05), is for a shot where the replaced person must move as the
+original moved: the same lane on the ref2va base at
+`h3_config.MASKED_MOTION_STEPS`, with the Masked Source's `motion_reference`
+on (`MASKED_MOTION_SOURCE`), so the subject's own frames on grey reach the
+text encoder as `<Video 1>` and the prompt ties the subject's motion to it.
+Why ref2va and why that count is measured, not reasoned:
+`../../bench/results/2026-10-05_masked_v2v_motion_arms.md` (fl2va ignores the
+reference at any step count, distilled or not; ref2va loses it at eight). It
+costs the step count over the PDD8 graph, which stays the default for a
+shot that needs no movement from the source.
+Both graphs are in `workflows/daily/` too, as `h3_mask_pdd8_api.json` and
+`h3_mask_ref2va_motion_api.json` (`h3_config.DAILY_GRAPHS`).
 
 It is not a trained task. The release trains t2va, fl2va and ref2va; a
 spatial mask on a base checkpoint is an inference-time method. The mechanism

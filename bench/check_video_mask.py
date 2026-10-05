@@ -405,6 +405,16 @@ def check_motion_reference(problems):
         pass
     if not all(k in vm.MASK_KEY_SKIP for k in ("motion_reference", "motion_short_edge", "motion_vae")):
         _fail(problems, "motion_reference's three inputs must not enter the kept mask's key: they do not change the mask")
+    import reference_order as ro
+    if ro.MOTION_NONE != vm.MOTION_NONE or ro.MASKED_SOURCE_CLASS != "MiniMaxH3MaskedSource":
+        _fail(problems, "reference_order's literals for the Masked Source must equal video_mask's: the static label plan reads them")
+    song_inputs = {"source": ["9", 0]}
+    g = {"9": {"class_type": "MiniMaxH3MaskedSource", "inputs": {"motion_reference": vm.MOTION_SUBJECT}}}
+    if ro.assign_labels(ro.plan_for(song_inputs, g)) != ["<Video 1>"]:
+        _fail(problems, "a Masked Source with a motion reference must add one <Video N> to the song node's static label plan")
+    g["9"]["inputs"]["motion_reference"] = vm.MOTION_NONE
+    if ro.assign_labels(ro.plan_for(song_inputs, g)) != []:
+        _fail(problems, "a Masked Source with no motion reference must add nothing to the static label plan")
 
 
 def check_graphs(problems):
@@ -427,10 +437,10 @@ def check_graphs(problems):
             mask_node = graph[ins["mask"][0]]
             if "track_data" in mask_node["inputs"]:
                 track = graph.get(mask_node["inputs"]["track_data"][0], {})
-                seen = track.get("inputs", {}).get("images", [None])[0]
+                tracked_from = track.get("inputs", {}).get("images", [None])[0]
             else:
-                seen = mask_node["inputs"].get("frames", [None])[0]
-            if seen != frames_from:
+                tracked_from = mask_node["inputs"].get("frames", [None])[0]
+            if tracked_from != frames_from:
                 problems.append(f"{path.name}: the mask of Masked Source {nid} was not tracked over its own frames")
             for out in (1, 2):  # a consumer of the tracker's preview or report runs it on every queue
                 if mask_node.get("class_type") == "MiniMaxH3SubjectTrack" and any(

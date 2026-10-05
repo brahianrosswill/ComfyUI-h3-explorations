@@ -135,6 +135,16 @@ IDENTITY = {
 #: one, and 76 graphs at the default went red. The KIND claim is graded, not
 #: trusted, and it caught its author four times in one sitting.
 DECLARED: dict[tuple[str, str], tuple] = {
+    ("MiniMaxH3MaskedSource", "motion_reference"):
+        ("ARM", "'subject only' on the ref2va motion graphs "
+                "(`h3_video_to_video_masked_song_ref2va_motion` and its daily "
+                "copy), against the node default 'none': the subject's own "
+                "frames reach the encoder as <Video 1> so the replaced subject "
+                "moves as the original moved. Measured 2026-10-05 "
+                "(bench/results/2026-10-05_masked_v2v_motion_arms.md): the "
+                "reference carries the band clip's turn on ref2va at "
+                "`h3_config.MASKED_MOTION_STEPS` and the no-reference control "
+                "does not; `h3_config.MASKED_MOTION_SOURCE` says so."),
     ("MiniMaxH3AppendRefImage", "qwen_view"):
         ("ARM", "'shared' on the instruments, against the node default "
                 "'separate' (2026-10-03): the `_savelat` and `_x0` twins and "

@@ -95,6 +95,7 @@ from h3_config import (  # noqa: E402
     STEP_SWITCH_REV, STEP_SWITCH_BASE, CANVAS, FPS, LENGTH, LONG_LENGTH, MODELS,
     SAMPLING, SAGE_NODE, DENSE_BACKEND_NODE, DENSE_CHAINS, DEFAULT_DENSE_CHAIN, SEED, SIGMA_SHIFT, SOL_CORE_NODE, SOL_CORE_DEFAULTS,
     REF_VIDEO_LOADER, REF_QWEN_SHORT_EDGE, SEGMENTER, SUBJECT_TRACK, MASKED_SOURCE,
+    MASKED_MOTION_STEPS, MASKED_MOTION_SOURCE,
     CACHE_NODE, CACHE_NODE_CLASS,
     DISTILL_SAMPLING,
     REF_VIDEO_BUDGET,
@@ -1341,6 +1342,11 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
               # one window, which is as far past the track as the plan can
               # reach.
               freeze_song_source: bool = False,
+              # The Masked Source's widget values when `freeze_song_source` is
+              # on; None is `h3_config.MASKED_SOURCE` (the shipped render with
+              # no motion reference), `MASKED_MOTION_SOURCE` the ref2va motion
+              # graph's. One dict, so a graph cannot half-override the node.
+              masked_source: dict | None = None,
               # Audio-only refinement after the pass (audio_refine.py,
               # h3_config.AUDIO_REFINE): the sampled latent's video frozen and
               # its audio reopened, then a partial-denoise pass on the model
@@ -2192,7 +2198,7 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
             g["104"] = {"class_type": "MiniMaxH3MaskedSource",
                         # the segmenter is wired whether or not `replace` reads it, so
                         # changing that one choice needs no rewiring
-                        "inputs": {"frames": ["28", 0], "mask": ["105", 0], **MASKED_SOURCE,
+                        "inputs": {"frames": ["28", 0], "mask": ["105", 0], **(masked_source or MASKED_SOURCE),
                                    "segmenter": ["100", 0], "segmenter_clip": ["100", 1]}}
             g["74"]["inputs"]["source"] = ["104", 0]
     elif freeze_song_refs or freeze_song_lists or freeze_song_source:
@@ -3710,6 +3716,22 @@ def main():
               freeze_mask=0.0, freeze_context=39, length=LONG_LENGTH,
               out_prefix="Video/h3_v2v_masked_song_pdd8"),
          "masked video to video: a source video's subject replaced from a reference still, audio kept"),
+        # The same lane on the ref2va base for a shot that needs the original's
+        # movement (owner, 2026-10-05, on the masking board): the subject's own
+        # frames on grey reach the encoder as <Video 1> and the prompt ties the
+        # subject's motion to it. Measured: ref2va carries the turn at
+        # MASKED_MOTION_STEPS and loses it at 8, bake or not; fl2va never takes
+        # the reference (bench/results/2026-10-05_masked_v2v_motion_arms.md).
+        # Costs the step count over the PDD8 graph; not the default.
+        ("h3_video_to_video_masked_song_ref2va_motion.json", "v2v-masked-song-ref2va-motion", "t2v",
+         _bank_prompt("ref2va_masked_subject_motion"),
+         dict(sampler_name="euler", unet=MODELS["unet_ref2va"], steps=MASKED_MOTION_STEPS,
+              freeze_song=True, freeze_song_seconds=30.0,
+              freeze_song_refs=(PLACEHOLDER_IMAGE_A,), freeze_song_source=True,
+              masked_source=MASKED_MOTION_SOURCE,
+              freeze_mask=0.0, freeze_context=39, length=LONG_LENGTH,
+              out_prefix="Video/h3_v2v_masked_song_ref2va_motion"),
+         "masked video to video on ref2va: the subject replaced from a still and moving as the source's subject moved"),
         # The PDD8 freeze with the audio attention gain node in front of the
         # guider, inert as shipped; bench arms patch key_gain / value_gain.
         ("h3_candidate_t2v_pdd8_baked_audio_freeze_gain.json", "t2v-candidate-pdd8-baked-audio-freeze-gain",

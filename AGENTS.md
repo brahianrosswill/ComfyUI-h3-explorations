@@ -103,7 +103,10 @@ Rules with no other home. The tenet behind each is in `VISION.md`.
 
 `coderef/` (gitignored) holds the sister checkouts, and
 [`docs/wiki/references.md`](docs/wiki/references.md) says what each is for.
-**Do not import Python from it.** The Sol-Attn kernel is built by
+**Do not import Python from it.** A check may run a coderef file as a
+one-off numeric reference to compare against (owner, 2026-10-05: "just
+dont write code that relies on it here - just one offs"); nothing shipped
+depends on it. The Sol-Attn kernel is built by
 `vendor/rebuild_kernel.sh`, whose `--check` says whether the source is
 current, and `bench/check_sol_kernel.py` reports the build that is installed.
 Read those, never a sentence naming a build.

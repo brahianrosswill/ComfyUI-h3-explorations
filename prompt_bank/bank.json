@@ -1161,6 +1161,14 @@
       "tests": "the shipped default of h3_video_to_video_masked_song_pdd8: whether a prompt that describes no plate lets a masked subject take the reference's identity, sit in the source's light and follow the frozen voice, against a clip-specific prompt at the same seed (bench/masked_v2v_arms.json)"
     },
     {
+      "id": "ref2va_masked_subject_motion",
+      "mode": "ref2va",
+      "frames": 345,
+      "donor": "h3_probe_refview2_dancer_api",
+      "brief": "Masked video to video with the original's movement: ref2va_masked_subject_swap with <Video 1>, the source subject's own frames, named as the source of the subject's motion and timing and nothing else (attribute_transfer), and the shot sentence tying the subject's turns, facing and gestures to it; still names no setting, shot or cut.",
+      "tests": "the shipped default of h3_video_to_video_masked_song_ref2va_motion: whether the relationship on an encoder-only video reference of the source subject carries the original's movement to the replaced subject on the ref2va base, measured on the band clip's turn (bench/results/2026-10-05_masked_v2v_motion_arms.md)"
+    },
+    {
       "id": "ref2va_masked_stage_singer",
       "mode": "ref2va",
       "frames": 345,

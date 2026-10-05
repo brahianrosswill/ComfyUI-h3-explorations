@@ -164,6 +164,12 @@ Three t2va prompts written on 2026-09-12 for the shot-per-window chain
 |---|---|---|---|
 | `ref2va_masked_subject_swap` | ref2va | **keep** (text only) | the shipped prompt of `h3_video_to_video_masked_song_pdd8`; grades clean and sits inside the reference word budget. It names no setting, shot or cut, which is against section 5.10's rule that a prompt fits its scene, and is so on purpose: the source video's own frames hold the framing and the cuts outside the mask, and one text has to serve every window of any clip. Whether that costs anything is the open pair with `ref2va_masked_stage_singer` (`bench/masked_v2v_arms.json`); rendered once on the owner's clip and not judged (`bench/results/2026-10-04_masked_v2v_first_run.md`) |
 
+### Verdicts added 2026-10-05, the motion reference
+
+| scene | mode | verdict | why |
+|---|---|---|---|
+| `ref2va_masked_subject_motion` | ref2va | **keep** (text only) | the shipped prompt of `h3_video_to_video_masked_song_ref2va_motion`: `ref2va_masked_subject_swap` with `<Video 1>` named as the source of the subject's motion and timing and nothing else (an `attribute_transfer` line, as the guide has for a reference that lends one attribute), and the shot sentence tying the subject's turns, facing and gestures to it. The label is emitted by the song node at run time from the Masked Source's motion reference, which `reference_order.motion_records` tells the static checks. Measured on the band clip's turn: `bench/results/2026-10-05_masked_v2v_motion_arms.md`. |
+
 ### Misalignments: one closed, one withdrawn, one open
 
 `prompting.md` §14.3 is the long form and owns all three.
