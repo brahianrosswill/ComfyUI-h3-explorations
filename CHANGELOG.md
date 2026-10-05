@@ -4,6 +4,52 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.194.3
+
+### Added
+
+- **`MiniMaxH3SaveShotTable` is registered** (`shot_table.py`, written in
+  0.193.0): an output node that writes the Subject Track's shot table as
+  JSON and text and the numbered preview as one picture, under a save
+  prefix and core's counter. For a review graph; a render graph that keeps
+  its mask leaves it out.
+
+### Fixed
+
+- **`check_node_ids.py` flags an appended output.** It flagged an appended
+  input and had no such branch for outputs, so 0.193.0 gave
+  `MiniMaxH3SubjectTrack` a fourth output with the manifest one short and
+  the check stayed green, printing that every output position was
+  unchanged. On the stale manifest the fixed check is red on
+  `shot_table`; `bench/node_id_manifest.json` is then written with the
+  output and the new node. Found by a peer session.
+
+### Docs
+
+- `docs/checks.md`: the `check_node_ids.py` row.
+
+## 0.194.2
+
+### Changed
+
+- **Sol's `start_percent` is 0.2 on every graph again; the 2026-10-01 call
+  that set 0.0 on every PDD graph is reversed** (owner, 2026-10-05: "0.0
+  makes no sense to have on. zero dense doesnt make sense"; "no 0.0 default
+  for sol anywhere"). `h3_config.SOL_PDD_OVERRIDES` is empty, the
+  `h3_candidate_t2v_sol_only` entry's 0.0 override and its row in
+  `bench/check_attention_defaults.py::DEVIATIONS` are gone, and 67 graphs
+  are rebuilt with that one widget as their only change; no generated Sol
+  node starts at 0.0. Why now: the 2026-10-01 panel compared a text-to-video
+  finish, where nothing depended on a cue; the ref2va PDD8 arms of
+  2026-10-05 ran Sol from step zero and lost the subject's video reference
+  (`bench/results/2026-10-05_masked_v2v_motion_arms.md`, with the Sol-off and
+  Sol-at-0.2 arms of the same evening). **Every PDD render changes output from
+  this version**; pin `MiniMaxH3Sol.start_percent=0.0` to compare with one
+  rendered between 0.184.0 and here. `docs/SOLATTN.md`'s knob table and
+  `docs/wiki/decisions.md` carry the reversal. Rebuilt with the validator
+  off (the card was rendering); the next live validation is the first run
+  on a server with 0.193.3's schema.
+
 ## 0.194.1
 
 ### Docs

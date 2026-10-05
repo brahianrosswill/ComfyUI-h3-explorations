@@ -139,6 +139,15 @@ def compare(actual: dict, manifest: dict) -> list[str]:
                         f"the manifest must be updated deliberately (--write).")
         if got["outputs"][:len(want["outputs"])] != want["outputs"]:
             errs.append(f"{name}: outputs REORDERED. Links are integer slots.")
+        elif len(got["outputs"]) > len(want["outputs"]):
+            # The inputs had this branch and the outputs did not, so an
+            # appended output passed in silence and the closing line said
+            # every output position was unchanged while the manifest was one
+            # short: `MiniMaxH3SubjectTrack` gained `shot_table` in 448b60c8
+            # and this check stayed green (seen by mrorange, 2026-10-05).
+            errs.append(f"{name}: outputs APPENDED "
+                        f"{got['outputs'][len(want['outputs']):]} -- permitted, but "
+                        f"the manifest must be updated deliberately (--write).")
     for name in actual.keys() - manifest.keys():
         errs.append(f"{name}: NEW node not in the manifest -- permitted, but run "
                     f"--write so the baseline is a deliberate record.")

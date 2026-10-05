@@ -476,6 +476,17 @@
       "sapiens2"
     ]
   },
+  "MiniMaxH3SaveShotTable": {
+    "inputs": [
+      "shot_table",
+      "preview",
+      "filename_prefix"
+    ],
+    "node_id": "MiniMaxH3SaveShotTable",
+    "outputs": [
+      "text"
+    ]
+  },
   "MiniMaxH3Sol": {
     "inputs": [
       "model",
@@ -562,7 +573,8 @@
     "outputs": [
       "mask",
       "preview",
-      "report"
+      "report",
+      "shot_table"
     ]
   },
   "MiniMaxH3VAEPrecision": {
