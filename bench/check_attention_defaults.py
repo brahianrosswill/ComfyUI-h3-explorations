@@ -126,10 +126,6 @@ DEVIATIONS = {
                              "this graph exists to run the 1-vs-N head-chunking "
                              "A/B that h3_config asks for; the deviating value "
                              "IS its subject"),
-    "h3_candidate_t2v_sol_only": (("start_percent",),
-                                  "candidate graph (2026-09-05): Sol from the first "
-                                  "step, no sage; the widened window IS the arm, "
-                                  "blinded as sol_nosage_2026-09-04"),
     "h3_candidate_t2v_pdd8_sol_narrow": (("start_percent", "end_percent"),
                                          "candidate graph (2026-09-05): Sol on two of "
                                          "the eight PDD steps; the window IS the arm, "

@@ -4807,9 +4807,9 @@ def main():
         # h3_probe_t2v_pdd8_sage. Every overridden Sol field is declared in
         # bench/check_attention_defaults.py::DEVIATIONS.
         ("h3_candidate_t2v_sol_only.json", "t2v-candidate-sol-only", "t2v", LONG_T2V_PROMPT,
-         dict(dense_attn="sol", sol_overrides={"start_percent": 0.0},
+         dict(dense_attn="sol",
               out_prefix="Video/h3_candidate_t2v_sol_only"),
-         "CANDIDATE text -> video + audio: Sol only, every step but the last"),
+         "CANDIDATE text -> video + audio: Sol only, from the recipe's start_percent (its 0.0 override removed 2026-10-05, owner: no 0.0 Sol start anywhere)"),
 
         ("h3_candidate_t2v_pdd8_sol_narrow.json", "t2v-candidate-pdd8-sol-narrow", "t2v", LONG_T2V_PROMPT,
          dict(pdd=True, sampler_name="euler",

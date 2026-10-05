@@ -796,12 +796,18 @@ SOL_RECOMMENDED_CUDA = dict(
 # that temporarily installed `0-2,32` did not establish that result either, so
 # both configurations inherit the empty default while the instrumentation lane
 # gathers the missing all-block evidence.
-# start_percent 0.0 on PDD graphs: measured, owner decision 2026-10-01
-# (bench/results/2026-10-01_start_percent_panel.md). The dense warm-up before
-# Sol's window cost two of the finish's eight evaluations and showed no
-# difference the owner could see or hear. Was empty from 2026-09-11 (retired
-# end_percent=0.74) to 2026-10-01.
-SOL_PDD_OVERRIDES = dict(start_percent=0.0)
+# Empty again since 2026-10-05: the owner reversed their 2026-10-01 call
+# ("0.0 makes no sense to have on. zero dense doesnt make sense"; "no 0.0
+# default for sol anywhere"), so PDD graphs take SOL_RECOMMENDED_CUDA's
+# start_percent 0.2 like every other graph. The 2026-10-01 panel
+# (bench/results/2026-10-01_start_percent_panel.md) had set 0.0 here: on the
+# t2v finish the owner could not tell it from 0.2 in five blind pairs and it
+# saved two of eight evaluations. What it never tested was a render that
+# depends on a reference cue; the ref2va PDD8 arms of 2026-10-05 ran Sol from
+# step zero and lost the subject's video reference
+# (bench/results/2026-10-05_masked_v2v_motion_arms.md). Was empty from
+# 2026-09-11 (retired end_percent=0.74) to 2026-10-01.
+SOL_PDD_OVERRIDES = dict()
 
 SOL_PDD_CUDA = dict(SOL_RECOMMENDED_CUDA, **SOL_PDD_OVERRIDES)
 
@@ -831,9 +837,9 @@ def sol_for_graph(pdd, steps, distill_lora=False):
     SOL_PDD_CUDA whole, at every step count, so `steps` is ignored on that
     branch. Everything else takes SOL_RECOMMENDED_CUDA with `end_percent`
     lowered per SOL_END_PERCENT_BY_STEPS. The table is empty since
-    2026-09-11; SOL_PDD_OVERRIDES carries `start_percent` 0.0 since
-    2026-10-01, so the PDD branch is the one that differs; the distill
-    branch below is empty again since 0.184.3.
+    2026-09-11; SOL_PDD_OVERRIDES is empty again since 2026-10-05 (it carried
+    `start_percent` 0.0 from 2026-10-01), so the PDD branch no longer differs
+    from the recommended config; the distill branch below is empty since 0.184.3.
 
     `distill_lora` -- the model carries a FlashGen LoRA
     (`SOL_DISTILL_LORA_FILES`) and no PDD -- takes SOL_DISTILL_LORA_CUDA

@@ -17,6 +17,15 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-05
 
+- **Sol starts at 0.2 on every graph; the 2026-10-01 call that set 0.0 on
+  PDD graphs is reversed** (owner, 2026-10-05: "0.0 makes no sense to have
+  on. zero dense doesnt make sense"; "no 0.0 default for sol anywhere").
+  `h3_config.SOL_PDD_OVERRIDES` is empty again and the `sol_only` candidate's
+  0.0 override is gone; every PDD graph rebuilt. Against what: the 2026-10-01
+  panel showed only that a text-to-video finish could not be told apart at
+  0.0 and 0.2; the ref2va PDD8 arms of 2026-10-05 ran Sol from step zero and
+  lost the subject's video reference, and the Sol-off and Sol-at-0.2 arms of
+  the same evening are in `bench/results/2026-10-05_masked_v2v_motion_arms.md`.
 - **VOID is out, and the code built for it is removed** (owner, 2026-10-05,
   on the board: "Park VOID entirely, lets remove the code we built from it -
   it was built for cogvideox and its ghosting and not worth keeping or
