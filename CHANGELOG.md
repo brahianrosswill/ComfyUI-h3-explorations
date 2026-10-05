@@ -4,6 +4,31 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.189.7
+
+### Added
+
+- **`bench/convert_sam3d_body_checkpoint.py`**: Meta's SAM 3D Body
+  (`facebook/sam-3d-body-dinov3`: `model.ckpt` and `assets/mhr_model.pt`)
+  repacked as the one safetensors file core's `SAM3DBody_Loader` reads, from
+  the originals (owner, 2026-10-05: "so i know how theyre converted
+  exactly"). The DINOv3 backbone is renamed to core's layout (the fused qkv
+  split, gate/up/down, layer scales, register tokens; `rope_embed.periods`
+  dropped, core computes it), every other tensor keeps its name and dtype,
+  and the rig's 17 buffers come from the TorchScript module's state dict and
+  two of its attributes. Two groups Meta never published (the 421-tensor
+  MediaPipe face landmarker, the painted face-region colours) are fetched
+  from the published repack by range request with their sha256 in the
+  metadata, or written as zeros by flag. Checked against core's model
+  (keys, shapes), the published file (dtypes, and 24 random tensors bit for
+  bit), readback, and core's own loader on the CPU. Record:
+  `bench/results/2026-10-05_sam3d_body_conversion.md`, which also records
+  that every q, k and v bias in Meta's backbone is exactly zero, so core's
+  biasless k projection changes nothing. The `vith` release has another
+  backbone layout and is refused.
+- `bench/check_sam3d_body_conversion.py` holds the mapping without weights;
+  indexed in `docs/checks.md`.
+
 ## 0.189.6
 
 ### Added
