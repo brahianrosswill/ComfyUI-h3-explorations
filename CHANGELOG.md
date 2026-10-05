@@ -4,6 +4,18 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.189.3
+
+### Docs
+
+- `docs/research/masking/2026-10-05_mryellow.md` gains section 7: the
+  reference path read in full, and three corrections to the source-as-
+  reference route for the turn: the reference's pixel area is set upstream
+  because `comfy` never enlarges a video and a 345-frame reference beside a
+  345-frame window does not fit this card; an encoder-only video reference
+  is the cheap first arm and needs `use_vae` on the video Append node; the
+  per-window slice must precede the compiler's cut from frame zero.
+
 ## 0.189.2
 
 ### Docs
