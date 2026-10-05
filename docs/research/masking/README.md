@@ -47,3 +47,11 @@ that were rendered are `bench/masked_v2v_arms.json` and
   steers where the new subject stands, what version one of the shipped
   workflow is, and the late start that carries the turn and the original's
   look with it.
+- [`2026-10-05_mryellow.md`](2026-10-05_mryellow.md): the lane read broadly
+  the next day: why every method that puts the source into the target rows
+  carries its look with the pose, the routes left for the turn in order
+  (the source as a reference video, a mannequin from SAM 3D Body, automatic
+  per-shot captions), and what the build can do beyond a subject swap
+  (reshoot one shot, keep the person and replace the world, a part menu
+  from Sapiens2, a redub, a clean plate from VOID, hand corrections from
+  point prompts).

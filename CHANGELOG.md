@@ -4,6 +4,23 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.189.2
+
+### Docs
+
+- **`docs/research/masking/2026-10-05_mryellow.md`**: the masked lane read
+  broadly after the 2026-10-04 build, at the owner's ask. Reads the turn
+  records as a mechanism (a late start and a soft mask both put the source
+  into the target rows, so the look rides with the pose; a soft mask leaks
+  more, not less), ranks what is left for the turn (the source as a
+  `<Video 1>` reference beside the still, never rendered; a SAM 3D Body
+  mannequin as reference or fill; automatic per-shot captions as the
+  fallback; mrhf's per-token late start), and lists what the build can do
+  beyond a subject swap with small changes. Records that Sapiens2
+  segmentation and matting are on disk and in the venv's transformers, that
+  pose was not fetched, and that VOID's weights are on disk. Nothing
+  rendered. Indexed in the folder's README.
+
 ## 0.189.1
 
 ### Docs
