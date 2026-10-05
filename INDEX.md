@@ -105,6 +105,7 @@ with none is a helper the others import.
 | [`vae_precision.py`](vae_precision.py) | `MiniMaxH3VAEPrecision` | Split the H3 video VAE's encode precision from its decode precision. |
 | [`vendor_config.py`](vendor_config.py) |  | The release's own configuration, vendored, and the readers for it. |
 | [`video_mask.py`](video_mask.py) | `MiniMaxH3MaskedSource` | A source video and a subject mask, for masked video-to-video. |
+| [`void_conditioning.py`](void_conditioning.py) | `MiniMaxH3VoidConditioning` | VOID's inpainting conditioning the way upstream's own inference builds it. |
 
 ## Other files at the root
 
@@ -127,7 +128,7 @@ with none is a helper the others import.
 | `.claude/` | 2 | [below](#claude) |
 | `archive/` | 21 | [below](#archive) |
 | `assets/` | 1 | [below](#assets) |
-| `bench/` | 1347 | [`bench/INDEX.md`](bench/INDEX.md) and [`bench/results/INDEX.md`](bench/results/INDEX.md) for the records |
+| `bench/` | 1348 | [`bench/INDEX.md`](bench/INDEX.md) and [`bench/results/INDEX.md`](bench/results/INDEX.md) for the records |
 | `docs/` | 165 | [`docs/wiki/index.md`](docs/wiki/index.md), the hand-written router |
 | `prompt_bank/` | 162 | [`docs/prompt_bank.md`](docs/prompt_bank.md), the prompt catalogue |
 | `sparse_tables/` | 1 | [below](#sparse_tables) |

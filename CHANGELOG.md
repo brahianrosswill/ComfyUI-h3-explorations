@@ -4,6 +4,14 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.191.1
+
+### Docs
+
+- The generated `INDEX.md` at the repository root lists `void_conditioning.py`
+  (`bench/build_index.py`). 0.191.0 regenerated the `bench/` indexes and
+  missed this one.
+
 ## 0.191.0
 
 ### Added
