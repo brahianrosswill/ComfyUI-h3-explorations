@@ -1,0 +1,1017 @@
+{
+ "script": "bench/measure_subject_motion.py",
+ "poses_from": "2026-10-05_subject_pose_band_turn.json",
+ "shot": [
+  237,
+  279
+ ],
+ "frames": [
+  237,
+  239,
+  241,
+  243,
+  245,
+  247,
+  249,
+  251,
+  253,
+  255,
+  257,
+  259,
+  261,
+  263,
+  265,
+  267,
+  269,
+  271,
+  273,
+  275,
+  277,
+  279
+ ],
+ "follows_at": 0.5,
+ "followed": "1 on the source's pose in every frame, 0 no closer than standing still, below 0 moving elsewhere",
+ "clips": {
+  "control_s2": {
+   "in_body": {
+    "parts": {
+     "head": {
+      "distance": 0.3735,
+      "standing_still": 0.4175,
+      "followed": 0.105,
+      "frames": 22
+     },
+     "torso": {
+      "distance": 0.3637,
+      "standing_still": 0.356,
+      "followed": -0.022,
+      "frames": 22
+     },
+     "arms": {
+      "distance": 0.7201,
+      "standing_still": 0.6806,
+      "followed": -0.058,
+      "frames": 22
+     },
+     "legs": {
+      "distance": 0.2954,
+      "standing_still": 0.2867,
+      "followed": -0.03,
+      "frames": 22
+     }
+    },
+    "distance": 0.4344,
+    "standing_still": 0.4342,
+    "followed": -0.0,
+    "frames": 22,
+    "best_shift_frames": -12,
+    "followed_at_best_shift": 0.019,
+    "verdict": "does not follow"
+   },
+   "in_box": {
+    "parts": {
+     "head": {
+      "distance": 0.0853,
+      "standing_still": 0.0677,
+      "followed": -0.26,
+      "frames": 22
+     },
+     "torso": {
+      "distance": 0.1645,
+      "standing_still": 0.143,
+      "followed": -0.15,
+      "frames": 22
+     },
+     "arms": {
+      "distance": 0.2976,
+      "standing_still": 0.2503,
+      "followed": -0.189,
+      "frames": 22
+     },
+     "legs": {
+      "distance": 0.1275,
+      "standing_still": 0.1101,
+      "followed": -0.158,
+      "frames": 22
+     }
+    },
+    "distance": 0.1638,
+    "standing_still": 0.1384,
+    "followed": -0.184,
+    "frames": 22,
+    "best_shift_frames": -12,
+    "followed_at_best_shift": -0.133,
+    "verdict": "does not follow"
+   },
+   "verdict": "does not follow",
+   "eye": "no"
+  },
+  "fl2va_base_s1": {
+   "in_body": {
+    "parts": {
+     "head": {
+      "distance": 0.4111,
+      "standing_still": 0.4175,
+      "followed": 0.015,
+      "frames": 22
+     },
+     "torso": {
+      "distance": 0.3662,
+      "standing_still": 0.356,
+      "followed": -0.029,
+      "frames": 22
+     },
+     "arms": {
+      "distance": 0.7164,
+      "standing_still": 0.6806,
+      "followed": -0.053,
+      "frames": 22
+     },
+     "legs": {
+      "distance": 0.3107,
+      "standing_still": 0.2867,
+      "followed": -0.084,
+      "frames": 22
+     }
+    },
+    "distance": 0.4488,
+    "standing_still": 0.4342,
+    "followed": -0.034,
+    "frames": 22,
+    "best_shift_frames": -10,
+    "followed_at_best_shift": -0.013,
+    "verdict": "does not follow"
+   },
+   "in_box": {
+    "parts": {
+     "head": {
+      "distance": 0.0854,
+      "standing_still": 0.0677,
+      "followed": -0.262,
+      "frames": 22
+     },
+     "torso": {
+      "distance": 0.1651,
+      "standing_still": 0.143,
+      "followed": -0.154,
+      "frames": 22
+     },
+     "arms": {
+      "distance": 0.3052,
+      "standing_still": 0.2503,
+      "followed": -0.22,
+      "frames": 22
+     },
+     "legs": {
+      "distance": 0.139,
+      "standing_still": 0.1101,
+      "followed": -0.262,
+      "frames": 22
+     }
+    },
+    "distance": 0.1685,
+    "standing_still": 0.1384,
+    "followed": -0.218,
+    "frames": 22,
+    "best_shift_frames": -12,
+    "followed_at_best_shift": -0.155,
+    "verdict": "does not follow"
+   },
+   "verdict": "does not follow",
+   "eye": "no"
+  },
+  "motion_s1": {
+   "in_body": {
+    "parts": {
+     "head": {
+      "distance": 0.399,
+      "standing_still": 0.4175,
+      "followed": 0.044,
+      "frames": 22
+     },
+     "torso": {
+      "distance": 0.3652,
+      "standing_still": 0.356,
+      "followed": -0.026,
+      "frames": 22
+     },
+     "arms": {
+      "distance": 0.7183,
+      "standing_still": 0.6806,
+      "followed": -0.055,
+      "frames": 22
+     },
+     "legs": {
+      "distance": 0.3292,
+      "standing_still": 0.2867,
+      "followed": -0.148,
+      "frames": 22
+     }
+    },
+    "distance": 0.4498,
+    "standing_still": 0.4342,
+    "followed": -0.036,
+    "frames": 22,
+    "best_shift_frames": -12,
+    "followed_at_best_shift": -0.007,
+    "verdict": "does not follow"
+   },
+   "in_box": {
+    "parts": {
+     "head": {
+      "distance": 0.0834,
+      "standing_still": 0.0677,
+      "followed": -0.232,
+      "frames": 22
+     },
+     "torso": {
+      "distance": 0.1703,
+      "standing_still": 0.143,
+      "followed": -0.19,
+      "frames": 22
+     },
+     "arms": {
+      "distance": 0.3119,
+      "standing_still": 0.2503,
+      "followed": -0.246,
+      "frames": 22
+     },
+     "legs": {
+      "distance": 0.1588,
+      "standing_still": 0.1101,
+      "followed": -0.441,
+      "frames": 22
+     }
+    },
+    "distance": 0.1753,
+    "standing_still": 0.1384,
+    "followed": -0.267,
+    "frames": 22,
+    "best_shift_frames": -12,
+    "followed_at_best_shift": -0.181,
+    "verdict": "does not follow"
+   },
+   "verdict": "does not follow",
+   "eye": "no"
+  },
+  "motion_s2": {
+   "in_body": {
+    "parts": {
+     "head": {
+      "distance": 0.3839,
+      "standing_still": 0.4175,
+      "followed": 0.08,
+      "frames": 22
+     },
+     "torso": {
+      "distance": 0.3658,
+      "standing_still": 0.356,
+      "followed": -0.028,
+      "frames": 22
+     },
+     "arms": {
+      "distance": 0.7122,
+      "standing_still": 0.6806,
+      "followed": -0.046,
+      "frames": 22
+     },
+     "legs": {
+      "distance": 0.2951,
+      "standing_still": 0.2867,
+      "followed": -0.029,
+      "frames": 22
+     }
+    },
+    "distance": 0.436,
+    "standing_still": 0.4342,
+    "followed": -0.004,
+    "frames": 22,
+    "best_shift_frames": -8,
+    "followed_at_best_shift": 0.014,
+    "verdict": "does not follow"
+   },
+   "in_box": {
+    "parts": {
+     "head": {
+      "distance": 0.0888,
+      "standing_still": 0.0677,
+      "followed": -0.313,
+      "frames": 22
+     },
+     "torso": {
+      "distance": 0.1679,
+      "standing_still": 0.143,
+      "followed": -0.174,
+      "frames": 22
+     },
+     "arms": {
+      "distance": 0.3053,
+      "standing_still": 0.2503,
+      "followed": -0.22,
+      "frames": 22
+     },
+     "legs": {
+      "distance": 0.1369,
+      "standing_still": 0.1101,
+      "followed": -0.243,
+      "frames": 22
+     }
+    },
+    "distance": 0.1697,
+    "standing_still": 0.1384,
+    "followed": -0.226,
+    "frames": 22,
+    "best_shift_frames": -12,
+    "followed_at_best_shift": -0.144,
+    "verdict": "does not follow"
+   },
+   "verdict": "does not follow",
+   "eye": "no"
+  },
+  "ref2va_base12_noref_s1": {
+   "in_body": {
+    "parts": {
+     "head": {
+      "distance": 0.3822,
+      "standing_still": 0.4175,
+      "followed": 0.085,
+      "frames": 22
+     },
+     "torso": {
+      "distance": 0.3676,
+      "standing_still": 0.356,
+      "followed": -0.033,
+      "frames": 22
+     },
+     "arms": {
+      "distance": 0.7255,
+      "standing_still": 0.6806,
+      "followed": -0.066,
+      "frames": 22
+     },
+     "legs": {
+      "distance": 0.3328,
+      "standing_still": 0.2867,
+      "followed": -0.161,
+      "frames": 22
+     }
+    },
+    "distance": 0.4479,
+    "standing_still": 0.4342,
+    "followed": -0.032,
+    "frames": 22,
+    "best_shift_frames": -10,
+    "followed_at_best_shift": -0.013,
+    "verdict": "does not follow"
+   },
+   "in_box": {
+    "parts": {
+     "head": {
+      "distance": 0.0822,
+      "standing_still": 0.0677,
+      "followed": -0.214,
+      "frames": 22
+     },
+     "torso": {
+      "distance": 0.1659,
+      "standing_still": 0.143,
+      "followed": -0.16,
+      "frames": 22
+     },
+     "arms": {
+      "distance": 0.2866,
+      "standing_still": 0.2503,
+      "followed": -0.145,
+      "frames": 22
+     },
+     "legs": {
+      "distance": 0.1348,
+      "standing_still": 0.1101,
+      "followed": -0.224,
+      "frames": 22
+     }
+    },
+    "distance": 0.1624,
+    "standing_still": 0.1384,
+    "followed": -0.174,
+    "frames": 22,
+    "best_shift_frames": -12,
+    "followed_at_best_shift": -0.111,
+    "verdict": "does not follow"
+   },
+   "verdict": "does not follow",
+   "eye": "no"
+  },
+  "ref2va_base12_s1": {
+   "in_body": {
+    "parts": {
+     "head": {
+      "distance": 0.1346,
+      "standing_still": 0.4175,
+      "followed": 0.678,
+      "frames": 22
+     },
+     "torso": {
+      "distance": 0.1422,
+      "standing_still": 0.356,
+      "followed": 0.601,
+      "frames": 22
+     },
+     "arms": {
+      "distance": 0.3058,
+      "standing_still": 0.6806,
+      "followed": 0.551,
+      "frames": 22
+     },
+     "legs": {
+      "distance": 0.174,
+      "standing_still": 0.2867,
+      "followed": 0.393,
+      "frames": 22
+     }
+    },
+    "distance": 0.1859,
+    "standing_still": 0.4342,
+    "followed": 0.572,
+    "frames": 22,
+    "best_shift_frames": 6,
+    "followed_at_best_shift": 0.645,
+    "verdict": "follows"
+   },
+   "in_box": {
+    "parts": {
+     "head": {
+      "distance": 0.063,
+      "standing_still": 0.0677,
+      "followed": 0.07,
+      "frames": 22
+     },
+     "torso": {
+      "distance": 0.0764,
+      "standing_still": 0.143,
+      "followed": 0.466,
+      "frames": 22
+     },
+     "arms": {
+      "distance": 0.1327,
+      "standing_still": 0.2503,
+      "followed": 0.47,
+      "frames": 22
+     },
+     "legs": {
+      "distance": 0.0953,
+      "standing_still": 0.1101,
+      "followed": 0.135,
+      "frames": 22
+     }
+    },
+    "distance": 0.0901,
+    "standing_still": 0.1384,
+    "followed": 0.348,
+    "frames": 22,
+    "best_shift_frames": 4,
+    "followed_at_best_shift": 0.396,
+    "verdict": "does not follow"
+   },
+   "verdict": "follows",
+   "eye": "yes"
+  },
+  "ref2va_base8_s1": {
+   "in_body": {
+    "parts": {
+     "head": {
+      "distance": 0.395,
+      "standing_still": 0.4175,
+      "followed": 0.054,
+      "frames": 22
+     },
+     "torso": {
+      "distance": 0.3663,
+      "standing_still": 0.356,
+      "followed": -0.029,
+      "frames": 22
+     },
+     "arms": {
+      "distance": 0.719,
+      "standing_still": 0.6806,
+      "followed": -0.056,
+      "frames": 22
+     },
+     "legs": {
+      "distance": 0.3302,
+      "standing_still": 0.2867,
+      "followed": -0.152,
+      "frames": 22
+     }
+    },
+    "distance": 0.4492,
+    "standing_still": 0.4342,
+    "followed": -0.035,
+    "frames": 22,
+    "best_shift_frames": -8,
+    "followed_at_best_shift": -0.015,
+    "verdict": "does not follow"
+   },
+   "in_box": {
+    "parts": {
+     "head": {
+      "distance": 0.0867,
+      "standing_still": 0.0677,
+      "followed": -0.281,
+      "frames": 22
+     },
+     "torso": {
+      "distance": 0.1753,
+      "standing_still": 0.143,
+      "followed": -0.226,
+      "frames": 22
+     },
+     "arms": {
+      "distance": 0.3009,
+      "standing_still": 0.2503,
+      "followed": -0.202,
+      "frames": 22
+     },
+     "legs": {
+      "distance": 0.1447,
+      "standing_still": 0.1101,
+      "followed": -0.314,
+      "frames": 22
+     }
+    },
+    "distance": 0.1716,
+    "standing_still": 0.1384,
+    "followed": -0.24,
+    "frames": 22,
+    "best_shift_frames": -12,
+    "followed_at_best_shift": -0.15,
+    "verdict": "does not follow"
+   },
+   "verdict": "does not follow",
+   "eye": "no"
+  },
+  "ref2va_base_s1": {
+   "in_body": {
+    "parts": {
+     "head": {
+      "distance": 0.1377,
+      "standing_still": 0.4175,
+      "followed": 0.67,
+      "frames": 22
+     },
+     "torso": {
+      "distance": 0.1368,
+      "standing_still": 0.356,
+      "followed": 0.616,
+      "frames": 22
+     },
+     "arms": {
+      "distance": 0.2995,
+      "standing_still": 0.6806,
+      "followed": 0.56,
+      "frames": 22
+     },
+     "legs": {
+      "distance": 0.1715,
+      "standing_still": 0.2867,
+      "followed": 0.402,
+      "frames": 22
+     }
+    },
+    "distance": 0.1835,
+    "standing_still": 0.4342,
+    "followed": 0.577,
+    "frames": 22,
+    "best_shift_frames": 4,
+    "followed_at_best_shift": 0.634,
+    "verdict": "follows"
+   },
+   "in_box": {
+    "parts": {
+     "head": {
+      "distance": 0.0668,
+      "standing_still": 0.0677,
+      "followed": 0.013,
+      "frames": 22
+     },
+     "torso": {
+      "distance": 0.0755,
+      "standing_still": 0.143,
+      "followed": 0.472,
+      "frames": 22
+     },
+     "arms": {
+      "distance": 0.1292,
+      "standing_still": 0.2503,
+      "followed": 0.484,
+      "frames": 22
+     },
+     "legs": {
+      "distance": 0.0908,
+      "standing_still": 0.1101,
+      "followed": 0.176,
+      "frames": 22
+     }
+    },
+    "distance": 0.0892,
+    "standing_still": 0.1384,
+    "followed": 0.355,
+    "frames": 22,
+    "best_shift_frames": 4,
+    "followed_at_best_shift": 0.392,
+    "verdict": "does not follow"
+   },
+   "verdict": "follows",
+   "eye": "yes"
+  },
+  "ref2va_base_s2": {
+   "in_body": {
+    "parts": {
+     "head": {
+      "distance": 0.142,
+      "standing_still": 0.4175,
+      "followed": 0.66,
+      "frames": 22
+     },
+     "torso": {
+      "distance": 0.0943,
+      "standing_still": 0.356,
+      "followed": 0.735,
+      "frames": 22
+     },
+     "arms": {
+      "distance": 0.2123,
+      "standing_still": 0.6806,
+      "followed": 0.688,
+      "frames": 22
+     },
+     "legs": {
+      "distance": 0.1157,
+      "standing_still": 0.2867,
+      "followed": 0.596,
+      "frames": 22
+     }
+    },
+    "distance": 0.1411,
+    "standing_still": 0.4342,
+    "followed": 0.675,
+    "frames": 22,
+    "best_shift_frames": 2,
+    "followed_at_best_shift": 0.688,
+    "verdict": "follows"
+   },
+   "in_box": {
+    "parts": {
+     "head": {
+      "distance": 0.091,
+      "standing_still": 0.0677,
+      "followed": -0.345,
+      "frames": 22
+     },
+     "torso": {
+      "distance": 0.0731,
+      "standing_still": 0.143,
+      "followed": 0.489,
+      "frames": 22
+     },
+     "arms": {
+      "distance": 0.1024,
+      "standing_still": 0.2503,
+      "followed": 0.591,
+      "frames": 22
+     },
+     "legs": {
+      "distance": 0.0673,
+      "standing_still": 0.1101,
+      "followed": 0.389,
+      "frames": 22
+     }
+    },
+    "distance": 0.0839,
+    "standing_still": 0.1384,
+    "followed": 0.394,
+    "frames": 22,
+    "best_shift_frames": 2,
+    "followed_at_best_shift": 0.419,
+    "verdict": "does not follow"
+   },
+   "verdict": "follows",
+   "eye": "yes"
+  },
+  "ref2va_pdd6_s1": {
+   "in_body": {
+    "parts": {
+     "head": {
+      "distance": 0.392,
+      "standing_still": 0.4175,
+      "followed": 0.061,
+      "frames": 22
+     },
+     "torso": {
+      "distance": 0.3685,
+      "standing_still": 0.356,
+      "followed": -0.035,
+      "frames": 22
+     },
+     "arms": {
+      "distance": 0.7232,
+      "standing_still": 0.6806,
+      "followed": -0.063,
+      "frames": 22
+     },
+     "legs": {
+      "distance": 0.3278,
+      "standing_still": 0.2867,
+      "followed": -0.144,
+      "frames": 22
+     }
+    },
+    "distance": 0.4493,
+    "standing_still": 0.4342,
+    "followed": -0.035,
+    "frames": 22,
+    "best_shift_frames": -10,
+    "followed_at_best_shift": -0.017,
+    "verdict": "does not follow"
+   },
+   "in_box": {
+    "parts": {
+     "head": {
+      "distance": 0.0885,
+      "standing_still": 0.0677,
+      "followed": -0.308,
+      "frames": 22
+     },
+     "torso": {
+      "distance": 0.1805,
+      "standing_still": 0.143,
+      "followed": -0.262,
+      "frames": 22
+     },
+     "arms": {
+      "distance": 0.31,
+      "standing_still": 0.2503,
+      "followed": -0.239,
+      "frames": 22
+     },
+     "legs": {
+      "distance": 0.1457,
+      "standing_still": 0.1101,
+      "followed": -0.323,
+      "frames": 22
+     }
+    },
+    "distance": 0.1757,
+    "standing_still": 0.1384,
+    "followed": -0.27,
+    "frames": 22,
+    "best_shift_frames": -12,
+    "followed_at_best_shift": -0.18,
+    "verdict": "does not follow"
+   },
+   "verdict": "does not follow",
+   "eye": "no"
+  },
+  "ref2va_pdd8_s1": {
+   "in_body": {
+    "parts": {
+     "head": {
+      "distance": 0.3863,
+      "standing_still": 0.4175,
+      "followed": 0.075,
+      "frames": 22
+     },
+     "torso": {
+      "distance": 0.3715,
+      "standing_still": 0.356,
+      "followed": -0.044,
+      "frames": 22
+     },
+     "arms": {
+      "distance": 0.7395,
+      "standing_still": 0.6806,
+      "followed": -0.086,
+      "frames": 22
+     },
+     "legs": {
+      "distance": 0.3371,
+      "standing_still": 0.2867,
+      "followed": -0.176,
+      "frames": 22
+     }
+    },
+    "distance": 0.4543,
+    "standing_still": 0.4342,
+    "followed": -0.046,
+    "frames": 22,
+    "best_shift_frames": -12,
+    "followed_at_best_shift": -0.016,
+    "verdict": "does not follow"
+   },
+   "in_box": {
+    "parts": {
+     "head": {
+      "distance": 0.0874,
+      "standing_still": 0.0677,
+      "followed": -0.291,
+      "frames": 22
+     },
+     "torso": {
+      "distance": 0.1812,
+      "standing_still": 0.143,
+      "followed": -0.267,
+      "frames": 22
+     },
+     "arms": {
+      "distance": 0.2982,
+      "standing_still": 0.2503,
+      "followed": -0.191,
+      "frames": 22
+     },
+     "legs": {
+      "distance": 0.1572,
+      "standing_still": 0.1101,
+      "followed": -0.427,
+      "frames": 22
+     }
+    },
+    "distance": 0.1755,
+    "standing_still": 0.1384,
+    "followed": -0.268,
+    "frames": 22,
+    "best_shift_frames": -12,
+    "followed_at_best_shift": -0.174,
+    "verdict": "does not follow"
+   },
+   "verdict": "does not follow",
+   "eye": "no"
+  },
+  "ref2va_pdd8mid_s1": {
+   "in_body": {
+    "parts": {
+     "head": {
+      "distance": 0.3927,
+      "standing_still": 0.4175,
+      "followed": 0.059,
+      "frames": 22
+     },
+     "torso": {
+      "distance": 0.3679,
+      "standing_still": 0.356,
+      "followed": -0.034,
+      "frames": 22
+     },
+     "arms": {
+      "distance": 0.7235,
+      "standing_still": 0.6806,
+      "followed": -0.063,
+      "frames": 22
+     },
+     "legs": {
+      "distance": 0.3248,
+      "standing_still": 0.2867,
+      "followed": -0.133,
+      "frames": 22
+     }
+    },
+    "distance": 0.4487,
+    "standing_still": 0.4342,
+    "followed": -0.034,
+    "frames": 22,
+    "best_shift_frames": -10,
+    "followed_at_best_shift": -0.016,
+    "verdict": "does not follow"
+   },
+   "in_box": {
+    "parts": {
+     "head": {
+      "distance": 0.0886,
+      "standing_still": 0.0677,
+      "followed": -0.309,
+      "frames": 22
+     },
+     "torso": {
+      "distance": 0.1804,
+      "standing_still": 0.143,
+      "followed": -0.261,
+      "frames": 22
+     },
+     "arms": {
+      "distance": 0.31,
+      "standing_still": 0.2503,
+      "followed": -0.239,
+      "frames": 22
+     },
+     "legs": {
+      "distance": 0.1443,
+      "standing_still": 0.1101,
+      "followed": -0.31,
+      "frames": 22
+     }
+    },
+    "distance": 0.1754,
+    "standing_still": 0.1384,
+    "followed": -0.268,
+    "frames": 22,
+    "best_shift_frames": -12,
+    "followed_at_best_shift": -0.179,
+    "verdict": "does not follow"
+   },
+   "verdict": "does not follow",
+   "eye": "no"
+  },
+  "ship_ref2va_motion_s1": {
+   "in_body": {
+    "parts": {
+     "head": {
+      "distance": 0.3853,
+      "standing_still": 0.4175,
+      "followed": 0.077,
+      "frames": 22
+     },
+     "torso": {
+      "distance": 0.3648,
+      "standing_still": 0.356,
+      "followed": -0.025,
+      "frames": 22
+     },
+     "arms": {
+      "distance": 0.7174,
+      "standing_still": 0.6806,
+      "followed": -0.054,
+      "frames": 22
+     },
+     "legs": {
+      "distance": 0.3572,
+      "standing_still": 0.2867,
+      "followed": -0.246,
+      "frames": 22
+     }
+    },
+    "distance": 0.452,
+    "standing_still": 0.4342,
+    "followed": -0.041,
+    "frames": 22,
+    "best_shift_frames": -12,
+    "followed_at_best_shift": -0.004,
+    "verdict": "does not follow"
+   },
+   "in_box": {
+    "parts": {
+     "head": {
+      "distance": 0.0841,
+      "standing_still": 0.0677,
+      "followed": -0.243,
+      "frames": 22
+     },
+     "torso": {
+      "distance": 0.1584,
+      "standing_still": 0.143,
+      "followed": -0.107,
+      "frames": 22
+     },
+     "arms": {
+      "distance": 0.276,
+      "standing_still": 0.2503,
+      "followed": -0.103,
+      "frames": 22
+     },
+     "legs": {
+      "distance": 0.1406,
+      "standing_still": 0.1101,
+      "followed": -0.276,
+      "frames": 22
+     }
+    },
+    "distance": 0.16,
+    "standing_still": 0.1384,
+    "followed": -0.157,
+    "frames": 22,
+    "best_shift_frames": -12,
+    "followed_at_best_shift": -0.093,
+    "verdict": "does not follow"
+   },
+   "verdict": "does not follow",
+   "eye": "no"
+  }
+ },
+ "against_the_eye": {
+  "clips_compared": 13,
+  "same_order": true,
+  "disagreements": [],
+  "end_difference_by_eye_verdict": {
+   "yes": {
+    "lowest": 0.325,
+    "highest": 0.428,
+    "clips": 3
+   },
+   "no": {
+    "lowest": 1.0,
+    "highest": 1.046,
+    "clips": 10
+   }
+  },
+  "not_judged_by_eye": [],
+  "note": "the figures here are one minus `followed`, so smaller is closer to the source"
+ }
+}

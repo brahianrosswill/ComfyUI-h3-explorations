@@ -28,6 +28,19 @@ plain mean of them says 0, facing the camera.
                                 the shot lands on a decoded index of 1 or
                                 more, in order, and the indices are what
                                 H3's packing (one frame, then fours) gives.
+  joints_are_measured_on_the_body  the motion metric's 3D joints read the
+                                same for the same pose at another size and
+                                place, and its on-screen joints use the
+                                box's height for both axes.
+  motion_follows_or_does_not    `bench/measure_subject_motion.py`: the same
+                                motion scores 1, the same motion late scores
+                                less and is found again at its shift, and a
+                                subject who never moves scores 0 AT EVERY
+                                SHIFT (the control: shifting must not let a
+                                still clip be compared only where the source
+                                has not yet moved).
+  a_still_shot_is_not_graded    a source that only wobbles is "too still to
+                                grade" whatever the render does.
   the_lock_is_the_last_entry    the facing "locks" at the first step from
                                 which it stays within the tolerance to the
                                 end; a step that dips in and out again does
@@ -41,6 +54,7 @@ No model, no CUDA, no server.
 
 from __future__ import annotations
 
+import math
 import sys
 from pathlib import Path
 
@@ -52,6 +66,7 @@ sys.path.insert(0, str(HERE))
 from _lib import case, finish  # noqa: E402
 
 import measure_step_yaw as S  # noqa: E402
+import measure_subject_motion as M  # noqa: E402
 import measure_subject_yaw as Y  # noqa: E402
 
 
@@ -159,10 +174,66 @@ def the_lock_is_the_last_entry():
     assert S.lock_step([30.0, 30.0, None], 45.0) is None, "a last step with no reading locked"
 
 
+def _swing(t: float) -> dict:
+    """A made-up body: the arms swing with t, the rest stays put."""
+    pose = {j: [0.0, 0.0, 0.0] for names in M.GROUPS.values() for j in names}
+    for j in M.GROUPS["arms"]:
+        pose[j] = [math.sin(t), 0.5, math.cos(t)]
+    for j in M.GROUPS["head"]:
+        pose[j] = [0.0, 1.5, 0.0]
+    return pose
+
+
+def joints_are_measured_on_the_body():
+    rng = np.random.default_rng(0)
+    k = rng.normal(size=(70, 3))
+    k[Y.LEFT_SHOULDER], k[Y.RIGHT_SHOULDER] = (0.2, -0.5, 3.0), (-0.2, -0.5, 3.0)
+    k[Y.LEFT_HIP], k[Y.RIGHT_HIP] = (0.15, 0.0, 3.0), (-0.15, 0.0, 3.0)
+    base = Y.joints_in_body(k)
+    moved = Y.joints_in_body(k * 1.7 + np.array([4.0, -2.0, 9.0]))      # a larger person, somewhere else
+    worst = max(abs(a - b) for j in base for a, b in zip(base[j], moved[j]))
+    assert worst < 1e-3, f"the same pose at another size and place reads {worst} apart"
+    assert abs(math.dist(base["left_shoulder"], base["right_shoulder"]) - 0.8) < 1e-3, "the unit is not the torso's length"
+    # on screen: one unit for both axes, the box's height
+    box = {"x": 100.0, "y": 50.0, "width": 200.0, "height": 400.0}
+    k2 = np.zeros((70, 2))
+    k2[Y.BODY_JOINTS["nose"]] = (300.0, 450.0)                          # the box's bottom right corner
+    assert Y.joints_in_box(k2, box)["nose"] == [0.5, 1.0], Y.joints_in_box(k2, box)["nose"]
+
+
+def motion_follows_or_does_not():
+    src = [{"in_body": _swing(i * 0.2)} for i in range(20)]
+    cases = {
+        "same": [{"in_body": _swing(i * 0.2)} for i in range(20)],
+        "late": [{"in_body": _swing(max(i - 3, 0) * 0.2)} for i in range(20)],
+        "still": [{"in_body": _swing(0.0)} for i in range(20)],
+    }
+    got = {name: M.score(src, rows, "in_body", 2) for name, rows in cases.items()}
+    assert got["same"]["followed"] == 1.0 and got["same"]["verdict"] == "follows" and got["same"]["best_shift_frames"] == 0
+    assert 0.5 < got["late"]["followed"] < 0.9, got["late"]["followed"]
+    assert got["late"]["best_shift_frames"] == 6 and got["late"]["followed_at_best_shift"] == 1.0, \
+        "a render three samples late is not read as six frames late and fully followed there"
+    # the control for the shift: a subject who never moves earns nothing at any shift
+    assert got["still"]["followed"] == 0.0 and got["still"]["followed_at_best_shift"] == 0.0 \
+        and got["still"]["verdict"] == "does not follow", got["still"]
+    # by part: only the arms move, so only the arms can be graded
+    assert got["late"]["parts"]["arms"]["followed"] == got["late"]["followed"] or got["late"]["parts"]["arms"]["followed"] < 1
+    assert got["same"]["parts"]["head"]["followed"] is None, "a part that never moves in the source got a score"
+
+
+def a_still_shot_is_not_graded():
+    wobble = [{"in_body": _swing(0.001 * (i % 2))} for i in range(20)]
+    out = M.score(wobble, [{"in_body": _swing(0.3)} for i in range(20)], "in_body", 2)
+    assert out["verdict"] == "too still to grade", out["verdict"]
+    gone = M.score(wobble, [{"in_body": None} for i in range(20)], "in_body", 2)
+    assert gone["verdict"] == "not measured" and gone["followed"] is None
+
+
 def main() -> int:
     for fn in (yaw_reads_the_shoulder_line, the_seam_is_two_degrees_wide, a_held_turn_holds,
                a_gap_is_not_a_reading, order_matches_or_says_where, a_slice_lines_up_with_frames,
-               the_lock_is_the_last_entry):
+               the_lock_is_the_last_entry, joints_are_measured_on_the_body, motion_follows_or_does_not,
+               a_still_shot_is_not_graded):
         case(fn.__name__, fn)
     return finish()
 

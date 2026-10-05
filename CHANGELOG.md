@@ -4,6 +4,33 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.197.0
+
+### Added
+
+- **`bench/measure_subject_motion.py`, a number for "moves as the source
+  moves"** (card `build-metric-suite`, the second of the lane's metrics).
+  It reads the output of `bench/measure_subject_yaw.py` and runs no model:
+  per sampled frame the distance between the render's body joints and the
+  source's, against the same distance for a subject who never moves.
+  `followed` is 1 on the source's pose in every frame and 0 no closer than
+  standing still, for the whole body and by part, at no time shift and at
+  the best one. A shot whose source barely moves is not graded.
+- `bench/measure_subject_yaw.py` keeps seventeen body joints per sampled
+  frame, in 3D on the body's own scale and on screen in units of the box's
+  height. The yaw readings are unchanged.
+- `bench/check_subject_yaw.py`: the motion metric's arithmetic, with the
+  control that a subject who never moves scores 0 at every shift.
+
+### Measured
+
+- **The motion metric against the eye on the thirteen band-clip renders**
+  (`bench/results/2026-10-05_subject_motion_calibration.md`, `.json`;
+  poses in `2026-10-05_subject_pose_band_turn.json`). The three judged to
+  move as the source score well above the ten judged not to, with nothing
+  between. One clip whose only motion is a turn: it has not been tried on
+  any other motion.
+
 ## 0.196.4
 
 ### Docs

@@ -74,6 +74,15 @@ from _lib import REPO, bootstrap, needs, server_memory_mode  # noqa: E402
 # inherited: Meta's MHR70 keypoint order (sam_3d_body/metadata/mhr70.py),
 # which core's predictor returns unchanged.
 LEFT_SHOULDER, RIGHT_SHOULDER, LEFT_HIP, RIGHT_HIP = 5, 6, 9, 10
+#: The body joints kept per frame for the motion metric
+#: (`bench/measure_subject_motion.py`), by name, from the same table. Fingers
+#: and toes are left out: at a clip's size they are the model's guess.
+BODY_JOINTS = {
+    "nose": 0, "left_eye": 1, "right_eye": 2, "left_ear": 3, "right_ear": 4,
+    "left_shoulder": 5, "right_shoulder": 6, "left_elbow": 7, "right_elbow": 8,
+    "left_hip": 9, "right_hip": 10, "left_knee": 11, "right_knee": 12,
+    "left_ankle": 13, "right_ankle": 14, "right_wrist": 41, "left_wrist": 62,
+}
 
 # reasoned: half way from facing the source's way to side-on. A render that
 # ends within it faces where the source faces to the eye; set before the
@@ -221,20 +230,44 @@ def boxes(mask: torch.Tensor) -> list[dict | None]:
     return out
 
 
+def joints_in_box(keypoints_2d, box: dict) -> dict[str, list[float]]:
+    """Each body joint's image position from the subject's box's top left, in units of the box's HEIGHT.
+
+    One unit for both axes, so a distance between two readings is a fraction
+    of the subject's height on screen whichever way it points.
+    """
+    k = np.asarray(keypoints_2d, dtype=np.float64)
+    return {name: [round(float((k[i, 0] - box["x"]) / box["height"]), 4),
+                   round(float((k[i, 1] - box["y"]) / box["height"]), 4)] for name, i in BODY_JOINTS.items()}
+
+
+def joints_in_body(keypoints_3d) -> dict[str, list[float]]:
+    """Each body joint in 3D, from the middle of the hips, in units of the hips-to-shoulders distance.
+
+    Centred and scaled on the body itself, so a subject who is larger, nearer
+    or of another build reads the same when the pose is the same. The axes
+    are the camera's, so the facing is part of it.
+    """
+    k = np.asarray(keypoints_3d, dtype=np.float64)
+    hips = (k[LEFT_HIP] + k[RIGHT_HIP]) / 2
+    torso = float(np.linalg.norm((k[LEFT_SHOULDER] + k[RIGHT_SHOULDER]) / 2 - hips)) or 1.0
+    return {name: [round(float(v), 4) for v in (k[i] - hips) / torso] for name, i in BODY_JOINTS.items()}
+
+
 def yaw_curve(predict, frames: torch.Tensor, frame_boxes: list[dict | None]) -> list[dict]:
-    """One reading per frame: shoulder yaw, hip yaw, or None where nobody was found."""
+    """One reading per frame: shoulder yaw, hip yaw and the body joints, or None where nobody was found."""
+    empty = {"yaw": None, "hip_yaw": None, "in_box": None, "in_body": None}
     rows = []
     for image, box in zip(frames, frame_boxes):
-        if box is None:
-            rows.append({"yaw": None, "hip_yaw": None})
-            continue
-        person = predict(image[None], box)
+        person = predict(image[None], box) if box is not None else None
         if person is None:
-            rows.append({"yaw": None, "hip_yaw": None})
+            rows.append(dict(empty))
             continue
         k = person["pred_keypoints_3d"]
         rows.append({"yaw": round(yaw_of(k, LEFT_SHOULDER, RIGHT_SHOULDER), 1),
-                     "hip_yaw": round(yaw_of(k, LEFT_HIP, RIGHT_HIP), 1)})
+                     "hip_yaw": round(yaw_of(k, LEFT_HIP, RIGHT_HIP), 1),
+                     "in_box": joints_in_box(person["pred_keypoints_2d"], box),
+                     "in_body": joints_in_body(k)})
     return rows
 
 

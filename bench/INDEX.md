@@ -9,7 +9,7 @@ this file is only a way to find a script by what it says it does.
 | group | scripts |
 |---|---|
 | [`check_*`](#check) | 88 |
-| [`measure_*`](#measure) | 37 |
+| [`measure_*`](#measure) | 38 |
 | [`analyze_*`](#analyze) | 23 |
 | [`grade_*`](#grade) | 21 |
 | [`compare_*`](#compare) | 18 |
@@ -149,6 +149,7 @@ this file is only a way to find a script by what it says it does.
 | [`measure_sol_container_protocol.py`](measure_sol_container_protocol.py) | What the Sol override's container entry changes, on captured q/k/v. |
 | [`measure_sol_exact_variants.py`](measure_sol_exact_variants.py) | Measure the INSTALLED Sol kernel's exact branch, so two builds can be compared. |
 | [`measure_step_yaw.py`](measure_step_yaw.py) | At which sampling step a render's facing is decided: the turn metric on each step's clean prediction. |
+| [`measure_subject_motion.py`](measure_subject_motion.py) | Does a render's subject move as the source's does: body joints over a shot, render against source. |
 | [`measure_subject_yaw.py`](measure_subject_yaw.py) | Which way a person faces, frame by frame, in a render and in the source it was made from: a number for "did he turn". |
 | [`measure_tau_sweep_premises.py`](measure_tau_sweep_premises.py) | Premises of the live tau sweep (`sol_tau_sweep.py`), measured on capture cells. |
 
@@ -509,7 +510,7 @@ Arm manifests and the like; a manifest's line is its own `what`.
 
 ### results
 
-942 tracked files: [`results/INDEX.md`](results/INDEX.md).
+945 tracked files: [`results/INDEX.md`](results/INDEX.md).
 
 ### rubrics
 
