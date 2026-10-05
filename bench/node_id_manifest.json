@@ -555,7 +555,8 @@
       "cuts",
       "detection_threshold",
       "max_people",
-      "head_phrase"
+      "head_phrase",
+      "corrections"
     ],
     "node_id": "MiniMaxH3SubjectTrack",
     "outputs": [

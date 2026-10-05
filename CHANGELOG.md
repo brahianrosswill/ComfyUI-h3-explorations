@@ -4,6 +4,47 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.194.0
+
+### Added
+
+- **A correction per shot on `MiniMaxH3SubjectTrack`** (`corrections`; the
+  board's `use-click-corrections`; owner, 2026-10-05: "The simpler elegant
+  solution is always the better one, where possible"). One line per shot, two
+  numbers: `shot 3: person 2` takes person 2 of shot 3, `shot 3: none` leaves
+  the shot alone. The shot number is the one the report and the tile print,
+  and the person number the one drawn on that shot's tile (0.193.0,
+  `shot_table.person_order`). It is the way to fix one shot the automatic
+  match got wrong, which until now meant naming a frame or a value for the
+  whole clip.
+  - It is applied on the frame the shot's tile shows, from the mask the node
+    already holds there, so nothing is detected again and the numbers a
+    person reads off a tile are the numbers that apply. The automatic pass
+    decides those frames the same way with or without corrections.
+  - A corrected shot is tracked once, from the corrected seed. The other
+    shots are matched against the pick as before, also when the corrected
+    shot is the picked one. With the input empty the result is the automatic
+    one, so `MASK_VERSION` does not move.
+  - A person the frame does not have, a shot the clip does not have, a shot
+    named twice and a line that is not a correction are refused by name. The
+    report says which shots were corrected, the tile's label says
+    `(corrected)`, and the shot table gives the correction as the reason
+    (0.193.2).
+  - The input is appended and optional, so saved graphs are unaffected;
+    `bench/node_id_manifest.json` gains that one input, added by hand so that
+    nothing else in it moves. No shipped graph sets it.
+- `bench/check_subject_track.py` holds it (item 7): the person taken is the
+  tile's number where the detector's own order differs, the tiles' frames and
+  the other shots do not move, a corrected shot is tracked once, and the
+  refusals. `docs/checks.md` row follows.
+
+### Not done
+
+- Points and boxes, for a person the detector never found. A second step, to
+  be asked about first.
+- Not run on the card: the check drives the node's logic on stand-ins for
+  SAM 3.
+
 ## 0.193.3
 
 ### Added

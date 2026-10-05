@@ -112,6 +112,18 @@ the preview's outlines, who was taken and why. It is the fourth output, and
 its text is shown under the report. It reads `follow`'s result and changes
 nothing about how anyone is followed, so it does not move `MASK_VERSION`.
 
+**A correction** (`corrections`, `parse_corrections`) fixes one shot by hand
+with two numbers: `shot 3: person 2` takes person 2 of shot 3, `shot 3: none`
+leaves the shot alone. The shot number is the one the report and the tile
+print; the person number is the one drawn on that shot's tile
+(`shot_table.person_order`). It is applied on the frame the tile shows, from
+the mask the node already holds there, so the numbers a person reads are the
+numbers that apply, and nothing is detected again. The automatic pass still
+decides which frame each tile shows, and does so the same way with or without
+corrections; a corrected shot is tracked once, from the corrected seed. The
+owner's ask (2026-10-05): the car clip's wrong shots fixed without a frontend
+widget, and "the simpler elegant solution is always the better one".
+
 Every phrase SAM 3 is given is an input: `subject_phrase` and `head_phrase`.
 
 Nothing here patches core. It calls core's own nodes (`SAM3_Detect`,
@@ -410,6 +422,7 @@ class Shot:
     lone: bool = False           # taken under the line, as the only person on its frame
     width: int = 0               # columns the mask on `shown` covers
     seen: int = 0                # the most detections on any frame looked at
+    corrected: str = ""          # what a correction said of this shot: `person 2`, `none`, or nothing
 
 
 @dataclass
@@ -424,6 +437,34 @@ class Followed:
     looks: list[tuple[int, int, int, float]] = field(default_factory=list)   # (shot, frame, detections, best similarity)
     views: int = 1                   # places a person is compared: head and shoulders, and the head
     views_used: int = 1              # of those, how many the subject has on the pick frame
+
+
+_CORRECTION = re.compile(r"^shot\s*(\d+)\s*[:=]?\s*(?:person\s*(\d+)|(none))$", re.IGNORECASE)
+
+
+def parse_corrections(text: str, n_shots: int) -> dict[int, int | None]:
+    """`shot 3: person 2` and `shot 5: none`, one per line (or separated by `;`), as {shot: person or None}.
+
+    Shots and people count from 1, as the report and the tiles print them. A line that is not a correction, a
+    shot the clip does not have and a shot named twice are refused by name.
+    """
+    out: dict[int, int | None] = {}
+    for piece in re.split(r"[\n;]", str(text or "")):
+        piece = piece.strip()
+        if not piece:
+            continue
+        found = _CORRECTION.match(piece)
+        if found is None:
+            raise ValueError(f"corrections: cannot read `{piece}`; write `shot 3: person 2` or `shot 3: none`, one per line")
+        shot, person = int(found[1]), (None if found[3] else int(found[2]))
+        if not 1 <= shot <= int(n_shots):
+            raise ValueError(f"corrections: `{piece}` names shot {shot}, and the clip has {int(n_shots)} shot(s)")
+        if person is not None and person < 1:
+            raise ValueError(f"corrections: `{piece}` names person {person}; people are numbered from 1")
+        if shot in out:
+            raise ValueError(f"corrections: shot {shot} is corrected twice")
+        out[shot] = person
+    return out
 
 
 def main_subject(shots: list[Shot], pick: str, detect, sign) -> tuple[int, int] | None:
@@ -457,7 +498,8 @@ def follow(n_frames: int, cuts: list[int], pick: str, pick_frame: int | None, ma
            detect: Callable[[int], tuple[torch.Tensor, list[float]]],
            sign: Callable[[int, torch.Tensor], torch.Tensor | None],
            track: Callable[[int, int, int, torch.Tensor], torch.Tensor],
-           stride: int = PROBE_STRIDE, offset: int = PROBE_OFFSET) -> Followed:
+           stride: int = PROBE_STRIDE, offset: int = PROBE_OFFSET,
+           corrections: dict[int, int | None] | None = None) -> Followed:
     """The subject's mask per frame, shot by shot. The model work is in three callables.
 
     `detect(frame)` returns that frame's detections, [N, H, W] and their
@@ -469,10 +511,21 @@ def follow(n_frames: int, cuts: list[int], pick: str, pick_frame: int | None, ma
 
     `pick_frame` None picks automatically (`main_subject`); `match_threshold`
     None cuts automatically (`auto_match`).
+
+    `corrections` is {shot number from 1: person number from 1, or None for
+    nobody} (`parse_corrections`). The automatic pass runs as it would
+    without them, so each shot's `shown` frame is the one its tile shows
+    either way; a corrected shot is then seeded on that frame from the
+    person of that number there, or left empty.
     """
+    corrections = dict(corrections or {})
     shots = [Shot(s, e, probe=min(s + max(int(offset), 0), e - 1)) for s, e in shot_ranges(n_frames, cuts)]
     for shot in shots:
         shot.shown = shot.probe
+    for number in corrections:
+        if not 1 <= int(number) <= len(shots):
+            raise ValueError(f"corrections: shot {number} is named, and the clip has {len(shots)} shot(s)")
+    by_hand = {id(shots[int(number) - 1]) for number in corrections}   # tracked once, from the corrected seed
     if pick_frame is None:
         entry = main_subject(shots, pick, detect, sign)
     else:
@@ -483,6 +536,7 @@ def follow(n_frames: int, cuts: list[int], pick: str, pick_frame: int | None, ma
         entry = None if which is None else (int(pick_frame), which)
     result = Followed(shots)
     if entry is None:
+        _correct(result, corrections, detect, track)
         return result
     frame0, which = entry
     masks0, _ = detect(frame0)
@@ -534,7 +588,8 @@ def follow(n_frames: int, cuts: list[int], pick: str, pick_frame: int | None, ma
         if shot.start <= frame0 < shot.end:
             shot.picked, shot.seed, shot.shown, shot.index = True, frame0, frame0, which
             shot.best, shot.candidates, shot.width = 1.0, int(masks0.shape[0]), result.pick_width
-            result.pieces[shot.start] = track(shot.start, shot.end, frame0, picked)
+            if id(shot) not in by_hand:
+                result.pieces[shot.start] = track(shot.start, shot.end, frame0, picked)
             continue
         taken = lone = None        # (similarity, frame, detection)
         later = [f for f in range(shot.start, shot.end, max(int(stride), 1)) if f != shot.probe]
@@ -555,8 +610,29 @@ def follow(n_frames: int, cuts: list[int], pick: str, pick_frame: int | None, ma
         seeds, _ = detect(seed)
         shot.seed, shot.shown, shot.index, shot.best = seed, seed, i, score
         shot.candidates, shot.width = int(seeds.shape[0]), _width(seeds[i])
-        result.pieces[shot.start] = track(shot.start, shot.end, seed, seeds[i])
+        if id(shot) not in by_hand:
+            result.pieces[shot.start] = track(shot.start, shot.end, seed, seeds[i])
+    _correct(result, corrections, detect, track)
     return result
+
+
+def _correct(result: Followed, corrections: dict[int, int | None], detect, track) -> None:
+    """Apply the corrections to `follow`'s result: each on the frame its shot's tile shows."""
+    for number, person in sorted(corrections.items()):
+        shot = result.shots[int(number) - 1]
+        if person is None:
+            shot.seed, shot.lone, shot.corrected = None, False, "none"
+            result.pieces.pop(shot.start, None)
+            continue
+        people, _ = detect(shot.shown)
+        which = shot_table.detection_of(people, int(person))
+        if which is None:
+            raise ValueError(
+                f"corrections: shot {number} has {int(people.shape[0])} person(s) on frame {shot.shown}, the frame "
+                f"its tile shows, so there is no person {int(person)} to take")
+        shot.seed, shot.index, shot.lone, shot.corrected = shot.shown, which, False, f"person {int(person)}"
+        shot.candidates, shot.width = int(people.shape[0]), _width(people[which])
+        result.pieces[shot.start] = track(shot.start, shot.end, shot.shown, people[which])
 
 
 def assemble(n_frames: int, height: int, width: int, pieces: dict[int, torch.Tensor]) -> torch.Tensor:
@@ -568,6 +644,8 @@ def assemble(n_frames: int, height: int, width: int, pieces: dict[int, torch.Ten
 
 
 def _state(shot: Shot) -> str:
+    if shot.corrected:
+        return "absent (corrected)" if shot.seed is None else "taken (corrected)"
     if shot.picked:
         return "picked"
     if shot.seed is None:
@@ -616,7 +694,10 @@ def report(found: Followed, cuts: list[int], pick: str, phrase: str, named_frame
                      f"shots' scores: {above or '(none)'} | {below or '(none)'}")
     for n, s in enumerate(shots, 1):
         span = f"[{n}] frames {s.start}-{s.end - 1}"
-        if s.picked:
+        if s.corrected:
+            lines.append(f"{span}: corrected by hand, {s.corrected} of the {s.candidates} detection(s) on frame {s.shown}"
+                         if s.seed is not None else f"{span}: corrected by hand, nobody taken")
+        elif s.picked:
             lines.append(f"{span}: the picked shot, {s.candidates} detection(s) on frame {s.seed}")
         elif s.seed is not None:
             how = "as the only person there, " if s.lone else ""
@@ -833,6 +914,11 @@ class MiniMaxH3SubjectTrack(io.ComfyNode):
                 io.String.Input("head_phrase", default=HEAD_PHRASE, advanced=True,
                                 tooltip=("What SAM 3 is asked to find on each person so they can be told apart. "
                                          "A person in another shot has to match the subject there as well.")),
+                # appended 2026-10-05
+                io.String.Input("corrections", default="", multiline=True, optional=True,
+                                tooltip=("Fixes a shot the node got wrong, one per line. `shot 3: person 2` takes "
+                                         "person 2 of shot 3; `shot 3: none` leaves shot 3 alone. The shot's "
+                                         "number and each person's number are the ones on the preview.")),
             ],
             outputs=[
                 io.Mask.Output(display_name="mask", tooltip="One mask per frame at the frames' size; empty where the subject is absent."),
@@ -847,7 +933,7 @@ class MiniMaxH3SubjectTrack(io.ComfyNode):
     @classmethod
     def execute(cls, frames, segmenter, segmenter_clip, pick_on, match, cuts, subject_phrase=SUBJECT_PHRASE,
                 pick=PICK_LARGEST, detection_threshold=DETECTION_THRESHOLD, max_people=MAX_PEOPLE,
-                head_phrase=HEAD_PHRASE) -> io.NodeOutput:
+                head_phrase=HEAD_PHRASE, corrections="") -> io.NodeOutput:
         if frames.ndim != 4:
             raise ValueError(f"frames must be [N, H, W, C]; got {tuple(frames.shape)}")
         where, pick_frame = _selection(pick_on, "pick_on", "pick_frame")
@@ -867,11 +953,12 @@ class MiniMaxH3SubjectTrack(io.ComfyNode):
         steps = cut_scores(frames)
         cut_at = float(cut_threshold) if named_cut else auto_cuts(steps)
         found_cuts = find_cuts(steps, cut_at)
+        by_hand = parse_corrections(corrections, len(shot_ranges(n, found_cuts)))
         detect, sign, track = _sam_callables(segmenter, segmenter_clip, frames, subject_phrase, detection_threshold,
                                              int(max_people), head_phrase)
         with torch.no_grad():
             found = follow(n, found_cuts, pick, int(pick_frame) if named_frame else None,
-                           float(match_threshold) if named_value else None, detect, sign, track)
+                           float(match_threshold) if named_value else None, detect, sign, track, corrections=by_hand)
         mask = assemble(n, h, w, found.pieces)
         text = report(found, found_cuts, pick, subject_phrase, named_frame, named_value, time.perf_counter() - began,
                       cutting=cuts_line(steps, cut_at, named_cut))

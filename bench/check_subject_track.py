@@ -44,6 +44,17 @@ item drives the module's own functions on made-up frames and masks.
    things `mask_store.py` needs for a kept mask to spare the tracker and to
    go stale when the node's method changes.
 
+7. **A correction takes the person its number names on the tile, and nothing
+   else moves.** `shot N: person K` seeds shot N from person K as
+   `shot_table` numbers the people on the frame the shot's tile shows, where
+   the detector's own order is a different one; `shot N: none` empties the
+   shot. The frame each tile shows is the same with and without corrections,
+   so a number read off a tile is the number that applies. A corrected shot
+   is tracked once; the other shots are tracked as before; no corrections is
+   the automatic result. A person the frame does not have, a shot the clip
+   does not have, a shot named twice and a line that is not a correction are
+   refused by name.
+
 What this cannot check: that SAM 3's features tell real people apart, that
 its tracker follows them, or that the text encoder loads. Those need the card;
 `docs/research/masking/2026-10-04_mrhf.md` has what was measured.
@@ -267,6 +278,88 @@ def check_follow(problems):
         problems.append(f"the preview is {tuple(tiles.shape)}, not one tile per shot at the tile width")
     if not (float(tiles.min()) >= 0.0 and float(tiles.max()) <= 1.0):
         problems.append("the preview leaves 0..1")
+
+
+def check_corrections(problems):
+    cuts = [8, 16, 24]
+
+    def run(corrections):
+        boxes, detect, sign, track, calls = _world()
+        got = st.follow(32, cuts, st.PICK_LARGEST, 3, 0.8, detect, sign, track, stride=4, offset=1, corrections=corrections)
+        return boxes, got, calls, st.assemble(32, H, W, got.pieces)
+
+    boxes, base, base_calls, base_mask = run(None)
+    shown = [s.shown for s in base.shots]
+    _, same, same_calls, same_mask = run({})
+    if not torch.equal(same_mask, base_mask) or same_calls["track"] != base_calls["track"] or any(s.corrected for s in same.shots):
+        problems.append("with no corrections the result is not the automatic one")
+
+    # shot 3's tile shows frame 20, where the detector lists person 2 of the world first and the subject second;
+    # left to right the subject is person 1 and the other is person 2
+    _, got, calls, mask = run({3: 2})
+    if [s.shown for s in got.shots] != shown:
+        problems.append(f"a correction changed the frames the tiles show: {[s.shown for s in got.shots]}, not {shown}")
+    if (16, 24, 20, 2) not in calls["track"] or sum(1 for c in calls["track"] if c[0] == 16) != 1:
+        problems.append(f"`shot 3: person 2` tracked {[c for c in calls['track'] if c[0] == 16]}: the corrected shot is "
+                        "tracked once, from the person the tile numbers 2 on the frame it shows")
+    if not torch.equal(mask[16], boxes[2]) or not torch.equal(mask[:16], base_mask[:16]) or not torch.equal(mask[24:], base_mask[24:]):
+        problems.append("`shot 3: person 2` did not put that person's mask on shot 3 and leave the other shots alone")
+    s3 = got.shots[2]
+    if (s3.corrected, s3.seed, s3.index, st._state(s3)) != ("person 2", 20, 0, "taken (corrected)"):
+        problems.append(f"the corrected shot records {(s3.corrected, s3.seed, s3.index, st._state(s3))}")
+
+    # a shot the automatic pass left empty, taken by hand
+    _, got, calls, mask = run({2: 1})
+    s2 = got.shots[1]
+    if s2.seed != shown[1] or not torch.equal(mask[8], boxes[1]) or s2.corrected != "person 1":
+        problems.append("`shot 2: person 1` did not take the leftmost person of the frame shot 2's tile shows")
+
+    # a shot emptied by hand: not tracked at all, and its tile still shows who had been taken
+    _, got, calls, mask = run({3: None})
+    s3 = got.shots[2]
+    if float(mask[16:24].sum()) != 0.0 or any(c[0] == 16 for c in calls["track"]):
+        problems.append("`shot 3: none` left a mask on the shot, or tracked it first")
+    if (s3.seed, s3.shown, s3.index, s3.corrected, st._state(s3)) != (None, shown[2], base.shots[2].index, "none", "absent (corrected)"):
+        problems.append(f"the emptied shot records {(s3.seed, s3.shown, s3.index, s3.corrected, st._state(s3))}")
+
+    # the picked shot corrected: the others are still matched against the pick
+    _, got, calls, mask = run({1: 1})
+    if not torch.equal(mask[0], boxes[1]) or sum(1 for c in calls["track"] if c[0] == 0) != 1 or not got.shots[0].picked:
+        problems.append("`shot 1: person 1` on the picked shot did not take that person, or tracked the shot twice")
+    if not torch.equal(mask[8:], base_mask[8:]):
+        problems.append("correcting the picked shot changed how the other shots were matched")
+
+    text = st.report(run({2: 2, 3: None})[1], cuts, st.PICK_LARGEST, "person", True, True, 1.0)
+    for need in (f"[2] frames 8-15: corrected by hand, person 2 of the 2 detection(s) on frame {shown[1]}",
+                 "[3] frames 16-23: corrected by hand, nobody taken"):
+        if need not in text:
+            problems.append(f"the report lacks {need!r}: {text!r}")
+
+    try:
+        run({2: 3})
+        problems.append("a person the frame does not have was accepted")
+    except ValueError as exc:
+        if "2 person(s)" not in str(exc) or f"frame {shown[1]}" not in str(exc) or "person 3" not in str(exc):
+            problems.append(f"the refusal of a missing person does not say how many there are and on which frame: {exc}")
+    try:
+        run({9: 1})
+        problems.append("a correction for a shot the clip does not have was accepted")
+    except ValueError as exc:
+        if "shot 9" not in str(exc) or "4 shot(s)" not in str(exc):
+            problems.append(f"the refusal of a missing shot does not name it: {exc}")
+
+    read = st.parse_corrections("shot 2: person 1\n  Shot 3 = none ; shot 4 person 2\n\n", 4)
+    if read != {2: 1, 3: None, 4: 2} or st.parse_corrections("", 4) != {} or st.parse_corrections(None, 4) != {}:
+        problems.append(f"parse_corrections read {read}")
+    for bad, said in (("shot 2", "`shot 2`"), ("person 2", "`person 2`"), ("shot 5: none", "4 shot(s)"),
+                      ("shot 0: none", "shot 0"), ("shot 2: person 0", "person 0"),
+                      ("shot 2: none\nshot 2: person 1", "twice"), ("shot two: none", "`shot two: none`")):
+        try:
+            st.parse_corrections(bad, 4)
+            problems.append(f"the correction {bad!r} was accepted")
+        except ValueError as exc:
+            if said not in str(exc):
+                problems.append(f"the refusal of {bad!r} does not say {said!r}: {exc}")
 
 
 def check_automatic(problems):
@@ -510,6 +603,9 @@ def check_schema(problems):
         problems.append("the node is an output node: core would run the tracker on every queue, kept mask or not")
     if not isinstance(getattr(st.MiniMaxH3SubjectTrack, "MASK_VERSION", None), int):
         problems.append("the node declares no integer MASK_VERSION, so a kept mask would survive a change to how it is made")
+    last = schema.inputs[-1]
+    if last.id != "corrections" or getattr(last, "default", None) != "" or not last.tooltip or not getattr(last, "multiline", False):
+        problems.append("`corrections` is not the node's last input, a multi-line text that is empty by default, with a tooltip")
     sel = st._selection({"match": st.AT_VALUE, "match_threshold": 0.5}, "match", "match_threshold")
     if sel != (st.AT_VALUE, 0.5) or st._selection(st.AUTOMATIC, "match", "match_threshold") != (st.AUTOMATIC, None):
         problems.append("a DynamicCombo's nested dict, or a bare selection, is not read as the choice and its value")
@@ -517,15 +613,15 @@ def check_schema(problems):
 
 def main() -> int:
     problems: list[str] = []
-    for check in (check_cuts, check_ranges, check_counted, check_choose, check_signature, check_follow, check_automatic,
-                  check_alone, check_two_places, check_empty, check_schema):
+    for check in (check_cuts, check_ranges, check_counted, check_choose, check_signature, check_follow, check_corrections,
+                  check_automatic, check_alone, check_two_places, check_empty, check_schema):
         check(problems)
     for p in problems:
         print(f"FAIL  {p}")
     if not problems:
         print("ok    the subject track finds a cut and not a lighting change, covers every frame once, picks by the "
-              "rule, follows the subject and nobody else across shots, leaves absent shots empty, and declares "
-              "what it asks SAM as inputs")
+              "rule, follows the subject and nobody else across shots, takes a correction by the tile's numbers, "
+              "leaves absent shots empty, and declares what it asks SAM as inputs")
     return 1 if problems else 0
 
 
