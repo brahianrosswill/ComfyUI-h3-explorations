@@ -4,6 +4,17 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.193.1
+
+### Docs
+
+- **`docs/checks.md` no longer indexes the two VOID checks**, which 0.192.0
+  deleted: their rows are out, "Retired checks" has one entry for the pair,
+  and the `doc-link-absent` ledger has the four deleted VOID paths, so the
+  records, the changelog and `docs/wiki/decisions.md` that cite them resolve
+  as deliberately gone. This is the part of the removal 0.192.0 said would
+  follow. `check_doc_inventory.py` and `check_doc_links.py` are green again.
+
 ## 0.193.0
 
 ### Added
