@@ -17,6 +17,15 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-05
 
+- **The 2026-09-13 blind reference-view session is closed unscored** (owner,
+  2026-10-05: "Im not sure how much value it added anyway", after the sealed
+  key under `internal/blind_keys/` was found gone from disk). Its question,
+  the `qwen_view` default, was settled by eye on 2026-10-03. Nothing else
+  depends on the key; a new session seals its own.
+- **No history rewrite** (owner, 2026-10-05: "Dont worry about the history
+  rewrite, can move on from that"): 563328d9 stays in history and every
+  later hash stands.
+
 - **The HF hybrid checkpoint `unet_hybrid_b30` is retired** (owner,
   2026-10-05: "Remove that hybrid model, its long been deprecated", after
   mrteal found its symlink dangling and the download gone). The key leaves

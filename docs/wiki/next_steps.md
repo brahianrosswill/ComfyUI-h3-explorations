@@ -892,6 +892,14 @@ none of it is done.
   preview or run `bench/preflight_graph.py`: both price what each reader sees
   (the `MiniMaxH3ReferenceReport` node this used to name was deleted in 0.174.0).
 
+  *2026-10-05: closed unscored. The sealed key under `internal/blind_keys/`
+  is no longer on disk (found by the memory audit of 2026-10-05), so the
+  session cannot be unblinded, and the owner chose to move on ("Im not sure
+  how much value it added anyway"). The `qwen_view` default it was built to
+  settle was decided on 2026-10-03 by eye instead (`decisions.md`). A future
+  blind session seals a new key; `bench/blind_batch.py::KEY_DIR` is the
+  place and the directory is made on demand.*
+
 **2026-09-12:**
 
 - Audio-freeze lane: [`../h3_audio_freeze.md`](../h3_audio_freeze.md)

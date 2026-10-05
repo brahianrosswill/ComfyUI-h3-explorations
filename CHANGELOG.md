@@ -4,6 +4,15 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.190.10
+
+### Docs
+
+- The 2026-09-13 blind reference-view session is closed unscored: its sealed
+  key is gone from disk and the owner chose to move on; a dated note on its
+  block in `docs/wiki/next_steps.md` and two lines in `docs/wiki/decisions.md`
+  (that, and that there is no history rewrite).
+
 ## 0.190.9
 
 ### Docs
