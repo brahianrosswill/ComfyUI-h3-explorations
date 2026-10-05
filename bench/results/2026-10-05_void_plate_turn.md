@@ -3,7 +3,9 @@
 lane: masking
 verdict: tested and removed at the owner's word: "Not a single clip showed any improvement." No arm gave a plate on this clip
 
-Session mrorange, the board's `build-void-plate`. **Status: closed by the
+**The clips this record names under `Video/mrorange/` were deleted by the
+owner on 2026-10-05, after the verdict; the frame readings and the verdict
+below are what remains of them.** Session mrorange, the board's `build-void-plate`. **Status: closed by the
 owner on 2026-10-05 and parked; see "Where it ended" first.** The first four
 clips were judged one by one (below). What is described under "What the frames
 show" was read by me from still frames at VOID's size, three per shot and a
