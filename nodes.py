@@ -47,6 +47,7 @@ from .denoise_mask_probe import MiniMaxH3DenoiseMaskProbe
 from .video_mask import MiniMaxH3MaskedSource
 from .plate_restore import MiniMaxH3RestorePlate
 from .subject_track import MiniMaxH3SubjectTrack
+from .sapiens2_parts import MiniMaxH3Sapiens2Loader, MiniMaxH3SubjectParts
 from .step_x0_observer import MiniMaxH3StepX0Observer
 from .core_sparse_capture import MiniMaxH3CoreSparseCapture
 from .preflight import MiniMaxH3Preflight
@@ -352,7 +353,10 @@ class H3ExplorationsExtension(ComfyExtension):
                 MiniMaxH3RestorePlate,
                 # appended 2026-10-04, one subject's mask across a clip's cuts
                 # (subject_track.py)
-                MiniMaxH3SubjectTrack]
+                MiniMaxH3SubjectTrack,
+                # appended 2026-10-05, body parts and a matte on the tracked subject
+                # (sapiens2_parts.py)
+                MiniMaxH3Sapiens2Loader, MiniMaxH3SubjectParts]
 
 
 async def comfy_entrypoint() -> H3ExplorationsExtension:

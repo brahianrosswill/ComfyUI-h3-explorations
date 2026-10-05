@@ -449,6 +449,16 @@
       "Output"
     ]
   },
+  "MiniMaxH3Sapiens2Loader": {
+    "inputs": [
+      "segmentation",
+      "matting"
+    ],
+    "node_id": "MiniMaxH3Sapiens2Loader",
+    "outputs": [
+      "sapiens2"
+    ]
+  },
   "MiniMaxH3Sol": {
     "inputs": [
       "model",
@@ -489,6 +499,31 @@
     "node_id": "MiniMaxH3StepX0Observer",
     "outputs": [
       "model"
+    ]
+  },
+  "MiniMaxH3SubjectParts": {
+    "inputs": [
+      "sapiens2",
+      "frames",
+      "subject_mask",
+      "hair",
+      "face_and_neck",
+      "upper_clothing",
+      "lower_clothing",
+      "hands",
+      "mouth",
+      "other_classes",
+      "crop_margin",
+      "subject_margin",
+      "matte_reach",
+      "hold_missing"
+    ],
+    "node_id": "MiniMaxH3SubjectParts",
+    "outputs": [
+      "parts",
+      "matte",
+      "preview",
+      "report"
     ]
   },
   "MiniMaxH3SubjectTrack": {

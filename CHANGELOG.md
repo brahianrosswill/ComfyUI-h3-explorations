@@ -4,6 +4,60 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.190.0
+
+### Added
+
+- **`MiniMaxH3Sapiens2Loader` and `MiniMaxH3SubjectParts`**
+  (`sapiens2_parts.py`; the masking board's `build-sapiens2-node`, briefed by
+  mryellow on 2026-10-05). Sapiens2's body-part segmentation, and its matting
+  model when one is chosen, run per frame on a crop around the tracked
+  subject: a mask of the chosen parts, a matte with the matting model's soft
+  edge, a preview of the label map and a report. It is meant to replace the
+  per-frame SAM 3 phrase detection behind the Masked Source's `head and hair`
+  and to give the part menu, the garment swap and the redub their region.
+  **Neither node is wired into the Masked Source or any shipped graph**; that
+  is a change to the lane's core files and is done with their holder.
+  - The models are the installed transformers' own classes on a local folder
+    under `models/sapiens2/`, listed by the architecture each folder's
+    `config.json` names. Nothing is imported from `coderef/` and nothing
+    patches core. Each model is handed to core as a patcher, so core moves the
+    DiT out around the node.
+  - Every value that decides the mask is an input: the parts as a menu of
+    booleans (`sapiens2_parts.PARTS`) with `other_classes` for any class by
+    name, `crop_margin`, `subject_margin`, `matte_reach`, `hold_missing`.
+    The defaults are hair with face and neck (`PARTS_ON`), the region
+    `head and hair` asks SAM 3 for.
+  - A part counts only on the subject's mask widened by `subject_margin`, so a
+    neighbour inside the crop gives nothing. A frame with the subject and no
+    part takes the nearest found frame's part, moved from that frame's subject
+    box to this one's. **A frame the subject is not in stays empty**, where
+    the brief had it held: a part held into a cutaway would regenerate pixels
+    of a shot the subject is not in.
+  - The matte is the matting model's alpha on the part and on what the label
+    map calls background within `matte_reach` of it. A border between two
+    parts of one person stays hard.
+  - The class names are upstream's table (`CLASS_NAMES`); the checkpoint's
+    config carries `LABEL_n` only. On one frame of the band clip, run on CPU
+    with a hand box for the subject, hair, face, both hands, both garments and
+    the lips carried the names upstream's order gives them (seen; the picture
+    is under `internal/`). The run on the card with the tracked mask, the
+    timing and SAM 3's hair beside it is still to come, and
+    `bench/results/2026-10-05_sapiens2_first_frame.md`, which the module and
+    the check name, is written by it.
+- **`bench/check_subject_parts.py`**: the crop and map-back geometry, the cut
+  to the subject with a control, the menu's classes, hold-forward, the matte's
+  region, the refusals and batch independence, on stand-ins for the two
+  models. No weights. Indexed in `docs/checks.md`.
+- `bench/node_id_manifest.json` records the two nodes (`--write`, a permitted
+  addition).
+
+### Not changed
+
+- No shipped graph, no default, and none of the lane's existing nodes.
+  `bench/run_checks.py`, masked: nothing red that this commit touches;
+  `check_doc_links.py` was red on `bench/INDEX.md`, a peer's file in flight.
+
 ## 0.189.9
 
 ### Removed
