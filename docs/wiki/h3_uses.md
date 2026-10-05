@@ -106,7 +106,7 @@ below with what would accept or reject it.
 | Remove a person; the original's shadow gone | no route | VOID was tested on 2026-10-05 and removed | ruled out | `../../bench/results/2026-10-05_void_plate_turn.md` |
 | Two people replaced from two stills | two masks, two labelled stills | two Subject Track nodes and a union | proposed | the board |
 | A thing that is not a person | the same mask | a mode on the Subject Track without the head comparison | proposed | the board |
-| Correct one shot by hand | none | numbered outlines on the preview, and a line of text | proposed | the board |
+| Correct one shot by hand | none: it is the mask that is corrected | `MiniMaxH3SubjectTrack`'s `corrections`: `shot 3: person 2` or `shot 3: none`, with the numbers the preview shows | built | `../../subject_track.py`, "A correction"; `../../bench/check_subject_track.py`, item 7. Not yet run on a clip |
 | One review per clip before any render | none | a dry run that emits masks, parts, shots and captions | proposed | the board |
 | Movement from a body mesh of the original, with none of its look | the mesh rendered as the video reference | SAM 3D Body, which core runs; the weights are converted | proposed | `bench/results/2026-10-05_sam3d_body_conversion.md`; the board |
 | Movement from per-shot captions a model writes and the user can edit | the prompt, written by machine | core's text generation over the loaded encoder | proposed; it is still prompting | the board |
@@ -168,7 +168,7 @@ only where something more than promoting its graph is needed.
 | Remove a person, and the shadow | no route: VOID was tested on 2026-10-05 and removed (`../../bench/results/2026-10-05_void_plate_turn.md`) |
 | Two people from two stills | two picks and a union of their masks |
 | A thing that is not a person | a choice on the Subject Track that turns the head comparison off |
-| Correct one shot by hand | numbers on the preview's outlines and a corrections line on the Subject Track |
+| Correct one shot by hand | built on 2026-10-05 (section 4); a person the detector never found still needs points or boxes passed to it |
 | One review per clip before a render | a path that stops before sampling; the tracker's preview and the song node's `preview` are two parts of it |
 | Movement from a body mesh | a node that renders the mesh over the frames, then one render |
 | Movement from captions | a node that captions each shot and assembles the prompt, shown for editing |

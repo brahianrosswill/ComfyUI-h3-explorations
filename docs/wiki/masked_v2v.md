@@ -69,6 +69,10 @@ docstring is the authority and lists the steps; `follow` is the function.
   frame showing one person with a head is taken, whatever it scores.
 - **Tracking.** Each shot is tracked forward and backward from its seed with
   core's `SAM3_VideoTrack` on its `initial_mask` path, no text prompt.
+- **Corrections.** `corrections` overrides one shot at a time, after the
+  automatic pass and on the frame that shot's tile shows: a person by the
+  number on their outline, or nobody (`parse_corrections`, `_correct`). The
+  other shots and the frames the tiles show do not move.
 - **What it shows.** One labelled tile per shot and a text report: who was
   taken, who was the best candidate where nobody was, every score with the
   line marked, every phrase and threshold used.
@@ -119,8 +123,14 @@ Each line names where the evidence is. "Seen" means on a render or a tile.
 - **The rule was chosen on the three clips it passes.** No clip it has not
   seen has been tried. Same record.
 - **A miss leaves the original in the shot; a wrong take replaces somebody
-  else.** There is no way to correct one shot by hand short of naming a
-  frame or a value for the whole clip.
+  else.** One shot is corrected by hand with the Subject Track's
+  `corrections`: `shot 3: person 2` takes that person, `shot 3: none` leaves
+  the shot alone, with the shot's number and the person's number read off
+  the preview. `subject_track.py`, "A correction";
+  `../../bench/check_subject_track.py`, item 7. Checked on stand-ins for
+  SAM 3; not yet run on a clip. (This passage said until 2026-10-05 that
+  there was no way to correct one shot short of naming a frame or a value
+  for the whole clip.)
 - **Seen from behind the subject is not found.** A shot in which they never
   face the camera is left alone. `subject_track.py`, "How far the matching
   can be trusted".
@@ -184,9 +194,11 @@ wider set, with what each would buy and what is known about it.
   on the head, at the seed frames only. It is the real answer to people who
   look alike and to a change of framing. None is wired; a licence check
   comes first.
-- **Correcting one shot by hand**: take or leave a shot, or click the person,
-  from the preview. It needs a frontend widget, which nothing in this node
-  has so far.
+- **Correcting one shot by hand** is built, without a frontend widget: two
+  numbers typed off the preview ("Finding the person" above). What is left
+  of it is a person the detector never found, who has no number: core's
+  detector takes points and boxes, and nothing here passes them. (Said
+  until 2026-10-05 that this needs a frontend widget.)
 - **A fourth clip**, chosen before the rule is looked at again.
 - **Upstream SAM 3's caller-mask request** (`coderef/sam3`) would replace the
   per-shot seeding with the tracker's own. Not served by the multiplex

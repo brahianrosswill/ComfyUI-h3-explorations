@@ -4,6 +4,19 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.194.4
+
+### Docs
+
+- **`docs/wiki/masked_v2v.md` and `docs/wiki/h3_uses.md` say that one shot
+  can be corrected by hand** (0.194.0). The lane's map said there was no way
+  short of naming a frame or a value for the whole clip, and listed the
+  correction as a direction that needs a frontend widget; the uses page had
+  it as proposed. Both now say what the Subject Track's `corrections` does
+  and where it is checked, that it has not yet run on a clip, and what is
+  left of it: a person the detector never found. Each changed passage of the
+  map carries a dated note of what it used to say.
+
 ## 0.194.3
 
 ### Added
