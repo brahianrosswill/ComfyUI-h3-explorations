@@ -4,6 +4,15 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.190.13
+
+### Docs
+
+- **A sentence in the 2026-10-04 masking note about where the VOID weights
+  are is corrected in place** (found by mrorange): both passes are in the
+  Comfy-Org repackage as well as upstream, and only the repackage's load in
+  core. `docs/wiki/decisions.md` logs what the note used to say.
+
 ## 0.190.12
 
 ### Docs

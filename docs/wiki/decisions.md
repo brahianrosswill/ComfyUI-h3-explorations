@@ -17,6 +17,15 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-05
 
+- **A masking note said the VOID passes were only in the upstream repo**
+  (`docs/research/masking/2026-10-04_mrhf.md`, "VOID for the plate with
+  nobody in it": the Comfy-Org repackage "holds only" the T5 encoder, the VAE
+  and RAFT). Wrong, and against the same note's section 5: both passes are
+  in the repackage too, and only those load in core, upstream's having
+  diffusers key names. mrorange found it reading core's template and the
+  file's header; the note carries a dated correction and
+  `bench/results/2026-10-05_void_checkpoint_conversion.md` the evidence.
+
 - **The 2026-09-13 blind reference-view session is closed unscored** (owner,
   2026-10-05: "Im not sure how much value it added anyway", after the sealed
   key under `internal/blind_keys/` was found gone from disk). Its question,
