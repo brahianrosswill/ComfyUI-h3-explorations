@@ -4,7 +4,7 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
-## 0.189.8
+## 0.189.9
 
 ### Removed
 
@@ -15,6 +15,11 @@ artifact.
   in `bench/check_model_files.py`, the model-contents baseline and the
   `bench/build_hybrid.py` docstring follow in mrteal's hygiene commits. The
   four dangling links in `models/diffusion_models/` were removed by hand.
+  **Number and commit:** this change landed in `b84f764c`, whose subject
+  says 0.189.8, and that commit also carried the 0.189.8 entry below ahead
+  of the files it describes (a peer's uncommitted changelog hunk swept in by
+  a pathspec commit, the trap `AGENTS.md` names). The entry here was
+  renumbered to 0.189.9 in the following commit; 0.189.8 is mrteal's.
 
 ## 0.189.8
 
