@@ -4,6 +4,33 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.195.3
+
+### Changed
+
+- **`MiniMaxH3SubjectParts` dilates the matte's region once per batch**, where
+  it did so once per frame (`sapiens2_parts.py::subject_parts`). The outputs
+  are unchanged: `parts` and `matte` are bit-identical to the previous
+  module's on a synthetic clip at the lane's frame size, and
+  `bench/check_subject_parts.py` is green. The gain is small and is in the
+  node's own geometry only, with a matting model loaded; the model passes are
+  untouched. Timed on CPU with stand-in models, not on the card and not
+  recorded. `MASK_VERSION` does not move. **The code is in commit c651012e,
+  which is mistitled**: see below.
+
+### Fixed
+
+- **Commit c651012e carries the wrong title and somebody else's entry.** It is
+  titled "0.194.4: the lane's map and the uses page say a shot can be
+  corrected by hand", which is the title of 779d6a1f. What it holds is the
+  change above and the 0.195.2 entry below, which was another session's
+  uncommitted work in `CHANGELOG.md` at that moment. The step that writes an
+  entry and a commit message had refused, because the file held that hunk;
+  the commit ran anyway as the next line of the same command, with the
+  previous message, and its guards passed because the hunk also added exactly
+  one heading. Nothing was lost and nothing is rewritten: 0.195.2's text is
+  as its author wrote it, and this entry is the record of what c651012e is.
+
 ## 0.195.2
 
 ### Fixed
