@@ -1,23 +1,34 @@
 # A clean plate from VOID on the band clip's turn window: a first probe (2026-10-05)
 
 lane: masking
-verdict: the turn shot judged by the owner: neither arm is a plate; the empty prompt is the nearer one, the scene prompt "looks horrible"
+verdict: judged by the owner, all four clips: neither arm is a plate on either shot; the empty prompt is the less bad, "still really bad"
 
-Session mrorange, the board's `build-void-plate`. **Status: the turn shot is
-judged by the owner (below); shot 1 is rendered, not judged.** What is
-described under "What the frames show" was read from still frames at VOID's
-size, three per shot and a ten-frame sheet. One clip, one window, one seed,
-two prompts.
+Session mrorange, the board's `build-void-plate`. **Status: judged by the
+owner, all four clips (below).** What is described under "What the frames
+show" was read by me from still frames at VOID's size, three per shot and a
+ten-frame sheet, before the judgment; **where it and the owner's judgment
+differ, the judgment is right**, and for shot 1 they differ. One clip, one
+window, one seed, two prompts.
 
 ## Judged by the owner, 2026-10-05
 
-The two turn-shot clips, on playback, in the owner's words as relayed by
-mryellow:
+On playback, in the owner's words, as relayed by mryellow and as the board's
+`build-void-plate` card quotes them:
 
-- the empty prompt: "some ghosting at the start and end and shadows are
-  still there but gone... but you can see glitchy at the very last frames";
-- the scene prompt: "looks horrible. deformed / morphing faces/bodies
-  everywhere."
+- the turn shot, empty prompt: "some ghosting at the start and end and
+  shadows are still there but gone... but you can see glitchy at the very
+  last frames";
+- the turn shot, scene prompt: "looks horrible. deformed / morphing
+  faces/bodies everywhere";
+- the whole window, scene prompt: "has people disappearing and appearing and
+  morphing";
+- the whole window, empty prompt: "does too but not as much but... still
+  really bad".
+
+corrected: my reading of shot 1 below, from three stills, was that the plate
+looks plausible there. On playback it is not: people disappear, appear and
+morph over time, which a still cannot show. Stills were the wrong instrument
+for a plate that has to hold over time.
 
 mryellow, from contact sheets of every sixth frame, agrees, and adds for the
 empty arm: a flat translucent panel exactly the size of the subject's cell
@@ -80,7 +91,7 @@ The window `turn_control` loads: `thinkaboutthings_compressed.mp4` from 112 s,
 
 ## What the frames show
 
-**Shot 1, 189 frames.** The lead is gone in both arms. The wall, the pictures
+**Shot 1, 189 frames** (stills; see the correction above). The lead is gone in both arms. The wall, the pictures
 and the neon tube behind him are filled in, and the people he stood in front
 of are completed where he covered them. The two arms give nearly the same
 plate. Around frame 170 both arms appear to put a second copy of the woman

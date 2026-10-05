@@ -4,6 +4,18 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.190.15
+
+### Docs
+
+- **`bench/results/2026-10-05_void_plate_turn.md` takes the owner's judgment
+  of the whole-window clips**, which the board's card quotes and 0.190.14
+  did not have: both arms are bad over the first shot too, with people
+  disappearing, appearing and morphing. That corrects the record's reading of
+  the first shot as plausible, which was made from three stills; the record
+  now says the stills were the wrong instrument and that the judgment stands
+  where the two differ. Verdict line and `bench/results/INDEX.md` follow.
+
 ## 0.190.14
 
 ### Docs
