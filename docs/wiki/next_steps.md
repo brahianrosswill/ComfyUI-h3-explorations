@@ -91,7 +91,9 @@ stays the shipped default.
     PDD8 alone at the same length (6 PDD8 plus 2 FlashGen evaluations, 8 like
     PDD8's own), and the FlashGen LoRA node adds 0.1-3 s
     (vaedude, fastdude; `../../bench/results/2026-09-27_finisher_grid.md`).
-    i2v stays PDD8 alone.
+    On i2v that review kept PDD8 alone; since 2026-10-03 the daily i2v graph
+    is the finish (`workflows/h3_config.py::DAILY_GRAPHS`; `decisions.md`,
+    2026-10-05).
   - PDD6 is a low-motion and close-up option, not the default
     (`../h3_distills.md`, "Rules of thumb, provisional").
   - The base finish (#37) and late-only FlashGen as a finisher (#34) close

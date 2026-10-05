@@ -362,8 +362,12 @@ Retired, not refuted (`roadmap.md`, "Closed lanes").
     tell it from PDD8 (ow-fd-08, `../bench/results/2026-09-27_finisher_grid.md`).
   - Warm, it costs no sampling time: its evaluations replace PDD8's own.
     Loading the FlashGen LoRA is a one-off per server.
-  - Not on i2v, where its brightening against the first frame "looked off"
-    (ow-fd-09).
+  - On i2v the 2026-09-27 review said no: its brightening against the first
+    frame "looked off" (ow-fd-09). *That is no longer what ships (corrected
+    2026-10-05): the finish on a first-frame clip is one of the three daily
+    graphs, `workflows/daily/h3_i2v_pdd8_flashgen_finish_api.json`, named in
+    `workflows/h3_config.py::DAILY_GRAPHS` since 2026-10-03. The review's
+    remark stands as what was seen that day.*
   - Whether it becomes the t2v default is the owner's call.
 - **Fast motion or a moving camera:**
   - FlashGen, if the action is simple enough that roles cannot swap;

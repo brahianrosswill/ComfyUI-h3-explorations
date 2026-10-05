@@ -4,6 +4,19 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.191.6
+
+### Docs
+
+- **The docs say what ships for a clip that starts on a still** (owner,
+  2026-10-05: "Please resolve this so it reflects current state code").
+  `docs/h3_distills.md`, two entries of `docs/wiki/decisions.md` and one line
+  of `docs/wiki/next_steps.md` still said the FlashGen finish was not for
+  i2v, from the 2026-09-27 review; `h3_config.DAILY_GRAPHS` has shipped
+  `h3_i2v_pdd8_flashgen_finish` since 0.185.24. Each passage now carries a
+  dated note, and `decisions.md` has the line under 2026-10-05. No graph and
+  no setting changed.
+
 ## 0.191.5
 
 - `docs/wiki/masked_v2v.md`: the VOID sentence said "read, not run on this

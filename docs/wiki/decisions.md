@@ -17,6 +17,17 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-05
 
+- **A clip that starts on a still gets the FlashGen finish: the docs now say
+  what the code ships** (owner, 2026-10-05, on the masking board: "Please
+  resolve this so it reflects current state code"). `h3_config.DAILY_GRAPHS`
+  has carried `h3_i2v_pdd8_flashgen_finish` since 2026-10-03, among "the
+  three graphs the owner renders with" (0.185.24). Three passages still said
+  the opposite, from the 2026-09-27 finisher review ("looked off",
+  ow-fd-09): `docs/h3_distills.md` under "Rules of thumb", two entries
+  further down this page, and one line of `next_steps.md` ("i2v stays PDD8
+  alone"). Each now carries a dated note; none is deleted, since the review
+  did say it.
+
 - **The VOID clean-plate route is parked** (owner, 2026-10-05, on every arm
   rendered that day: "Not a single clip showed any improvement."; their
   reason for stopping, as mryellow relayed it and not in their words: VOID
@@ -722,6 +733,7 @@ Older history lives elsewhere and is not copied here:
   - On t2v the finishes were near indistinguishable by eye. Either FlashGen
     finish fixed sign text that PDD8 alone and the base finish garbled.
   - On i2v the finish's brightening "looked off", so PDD8 alone stays.
+    *(Not the state of the code since 2026-10-03; see 2026-10-05.)*
   - Warm, it costs no sampling time: its evaluations replace PDD8's.
   - Whether it replaces the default t2v PDD graph is the owner's call.
   - `../../bench/results/2026-09-27_finisher_grid.md`, "The owner's review".
@@ -764,7 +776,7 @@ Older history lives elsewhere and is not copied here:
   evaluations plus 2 FlashGen ones are 8, like PDD8's own. It is an additional
   graph: `h3_text_to_video_pdd` stays the default until the owner says
   otherwise. i2v stays PDD8 alone, because the finish brightens the frame at
-  once.
+  once. *(Not the state of the code since 2026-10-03; see 2026-10-05.)*
 - **The base-model finish (#37) closes with no change** (owner's review,
   vd-v01). It was never preferred, and it morphed a face on courtroom. It is
   not inert: it matched the FlashGen finishes on noodle_bar and partly fixed
