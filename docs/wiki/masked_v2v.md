@@ -191,9 +191,14 @@ wider set, with what each would buy and what is known about it.
 
 - **Removing the original's shadow and reflections.** Core ships VOID
   (`comfy_extras/nodes_void.py`); it needs the affected area marked and is a
-  second model pass. Read, not run on this clip.
+  second model pass. Run on the band clip on 2026-10-05 through core's
+  nodes and through this pack's `MiniMaxH3VoidConditioning`, and parked by
+  the owner: no arm gave a plate. The record is
+  `../../bench/results/2026-10-05_void_plate_turn.md`, which opens with where
+  it ended; the reading before the runs is
   `../research/masking/2026-10-04_mrhf.md`, "Effects outside the silhouette"
-  and "VOID for the plate with nobody in it".
+  and "VOID for the plate with nobody in it". (This sentence said "read,
+  not run" until 2026-10-05.)
 - **A soft edge instead of a hard one**: a matting model on the subject.
   The nodes for it exist (`sapiens2_parts.py`, `MiniMaxH3SubjectParts`) and
   are in no shipped graph. What was read of the model:

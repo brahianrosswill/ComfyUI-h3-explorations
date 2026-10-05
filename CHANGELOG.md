@@ -4,6 +4,12 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.191.5
+
+- `docs/wiki/masked_v2v.md`: the VOID sentence said "read, not run on this
+  clip"; it was run and parked on 2026-10-05, and the page now points at the
+  record that says where it ended.
+
 ## 0.191.4
 
 ### Docs
