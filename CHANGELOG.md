@@ -4,6 +4,34 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.190.3
+
+### Docs
+
+- **`docs/wiki/masked_v2v.md` no longer carries a statement about the
+  Sapiens2 licence**, at the owner's word the same day it was added
+  (0.190.2). The page keeps the line naming the nodes that landed in
+  0.190.0.
+
+## 0.190.3
+
+### Added
+
+- **`bench/results/2026-10-05_sapiens2_first_frame.md`** and its `.json`:
+  the Sapiens2 part node's first run through a server, on the band clip's
+  warm group shot with the lead from the Subject Track, core's `SAM3_Detect`
+  for `hair` on the same frames beside it. It is the record 0.190.0 said was
+  to come and that `sapiens2_parts.py` and `bench/check_subject_parts.py`
+  name. What it holds: the checkpoint's class indices read with upstream's
+  list put each name on the right part for the classes the shot shows (the
+  feet, shoe, sock, bare limb and torso classes are not in it and are not
+  shown); the time per frame with and without the matting model; and the
+  hair mask against SAM 3's, with the frames on which SAM 3's one detection
+  was a neighbour's. Its "Not tested" section lists what the run did not
+  exercise: the DiT on the card beside it, the node upstream of a Masked
+  Source, and `hold_missing` on real frames.
+- `bench/results/INDEX.md` regenerated (`bench/build_index.py`).
+
 ## 0.190.2
 
 ### Docs
