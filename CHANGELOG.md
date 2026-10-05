@@ -4,6 +4,16 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.196.4
+
+### Docs
+
+- **The per-token record carries the owner's verdicts on the six clips**, and
+  one of them corrects it: the second-seed fl2va PDD8 arm does not turn (I
+  had read a late turn off a contact sheet). The record also names the two
+  untested explanations of the changed clothes, the prompt's wording and the
+  zeroed start, and the arm that would separate each.
+
 ## 0.196.3
 
 ### Added
