@@ -4,6 +4,36 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.190.16
+
+### Added
+
+- **SAM 3D Body's ViT-H release runs behind core's predict and render
+  nodes.** `sam3d_body_vith.py` is Meta's `vit_hmr_512_384` backbone, a
+  subclass of core's `SAM3DBody` that puts it behind core's own heads, and
+  the loader node `MiniMaxH3SAM3DBodyViTHLoader`, which returns the
+  `SAM3D_BODY_MODEL` type core's nodes take. Core is not patched. The
+  release takes the same square crop as the DINOv3 one, so core's predictor
+  feeds it unchanged; the model cuts the centre 384 columns out of it in six
+  places, each one override calling core's own method. The module's
+  docstring lists them.
+- **`bench/convert_sam3d_body_vith_checkpoint.py`** writes the loader's
+  file from Meta's `model.ckpt` and rig: no tensor renamed, Meta's dtypes
+  kept, the rig and the two groups Meta did not publish taken as the DINOv3
+  converter takes them (its `RIG_MAP`, `mapped_rig` and `Repack`, by
+  import). Run on this box's download; the file loads.
+- **`bench/check_sam3d_body_vith.py`**, on `bench/_lib`: the key set, the
+  refusals, the six geometry rules against the expressions Meta wrote, and,
+  with the converted file present, the load through the loader and the
+  backbone's forward against Meta's own `backbones/vit.py` run in a child
+  process from `coderef/sam-3d-body`. Green; the measured difference is
+  beside `FORWARD_TOLERANCE`. Indexed in `docs/checks.md`.
+
+### Not yet
+
+- No render through the new loader. The card run (predict and render on one
+  frame through both releases) and its record follow.
+
 ## 0.190.15
 
 ### Docs

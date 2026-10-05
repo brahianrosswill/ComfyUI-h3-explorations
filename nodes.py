@@ -48,6 +48,7 @@ from .video_mask import MiniMaxH3MaskedSource
 from .plate_restore import MiniMaxH3RestorePlate
 from .subject_track import MiniMaxH3SubjectTrack
 from .sapiens2_parts import MiniMaxH3Sapiens2Loader, MiniMaxH3SubjectParts
+from .sam3d_body_vith import MiniMaxH3SAM3DBodyViTHLoader
 from .step_x0_observer import MiniMaxH3StepX0Observer
 from .core_sparse_capture import MiniMaxH3CoreSparseCapture
 from .preflight import MiniMaxH3Preflight
@@ -356,7 +357,10 @@ class H3ExplorationsExtension(ComfyExtension):
                 MiniMaxH3SubjectTrack,
                 # appended 2026-10-05, body parts and a matte on the tracked subject
                 # (sapiens2_parts.py)
-                MiniMaxH3Sapiens2Loader, MiniMaxH3SubjectParts]
+                MiniMaxH3Sapiens2Loader, MiniMaxH3SubjectParts,
+                # appended 2026-10-05, SAM 3D Body's ViT-H release behind core's
+                # predict and render nodes (sam3d_body_vith.py)
+                MiniMaxH3SAM3DBodyViTHLoader]
 
 
 async def comfy_entrypoint() -> H3ExplorationsExtension:

@@ -441,6 +441,15 @@
       "latent"
     ]
   },
+  "MiniMaxH3SAM3DBodyViTHLoader": {
+    "inputs": [
+      "model_file"
+    ],
+    "node_id": "MiniMaxH3SAM3DBodyViTHLoader",
+    "outputs": [
+      "sam3d_body_model"
+    ]
+  },
   "MiniMaxH3SageAttention": {
     "inputs": [
       "model",

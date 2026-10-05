@@ -8,14 +8,14 @@ this file is only a way to find a script by what it says it does.
 
 | group | scripts |
 |---|---|
-| [`check_*`](#check) | 86 |
+| [`check_*`](#check) | 87 |
 | [`measure_*`](#measure) | 35 |
 | [`analyze_*`](#analyze) | 23 |
 | [`grade_*`](#grade) | 21 |
 | [`compare_*`](#compare) | 17 |
 | [`build_*`](#build) | 16 |
 | [`probe_*`](#probe) | 11 |
-| [the rest](#the-rest) | 115 |
+| [the rest](#the-rest) | 116 |
 
 ## check
 
@@ -87,6 +87,7 @@ this file is only a way to find a script by what it says it does.
 | [`check_reload_invariance.py`](check_reload_invariance.py) | Is a render bit-identical across a full model unload? |
 | [`check_retraction_consumers.py`](check_retraction_consumers.py) | Fail when a retracted claim reaches a file nobody signed off on. |
 | [`check_sam3d_body_conversion.py`](check_sam3d_body_conversion.py) | Hold `bench/convert_sam3d_body_checkpoint.py`'s mapping to core's SAM 3D Body model, without weights. |
+| [`check_sam3d_body_vith.py`](check_sam3d_body_vith.py) | Hold `sam3d_body_vith.py` to Meta's ViT-H SAM 3D Body: the key set, the six geometry rules, and the backbone's forward. |
 | [`check_schema_defaults.py`](check_schema_defaults.py) | Check every node's schema defaults match its `execute` signature defaults. |
 | [`check_skill_routes.py`](check_skill_routes.py) | Fail when a skill routes an agent to a path that does not exist. |
 | [`check_sol_chunked.py`](check_sol_chunked.py) | Grade the chunked-producer forward before it is given a render. |
@@ -296,6 +297,7 @@ this file is only a way to find a script by what it says it does.
 | [`convert_pdd_lora.py`](convert_pdd_lora.py) | Convert an alibaba-pai MiniMax-H3 PDD acceleration LoRA to this repo's format. |
 | [`convert_sam3_checkpoint.py`](convert_sam3_checkpoint.py) | Repack Meta's SAM 3 / SAM 3.1 checkpoint as a safetensors file core loads, changing no weight. |
 | [`convert_sam3d_body_checkpoint.py`](convert_sam3d_body_checkpoint.py) | Repack Meta's SAM 3D Body checkpoint and its MHR rig as the one safetensors file core loads, from the originals. |
+| [`convert_sam3d_body_vith_checkpoint.py`](convert_sam3d_body_vith_checkpoint.py) | Repack Meta's ViT-H SAM 3D Body checkpoint and its MHR rig as the one safetensors file this pack's loader reads. |
 | [`convert_void_checkpoint.py`](convert_void_checkpoint.py) | Write netflix/void-model's checkpoint under the key names ComfyUI core loads, from the original. Header only. |
 | [`count_packed_rows.py`](count_packed_rows.py) | Exact packed-sequence rows, per segment, from the real `PackedLayout`. |
 | [`decode_draft_keepers.py`](decode_draft_keepers.py) | Give draft renders their real decode, from the latents the drafts saved. |
