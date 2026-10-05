@@ -1387,7 +1387,7 @@
      "hip_yaw": -9.2
     }
    ],
-   "eye": "partial"
+   "eye": "no"
   },
   "ref2va_pdd8mid_s1": {
    "comparable": true,
@@ -1490,13 +1490,14 @@
      "yaw": 4.0,
      "hip_yaw": 4.9
     }
-   ]
+   ],
+   "eye": "no"
   }
  },
  "clips_not_found": [],
  "seconds": 804.5,
  "against_the_eye": {
-  "clips_compared": 12,
+  "clips_compared": 13,
   "same_order": true,
   "disagreements": [],
   "end_difference_by_eye_verdict": {
@@ -1505,20 +1506,13 @@
     "highest": 15.7,
     "clips": 3
    },
-   "partial": {
-    "lowest": 151.5,
-    "highest": 151.5,
-    "clips": 1
-   },
    "no": {
-    "lowest": 158.1,
+    "lowest": 151.5,
     "highest": 163.6,
-    "clips": 8
+    "clips": 10
    }
   },
-  "not_judged_by_eye": [
-   "ref2va_pdd8mid_s1"
-  ]
+  "not_judged_by_eye": []
  },
- "reanalysed_from": "calibration_cpu.json"
+ "reanalysed_from": "2026-10-05_subject_yaw_calibration.json"
 }

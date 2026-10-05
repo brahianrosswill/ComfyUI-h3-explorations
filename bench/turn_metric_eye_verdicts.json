@@ -15,6 +15,7 @@
   "ref2va_pdd6_s1": {"turn": "no", "eye": "faces the camera, arms at his sides"},
   "ref2va_base8_s1": {"turn": "no", "eye": "faces the camera, hands lifted a little from frame 257"},
   "ref2va_base12_noref_s1": {"turn": "no", "eye": "faces the camera through the shot"},
-  "ship_ref2va_motion_s1": {"turn": "partial", "eye": "side-on by frame 257, three-quarter back by 267, the face still partly visible at 277"}
+  "ship_ref2va_motion_s1": {"turn": "no", "eye": "a head turn and a lean, then square to the camera", "was": "partial until its author corrected it the same day: the first reading (side-on by 257, three-quarter back by 267) was a misread of the contact sheet, found when the yaw metric disagreed"},
+  "ref2va_pdd8mid_s1": {"turn": "no", "eye": "no turn, no gesture either"}
  }
 }

@@ -4,6 +4,19 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.195.1
+
+### Changed
+
+- **The turn metric's by-eye verdicts follow the corrected record.**
+  `bench/turn_metric_eye_verdicts.json`: `ship_ref2va_motion_s1` is "no"
+  (it was "partial" until its author corrected the record, after the
+  metric disagreed and the frames were looked at), and
+  `ref2va_pdd8mid_s1` gains its verdict, "no". The calibration JSON is
+  recomputed from the same curves (`--reanalyse`; nothing was measured
+  again) and the record carries a dated note. Three clips judged a turn
+  and ten judged none; the metric agrees on all thirteen.
+
 ## 0.195.0
 
 ### Added

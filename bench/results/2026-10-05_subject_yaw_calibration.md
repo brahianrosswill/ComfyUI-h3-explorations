@@ -1,7 +1,7 @@
 # The turn metric against the eye: thirteen renders of the band clip's turn shot (2026-10-05)
 
 lane: masked
-verdict: accepted for "holds the turn or not"; it contradicts the one by-eye "partial", and the frames side with the metric
+verdict: accepted for "holds the turn or not"; it contradicted the one by-eye "partial", the frames sided with the metric, and the by-eye verdict was corrected to "no"
 
 **Result: the metric puts every clip the eye called a turn within sixteen
 degrees of the source at the end of the shot, and every clip the eye called
@@ -12,6 +12,16 @@ Numbers: `2026-10-05_subject_yaw_calibration.json`. Script:
 `bench/measure_subject_yaw.py`. Eye verdicts as transcribed:
 `bench/turn_metric_eye_verdicts.json`, from
 `2026-10-05_masked_v2v_motion_arms.md`.
+
+**Later the same day the by-eye verdict was corrected by its author.**
+mryellow looked at tight crops of that render and changed the record's row
+to "no": a head turn and a lean, then square to the camera; the first
+reading was a misread of the contact sheet. `ref2va_pdd8mid_s1` also got
+its by-eye verdict, "no". `bench/turn_metric_eye_verdicts.json` and the
+JSON beside this record now carry both, so the comparison reads three
+"yes" at 15 to 16 degrees and ten "no" at 152 to 164, with no "partial".
+The sections below are as written before the correction and say what was
+found then.
 
 ## What was measured
 
