@@ -4,6 +4,23 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.196.1
+
+### Added
+
+- **`bench/measure_step_yaw.py`, the turn metric's second half, written
+  and not yet run.** The yaw of `bench/measure_subject_yaw.py` read on
+  each sampling step's clean prediction (the files
+  `MiniMaxH3StepX0Observer` saves), with only the latent frames under the
+  shot decoded: per step its sigma, how many frames gave a reading, the end
+  difference from the source; per render the step and sigma from which the
+  facing stays inside the tolerance. Its control compares the last step
+  with the finished video. It needs the card (the decode of one slice did
+  not finish in ten minutes on the CPU) and a render made with the observer
+  armed; neither has happened.
+- `bench/check_subject_yaw.py`: the tool's two pure parts, the slice's
+  frame mapping and the lock rule.
+
 ## 0.196.0
 
 ### Added

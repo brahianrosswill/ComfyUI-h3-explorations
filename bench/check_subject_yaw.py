@@ -23,6 +23,16 @@ plain mean of them says 0, facing the camera.
                                 clip with none is "not measured", not "holds".
   order_matches_or_says_where   yes below partial below no passes; a "no"
                                 that measured closer than a "yes" is named.
+  a_slice_lines_up_with_frames  `bench/measure_step_yaw.py` decodes only the
+                                latent frames under a shot: every frame of
+                                the shot lands on a decoded index of 1 or
+                                more, in order, and the indices are what
+                                H3's packing (one frame, then fours) gives.
+  the_lock_is_the_last_entry    the facing "locks" at the first step from
+                                which it stays within the tolerance to the
+                                end; a step that dips in and out again does
+                                not count, and a render that ends outside
+                                never locks.
 
 No model, no CUDA, no server.
 
@@ -41,6 +51,7 @@ sys.path.insert(0, str(HERE))
 
 from _lib import case, finish  # noqa: E402
 
+import measure_step_yaw as S  # noqa: E402
 import measure_subject_yaw as Y  # noqa: E402
 
 
@@ -118,9 +129,40 @@ def order_matches_or_says_where():
     assert skipped["clips_compared"] == 1, "a clip with no measurement was ranked"
 
 
+def a_slice_lines_up_with_frames():
+    # H3's packing, written out independently: latent 0 holds frame 0, latent k holds frames 4k-3 .. 4k
+    holds = {0: [0]}
+    for k in range(1, 90):
+        holds[k] = list(range(4 * k - 3, 4 * k + 1))
+    for frame in (0, 1, 4, 5, 237, 240, 241, 279, 344):
+        k = S.latent_index(frame)
+        assert frame in holds[k], f"frame {frame} is not under latent {k}"
+    for first, last in ((237, 279), (1, 8), (5, 5), (100, 344)):
+        start, stop, base = S.slice_plan(first, last)
+        assert start == S.latent_index(first) - 1 and stop == S.latent_index(last) + 1, (first, last, start, stop)
+        # a decoder given latents start..stop-1 yields one frame, then four per latent
+        decoded = [None] + [f for k in range(start + 1, stop) for f in holds[k]]
+        for frame in range(first, last + 1):
+            j = S.decoded_index(frame, base)
+            assert j >= 1 and decoded[j] == frame, f"shot {first}-{last}: frame {frame} is decoded index {j}, which is frame {decoded[j]}"
+    # the first frames of a clip sit under latent 0, which has no latent before it
+    start, stop, base = S.slice_plan(0, 3)
+    assert start == 0 and base == 0 and S.decoded_index(1, base) == 1
+
+
+def the_lock_is_the_last_entry():
+    assert S.lock_step([None, 160.0, 150.0, 20.0, 60.0, 15.0, 12.0, 10.0], 45.0) == 5, "a dip inside and out again counted"
+    assert S.lock_step([160.0, 150.0, 140.0], 45.0) is None and S.lock_step([10.0, 12.0, 160.0], 45.0) is None
+    assert S.lock_step([10.0, 12.0, 9.0], 45.0) == 0 and S.lock_step([], 45.0) is None
+    assert S.lock_step([None, None, 30.0], 45.0) == 2 and S.lock_step([30.0, None, 30.0], 45.0) == 2, \
+        "a step with no reading is not inside the tolerance"
+    assert S.lock_step([30.0, 30.0, None], 45.0) is None, "a last step with no reading locked"
+
+
 def main() -> int:
     for fn in (yaw_reads_the_shoulder_line, the_seam_is_two_degrees_wide, a_held_turn_holds,
-               a_gap_is_not_a_reading, order_matches_or_says_where):
+               a_gap_is_not_a_reading, order_matches_or_says_where, a_slice_lines_up_with_frames,
+               the_lock_is_the_last_entry):
         case(fn.__name__, fn)
     return finish()
 
