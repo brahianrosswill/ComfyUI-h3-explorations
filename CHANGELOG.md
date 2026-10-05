@@ -4,6 +4,25 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.191.4
+
+### Docs
+
+- **The VOID clean-plate route is parked, at the owner's word**, and
+  `bench/results/2026-10-05_void_plate_turn.md` is closed with it. The
+  owner's verdict on every arm rendered: "Not a single clip showed any
+  improvement." The record now opens with where it ended: the four
+  differences between core's port and upstream's inference, which of them the
+  arms tested and what each showed; the one regularity in the arms (the more
+  of the subject the model is shown under the mask, the more of him stays);
+  and what no arm showed, the model itself making a plate of this clip,
+  since every arm was a port and upstream's own code was not run. It adds
+  the third round (the pack's node), the fourth (upstream's window of 85
+  frames, which does not remove the ghost) and the last pair (stopped on the
+  owner's word with one arm finished). `docs/wiki/decisions.md` has the
+  line. `MiniMaxH3VoidConditioning`, the converter and their checks stay.
+  Verdict line and `bench/results/INDEX.md` follow.
+
 ## 0.191.3
 
 ### Measured

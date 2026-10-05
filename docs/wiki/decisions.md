@@ -17,6 +17,19 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-05
 
+- **The VOID clean-plate route is parked** (owner, 2026-10-05, on every arm
+  rendered that day: "Not a single clip showed any improvement."; their
+  reason for stopping, as mryellow relayed it and not in their words: VOID
+  is trained on CogVideoX, so it may be a waste of time). Parked, not ruled
+  out: a plate under the hole is still wanted, and this tool on this base
+  through core's port is set aside. No pass 2, no run of upstream's own
+  code, no blended windows. What was found on the way stays:
+  `MiniMaxH3VoidConditioning` and `bench/convert_void_checkpoint.py` with
+  their checks, and in `bench/results/2026-10-05_void_plate_turn.md` the four
+  places core's port differs from upstream's inference, one of which
+  (the pixel range the mask is encoded at) reaches core's own template and
+  is the owner's to report or not.
+
 - **The generated indexes list tracked files only, and the sweep holds them
   current** (owner, 2026-10-05: "do not index anything that isnt git
   tracked"; 0.190.18). `bench/build_index.py` reads `git ls-files` and

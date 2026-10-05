@@ -1,10 +1,11 @@
 # A clean plate from VOID on the band clip's turn window: a first probe (2026-10-05)
 
 lane: masking
-verdict: judged by the owner, all four clips: neither arm is a plate on either shot; the empty prompt is the less bad, "still really bad"
+verdict: closed by the owner, the lane parked: "Not a single clip showed any improvement." No arm gave a plate on this clip
 
-Session mrorange, the board's `build-void-plate`. **Status: judged by the
-owner, all four clips (below).** What is described under "What the frames
+Session mrorange, the board's `build-void-plate`. **Status: closed by the
+owner on 2026-10-05 and parked; see "Where it ended" first.** The first four
+clips were judged one by one (below). What is described under "What the frames
 show" was read by me from still frames at VOID's size, three per shot and a
 ten-frame sheet, before the judgment; **where it and the owner's judgment
 differ, the judgment is right**, and for shot 1 they differ. One clip, one
@@ -42,6 +43,56 @@ The numbers are in `2026-10-05_void_plate_turn.json`. The script and its
 graph are `internal/claude/2026-10-05_mrorange/void_plate_turn.py`, not
 tracked: the graph was built by hand from core's nodes and is in no
 generator.
+
+## Where it ended
+
+**The owner's verdict on every VOID arm rendered today, in their words, as
+relayed by mryellow: "Not a single clip showed any improvement."** That
+includes the arms in which the panel no longer appears on the strips; the
+readings from strips further down are what I saw, and they stand under that
+judgment, not beside it.
+
+The owner then closed the lane. Their reason, as relayed and not in their
+words: VOID is trained on CogVideoX, so this may be a waste of time; and the
+clips they saw were not doing anything useful. The last pair of arms was
+stopped on that word while its second arm was sampling. **Parked, not ruled
+out**: a clean plate under the hole is still something the lane wants; this
+tool, on this base model, through core's port, is set aside. No pass 2, no
+run of upstream's own code on the same input, no blended windows.
+
+What the day established about it, for whoever picks it up:
+
+| difference between core's port and upstream's inference | tested | what the arms showed (strips, mine) |
+|---|---|---|
+| 1. the pixel range the mask is encoded at | yes, twice: the quadmask halved through core's node, and the pack's node | the flat panel in the shape of the affected region goes away |
+| 2. what the model is shown under the mask | yes: black (core), half brightness, whole, and upstream's other path, black with upstream's mask | none of them is clean; the more of him is shown, the more of him stays |
+| 3. guidance | could not be tested with empty prompts: the two predictions are one tensor | at upstream's value of 1 there is no guidance at all |
+| 4. the window length | yes: 85 frames, a short shot padded by ping-pong | the ghost is still there, darker on the turn shot |
+
+**The trend across what the model sees of him** is the one regularity in the
+arms: blacked out under core's mask range, no ghost and a panel; at half
+brightness, some ghost; shown whole, more ghost, on both window lengths;
+blacked out with upstream's mask range, the first half of the turn shot is
+about as clean as the best arm and residue returns in the second half (one
+arm, the room-only prompt).
+
+**What no arm showed** is the model making a plate of this clip. Every arm was
+a port. Whether the port or the model is at fault here is exactly what a run
+of upstream's own code on the same input would say, and that run was not
+made.
+
+What stays in the tree: `MiniMaxH3VoidConditioning` and its check, which hold
+the two conditioning differences whatever becomes of the lane;
+`bench/convert_void_checkpoint.py` and its check; this record. The candidate
+defect in core (difference 1, which reaches core's own template) is for the
+owner to report or not.
+
+All clips, under `Video/mrorange/` on the output share, each also as
+`_turnshot`: `void_plate_turn_empty`, `_scene` (first round, core's node);
+`_empty_cfg1_up`, `_empty_cfg1` (second round, core's node); `_pack_empty`,
+`_pack_scene`, `_pack_room` (third round, the pack's node); `_native_room`,
+`_native_empty` (fourth round, 85-frame windows); `_black_room` (the last
+pair's finished arm).
 
 ## For the owner to look at
 
@@ -250,6 +301,63 @@ that the reading offers and no arm has tested: with the mask halved core
 still shows the model the object at half brightness, where upstream shows it
 whole. The node above removes that difference.
 
+
+## Third round: the pack's node, upstream's mask and the whole video
+
+Three arms through `MiniMaxH3VoidConditioning`, cfg 1 as upstream's config
+has it, seed 43, the same two windows (`third_round` in the record; clips
+`void_plate_turn_pack_empty`, `_pack_scene`, `_pack_room`, each with its
+`_turnshot`). **Not judged.** Read by me from strips of eight frames a shot.
+
+- **The panel is gone in all three**, as in B.
+- **The empty prompt**: a dark teal ghost where he stands through the whole
+  turn shot, more of it than in B. So the dimmed video was not what left the
+  ghost in B: shown whole, more of him stays.
+- **The scene sentence**: a smaller figure painted where he stood through the
+  turn shot. A person again.
+- **A room-only sentence** ("A living room with framed pictures on the wall,
+  table lamps and a neon tube, under coloured light."): the cleanest first
+  half of the turn shot of any arm, the wall drawn through with only a faint
+  smear; the ghost returns in the second half, when he has turned and fills
+  more of the frame.
+- **Shot 1**: the three arms alike, and like B: clean at both ends, a mottled
+  figure where he stood through roughly frames 50 to 105.
+
+So with the mask and the video as upstream has them, the plate is still not
+clean on this clip. What remains of the four differences is the window
+(difference 4), and it was under-read above: upstream's script pads any clip
+shorter than its window of 85 frames to that length by appending the clip
+reversed, and samples a longer one in windows of 85 blended at every step. Its
+model is therefore always given exactly 85 frames; core was given 189 and 45
+here. Both failures sit where that would matter: the short shot, and the
+middle of the long one.
+
+## Fourth round: upstream's window length
+
+One window of 85 frames per shot through the pack's node, the whole video,
+cfg 1, seed 43, the room-only sentence and the empty prompt (`fourth_round`
+in the record). The turn shot is 43 frames, so it was padded as upstream's
+`temporal_padding` does it: the clip, then the clip reversed, cut to 85. Only
+its forward half is read; the reversed tail is a motion the clip never had.
+Shot 1 was cut to the 85 frames round its middle, 50 to 134, which holds the
+stretch where the long window left a figure. **This tests the length. It is
+not a way to cover a long shot**, which would need upstream's windows blended
+at every step.
+
+Read by me from strips: the ghost is still there, in both shots and with both
+prompts. On the turn shot it is darker and more solid than with the 45-frame
+window. On the middle of shot 1 it is present through the whole window, where
+the 189-frame window was clean again from about frame 110. So the length is
+not the cause.
+
+## The last pair: the object blacked out, upstream's mask
+
+The pack's node with `the object blacked out`, which is upstream's other path
+(`zero_out_mask_region = True`): the mask at upstream's range, nothing of him
+shown, the affected area left as it is. The room-only arm finished; on the
+strip its turn shot is like the third round's room-only arm in the first
+half and has residue in the second. The empty-prompt arm was stopped while
+sampling, on the owner's word, and has no output (`last_pair`).
 
 ## Time
 
