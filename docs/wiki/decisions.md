@@ -17,6 +17,11 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-05
 
+- **The at-the-call LoRA node reads Kohya-style keys** (owner, 2026-10-05,
+  on the sglang read: "may as well"; 0.189.0). `lora_branch.py::native_keys`
+  renames them through core's table. It replaced a refusal that pointed such
+  a file at `LoraLoaderModelOnly`. The module docstring's "Formats" paragraph
+  used to say every key must sit under `diffusion_model.`.
 - **PDMD is retired and removed** (owner, 2026-10-05: "pdmd - lets retire it.
   i didnt see anything from it worth keeping"; 0.188.0). Removed: the four
   graphs, the `PDMD_*` constants, the contract case in

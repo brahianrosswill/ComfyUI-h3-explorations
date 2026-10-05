@@ -4,6 +4,27 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.189.0
+
+### Added
+
+- **`MiniMaxH3LoRABranch` takes Kohya-style key names** (owner, 2026-10-05:
+  "may as well"). A Kohya export names a module
+  `lora_unet_blocks_0_attn_qkv_proj` and spells its factors `lora_down` /
+  `lora_up`; the node used to refuse any key not under `diffusion_model.` and
+  send the file to `LoraLoaderModelOnly`, which merges it into the int8 grid.
+  `lora_branch.py::native_keys` now renames such keys through core's own
+  table for the loaded model (`comfy.lora.model_lora_keys_unet`), so the node
+  places exactly the names the stock loader would, the bare module path that
+  core accepts on H3 included, and keeps no module list of its own. A name
+  the table does not know is still refused, and so is a file that names one
+  tensor twice. No input changed, so saved graphs are unaffected. The idea is
+  sglang's (`f048d5aa4b`, its Kohya adapter for H3). **Not verified:** that a
+  Kohya trainer's `qkv_proj` rows are in core's order, which the stock loader
+  also assumes; no Kohya-trained H3 file has been run here.
+  `bench/check_lora_branch.py` gains the cases and their controls, and its
+  row in `docs/checks.md` says what is read and not exercised.
+
 ## 0.188.0
 
 ### Removed

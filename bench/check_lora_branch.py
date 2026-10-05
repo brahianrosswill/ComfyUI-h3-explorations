@@ -21,6 +21,15 @@ tensors of the right shape**, and each must move the output off the merge:
 Also: a key the node cannot place is refused, and a forward another node
 already patches is refused.
 
+**Key names** (2026-10-05). `native_keys` renames a Kohya-style file
+(`lora_unet_<path with underscores>.lora_down.weight`) through core's own
+table, `comfy.lora.model_lora_keys_unet`. The synthetic LoRA is re-spelled
+that way and must still equal the merge; a Kohya name for a block the model
+does not have must reach `parse_lora` unrenamed and be refused; a native file
+must come back as the same object. The stub model here is not core's
+`MiniMaxH3` class, so core's H3-only rule (the bare module path, no prefix) is
+read in `comfy/lora.py` and not exercised.
+
 **What this does NOT establish:** anything on the int8 checkpoint or the card.
 That the branch keeps what the merge loses there is
 `bench/results/2026-09-26_int8_lora_requant.json`'s measurement, and whether
@@ -44,6 +53,7 @@ import torch  # noqa: E402
 
 import comfy.cli_args  # noqa: E402
 comfy.cli_args.args.cpu = True
+import comfy.lora  # noqa: E402
 import comfy.model_patcher  # noqa: E402
 import comfy.ops  # noqa: E402
 import comfy.utils  # noqa: E402
@@ -59,7 +69,14 @@ RANK, ALPHA, STRENGTH = 4, 6.0, 0.8
 OPS = comfy.ops.mixed_precision_ops({}, torch.float32)
 
 
+class _Config:
+    """What `comfy.lora.model_lora_keys_unet` reads off a model's config."""
+    unet_config = {}
+
+
 class _Base(torch.nn.Module):
+    model_config = _Config()
+
     def __init__(self, dm):
         super().__init__()
         self.diffusion_model = dm
@@ -164,6 +181,23 @@ def branched(dm, sd, drop=()):
                 delattr(mod, attr)
             else:
                 setattr(mod, attr, old)
+
+
+def kohya_spelling(sd):
+    """`sd` as a Kohya export names it: `lora_unet_<path with underscores>`,
+    `lora_down` / `lora_up`. `diff_b` has no Kohya name and stays native, so
+    the file is mixed, which the node must also take."""
+    out = {}
+    for key, t in sd.items():
+        body = key[len("diffusion_model."):]
+        for suf, kohya in ((".lora_A.weight", ".lora_down.weight"),
+                           (".lora_B.weight", ".lora_up.weight"), (".alpha", ".alpha")):
+            if body.endswith(suf):
+                out["lora_unet_" + body[:-len(suf)].replace(".", "_") + kohya] = t
+                break
+        else:
+            out[key] = t
+    return out
 
 
 def rel(a, b):
@@ -318,6 +352,40 @@ def main() -> int:
         check("an unplaceable key is refused", False)
     except ValueError:
         check("an unplaceable key is refused", True)
+
+    # Key names: a Kohya-style file, renamed through core's table.
+    patcher = comfy.model_patcher.ModelPatcher(_Base(dm), load_device=torch.device("cpu"),
+                                               offload_device=torch.device("cpu"))
+    kohya = kohya_spelling(sd)
+    n_kohya = sum(k.startswith("lora_unet_") for k in kohya)
+    renamed = lb.native_keys(kohya, patcher)
+    # The module path becomes native; the suffix keeps its Kohya spelling,
+    # which `parse_lora` reads as it reads `lora_A` / `lora_B`.
+    want = {k.replace(".lora_A.weight", ".lora_down.weight")
+             .replace(".lora_B.weight", ".lora_up.weight"): v for k, v in sd.items()}
+    check("a Kohya-style file is renamed to the native module paths",
+          n_kohya > 0 and set(renamed) == set(want) and all(renamed[k] is want[k] for k in want),
+          f"{n_kohya} Kohya-named keys of {len(kohya)}")
+    out_kohya, _ = branched(dm, renamed)
+    check("the renamed Kohya file equals the float32 merge", rel(out_kohya, ref) < 1e-5,
+          f"relative {rel(out_kohya, ref):.3g}")
+    check("a native file passes through untouched", lb.native_keys(sd, patcher) is sd)
+    stray = dict(kohya)
+    stray["lora_unet_blocks_9_attn_qkv_proj.lora_down.weight"] = torch.zeros(RANK, HIDDEN)
+    left = lb.native_keys(stray, patcher)
+    try:
+        lb.parse_lora(left, 1.0)
+        check("control: a Kohya name for a module the model lacks is refused", False)
+    except ValueError as e:
+        check("control: a Kohya name for a module the model lacks is refused",
+              "lora_unet_blocks_9_attn_qkv_proj" in str(e), "left unrenamed, then refused by name")
+    both = dict(kohya)
+    both["diffusion_model.blocks.0.attn.qkv_proj.alpha"] = torch.tensor(ALPHA)
+    try:
+        lb.native_keys(both, patcher)
+        check("control: two names for one tensor are refused", False)
+    except ValueError:
+        check("control: two names for one tensor are refused", True)
     patcher = comfy.model_patcher.ModelPatcher(_Base(dm), load_device=torch.device("cpu"),
                                                offload_device=torch.device("cpu"))
     patcher.add_object_patch("diffusion_model.blocks.0.attn.qkv_proj.forward", lambda x: x)

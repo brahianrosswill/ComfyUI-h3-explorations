@@ -34,6 +34,14 @@ resident on a 24 GB card is about a gigabyte ComfyUI does not account for.
 `lora_down` / `lora_up`), an optional `.alpha`, and an optional `.diff_b`, under
 `diffusion_model.`. Scale is ComfyUI's: `strength * alpha / rank`, or
 `strength` with no alpha. Any other key is refused, not skipped.
+
+**Other key names** (owner, 2026-10-05). A Kohya export names a module
+`lora_unet_blocks_0_attn_qkv_proj`, and some files drop the `diffusion_model.`
+prefix. `native_keys` renames both through core's own table for the loaded
+model, so this node places exactly the names `LoraLoaderModelOnly` would and
+keeps no module list of its own. **Not verified:** that a Kohya trainer's
+`qkv_proj` rows are in core's order. The stock loader assumes the same, and no
+Kohya-trained H3 file has been run here.
 """
 
 from __future__ import annotations
@@ -43,6 +51,7 @@ import logging
 import torch
 from comfy_api.latest import io
 
+import comfy.lora
 import comfy.ops
 import comfy.utils
 import comfy.ldm.minimax.model as mm_h3
@@ -112,6 +121,40 @@ class _Branch:
         if diff_b is not None:
             flat_out.add_(diff_b)
         return out
+
+
+_SUFFIXES = _A + _B + (".alpha", ".diff_b")
+
+
+def native_keys(sd, model):
+    """`sd` with every key core's loader can place renamed under `diffusion_model.`.
+
+    `comfy.lora.model_lora_keys_unet` is the table `LoraLoaderModelOnly`
+    resolves names through, built from the loaded model's own weights: a
+    Kohya-style `lora_unet_<module path with underscores>` and, on H3, the
+    bare module path. A key whose name is in that table is renamed to the
+    weight's module path, keeping its suffix; one already under
+    `diffusion_model.` passes through; anything else is left as it is, for
+    `parse_lora` to refuse. A file that is all native costs nothing.
+    """
+    if all(k.startswith(PREFIX) for k in sd):
+        return sd
+    key_map = comfy.lora.model_lora_keys_unet(model.model, {})
+    out = {}
+    for key, t in sd.items():
+        new = key
+        if not key.startswith(PREFIX):
+            for suf in _SUFFIXES:
+                if not key.endswith(suf):
+                    continue
+                target = key_map.get(key[:-len(suf)])
+                if isinstance(target, str) and target.startswith(PREFIX) and target.endswith(".weight"):
+                    new = target[:-len(".weight")] + suf
+                break
+        if new in out:
+            raise ValueError(f"LoRA key {key} names the same tensor as another key in the file ({new})")
+        out[new] = t
+    return out
 
 
 def parse_lora(sd, strength):
@@ -363,7 +406,8 @@ class MiniMaxH3LoRABranch(io.ComfyNode):
         if not start_percent < end_percent:
             raise ValueError(f"start_percent {start_percent} must be below end_percent {end_percent}")
         path = folder_paths.get_full_path_or_raise("loras", lora_name)
-        branches = parse_lora(comfy.utils.load_torch_file(path, safe_load=True), strength)
+        sd = native_keys(comfy.utils.load_torch_file(path, safe_load=True), model)
+        branches = parse_lora(sd, strength)
         branches = select(branches, modules, parse_blocks(blocks))
         if not branches:
             raise ValueError(f"modules={modules!r}, blocks={blocks!r} keep no module of {lora_name}")
