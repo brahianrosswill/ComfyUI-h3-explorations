@@ -1,0 +1,276 @@
+#!/usr/bin/env python3
+"""Write the two indexes that are the way into `bench/`: its scripts and its records.
+
+    <python> bench/build_index.py            # rewrite both
+    <python> bench/build_index.py --check    # exit 1 when either is stale
+
+`bench/INDEX.md`
+    One row per script directly under `bench/`: its name and the first
+    sentence of its module docstring, grouped by filename prefix. The text is
+    the script's own; nothing is written here about a script. One with no
+    docstring is listed as such.
+
+`bench/results/INDEX.md`
+    One row per `.md` record directly under `bench/results/`: date, lane, the
+    record's first heading and its verdict when it states one, grouped by
+    month, newest first. The date and the lane come from the filename
+    (`2026-09-29_fasth3_overlay_size.md` is lane `fasth3`). A record may
+    override the lane and state a verdict with a line of its own near the top:
+
+        lane: distill
+        verdict: retired, one blind look
+
+    plain, or bold (`**Verdict:** ...`). No old record was edited to add
+    them. The `.json` and `.jsonl` files beside the records are data and are
+    counted per month, not listed; a subdirectory is listed by its README.
+
+Both files are generated: edit a docstring or a record's heading and run this
+again, never the index. Nothing is moved and nothing under `bench/` is
+reorganised, because a path is an identifier in this repo (`docs/checks.md`,
+the records, the changelog all cite them) and an index costs nothing to
+rebuild. The output carries no date and no commit, so `--check` is a plain
+comparison and a rebuild with nothing new changes no byte.
+
+Reads source with `ast`; imports no script. No ComfyUI, no torch, no card.
+"""
+
+from __future__ import annotations
+
+import argparse
+import ast
+import re
+import sys
+from pathlib import Path
+
+BENCH = Path(__file__).resolve().parent
+RESULTS = BENCH / "results"
+SCRIPT_INDEX = BENCH / "INDEX.md"
+RECORD_INDEX = RESULTS / "INDEX.md"
+
+# reasoned: the groups mryellow's brief of 2026-10-05 named, largest families
+# first; everything else is one alphabetical list, because a group of two or
+# three scripts is easier to find by name than by a heading.
+PREFIXES = ("check", "measure", "analyze", "grade", "compare", "build", "probe")
+
+# reasoned: long enough for any first sentence in bench/ on the day this was
+# written to fit whole; a docstring that opens with a paragraph gets cut.
+SUMMARY_LIMIT = 240
+
+# reasoned: `lane:` and `verdict:` are read only near the top, so a record
+# that quotes the words further down in prose is not misread.
+HEADER_LINES = 15
+
+DATED = re.compile(r"^(\d{4})-(\d{2})-(\d{2})_(.+)$")
+FIELD = re.compile(r"^\**(lane|verdict)\**:\**\s*(.+?)\s*$", re.I)
+
+
+# ------------------------------------------------------------------- helpers
+
+def cell(text: str) -> str:
+    """Text made safe for one markdown table cell."""
+    return " ".join(text.split()).replace("|", "\\|")
+
+
+def first_sentence(doc: str) -> str:
+    """The opening sentence of a docstring, joined across wrapped lines.
+
+    Lines of the first paragraph are taken until one ends a sentence. A
+    docstring whose first paragraph never ends one gives the whole paragraph,
+    cut at `SUMMARY_LIMIT`.
+    """
+    taken: list[str] = []
+    for line in doc.strip().split("\n\n", 1)[0].splitlines():
+        taken.append(line.strip())
+        if line.rstrip().endswith((".", "?", "!", ":", ".**", "?**")):
+            break
+    text = " ".join(t for t in taken if t)
+    if len(text) > SUMMARY_LIMIT:
+        text = text[:SUMMARY_LIMIT].rsplit(" ", 1)[0] + " ..."
+    return text
+
+
+def script_summary(path: Path) -> str:
+    if path.suffix == ".py":
+        try:
+            doc = ast.get_docstring(ast.parse(path.read_text(encoding="utf-8")))
+        except SyntaxError as exc:
+            return f"(does not parse: line {exc.lineno})"
+        return first_sentence(doc) if doc else "(no docstring)"
+    # a shell script: its first comment line after the shebang
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        if line.startswith("#!") or not line.strip():
+            continue
+        if line.startswith("#"):
+            text = line.lstrip("#").strip()
+            if text:
+                return text
+            continue
+        break
+    return "(no leading comment)"
+
+
+def group_of(name: str) -> str:
+    head = name.split("_", 1)[0]
+    return head if head in PREFIXES and "_" in name else "rest"
+
+
+# ------------------------------------------------------------ bench/INDEX.md
+
+def build_script_index() -> str:
+    scripts = sorted(p for p in BENCH.iterdir()
+                     if p.is_file() and p.suffix in (".py", ".sh"))
+    groups: dict[str, list[Path]] = {g: [] for g in (*PREFIXES, "rest")}
+    for path in scripts:
+        groups[group_of(path.name)].append(path)
+
+    out = [
+        "# bench/, by script",
+        "",
+        "Generated by `bench/build_index.py` from each script's own docstring.",
+        "Do not edit: change the docstring and run the generator, and",
+        "`bench/build_index.py --check` says whether this file is current.",
+        "`docs/checks.md` is the index of the checks with what each defends;",
+        "this file is only a way to find a script by what it says it does.",
+        "",
+        "| group | scripts |",
+        "|---|---|",
+    ]
+    titles = {g: f"`{g}_*`" for g in PREFIXES} | {"rest": "the rest"}
+    anchors = {g: g for g in PREFIXES} | {"rest": "the-rest"}
+    for g, paths in groups.items():
+        out.append(f"| [{titles[g]}](#{anchors[g]}) | {len(paths)} |")
+    out.append("")
+    for g, paths in groups.items():
+        out += [f"## {g if g != 'rest' else 'the rest'}", ""]
+        if g == "rest":
+            lib = BENCH / "_lib" / "__init__.py"
+            if lib.is_file():
+                out += ["`_lib/` is the helper package checks import "
+                        "(`bootstrap`, `needs`, `case`, `finish`); its "
+                        "docstring is the reference.", ""]
+        out += ["| script | what it says it does |", "|---|---|"]
+        for path in paths:
+            out.append(f"| [`{path.name}`]({path.name}) | {cell(script_summary(path))} |")
+        out.append("")
+    return "\n".join(out).rstrip() + "\n"
+
+
+# ---------------------------------------------------- bench/results/INDEX.md
+
+def record_fields(path: Path) -> tuple[str, dict[str, str]]:
+    """(first heading, {'lane': ..., 'verdict': ...} when the record states them)."""
+    heading, fields = "", {}
+    with path.open(encoding="utf-8", errors="replace") as fh:
+        for number, line in enumerate(fh):
+            if not heading and line.startswith("#"):
+                heading = line.lstrip("#").strip()
+            if number < HEADER_LINES and (m := FIELD.match(line.strip())):
+                # `**Verdict: not a fix.** The softened ...` states the
+                # verdict in the bold run; what follows it is the argument.
+                value = m.group(2).split("**", 1)[0].strip("* ")
+                fields.setdefault(m.group(1).lower(), value)
+            if heading and number >= HEADER_LINES:
+                break
+    return heading or "(no heading)", fields
+
+
+def build_record_index() -> str:
+    months: dict[str, list[tuple[str, str, Path, str, str]]] = {}
+    data: dict[str, int] = {}
+    undated: list[Path] = []
+    for path in sorted(RESULTS.iterdir()):
+        if not path.is_file() or path.name == RECORD_INDEX.name:
+            continue
+        m = DATED.match(path.name)
+        if not m:
+            undated.append(path)
+            continue
+        month = f"{m.group(1)}-{m.group(2)}"
+        if path.suffix != ".md":
+            data[month] = data.get(month, 0) + 1
+            continue
+        heading, fields = record_fields(path)
+        lane = fields.get("lane") or m.group(4).split("_", 1)[0].removesuffix(".md")
+        months.setdefault(month, []).append(
+            (f"{m.group(1)}-{m.group(2)}-{m.group(3)}", lane, path, heading,
+             fields.get("verdict", "")))
+
+    out = [
+        "# bench/results/, by record",
+        "",
+        "Generated by `bench/build_index.py`. Do not edit: fix the record's",
+        "heading and run the generator; `bench/build_index.py --check` says",
+        "whether this file is current.",
+        "",
+        "One row per `.md` record in this directory, newest month first. The",
+        "date and the lane are the filename's; a record that carries a",
+        "`lane:` or `verdict:` line near its top overrides the one and fills",
+        "the other, and an empty verdict cell means the record has no such",
+        "line, not that it reached none. The `.json` and `.jsonl` files beside",
+        "the records are their data and are counted, not listed. Nothing here",
+        "replaces `docs/evidence.md`, which says what the records established.",
+        "",
+    ]
+    for month in sorted(set(months) | set(data), reverse=True):
+        rows = sorted(months.get(month, []), key=lambda r: (r[0], r[2].name), reverse=True)
+        out += [f"## {month}", ""]
+        if rows:
+            out += ["| date | lane | record | verdict |", "|---|---|---|---|"]
+            for date, lane, path, heading, verdict in rows:
+                out.append(f"| {date} | {cell(lane)} | [{cell(heading)}]({path.name}) "
+                           f"| {cell(verdict)} |")
+            out.append("")
+        if data.get(month):
+            out += [f"Data files dated this month and not listed: {data[month]}.", ""]
+
+    dirs = sorted(p for p in RESULTS.iterdir()
+                  if p.is_dir() and not p.name.startswith(("_", ".")))
+    if dirs:
+        out += ["## Directories", "", "| directory | what its README says |", "|---|---|"]
+        for d in dirs:
+            readme = d / "README.md"
+            what = record_fields(readme)[0] if readme.is_file() else "(no README)"
+            link = f"{d.name}/README.md" if readme.is_file() else f"{d.name}/"
+            out.append(f"| [`{d.name}/`]({link}) | {cell(what)} |")
+        out.append("")
+    if undated:
+        out += ["## Not dated", "",
+                "Files whose name does not start with a date:", ""]
+        out += [f"- [`{p.name}`]({p.name})" for p in undated]
+        out.append("")
+    return "\n".join(out).rstrip() + "\n"
+
+
+# ---------------------------------------------------------------------- main
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
+    parser.add_argument("--check", action="store_true",
+                        help="write nothing; exit 1 when an index is stale")
+    args = parser.parse_args()
+
+    stale = []
+    for path, build in ((SCRIPT_INDEX, build_script_index),
+                        (RECORD_INDEX, build_record_index)):
+        text = build()
+        rel = path.relative_to(BENCH.parent)
+        current = path.read_text(encoding="utf-8") if path.is_file() else None
+        if current == text:
+            print(f"ok    {rel} is current")
+        elif args.check:
+            stale.append(str(rel))
+            was = set((current or "").splitlines())
+            now = set(text.splitlines())
+            print(f"FAIL  {rel} is stale: {len(now - was)} line(s) to add, "
+                  f"{len(was - now)} to drop")
+        else:
+            path.write_text(text, encoding="utf-8")
+            print(f"wrote {rel}")
+    if stale:
+        print("\nrun bench/build_index.py and commit the result")
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

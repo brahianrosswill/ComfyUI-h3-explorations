@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Emit `2026-08-18_attention_defaults.json` from the raw arm results.
 
-The data file beside this script is the record the docs link to. It is
+The data file this script writes into `bench/results/` is the record the docs
+link to. (The script lived beside it, in `bench/results/`, until 2026-10-05;
+that directory holds records only.) It is
 GENERATED rather than typed, for the reason `CLAUDE.md` gives about numbers in
 prose: a hand-copied figure is a second copy that drifts silently, and the
 whole point of this run was to stop reasoning from numbers nobody could trace
@@ -14,7 +16,7 @@ board power limit changes render times, is set outside the repo, and is
 invisible in a workflow JSON, so a timing record that does not carry it cannot
 be compared against later.
 
-    python bench/results/make_attention_defaults_json.py <results.jsonl>
+    python bench/make_attention_defaults_json.py <results.jsonl>
 """
 
 from __future__ import annotations
@@ -25,7 +27,7 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-OUT = HERE / "2026-08-18_attention_defaults.json"
+OUT = HERE / "results" / "2026-08-18_attention_defaults.json"
 
 # What each arm varied. `sol` is whether a SolAttnMiniMax node was REACHABLE
 # from an output node, which is the property that decides whether it runs --
@@ -189,7 +191,7 @@ def main():
         ],
     }
     OUT.write_text(json.dumps(payload, indent=2) + "\n")
-    print(f"wrote {OUT.relative_to(HERE.parent.parent)}  ({len(arms)} arms)")
+    print(f"wrote {OUT.relative_to(HERE.parent)}  ({len(arms)} arms)")
     for k, v in d.items():
         if isinstance(v, dict) and "value" in v:
             print(f"  {k:22} {v['value']}x   {v['from']}")

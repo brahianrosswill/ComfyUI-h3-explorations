@@ -88,7 +88,9 @@ artifact.
   record may carry a `lane:` or `verdict:` line near its top, which the
   generator reads; no old record was edited. `--check` exits 1 when either
   file is stale. Nothing gates on it: run the generator when a script or a
-  record is added.
+  record is added. `check_doc_links.py` skips the two generated files: an
+  index quotes docstrings, and a bare sibling filename in one is not a
+  broken pointer.
 
 ### Changed
 

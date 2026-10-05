@@ -67,8 +67,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
-sys.path.insert(0, str(HERE))
-sys.path.insert(0, str(HERE / "results"))   # make_attention_defaults_json.substrate
+sys.path.insert(0, str(HERE))               # make_attention_defaults_json.substrate
 
 QUERY_FIELDS = ("timestamp", "power.draw", "power.limit", "utilization.gpu",
                 "utilization.memory", "clocks.sm", "clocks.max.sm",

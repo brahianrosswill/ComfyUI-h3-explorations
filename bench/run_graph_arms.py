@@ -63,7 +63,6 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent / "workflows"))
 import prompts as _prompts  # noqa: E402  -- bank id, hash, length, canvas, seed per row
-sys.path.insert(0, str(HERE / "results"))
 
 from bench_e2e_h3 import run_once  # noqa: E402
 from make_attention_defaults_json import substrate  # noqa: E402
