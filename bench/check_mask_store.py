@@ -375,7 +375,7 @@ def check_node(problems):
         if i.id not in vm.MASK_KEY_SKIP:
             problems.append(f"{i.id} is appended after reuse_mask and would enter the kept mask's key")
     lazy = sorted(i.id for i in schema.inputs if getattr(i, "lazy", False))
-    expected_lazy = sorted(vm.LAZY_FOR_MASK + (vm.LAZY_FOR_TABLE,))
+    expected_lazy = sorted(vm.LAZY_FOR_MASK + (vm.LAZY_FOR_TABLE, vm.LAZY_FOR_PARTS))
     if lazy != expected_lazy:
         problems.append(f"the lazy inputs are {lazy}, expected {expected_lazy}; `frames` must not be lazy")
 

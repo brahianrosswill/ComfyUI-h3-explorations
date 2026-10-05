@@ -158,6 +158,9 @@ CHUNK = 48
 #: The `replace` choices. The second finds a part with core's SAM 3 detector.
 REPLACE_WHOLE = "whole subject"
 REPLACE_PART = "head and hair"
+#: The third regenerates exactly the part node's mask (`sapiens2_parts.py`, wired on `parts`),
+#: grown like any other mask; head and hair keeps its top-down rule (mrorange, 2026-10-05).
+REPLACE_PARTS = "the wired parts"
 #: The default of `grow_pixels`. The owner's choice on one clip, 2026-10-04:
 #: twice a DiT token of canvas "preserved identity better" than one, which
 #: was the first, reasoned value. One seed each.
@@ -248,6 +251,8 @@ LAZY_FOR_MASK = ("mask", "segmenter", "segmenter_clip")
 #: with it: a kept mask that carries a table spares the tracker for both, and
 #: one that carries none is a miss for a graph that wires the table, once.
 LAZY_FOR_TABLE = "shot_table"
+#: The part node's mask, lazy with the mask and read only for `the wired parts` (2026-10-05).
+LAZY_FOR_PARTS = "parts"
 
 
 def run_lengths(latent_t: int) -> list[int]:
@@ -586,6 +591,37 @@ def motion_reference(pixels: torch.Tensor, mask: torch.Tensor, mode: str, short_
     return torch.cat(out, dim=0)
 
 
+#: The preview strip: this many frames sampled evenly over the clip, each row this tall. Reasoned.
+PREVIEW_ROWS = 6
+PREVIEW_HEIGHT = 192
+
+
+def preview_strip(frames: torch.Tensor, mask: torch.Tensor, grow_pixels: int, motion: str, short_edge: int,
+                  margin: int) -> torch.Tensor:
+    """[1, H, W, 3]: sampled frames down the strip, the regenerated region tinted red on the plate, and, when a
+    motion reference is on, what the encoder is shown beside each. The dry-run review looks at this and the
+    tracker's tiles before anything samples."""
+    n = int(frames.shape[0])
+    idx = torch.linspace(0, n - 1, steps=min(PREVIEW_ROWS, n)).round().long()
+    f = frames[idx, ..., :3].to(torch.float32)
+    region = (grow(mask[idx].to(torch.float32), int(grow_pixels)) > 0.5).unsqueeze(-1).to(f.dtype)
+    red = torch.tensor([1.0, 0.0, 0.0], dtype=f.dtype, device=f.device)
+    plate = f * (1.0 - region) + (0.5 * f + 0.5 * red) * region
+    tiles = [plate]
+    ref = motion_reference(frames[idx], mask[idx], motion, short_edge, margin)
+    if ref is not None:
+        tiles.append(ref.to(f.dtype).to(f.device))
+    h = PREVIEW_HEIGHT
+    scaled = []
+    for t in tiles:
+        w = max(8, int(round(int(t.shape[2]) * h / int(t.shape[1]))))
+        scaled.append(F.interpolate(t.movedim(-1, 1), size=(h, w), mode="bilinear", align_corners=False,
+                                    antialias=True).movedim(1, -1))
+    row = torch.cat(scaled, dim=2)                                   # the plate and the reference side by side
+    strip = row.reshape(1, int(row.shape[0]) * h, int(row.shape[2]), 3)   # the sampled frames down the strip
+    return strip.clamp(0.0, 1.0)
+
+
 def window(source: dict, first_frame: int, frames: int, width: int, height: int,
            latent_t: int, lat_h: int, lat_w: int):
     """One window of a source: its fitted frames, the frames to encode, its token mask, its fitted mask, frames held.
@@ -653,6 +689,46 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                 io.Image.Input("frames", tooltip="The source video's frames at 24 fps, from its start."),
                 # lazy since 2026-10-04: not asked for when a kept mask matches (`check_lazy_status`)
                 io.Mask.Input("mask", lazy=True, tooltip="One mask per frame, 1 on the subject to replace."),
+                # appended 2026-10-04
+                io.Combo.Input("replace", options=[REPLACE_WHOLE, REPLACE_PART, REPLACE_PARTS], default=REPLACE_WHOLE,
+                               tooltip=("What is regenerated; the first of the three choices a user makes here. `whole subject` replaces the person, clothes "
+                                        "and movement included, so the prompt has to say what they do. "
+                                        "`head and hair` replaces the subject from the top of the head down "
+                                        "to where the hair ends and keeps the rest of the body, its clothes "
+                                        "and its movement; it needs `segmenter` and `segmenter_clip`, and "
+                                        "costs a detector pass per phrase on each frame the subject is in."
+                                        " `the wired parts` regenerates exactly the mask on `parts`, from the part node.")),
+                io.Mask.Input(LAZY_FOR_PARTS, optional=True, lazy=True,
+                              tooltip=("The part node's `parts` output (MiniMaxH3SubjectParts): one mask per frame, 1 on "
+                                       "the chosen parts of the subject. Read only for `the wired parts`, which "
+                                       "regenerates exactly that region; SAM is not asked for a phrase.")),
+                # appended 2026-10-05, optional so a saved graph keeps running. The
+                # defaults are the shipped render as it was; `subject only` with the
+                # VAE copy off is the arm the masking board calls route 1. Read by
+                # the song node, which builds the reference per window.
+                io.Combo.Input("motion_reference", options=[MOTION_NONE, MOTION_SUBJECT, MOTION_FRAME],
+                               default=MOTION_NONE, optional=True,
+                               tooltip=("Also show the model the original's movement, as a video reference the "
+                                        "prompt names as <Video 1>.\n\n"
+                                        "none (default): the model sees the still and the prompt only.\n\n"
+                                        "subject only: the source window with everything outside the subject "
+                                        "grey, so the model sees how the subject moves and nothing of the "
+                                        "scene.\n\n"
+                                        "whole frame: the source window as it is.\n\n"
+                                        "The prompt has to say what the video provides, for example that the "
+                                        "subject's motion and timing come from <Video 1>. Costs text-encoder "
+                                        "tokens on every window, and with motion_vae on, rows on every "
+                                        "sampling step.")),
+                io.Int.Input("motion_short_edge", default=MOTION_SHORT_EDGE, min=32, max=1024, step=32, optional=True,
+                             tooltip=("Shorter side, in pixels, of the motion reference the model is shown, "
+                                      "rounded to 32. Smaller is cheaper; raise it if the model cannot make "
+                                      "out the subject.")),
+                io.Boolean.Input("motion_vae", default=False, optional=True,
+                                 tooltip=("Off (default): the motion reference reaches the model through the "
+                                          "text encoder only, at two frames per second. Cheap.\n\n"
+                                          "On: the video model also gets its own copy, which costs rows on "
+                                          "every sampling step and may not fit the card at a long window. "
+                                          "Read the song node's report before queueing.")),
                 io.Int.Input("grow_pixels", default=GROW_PIXELS, min=0, max=512,
                              tooltip=("How far the mask is widened before it reaches the model, in pixels of "
                                       "the render canvas. Raise it when the replacement is cut off at its "
@@ -663,14 +739,6 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                              tooltip=("Width of the blend between the regenerated region and the source's "
                                       "own pixels, to each side of the boundary. Raise it if the boundary "
                                       "shows; it cannot exceed grow_pixels.")),
-                # appended 2026-10-04
-                io.Combo.Input("replace", options=[REPLACE_WHOLE, REPLACE_PART], default=REPLACE_WHOLE,
-                               tooltip=("What is regenerated. `whole subject` replaces the person, clothes "
-                                        "and movement included, so the prompt has to say what they do. "
-                                        "`head and hair` replaces the subject from the top of the head down "
-                                        "to where the hair ends and keeps the rest of the body, its clothes "
-                                        "and its movement; it needs `segmenter` and `segmenter_clip`, and "
-                                        "costs a detector pass per phrase on each frame the subject is in.")),
                 io.Boolean.Input("paint_out", default=False,
                                  tooltip=("Fill the subject in with its surroundings before the source is "
                                           "encoded, so the kept picture around the mask carries no trace of "
@@ -715,33 +783,6 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                                           "that affects the mask tracks afresh.\n\n"
                                           "Off: track every time and keep nothing. Costs the tracker, and the "
                                           "part detection for `head and hair`, on every run after a restart.")),
-                # appended 2026-10-05, optional so a saved graph keeps running. The
-                # defaults are the shipped render as it was; `subject only` with the
-                # VAE copy off is the arm the masking board calls route 1. Read by
-                # the song node, which builds the reference per window.
-                io.Combo.Input("motion_reference", options=[MOTION_NONE, MOTION_SUBJECT, MOTION_FRAME],
-                               default=MOTION_NONE, optional=True,
-                               tooltip=("Also show the model the original's movement, as a video reference the "
-                                        "prompt names as <Video 1>.\n\n"
-                                        "none (default): the model sees the still and the prompt only.\n\n"
-                                        "subject only: the source window with everything outside the subject "
-                                        "grey, so the model sees how the subject moves and nothing of the "
-                                        "scene.\n\n"
-                                        "whole frame: the source window as it is.\n\n"
-                                        "The prompt has to say what the video provides, for example that the "
-                                        "subject's motion and timing come from <Video 1>. Costs text-encoder "
-                                        "tokens on every window, and with motion_vae on, rows on every "
-                                        "sampling step.")),
-                io.Int.Input("motion_short_edge", default=MOTION_SHORT_EDGE, min=32, max=1024, step=32, optional=True,
-                             tooltip=("Shorter side, in pixels, of the motion reference the model is shown, "
-                                      "rounded to 32. Smaller is cheaper; raise it if the model cannot make "
-                                      "out the subject.")),
-                io.Boolean.Input("motion_vae", default=False, optional=True,
-                                 tooltip=("Off (default): the motion reference reaches the model through the "
-                                          "text encoder only, at two frames per second. Cheap.\n\n"
-                                          "On: the video model also gets its own copy, which costs rows on "
-                                          "every sampling step and may not fit the card at a long window. "
-                                          "Read the song node's report before queueing.")),
                 # appended 2026-10-05: the per-token late start (`START_TOP`)
                 io.Combo.Input("start_from", options=[START_NOISE, START_TOP], default=START_NOISE, optional=True,
                                tooltip=("What the new subject starts from. `noise` (default): nothing of the "
@@ -771,7 +812,11 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
             outputs=[H3MaskedSource.Output(display_name="source"),
                      io.Mask.Output(display_name="mask",
                                     tooltip=("The mask this node used, one per source frame, before grow_pixels: "
-                                             "preview it to see what will be replaced."))],
+                                             "preview it to see what will be replaced.")),
+                     io.Image.Output(display_name="preview",
+                                     tooltip=("A strip of sampled frames: the plate with the regenerated region "
+                                              "tinted red, and beside it what the text encoder is shown as the "
+                                              "motion reference when one is on. Look before rendering."))],
         )
 
     @classmethod
@@ -788,7 +833,7 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
     def check_lazy_status(cls, frames=None, replace=REPLACE_WHOLE, reuse_mask=True, **kwargs):
         # None is a connected input core has not run yet; an unconnected
         # optional input is absent. `frames` is not lazy, so it is here.
-        wanted = (LAZY_FOR_MASK if replace == REPLACE_PART else LAZY_FOR_MASK[:1]) + (LAZY_FOR_TABLE,)
+        wanted = {REPLACE_PART: LAZY_FOR_MASK, REPLACE_PARTS: (LAZY_FOR_MASK[0], LAZY_FOR_PARTS)}.get(replace, LAZY_FOR_MASK[:1]) + (LAZY_FOR_TABLE,)
         missing = [name for name in wanted if name in kwargs and kwargs[name] is None]
         if not missing:
             return []
@@ -809,15 +854,15 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                 change_threshold=CHANGE_THRESHOLD, reuse_mask=True, motion_reference=MOTION_NONE,
                 motion_short_edge=MOTION_SHORT_EDGE, motion_vae=False, start_from=START_NOISE,
                 start_top=START_TOP_SHARE, start_blur=START_BLUR, start_knots=START_KNOTS,
-                shot_table=None) -> io.NodeOutput:
+                shot_table=None, parts=None) -> io.NodeOutput:
         if frames.ndim != 4:
             raise ValueError(f"frames must be [N, H, W, C]; got {tuple(frames.shape)}")
         if int(feather_pixels) > int(grow_pixels):
             raise ValueError(
                 f"feather_pixels {int(feather_pixels)} is wider than grow_pixels {int(grow_pixels)}: the blend "
                 "would reach the subject's own pixels and bring the original back at its edge")
-        if replace not in (REPLACE_WHOLE, REPLACE_PART):
-            raise ValueError(f"unknown replace {replace!r}; one of {[REPLACE_WHOLE, REPLACE_PART]}")
+        if replace not in (REPLACE_WHOLE, REPLACE_PART, REPLACE_PARTS):
+            raise ValueError(f"unknown replace {replace!r}; one of {[REPLACE_WHOLE, REPLACE_PART, REPLACE_PARTS]}")
         if start_from not in (START_NOISE, START_TOP):
             raise ValueError(f"unknown start_from {start_from!r}; one of {[START_NOISE, START_TOP]}")
         if start_from != START_NOISE and paint_out:
@@ -851,7 +896,7 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                     "the mask kept for this video could not be read and has been removed: queue the "
                     "workflow again and it will be tracked afresh")
             mask, note = cls._settle_mask(frames, mask, replace, segmenter, segmenter_clip, part_phrases,
-                                          part_threshold, part_margin)
+                                          part_threshold, part_margin, parts)
             if key is not None:
                 seconds = mask_store.save(key, mask, table)
                 note += f", mask kept for the next run ({seconds:.0f} s to write)"
@@ -871,11 +916,13 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                               "start_from": start_from, "start_top": float(start_top),
                               "start_blur": int(start_blur), "start_knots": int(start_knots),
                               "shot_table": table},
-                             mask.to(torch.float32))
+                             mask.to(torch.float32),
+                             preview_strip(frames, mask, int(grow_pixels), motion_reference,
+                                           int(motion_short_edge), int(grow_pixels) // 2))
 
     @classmethod
     def _settle_mask(cls, frames, mask, replace, segmenter, segmenter_clip, part_phrases, part_threshold,
-                     part_margin):
+                     part_margin, parts=None):
         """The mask this node uses, from the tracked one: checked against the frames, and cut to the part for
         `head and hair`. Returns it with what the log line says about it."""
         if mask.ndim == 4 and int(mask.shape[-1]) == 1:
@@ -915,5 +962,33 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                 region[where] = above(subject, bottoms)
             note = (f", from {list(phrases)} at threshold {float(part_threshold):g}, found on {int(where.numel()) - carried} of the {int(where.numel())} "
                     f"frames the subject is in" + (f" and carried from the nearest frame on {carried}" if carried else ""))
+            mask = region
+        elif replace == REPLACE_PARTS:
+            if parts is None:
+                raise ValueError(
+                    f"replace `{replace}` regenerates the part node's mask: wire MiniMaxH3SubjectParts' `parts` "
+                    "output into `parts`, or set `replace` to head and hair for the SAM phrase path")
+            if parts.ndim == 4 and int(parts.shape[-1]) == 1:
+                parts = parts[..., 0]
+            if tuple(parts.shape) != tuple(mask.shape):
+                raise ValueError(
+                    f"`parts` is {tuple(parts.shape)} and the mask {tuple(mask.shape)}: the part node must run "
+                    "on the same frames and the same subject mask this node takes")
+            where = (mask > 0.5).flatten(1).any(dim=1).nonzero().flatten()
+            region = torch.zeros_like(mask, dtype=torch.float32)
+            found_on = 0
+            if where.numel():
+                subject = mask[where].to(torch.float32)
+                # the part node already cut its mask to the subject widened by its own margin;
+                # cutting again here only guards a part node run on another subject
+                part = select_part(subject, parts[where].to(mask.device).to(torch.float32), int(part_margin))
+                found_on = int((part > 0.5).flatten(1).any(dim=1).sum())
+                if not found_on:
+                    raise ValueError(
+                        "`parts` is empty on every frame the subject is in: tick a part on the part node, "
+                        "or set `replace` to whole subject")
+                region[where] = part
+            note = (f", from the wired parts, present on {found_on} of the {int(where.numel())} frames the "
+                    "subject is in")
             mask = region
         return mask, note

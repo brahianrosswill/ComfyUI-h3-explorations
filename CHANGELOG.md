@@ -4,6 +4,30 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.196.3
+
+### Added
+
+- **The Masked Source takes the part node's mask**: a third `replace` choice,
+  `the wired parts`, regenerates exactly the mask on a new lazy `parts` input
+  (MiniMaxH3SubjectParts' output), kept to the subject and grown like any
+  other mask; `head and hair` keeps its top-down rule. It asks lazily for the
+  mask and the parts only, and refuses an unwired or empty part mask. Agreed
+  with mrorange on 2026-10-05; the card is the board's part menu.
+- **A `preview` output on the Masked Source**: a strip of sampled frames with
+  the regenerated region tinted red on the plate and, when a motion
+  reference is on, what the text encoder is shown beside each. For the dry
+  run that reviews a clip before anything samples.
+
+### Changed
+
+- The Masked Source's inputs are ordered by what a user decides: `replace`,
+  `parts` and the motion reference first, every other input below with its
+  name, default and tooltip unchanged (owner, 2026-10-05: three decisions
+  first). `bench/check_video_mask.py` and `bench/check_mask_store.py` cover
+  the new choice, the strip and the lazy set; the node manifest is written.
+  No shipped graph changes.
+
 ## 0.196.2
 
 ### Docs

@@ -289,9 +289,13 @@
     "inputs": [
       "frames",
       "mask",
+      "replace",
+      "parts",
+      "motion_reference",
+      "motion_short_edge",
+      "motion_vae",
       "grow_pixels",
       "feather_pixels",
-      "replace",
       "paint_out",
       "segmenter",
       "segmenter_clip",
@@ -301,9 +305,6 @@
       "composite",
       "change_threshold",
       "reuse_mask",
-      "motion_reference",
-      "motion_short_edge",
-      "motion_vae",
       "start_from",
       "start_top",
       "start_blur",
@@ -313,7 +314,8 @@
     "node_id": "MiniMaxH3MaskedSource",
     "outputs": [
       "source",
-      "mask"
+      "mask",
+      "preview"
     ]
   },
   "MiniMaxH3OverlayLoader": {

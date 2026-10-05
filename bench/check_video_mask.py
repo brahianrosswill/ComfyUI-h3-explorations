@@ -42,7 +42,11 @@ that could happen.
    takes the nearest found frame's row and is counted (`carry_missing`); with
    nothing found anywhere nothing is invented. The node refuses a part with
    no segmenter wired, an empty phrase list and an unknown choice, and its
-   second output is the mask it used.
+   second output is the mask it used. Its third is the preview strip: sampled
+   frames with the region tinted, the motion reference beside them when on.
+   `the wired parts` (2026-10-05) regenerates exactly the part node's mask on
+   `parts`, kept to the subject, asks for nothing else lazily, and refuses an
+   unwired or empty one.
 9. **`only what changed` keeps a subject and restores the margin.** With a
    render that equals the source except where the new subject is, the weight
    is 1 on the new subject and on every old-subject pixel inside the
@@ -323,8 +327,38 @@ def check_part(problems):
             pass
     out = vm.MiniMaxH3MaskedSource.execute(torch.zeros(2, 8, 8, 3), torch.ones(2, 8, 8))
     out = getattr(out, "args", out)
-    if len(out) != 2 or not torch.equal(out[1], out[0]["mask"].to(torch.float32)):
+    if len(out) != 3 or not torch.equal(out[1], out[0]["mask"].to(torch.float32)):
         problems.append("the node's second output is not the mask it used")
+    strip = out[2]
+    if tuple(strip.shape) != (1, min(vm.PREVIEW_ROWS, 2) * vm.PREVIEW_HEIGHT, vm.PREVIEW_HEIGHT, 3):
+        problems.append(f"the preview strip of two 8x8 frames should be [1, 2*{vm.PREVIEW_HEIGHT}, {vm.PREVIEW_HEIGHT}, 3], got {tuple(strip.shape)}")
+    frames = torch.zeros(3, 16, 16, 3)
+    subject = torch.zeros(3, 16, 16); subject[:, 2:14, 4:12] = 1.0
+    with_ref = vm.MiniMaxH3MaskedSource.execute(frames, subject, motion_reference=vm.MOTION_SUBJECT, motion_short_edge=32)
+    with_ref = getattr(with_ref, "args", with_ref)
+    if int(with_ref[2].shape[2]) <= int(strip.shape[2]) * 0 + vm.PREVIEW_HEIGHT:
+        problems.append("with a motion reference on, the preview strip must show the reference beside the plate")
+    # the wired parts: exactly the part node's mask, kept to the subject
+    parts = torch.zeros(3, 16, 16); parts[:, 4:8, 6:10] = 1.0; parts[:, 0:2, 0:2] = 1.0   # a part on him and a blob off him
+    out_parts = vm.MiniMaxH3MaskedSource.execute(frames, subject, replace=vm.REPLACE_PARTS, parts=parts, part_margin=0)
+    out_parts = getattr(out_parts, "args", out_parts)
+    region = out_parts[0]["mask"]
+    if not bool((region[:, 4:8, 6:10] > 0.5).all()) or bool((region[:, 0:2, 0:2] > 0.5).any()) or bool((region[:, 10:14] > 0.5).any()):
+        problems.append("`the wired parts` must regenerate the part where it lies on the subject and nothing else")
+    try:
+        vm.MiniMaxH3MaskedSource.execute(frames, subject, replace=vm.REPLACE_PARTS)
+        problems.append("`the wired parts` with nothing on `parts` was accepted")
+    except ValueError:
+        pass
+    try:
+        vm.MiniMaxH3MaskedSource.execute(frames, subject, replace=vm.REPLACE_PARTS, parts=torch.zeros(3, 16, 16))
+        problems.append("`the wired parts` with an empty part mask was accepted")
+    except ValueError:
+        pass
+    asked = vm.MiniMaxH3MaskedSource.check_lazy_status(frames=frames, replace=vm.REPLACE_PARTS, reuse_mask=False,
+                                                       mask=None, parts=None, segmenter=None, segmenter_clip=None, shot_table=None)
+    if sorted(asked) != sorted(["mask", vm.LAZY_FOR_PARTS, vm.LAZY_FOR_TABLE]):
+        problems.append(f"`the wired parts` must ask lazily for the mask, the parts and the table only, not {asked}")
 
 
 def check_changed_alpha(problems):
