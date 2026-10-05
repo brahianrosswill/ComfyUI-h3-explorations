@@ -17,6 +17,13 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-05
 
+- **The generated indexes list tracked files only, and the sweep holds them
+  current** (owner, 2026-10-05: "do not index anything that isnt git
+  tracked"; 0.190.18). `bench/build_index.py` reads `git ls-files` and
+  nothing else. It used to list what was on disk under `bench/`, so an
+  untracked script appeared in `bench/INDEX.md`. The changelog's 0.189.8
+  entry said nothing gated the generator's `--check`;
+  `bench/check_doc_inventory.py` now runs it.
 - **A masking note said the VOID passes were only in the upstream repo**
   (`docs/research/masking/2026-10-04_mrhf.md`, "VOID for the plate with
   nobody in it": the Comfy-Org repackage "holds only" the T5 encoder, the VAE

@@ -44,6 +44,7 @@ from __future__ import annotations
 import glob
 import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -149,6 +150,20 @@ def main() -> int:
         print(f"\n{len(errs)} inventory error(s). The index is the repo's answer to what it")
         print("checks; a check missing from it is invisible and a row naming a gone file lies.")
         return 1
+    # The generated indexes (owner, 2026-10-05: `--check` holds them current).
+    # They are indexes in the same sense as the table above: a tracked file
+    # with no line is invisible to whoever reads the index. The generator
+    # decides what current means; this only asks it.
+    stale = subprocess.run([sys.executable, str(REPO / "bench" / "build_index.py"), "--check"],
+                           capture_output=True, text=True)
+    if stale.returncode != 0:
+        for line in (stale.stdout + stale.stderr).splitlines():
+            if line.startswith("FAIL"):
+                print(f"  {line}")
+        print("\na generated index is stale or links an untracked file. Run "
+              "bench/build_index.py, `git add` a new index, and commit the result.")
+        return 1
+    print("  ok    the generated indexes are current (bench/build_index.py --check)")
     live = sum(1 for r in index_section(md)
                if (m := _ROW_SUBJECT.match(r)) and not m.group("struck"))
     retired = sum(1 for r in index_section(md)

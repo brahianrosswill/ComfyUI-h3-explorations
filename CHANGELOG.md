@@ -4,6 +4,45 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.190.18
+
+### Added
+
+- **`INDEX.md` at the repo root**: the pack's modules, each with the node
+  ids it defines and the first sentence of its docstring, grouped by
+  filename prefix; the root's other files; every top-level directory with
+  where its index is; and a listing for each directory small enough not to
+  need its own (`.claude/`, `archive/`, `assets/`, `sparse_tables/`,
+  `standalone/`, `vendor/`, `vendor_config/`, `vendor_guides/`).
+- **`workflows/INDEX.md`**: every graph by directory, with the generator's
+  own note for it (`build_workflows.py --dump-graphs`, 0.190.17) and the
+  chain read off the graph: checkpoint, LoRAs, and which of this pack's
+  nodes it wires. Five graphs written outside the generator's list have a
+  chain and no note.
+- `bench/INDEX.md` gains the arm manifests, each by its own `what` line,
+  and the subfolders.
+
+### Changed
+
+- **`bench/build_index.py` reads `git ls-files` and nothing else** (owner,
+  2026-10-05: "do not index anything that isnt git tracked"). It listed
+  what was on disk. An untracked tree cannot appear in an index now, and
+  there is no exclusion list. A new file enters its index when it is added
+  to git and the generator is run. `--check` also fails on an index that
+  is itself untracked or that links an untracked path.
+- **The sweep holds the indexes current.** `check_doc_inventory.py` runs
+  the generator's `--check`; 0.189.8 said nothing gated it. No stale index
+  had escaped: the two committed ones listed every tracked script and
+  record when this was added.
+- `check_doc_links.py` skips a generated index by the line each one opens
+  with, in place of a list of two paths.
+
+### Docs
+
+- `docs/wiki/index.md`, "Code and directories": rows for the four indexes.
+  `docs/checks.md`: the `check_doc_inventory.py` row.
+  `docs/wiki/decisions.md`: what changed and what the prose said.
+
 ## 0.190.17
 
 - `workflows/build_workflows.py --dump-graphs`: a JSON map of each shipped
