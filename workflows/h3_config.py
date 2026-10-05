@@ -1239,9 +1239,13 @@ SUBJECT_TRACK = dict(subject_phrase="person", pick="largest", pick_on="automatic
 #: judged worse. `reuse_mask` on keeps the finished mask across runs
 #: (`mask_store.py`); a kept mask is the tracked one's bytes, so it changes
 #: how long a run takes and not what it renders.
+#: `motion_reference` and its two settings (2026-10-05) are the shipped render
+#: as it was: no motion reference. `subject only` with `motion_vae` off is the
+#: masking board's route 1, rendered as an arm before any default moves.
 MASKED_SOURCE = dict(grow_pixels=64, feather_pixels=8, replace="whole subject", paint_out=False,
                      part_phrases="hair, head", part_threshold=0.5, part_margin=8,
-                     composite="only what changed", change_threshold=0.05, reuse_mask=True)
+                     composite="only what changed", change_threshold=0.05, reuse_mask=True,
+                     motion_reference="none", motion_short_edge=384, motion_vae=False)
 
 # ---- FastH3 8-step V2 ------------------------------------------------------------
 #: **Inherited** from ComfyUI's own template, Comfy-Org/workflow_templates

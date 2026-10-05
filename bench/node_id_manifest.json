@@ -300,7 +300,10 @@
       "part_margin",
       "composite",
       "change_threshold",
-      "reuse_mask"
+      "reuse_mask",
+      "motion_reference",
+      "motion_short_edge",
+      "motion_vae"
     ],
     "node_id": "MiniMaxH3MaskedSource",
     "outputs": [

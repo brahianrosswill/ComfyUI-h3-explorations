@@ -4,6 +4,42 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.190.7
+
+### Added
+
+- **The Masked Source can show the model the original's movement as a video
+  reference** (`motion_reference`, `motion_short_edge`, `motion_vae`,
+  appended last and optional, defaults the shipped render as it was). The
+  per-token mechanism carries no movement, and every way of putting the
+  source into the target rows brought the original's look with its pose
+  (`bench/results/2026-10-04_masked_v2v_turn_soft_arms.md`); the channel the
+  model was trained to take motion from is a reference video. `subject
+  only` is the source window with everything outside the subject grey,
+  `whole frame` the window as it is, scaled to the short edge asked (core
+  never enlarges a video, so this sets the cost); `motion_vae` off is the
+  encoder-only form (two frames per second, a few thousand text tokens per
+  window), on gives the video model its own copy. The song node builds it
+  per window from the source it already holds (`video_mask.window_frames`,
+  `video_mask.motion_reference`) and appends it to the reference chain, so
+  nothing is wired and no copy of the clip is kept; its report names the
+  label the prompt must use. The window's conditioning key carries the
+  window number when a motion reference is on. The masking board's route 1
+  is this at `subject only` with the VAE copy off, rendered as an arm before
+  any default moves (`docs/research/masking/2026-10-05_mryellow.md`).
+- `h3_config.MASKED_SOURCE` carries the three new keys and the shipped
+  masked graph is rebuilt with them at their defaults (`--no-validate`: no
+  server was up; the live validation runs before the first arm render).
+  `bench/check_video_mask.py` gains a case for the reference's three forms,
+  the margin, the short edge and the kept-mask key; `bench/check_mask_store.py`
+  now pins `reuse_mask` as optional and on, and every input appended after
+  it as optional and outside the key, rather than as the last input. The
+  node-id manifest records the appended inputs. Full sweep before this
+  commit: green with no red beyond the baseline.
+- Not done: a prompt for the arm (the generic masked prompt with the motion
+  relationship on `<Video 1>`), the arm manifest, and the static label check
+  on a shipped graph that turns this on; none ships yet.
+
 ## 0.190.6
 
 ### Docs

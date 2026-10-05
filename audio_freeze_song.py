@@ -57,7 +57,13 @@ latent, which core's inpaint step then treats as the clean plate
 core's own sampler classes with a stub model, and found that restoring the
 plate in the pinned rows between the two samplers fixes it; neither has run
 on H3. A window in which nothing is masked is not sampled: every row would be
-pinned and the pass would return the source.
+pinned and the pass would return the source. **A motion reference** (the
+Masked Source's `motion_reference`, 2026-10-05) is built here per window from
+the source's own frames and appended to the reference chain as a video, with
+or without the video model's copy, so the model is shown the original's
+movement through the channel it was trained to take motion from; the window's
+conditioning key then carries the window number, since each window's
+reference differs (`video_mask.motion_reference` says what the reference is).
 
 **Sampling** is what SamplerCustomAdvanced does, per window: a BasicGuider on
 the model with the window's conditioning, prepared noise at `seed + i`, the
@@ -104,7 +110,8 @@ from .conditioning import MiniMaxH3Conditioning
 from . import loop_plan, loop_resume
 from .prompt_lists import H3PromptLists, fill_windows
 from .loop_output import CLEAN_OUTPUT_ARGS, join_and_mux, saved_outputs, window_dir, write_metadata_png
-from .reference_conditioning import H3References, MiniMaxH3ReferenceConditioning
+from .reference_conditioning import H3References, MiniMaxH3ReferenceConditioning, RuntimeVideoReference, _order_records
+from .reference_order import assign_labels
 from . import video_mask
 
 logger = logging.getLogger(__name__)
@@ -352,19 +359,40 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
             enc = getattr(enc, "args", enc)
             track_latent = enc[0]
             reports.append(enc[1])
+            # A motion reference is built per window from the source (`video_mask.motion_reference`):
+            # the window's own frames, so its key carries the window number.
+            motion = source.get("motion_reference", video_mask.MOTION_NONE) if source is not None else video_mask.MOTION_NONE
+            motion_label = None
             for w in windows[first:]:
-                ck = (w.text, w.frames if references is not None else None)
+                with_refs = references is not None or motion != video_mask.MOTION_NONE
+                ck = (w.text, w.frames if with_refs else None, w.number if motion != video_mask.MOTION_NONE else None)
                 cond_keys[w.number] = ck
                 if ck in conds:
                     continue
                 comfy.model_management.throw_exception_if_processing_interrupted()
-                if references is None:
+                refs_w = references
+                if motion != video_mask.MOTION_NONE:
+                    pixels, mask, _held = video_mask.window_frames(
+                        source, int(round(w.start * FPS)), w.frames, width, height)
+                    ref_frames = video_mask.motion_reference(
+                        pixels, mask, motion, int(source["motion_short_edge"]), int(source["grow_pixels"]) // 2)
+                    del pixels, mask
+                    refs_w = tuple(references or ()) + (RuntimeVideoReference(
+                        frames=ref_frames, loaded_fps=float(FPS), soundtrack=None,
+                        use_vae=bool(source.get("motion_vae", False))),)
+                    motion_label = assign_labels(_order_records(refs_w))[-1]
+                if refs_w is None:
                     out = MiniMaxH3Conditioning.execute(clip, vae, w.text, width, height, w.frames,
                                                         canvas="explicit")
                 else:
-                    out = MiniMaxH3ReferenceConditioning.execute(clip, references, w.text, width, height,
-                                                                w.frames, vae=vae, audio_vae=audio_vae)
+                    out = MiniMaxH3ReferenceConditioning.execute(clip, refs_w, w.text, width, height,
+                                                                 w.frames, vae=vae, audio_vae=audio_vae)
                 conds[ck] = getattr(out, "args", out)[0]
+                del refs_w
+            if motion != video_mask.MOTION_NONE and first < n_windows:
+                reports.append(f"motion reference: {motion} at a {int(source['motion_short_edge'])} short edge, "
+                               + ("with the video model's copy" if source.get("motion_vae") else "text encoder only")
+                               + f", named {motion_label} in the prompt, built per window from the source")
         reports.append((f"reused windows 1-{first} of {n_windows}" if first else "no stored window reused")
                        + (f"; {len(conds)} conditioning(s) encoded for {n_windows - first} rendered window(s)"
                           if first < n_windows else "; nothing rendered")

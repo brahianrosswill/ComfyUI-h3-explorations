@@ -92,6 +92,21 @@ original's trace in the kept tokens also tells the model where the subject
 is and how big, and a hole smaller than the original's hair leaves a fringe
 the model continues as dark lines.
 
+**A motion reference** (`motion_reference`, 2026-10-05). The per-token
+mechanism carries no movement: the replaced subject faces the camera while
+the original turns, and every way of putting the source into the target rows
+(a late start, plain or softened) brought the original's look with its pose
+(`bench/results/2026-10-04_masked_v2v_turn_soft_arms.md`). The channel the
+model was trained to take motion from is a video reference, so this node can
+ask the song node to show each window to the model as `<Video 1>` as well:
+the subject alone on grey, or the whole window, at a short edge that sets its
+cost, with or without the video model's copy (`motion_vae`; off is the
+encoder-only form, a few thousand text tokens per window). The song node
+builds it per window from the source it already holds (`window_frames`,
+`motion_reference`), so nothing is wired and no copy of the clip is kept. The
+prompt names the relationship, never the action: the masking board's route
+1, `docs/research/masking/2026-10-05_mryellow.md` section 7.
+
 **The mask is kept across runs** (`reuse_mask`; owner, 2026-10-04: "save the
 mask"). Tracking the subject, and finding the part for `head and hair`, cost
 more than a window of sampling after every restart, and a clip's mask does
@@ -170,7 +185,23 @@ PART_THRESHOLD = 0.5
 #: kept mask is found by (`mask_store.mask_key`). Reasoned, from `execute`: the
 #: mask is final before any of these is read. `bench/check_mask_store.py`
 #: holds both directions.
-MASK_KEY_SKIP = ("grow_pixels", "feather_pixels", "paint_out", "composite", "change_threshold", "reuse_mask")
+MASK_KEY_SKIP = ("grow_pixels", "feather_pixels", "paint_out", "composite", "change_threshold", "reuse_mask",
+                 "motion_reference", "motion_short_edge", "motion_vae")
+#: `motion_reference` choices: what of the source window, if anything, the
+#: song node appends to the reference chain as a video, so the model is shown
+#: the original's movement through the channel it was trained to take motion
+#: from (`docs/research/masking/2026-10-05_mryellow.md`, section 2, route A).
+#: Nothing in the per-token-timestep mechanism carries movement: the arms of
+#: 2026-10-04 showed that whatever enters the target rows brings its look.
+MOTION_NONE = "none"
+MOTION_SUBJECT = "subject only"
+MOTION_FRAME = "whole frame"
+#: Shorter side of that reference, in pixels. Reasoned, 2026-10-05: core never
+#: enlarges a reference video, so this sets its pixel area; with the VAE copy
+#: on, a 384 short edge costs a quarter of the 768 canvas's rows
+#: (`docs/h3_references.md`, "Budget by pixel area"). Encoder-only, it sets
+#: how much the text encoder sees of the subject at two frames per second.
+MOTION_SHORT_EDGE = 384
 #: The inputs core is asked for only when no kept mask matches.
 LAZY_FOR_MASK = ("mask", "segmenter", "segmenter_clip")
 
@@ -398,6 +429,61 @@ def above(subject: torch.Tensor, bottoms: torch.Tensor) -> torch.Tensor:
     return ((subject > 0.5) & (rows <= bottoms[:, None, None])).to(torch.float32)
 
 
+def window_frames(source: dict, first_frame: int, frames: int, width: int, height: int):
+    """One window of a source on the render canvas: its fitted frames, its fitted mask, frames held.
+
+    The source can run out inside a loop's last window: the missing frames
+    repeat the last one with nothing masked (`window` says why). A window that
+    starts past the source's end is refused.
+    """
+    have = int(source["frames"].shape[0])
+    first_frame, frames = int(first_frame), int(frames)
+    if first_frame >= have:
+        raise ValueError(
+            f"the source video has {have} frames and this window starts at frame {first_frame}: "
+            "load more of it (the loader's frame cap), or shorten the run")
+    pixels = fit_frames(source["frames"][first_frame:first_frame + frames], width, height)
+    mask = fit_mask(source["mask"][first_frame:first_frame + frames], width, height)
+    short = frames - int(pixels.shape[0])
+    if short > 0:
+        pixels = torch.cat([pixels, pixels[-1:].expand(short, -1, -1, -1)], dim=0)
+        mask = torch.cat([mask, torch.zeros((short,) + tuple(mask.shape[1:]), dtype=mask.dtype, device=mask.device)], dim=0)
+    return pixels, mask, short
+
+
+def motion_reference(pixels: torch.Tensor, mask: torch.Tensor, mode: str, short_edge: int, margin: int):
+    """The window as the model is shown it as a video reference, [F, h, w, 3], or None for `none`.
+
+    `subject only` keeps the pixels under the mask widened by `margin` and sets
+    the rest to mid grey, so the reference carries how the subject moves and
+    nothing of the scene the kept rows already hold. `whole frame` keeps the
+    window as it is. Either is scaled so its shorter side is `short_edge`,
+    rounded to the canvas multiple with the aspect kept; the reference
+    compiler never enlarges a video, so this is what sets its cost.
+    """
+    if mode == MOTION_NONE:
+        return None
+    if mode not in (MOTION_SUBJECT, MOTION_FRAME):
+        raise ValueError(f"unknown motion_reference {mode!r}; one of {[MOTION_NONE, MOTION_SUBJECT, MOTION_FRAME]}")
+    from comfy_extras.nodes_minimax_h3 import CANVAS_MULTIPLE  # core's constant; imported here so a check needs no server
+    n, h, w = int(pixels.shape[0]), int(pixels.shape[1]), int(pixels.shape[2])
+    scale = float(short_edge) / float(min(h, w))
+    th = max(CANVAS_MULTIPLE, int(round(h * scale / CANVAS_MULTIPLE)) * CANVAS_MULTIPLE)
+    tw = max(CANVAS_MULTIPLE, int(round(w * scale / CANVAS_MULTIPLE)) * CANVAS_MULTIPLE)
+    keep = grow(mask.to(torch.float32), int(margin)) if mode == MOTION_SUBJECT else None
+    out = []
+    for i in range(0, n, CHUNK):
+        chunk = pixels[i:i + CHUNK, ..., :3].to(torch.float32)
+        if keep is not None:
+            m = (keep[i:i + CHUNK] > 0.5).to(chunk.dtype).unsqueeze(-1)
+            chunk = chunk * m + 0.5 * (1.0 - m)
+        if (th, tw) != (h, w):
+            chunk = F.interpolate(chunk.movedim(-1, 1), size=(th, tw), mode="bilinear",
+                                  align_corners=False, antialias=True).movedim(1, -1)
+        out.append(chunk.clamp(0.0, 1.0))
+    return torch.cat(out, dim=0)
+
+
 def window(source: dict, first_frame: int, frames: int, width: int, height: int,
            latent_t: int, lat_h: int, lat_w: int):
     """One window of a source: its fitted frames, the frames to encode, its token mask, its fitted mask, frames held.
@@ -415,18 +501,7 @@ def window(source: dict, first_frame: int, frames: int, width: int, height: int,
     A window that starts past the source's end is refused; that is a source
     that does not belong to this track.
     """
-    have = int(source["frames"].shape[0])
-    first_frame, frames = int(first_frame), int(frames)
-    if first_frame >= have:
-        raise ValueError(
-            f"the source video has {have} frames and this window starts at frame {first_frame}: "
-            "load more of it (the loader's frame cap), or shorten the run")
-    pixels = fit_frames(source["frames"][first_frame:first_frame + frames], width, height)
-    mask = fit_mask(source["mask"][first_frame:first_frame + frames], width, height)
-    short = frames - int(pixels.shape[0])
-    if short > 0:
-        pixels = torch.cat([pixels, pixels[-1:].expand(short, -1, -1, -1)], dim=0)
-        mask = torch.cat([mask, torch.zeros((short,) + tuple(mask.shape[1:]), dtype=mask.dtype, device=mask.device)], dim=0)
+    pixels, mask, short = window_frames(source, first_frame, frames, width, height)
     tokens = token_mask(grow(mask, source["grow_pixels"]), latent_t, lat_h, lat_w)
     encode = pixels
     if source.get("paint_out"):
@@ -535,6 +610,33 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                                           "that affects the mask tracks afresh.\n\n"
                                           "Off: track every time and keep nothing. Costs the tracker, and the "
                                           "part detection for `head and hair`, on every run after a restart.")),
+                # appended 2026-10-05, optional so a saved graph keeps running. The
+                # defaults are the shipped render as it was; `subject only` with the
+                # VAE copy off is the arm the masking board calls route 1. Read by
+                # the song node, which builds the reference per window.
+                io.Combo.Input("motion_reference", options=[MOTION_NONE, MOTION_SUBJECT, MOTION_FRAME],
+                               default=MOTION_NONE, optional=True,
+                               tooltip=("Also show the model the original's movement, as a video reference the "
+                                        "prompt names as <Video 1>.\n\n"
+                                        "none (default): the model sees the still and the prompt only.\n\n"
+                                        "subject only: the source window with everything outside the subject "
+                                        "grey, so the model sees how the subject moves and nothing of the "
+                                        "scene.\n\n"
+                                        "whole frame: the source window as it is.\n\n"
+                                        "The prompt has to say what the video provides, for example that the "
+                                        "subject's motion and timing come from <Video 1>. Costs text-encoder "
+                                        "tokens on every window, and with motion_vae on, rows on every "
+                                        "sampling step.")),
+                io.Int.Input("motion_short_edge", default=MOTION_SHORT_EDGE, min=32, max=1024, step=32, optional=True,
+                             tooltip=("Shorter side, in pixels, of the motion reference the model is shown, "
+                                      "rounded to 32. Smaller is cheaper; raise it if the model cannot make "
+                                      "out the subject.")),
+                io.Boolean.Input("motion_vae", default=False, optional=True,
+                                 tooltip=("Off (default): the motion reference reaches the model through the "
+                                          "text encoder only, at two frames per second. Cheap.\n\n"
+                                          "On: the video model also gets its own copy, which costs rows on "
+                                          "every sampling step and may not fit the card at a long window. "
+                                          "Read the song node's report before queueing.")),
             ],
             hidden=[io.Hidden.prompt, io.Hidden.unique_id],
             outputs=[H3MaskedSource.Output(display_name="source"),
@@ -574,7 +676,8 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
     def execute(cls, frames, mask, grow_pixels=GROW_PIXELS, feather_pixels=8, replace=REPLACE_WHOLE, paint_out=False,
                 segmenter=None, segmenter_clip=None, part_phrases=PART_PHRASES,
                 part_threshold=PART_THRESHOLD, part_margin=PART_MARGIN, composite=COMPOSITE_CHANGED,
-                change_threshold=CHANGE_THRESHOLD, reuse_mask=True) -> io.NodeOutput:
+                change_threshold=CHANGE_THRESHOLD, reuse_mask=True, motion_reference=MOTION_NONE,
+                motion_short_edge=MOTION_SHORT_EDGE, motion_vae=False) -> io.NodeOutput:
         if frames.ndim != 4:
             raise ValueError(f"frames must be [N, H, W, C]; got {tuple(frames.shape)}")
         if int(feather_pixels) > int(grow_pixels):
@@ -585,6 +688,8 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
             raise ValueError(f"unknown replace {replace!r}; one of {[REPLACE_WHOLE, REPLACE_PART]}")
         if composite not in (COMPOSITE_REGION, COMPOSITE_CHANGED):
             raise ValueError(f"unknown composite {composite!r}; one of {[COMPOSITE_REGION, COMPOSITE_CHANGED]}")
+        if motion_reference not in (MOTION_NONE, MOTION_SUBJECT, MOTION_FRAME):
+            raise ValueError(f"unknown motion_reference {motion_reference!r}; one of {[MOTION_NONE, MOTION_SUBJECT, MOTION_FRAME]}")
         key = cls._mask_key(frames, reuse_mask)
         kept = None
         if key is not None:
@@ -608,9 +713,14 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                     "frame over the clip, grow %d px, feather %d px%s, composite keeps the %s", int(frames.shape[0]),
                     replace, note, 100.0 * covered, int(grow_pixels), int(feather_pixels),
                     ", subject painted out before the encode" if paint_out else "", composite)
+        if motion_reference != MOTION_NONE:
+            logger.info("[h3] MiniMaxH3MaskedSource: motion reference %s at a %d short edge, %s", motion_reference,
+                        int(motion_short_edge), "with the video model's copy" if motion_vae else "text encoder only")
         return io.NodeOutput({"frames": frames, "mask": mask, "grow_pixels": int(grow_pixels),
                               "feather_pixels": int(feather_pixels), "paint_out": bool(paint_out),
-                              "composite": composite, "change_threshold": float(change_threshold)},
+                              "composite": composite, "change_threshold": float(change_threshold),
+                              "motion_reference": motion_reference, "motion_short_edge": int(motion_short_edge),
+                              "motion_vae": bool(motion_vae)},
                              mask.to(torch.float32))
 
     @classmethod

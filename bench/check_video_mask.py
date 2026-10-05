@@ -372,6 +372,41 @@ def check_changed_alpha(problems):
         pass
 
 
+def check_motion_reference(problems):
+    """`motion_reference`: `none` is None; `subject only` keeps the subject (widened by the margin) and greys the
+    rest; `whole frame` keeps everything; the short edge is honoured and rounded to the canvas multiple."""
+    vm = _load()
+    torch.manual_seed(0)
+    pixels = torch.rand(4, 64, 96, 3)
+    mask = torch.zeros(4, 64, 96)
+    mask[:, 16:48, 32:64] = 1.0
+    if vm.motion_reference(pixels, mask, vm.MOTION_NONE, 64, 0) is not None:
+        _fail(problems, "motion_reference: `none` must return None")
+    whole = vm.motion_reference(pixels, mask, vm.MOTION_FRAME, 64, 0)
+    if whole is None or tuple(whole.shape) != (4, 64, 96, 3) or not torch.allclose(whole, pixels, atol=1e-6):
+        _fail(problems, "motion_reference: `whole frame` at the source's own short edge must be the frames unchanged")
+    subject = vm.motion_reference(pixels, mask, vm.MOTION_SUBJECT, 64, 0)
+    inside = subject[:, 16:48, 32:64]
+    outside = torch.cat([subject[:, :16].flatten(), subject[:, 48:].flatten(), subject[:, :, :32].flatten(), subject[:, :, 64:].flatten()])
+    if not torch.allclose(inside, pixels[:, 16:48, 32:64], atol=1e-6):
+        _fail(problems, "motion_reference: `subject only` changed the subject's own pixels")
+    if not torch.allclose(outside, torch.full_like(outside, 0.5), atol=1e-6):
+        _fail(problems, "motion_reference: `subject only` must set everything outside the subject to mid grey")
+    widened = vm.motion_reference(pixels, mask, vm.MOTION_SUBJECT, 64, 8)
+    if torch.allclose(widened[:, 8:16, 32:64], torch.full((4, 8, 32, 3), 0.5), atol=1e-6):
+        _fail(problems, "motion_reference: the margin must widen what is kept of the subject")
+    small = vm.motion_reference(pixels, mask, vm.MOTION_FRAME, 32, 0)
+    if tuple(small.shape) != (4, 32, 64, 3):
+        _fail(problems, f"motion_reference: a 32 short edge on 64x96 frames should give 32x64, got {tuple(small.shape)}")
+    try:
+        vm.motion_reference(pixels, mask, "sideways", 64, 0)
+        _fail(problems, "motion_reference: an unknown mode was accepted")
+    except ValueError:
+        pass
+    if not all(k in vm.MASK_KEY_SKIP for k in ("motion_reference", "motion_short_edge", "motion_vae")):
+        _fail(problems, "motion_reference's three inputs must not enter the kept mask's key: they do not change the mask")
+
+
 def check_graphs(problems):
     seen = 0
     for path in h3_config.graph_paths(WORKFLOWS, include_bench=True):
@@ -415,7 +450,7 @@ def check_graphs(problems):
 
 def main() -> int:
     problems: list[str] = []
-    for check in (check_temporal, check_token_grid, check_feather, check_composite, check_window, check_fit, check_paint_out, check_part, check_changed_alpha, check_graphs):
+    for check in (check_temporal, check_token_grid, check_feather, check_composite, check_window, check_fit, check_paint_out, check_part, check_changed_alpha, check_motion_reference, check_graphs):
         check(problems)
     for p in problems:
         print(f"FAIL  {p}")
@@ -423,7 +458,7 @@ def main() -> int:
         print("ok    the masked source keeps every subject frame, sits on core's token grid, feathers off the "
               "subject, composites exactly, holds a short source, crops the mask as the frames, paints out only "
               "inside the regenerated tokens, takes a part only from the subject, restores the margin under "
-              "`only what changed`, and is wired whole in every graph")
+              "`only what changed`, builds a motion reference on grey or whole at the short edge asked, and is wired whole in every graph")
     return 1 if problems else 0
 
 

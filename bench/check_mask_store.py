@@ -316,9 +316,19 @@ def check_node(problems):
     except Exception as exc:  # noqa: BLE001
         problems.append(f"a truncated kept mask raised {type(exc).__name__}, not the node's own message: {exc}")
     schema = vm.MiniMaxH3MaskedSource.define_schema()
-    last = schema.inputs[-1]
-    if last.id != "reuse_mask" or last.default is not True or not last.optional:
-        problems.append("reuse_mask is not the last input, optional and on by default")
+    ids = [i.id for i in schema.inputs]
+    switch = schema.inputs[ids.index("reuse_mask")] if "reuse_mask" in ids else None
+    if switch is None or switch.default is not True or not switch.optional:
+        problems.append("reuse_mask is not an optional input, on by default")
+    # Inputs appended after the switch (the motion reference, 2026-10-05) must be
+    # optional, so a saved graph keeps running, and must not reach the kept
+    # mask's key, since they do not change the mask.
+    after = [i for i in schema.inputs[ids.index("reuse_mask") + 1:]] if switch is not None else []
+    for i in after:
+        if not i.optional:
+            problems.append(f"{i.id} is appended after reuse_mask and is not optional")
+        if i.id not in vm.MASK_KEY_SKIP:
+            problems.append(f"{i.id} is appended after reuse_mask and would enter the kept mask's key")
     lazy = sorted(i.id for i in schema.inputs if getattr(i, "lazy", False))
     if lazy != sorted(vm.LAZY_FOR_MASK):
         problems.append(f"the lazy inputs are {lazy}, expected {sorted(vm.LAZY_FOR_MASK)}; `frames` must not be lazy")
