@@ -128,7 +128,7 @@ with none is a helper the others import.
 | `.claude/` | 2 | [below](#claude) |
 | `archive/` | 21 | [below](#archive) |
 | `assets/` | 1 | [below](#assets) |
-| `bench/` | 1351 | [`bench/INDEX.md`](bench/INDEX.md) and [`bench/results/INDEX.md`](bench/results/INDEX.md) for the records |
+| `bench/` | 1356 | [`bench/INDEX.md`](bench/INDEX.md) and [`bench/results/INDEX.md`](bench/results/INDEX.md) for the records |
 | `docs/` | 165 | [`docs/wiki/index.md`](docs/wiki/index.md), the hand-written router |
 | `prompt_bank/` | 163 | [`docs/prompt_bank.md`](docs/prompt_bank.md), the prompt catalogue |
 | `sparse_tables/` | 1 | [below](#sparse_tables) |
@@ -228,14 +228,14 @@ with none is a helper the others import.
 
 | file | what it says |
 |---|---|
-| [`fl2va_model_index.json`](vendor_config/fl2va_model_index.json) | (JSON, 10 top-level keys; it carries no description) |
-| [`fl2va_transformer_config.json`](vendor_config/fl2va_transformer_config.json) | (JSON, 21 top-level keys; it carries no description) |
-| [`preprocessor_config.json`](vendor_config/preprocessor_config.json) | (JSON, 8 top-level keys; it carries no description) |
-| [`ref2va_model_index.json`](vendor_config/ref2va_model_index.json) | (JSON, 10 top-level keys; it carries no description) |
-| [`ref2va_transformer_config.json`](vendor_config/ref2va_transformer_config.json) | (JSON, 21 top-level keys; it carries no description) |
-| [`sha256.json`](vendor_config/sha256.json) | (JSON, 7 top-level keys; it carries no description) |
-| [`tokenizer_config.json`](vendor_config/tokenizer_config.json) | (JSON, 14 top-level keys; it carries no description) |
-| [`video_preprocessor_config.json`](vendor_config/video_preprocessor_config.json) | (JSON, 8 top-level keys; it carries no description) |
+| [`fl2va_model_index.json`](vendor_config/fl2va_model_index.json) | (JSON, an object; it carries no description) |
+| [`fl2va_transformer_config.json`](vendor_config/fl2va_transformer_config.json) | (JSON, an object; it carries no description) |
+| [`preprocessor_config.json`](vendor_config/preprocessor_config.json) | (JSON, an object; it carries no description) |
+| [`ref2va_model_index.json`](vendor_config/ref2va_model_index.json) | (JSON, an object; it carries no description) |
+| [`ref2va_transformer_config.json`](vendor_config/ref2va_transformer_config.json) | (JSON, an object; it carries no description) |
+| [`sha256.json`](vendor_config/sha256.json) | (JSON, an object; it carries no description) |
+| [`tokenizer_config.json`](vendor_config/tokenizer_config.json) | (JSON, an object; it carries no description) |
+| [`video_preprocessor_config.json`](vendor_config/video_preprocessor_config.json) | (JSON, an object; it carries no description) |
 
 ## vendor_guides/
 
@@ -244,4 +244,4 @@ with none is a helper the others import.
 | [`README.md`](vendor_guides/README.md) | The vendor's two prompt-writing guides, verbatim |
 | [`base_en.md`](vendor_guides/base_en.md) | Video Prompt Writing Guide (T2VA / I2VA / FL2VA / L2VA) |
 | [`ref_en.md`](vendor_guides/ref_en.md) | Full-Reference Mode Rewrite Output Format Guide |
-| [`sha256.json`](vendor_guides/sha256.json) | (JSON, 2 top-level keys; it carries no description) |
+| [`sha256.json`](vendor_guides/sha256.json) | (JSON, an object; it carries no description) |

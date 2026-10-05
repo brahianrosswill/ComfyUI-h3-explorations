@@ -42,49 +42,10 @@ import torch
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-from _lib import REPO, bootstrap, needs  # noqa: E402
+from _lib import REPO, bootstrap, needs, server_memory_mode  # noqa: E402
 
 DINOV3_FILE = "sam_3d_body_dinov3.safetensors"
 VITH_FILE = "sam_3d_body_vith.safetensors"
-
-
-def server_memory_mode() -> bool:
-    """Set up ComfyUI's dynamic VRAM layer the way `main.py` does at start.
-
-    Call it after `bootstrap()` and before `comfy.model_management` is
-    imported. On the card it is not optional: core's SAM 3D Body loader picks
-    half-precision weights with no manual cast, and it is this layer's ops
-    that cast a weight to its input at use. Without it core's own DINOv3 path
-    stops in `run_keypoint_prompt` on a float input meeting a half weight
-    (seen 2026-10-05, on the first card run of this script, before the ViT-H
-    model was reached). Transcribed from `main.py`, the two blocks around
-    `comfy_aimdo.control.init` and `init_devices`; returns whether it took.
-    """
-    from comfy.cli_args import args, enables_dynamic_vram
-    if not enables_dynamic_vram():
-        return False
-    import comfy_aimdo.control
-    headroom = None if args.reserve_vram is None else int(args.reserve_vram * 1024 ** 3)
-    try:
-        comfy_aimdo.control.init(simple_vram_headroom=headroom, nvml_pressure=not args.disable_nvml_pressure)
-    except TypeError:
-        try:
-            comfy_aimdo.control.init(simple_vram_headroom=headroom)
-        except TypeError:
-            comfy_aimdo.control.init()
-    import comfy.memory_management
-    import comfy.model_management
-    import comfy.model_patcher
-    try:
-        took = comfy_aimdo.control.init_devices(
-            (d.index, int(args.vram_headroom * 1024 ** 3)) for d in comfy.model_management.get_all_torch_devices())
-    except TypeError:
-        took = comfy_aimdo.control.init_devices(d.index for d in comfy.model_management.get_all_torch_devices())
-    if took:
-        comfy_aimdo.control.set_log_warning()
-        comfy.model_patcher.CoreModelPatcher = comfy.model_patcher.ModelPatcherDynamic
-        comfy.memory_management.aimdo_enabled = True
-    return bool(took)
 
 
 def _first(node_output):

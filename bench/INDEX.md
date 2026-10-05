@@ -8,8 +8,8 @@ this file is only a way to find a script by what it says it does.
 
 | group | scripts |
 |---|---|
-| [`check_*`](#check) | 87 |
-| [`measure_*`](#measure) | 35 |
+| [`check_*`](#check) | 88 |
+| [`measure_*`](#measure) | 36 |
 | [`analyze_*`](#analyze) | 23 |
 | [`grade_*`](#grade) | 21 |
 | [`compare_*`](#compare) | 18 |
@@ -101,6 +101,7 @@ this file is only a way to find a script by what it says it does.
 | [`check_step_x0_observer.py`](check_step_x0_observer.py) | `step_x0_observer.py` saves each step's prediction and changes nothing. |
 | [`check_subject_parts.py`](check_subject_parts.py) | The Sapiens2 part node's geometry and bookkeeping, on stand-ins for the two models. |
 | [`check_subject_track.py`](check_subject_track.py) | Following one person across cuts: the node's own logic, with stand-ins for SAM 3. |
+| [`check_subject_yaw.py`](check_subject_yaw.py) | The turn metric's arithmetic: angles across the seam, the verdict, and the comparison with the eye. |
 | [`check_token_routing.py`](check_token_routing.py) | `token_routing` on MiniMaxH3Sol becomes a {block: budget} map; assert which. |
 | [`check_typed_reference_consumers.py`](check_typed_reference_consumers.py) | Static consumers understand the typed ordered-reference chain. |
 | [`check_vae_precision_quantized.py`](check_vae_precision_quantized.py) | `MiniMaxH3VAEPrecision` refuses to cast a quantized half, and only that. |
@@ -147,6 +148,7 @@ this file is only a way to find a script by what it says it does.
 | [`measure_reference_split.py`](measure_reference_split.py) | The two-node reference path against core's one pass, on the real encoder. |
 | [`measure_sol_container_protocol.py`](measure_sol_container_protocol.py) | What the Sol override's container entry changes, on captured q/k/v. |
 | [`measure_sol_exact_variants.py`](measure_sol_exact_variants.py) | Measure the INSTALLED Sol kernel's exact branch, so two builds can be compared. |
+| [`measure_subject_yaw.py`](measure_subject_yaw.py) | Which way a person faces, frame by frame, in a render and in the source it was made from: a number for "did he turn". |
 | [`measure_tau_sweep_premises.py`](measure_tau_sweep_premises.py) | Premises of the live tau sweep (`sol_tau_sweep.py`), measured on capture cells. |
 
 ## analyze
@@ -428,7 +430,7 @@ Arm manifests and the like; a manifest's line is its own `what`.
 | [`masked_v2v_arms.json`](masked_v2v_arms.json) | Masked video to video on the song node (video_mask.py), first runs, owner's clip and reference still, 2026-10-04. One window of the PDD8 song chain at the shipped canvas, the source's audio frozen hard, the singer tracked by SAM 3.1 and ... |
 | [`masked_v2v_band_arms.json`](masked_v2v_band_arms.json) | Masked video to video, second clip (owner, 2026-10-04): 1:35 to 2:07 of a six-person band video with coloured lighting changes and cutaways, the lead singer replaced from the same reference still as bench/masked_v2v_arms.json, on the ... |
 | [`mma_rate.cu`](mma_rate.cu) | Tensor-core MMA issue rates on this box: the forms Sol-Attn's exact branch |
-| [`node_id_manifest.json`](node_id_manifest.json) | (JSON, 39 top-level keys; it carries no description) |
+| [`node_id_manifest.json`](node_id_manifest.json) | (JSON, an object; it carries no description) |
 | [`pdd8_finisher_grid_arms.json`](pdd8_finisher_grid_arms.json) | The PDD8 finisher grid (board direction pdd8-finisher-grid, the owner's consolidation 2026-09-27) and #46, on _savelat twins throughout. Seed 730451892, each scene at its written length. |
 | [`pdd_bake_arms.json`](pdd_bake_arms.json) | The merged-versus-baked PDD8 pair, the first render of the backbone bake lane (docs/research/pdd/2026-09-05_bake_plan.md). One new arm per scene: PDD8 on the baked fl2va checkpoint with the stripped sidecar, sage on every step, Sol absent ... |
 | [`pdd_ladder_arms.json`](pdd_ladder_arms.json) | The PDD ladder the 2026-09-03 speedup ladder turned out to need. That ladder rendered PDD8 only as the shipped graph (sage auto plus Sol at the PDD window) and it lost to the true baseline on every scene; the owner pointed out that no arm ... |
@@ -451,6 +453,7 @@ Arm manifests and the like; a manifest's line is its own `what`.
 | [`subway_v2_arms.json`](subway_v2_arms.json) | The rewritten t2va_subway_chase (18bd00ca: two people, one path down, every action with an agent) on the undistilled base and the three distills as each is best built today, at the seed of the earlier subway renders. base = ... |
 | [`turbo_rung_arms.json`](turbo_rung_arms.json) | The turbo rung (docs/roadmap.md, 'Owner decisions, 2026-09-05 evening', item 3): two step-reduction distills that are not PDD, each under sage alone with Sol absent, on the five ladder scenes at two seeds, blinded per seed against the sage ... |
 | [`turbo_rung_floor_arms.json`](turbo_rung_floor_arms.json) | The sage 16-step floor at the turbo rung's second seed (730451894), so every pair at that seed is same-seed and same-regime. Same graph as the ladder's sage rows (workflows/bench/h3_text_to_video_stamped_api.json), same five scenes, ... |
+| [`turn_metric_eye_verdicts.json`](turn_metric_eye_verdicts.json) | The by-eye verdicts on the band clip's turn shot that bench/measure_subject_yaw.py is calibrated against: one per rendered arm, transcribed from the record below. turn is yes, partial or no. |
 
 ## Subfolders
 
@@ -481,19 +484,19 @@ Arm manifests and the like; a manifest's line is its own `what`.
 
 | file | what it says |
 |---|---|
-| [`sparse_table_synthetic.json`](fixtures/sparse_table_synthetic.json) | (JSON, 4 top-level keys; it carries no description) |
+| [`sparse_table_synthetic.json`](fixtures/sparse_table_synthetic.json) | (JSON, an object; it carries no description) |
 
 ### marker_corpus
 
 | file | what it says |
 |---|---|
 | [`README.md`](marker_corpus/README.md) | Marker evaluation corpus |
-| [`compiled.json`](marker_corpus/compiled.json) | (JSON, 7 top-level keys; it carries no description) |
-| [`scenes/cut-rampart-en.json`](marker_corpus/scenes/cut-rampart-en.json) | (JSON, 12 top-level keys; it carries no description) |
-| [`scenes/dlg-atelier-fr-en.json`](marker_corpus/scenes/dlg-atelier-fr-en.json) | (JSON, 12 top-level keys; it carries no description) |
-| [`scenes/dlg-meadow-en.json`](marker_corpus/scenes/dlg-meadow-en.json) | (JSON, 12 top-level keys; it carries no description) |
-| [`scenes/lyr-tide-en.json`](marker_corpus/scenes/lyr-tide-en.json) | (JSON, 12 top-level keys; it carries no description) |
-| [`scenes/txt-atrium-en.json`](marker_corpus/scenes/txt-atrium-en.json) | (JSON, 12 top-level keys; it carries no description) |
+| [`compiled.json`](marker_corpus/compiled.json) | (JSON, an object; it carries no description) |
+| [`scenes/cut-rampart-en.json`](marker_corpus/scenes/cut-rampart-en.json) | (JSON, an object; it carries no description) |
+| [`scenes/dlg-atelier-fr-en.json`](marker_corpus/scenes/dlg-atelier-fr-en.json) | (JSON, an object; it carries no description) |
+| [`scenes/dlg-meadow-en.json`](marker_corpus/scenes/dlg-meadow-en.json) | (JSON, an object; it carries no description) |
+| [`scenes/lyr-tide-en.json`](marker_corpus/scenes/lyr-tide-en.json) | (JSON, an object; it carries no description) |
+| [`scenes/txt-atrium-en.json`](marker_corpus/scenes/txt-atrium-en.json) | (JSON, an object; it carries no description) |
 
 ### prompts
 
@@ -505,14 +508,14 @@ Arm manifests and the like; a manifest's line is its own `what`.
 
 ### results
 
-938 tracked files: [`results/INDEX.md`](results/INDEX.md).
+940 tracked files: [`results/INDEX.md`](results/INDEX.md).
 
 ### rubrics
 
 | file | what it says |
 |---|---|
-| [`default.json`](rubrics/default.json) | (JSON, a list of 3; it carries no description) |
-| [`distill_run.json`](rubrics/distill_run.json) | (JSON, a list of 5; it carries no description) |
-| [`pair_preference.json`](rubrics/pair_preference.json) | (JSON, a list of 4; it carries no description) |
-| [`scales.json`](rubrics/scales.json) | (JSON, a list of 4; it carries no description) |
-| [`scout_keep.json`](rubrics/scout_keep.json) | (JSON, a list of 2; it carries no description) |
+| [`default.json`](rubrics/default.json) | (JSON, a list; it carries no description) |
+| [`distill_run.json`](rubrics/distill_run.json) | (JSON, a list; it carries no description) |
+| [`pair_preference.json`](rubrics/pair_preference.json) | (JSON, a list; it carries no description) |
+| [`scales.json`](rubrics/scales.json) | (JSON, a list; it carries no description) |
+| [`scout_keep.json`](rubrics/scout_keep.json) | (JSON, a list; it carries no description) |

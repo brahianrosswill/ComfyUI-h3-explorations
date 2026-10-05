@@ -240,9 +240,11 @@ def json_says(rel: str) -> str:
     chain = graph_chain(data)
     if chain:
         return chain
-    size = f"{len(data)} top-level keys" if isinstance(data, dict) else f"a list of {len(data)}" \
-        if isinstance(data, list) else type(data).__name__
-    return f"(JSON, {size}; it carries no description)"
+    # No count of keys or items: an index line that moves whenever a baseline
+    # gains an entry makes the index stale for a reason nobody can read (the
+    # node manifest did exactly that on 2026-10-05).
+    kind = "an object" if isinstance(data, dict) else "a list" if isinstance(data, list) else type(data).__name__
+    return f"(JSON, {kind}; it carries no description)"
 
 
 def text_says(rel: str) -> str:

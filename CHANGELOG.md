@@ -4,6 +4,40 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.195.0
+
+### Added
+
+- **`bench/measure_subject_yaw.py`, a number for "did he turn"** (card
+  `build-turn-metric`, the owner's ask, first half). Core's SAM 3D Body
+  predictor on the subject's box per sampled frame of a source and of its
+  renders, the box from the window's kept mask; the yaw from the shoulder
+  line; per clip the end difference from the source, the mean difference,
+  the frame it parts from the source, the largest turn, and a verdict at a
+  stated tolerance. `--eye` compares the order with by-eye verdicts,
+  `--reanalyse` recomputes from an earlier output's curves. In its own
+  process; masked it runs on the CPU.
+- **`bench/check_subject_yaw.py`**, on `bench/_lib`: the metric's
+  arithmetic, the 180-degree seam included. Indexed in `docs/checks.md`.
+- `bench/turn_metric_eye_verdicts.json`: the by-eye verdicts the metric is
+  calibrated against, transcribed from the motion-arms record.
+- `bench/_lib::server_memory_mode`, moved from
+  `bench/compare_sam3d_body_releases.py` so every in-process caller of
+  core's nodes on the card shares one copy.
+
+### Measured
+
+- **The turn metric against the eye on thirteen renders**
+  (`bench/results/2026-10-05_subject_yaw_calibration.md`, `.json`). It
+  separates the clips judged a turn from those judged none by a wide
+  margin. It contradicts the one "partial" verdict: that render leans and
+  comes back to the camera, and its frames agree with the metric.
+
+### Changed
+
+- `bench/build_index.py` no longer prints a JSON file's key count in an
+  index line: the node manifest gaining a node made `bench/INDEX.md` stale.
+
 ## 0.194.4
 
 ### Docs

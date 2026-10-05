@@ -1,0 +1,20 @@
+{
+ "what": "The by-eye verdicts on the band clip's turn shot that bench/measure_subject_yaw.py is calibrated against: one per rendered arm, transcribed from the record below. turn is yes, partial or no.",
+ "source_record": "bench/results/2026-10-05_masked_v2v_motion_arms.md",
+ "judged_on": "contact sheets of frames 237, 247, 257, 267 and 277 of each render, by mryellow, 2026-10-05",
+ "clip_pattern": "masked_v2v_{label}_*.mp4",
+ "clips": {
+  "motion_s1": {"turn": "no", "eye": "faces the camera through the turn shot"},
+  "motion_s2": {"turn": "no", "eye": "faces the camera through the turn shot"},
+  "control_s2": {"turn": "no", "eye": "faces the camera through the turn"},
+  "fl2va_base_s1": {"turn": "no", "eye": "faces the camera through the whole turn shot"},
+  "ref2va_base_s1": {"turn": "yes", "eye": "back to camera from about frame 267"},
+  "ref2va_base_s2": {"turn": "yes", "eye": "back to camera from about frame 257"},
+  "ref2va_base12_s1": {"turn": "yes", "eye": "back to camera from about frame 257, as at sixteen"},
+  "ref2va_pdd8_s1": {"turn": "no", "eye": "faces the camera; opens his hands from frame 257"},
+  "ref2va_pdd6_s1": {"turn": "no", "eye": "faces the camera, arms at his sides"},
+  "ref2va_base8_s1": {"turn": "no", "eye": "faces the camera, hands lifted a little from frame 257"},
+  "ref2va_base12_noref_s1": {"turn": "no", "eye": "faces the camera through the shot"},
+  "ship_ref2va_motion_s1": {"turn": "partial", "eye": "side-on by frame 257, three-quarter back by 267, the face still partly visible at 277"}
+ }
+}

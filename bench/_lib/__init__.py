@@ -25,6 +25,11 @@ exit code means; this file is where two of them are produced.
     without grading reads as a pass: `check_correctness.py` and
     `check_clone_v_wiring.py` both printed "skipping" and returned 0.
 
+`server_memory_mode()`
+    For a script that calls core's nodes in process on the card: sets up the
+    dynamic VRAM layer the server sets up at start. Its docstring says why
+    that is not optional there.
+
 `case(name, fn)` and `finish()`
     One `ok` / `FAIL` line per case and one exit code: 1 when any case failed,
     2 when none failed but one could not run (`skip(reason)` from inside it),
@@ -99,6 +104,49 @@ def bootstrap(*, cpu: bool | None = None, front: bool = True) -> Path:
                 "its device. Call bootstrap() before the first comfy import.")
         comfy.cli_args.args.cpu = True
     return COMFY
+
+
+def server_memory_mode() -> bool:
+    """Set up ComfyUI's dynamic VRAM layer the way `main.py` does at start.
+
+    Call it after `bootstrap()` and before `comfy.model_management` is
+    imported. On the card it is not optional: core's SAM 3D Body loader picks
+    half-precision weights with no manual cast, and it is this layer's ops
+    that cast a weight to its input at use. Without it core's own DINOv3 path
+    stops in `run_keypoint_prompt` on a float input meeting a half weight
+    (seen 2026-10-05, on the first card run of
+    `bench/compare_sam3d_body_releases.py`, before the ViT-H model was
+    reached). Transcribed from `main.py`, the two blocks around
+    `comfy_aimdo.control.init` and `init_devices`; returns whether it took.
+    With no card visible it does nothing and returns False.
+    """
+    if not card_visible():
+        return False
+    from comfy.cli_args import args, enables_dynamic_vram
+    if not enables_dynamic_vram():
+        return False
+    import comfy_aimdo.control
+    headroom = None if args.reserve_vram is None else int(args.reserve_vram * 1024 ** 3)
+    try:
+        comfy_aimdo.control.init(simple_vram_headroom=headroom, nvml_pressure=not args.disable_nvml_pressure)
+    except TypeError:
+        try:
+            comfy_aimdo.control.init(simple_vram_headroom=headroom)
+        except TypeError:
+            comfy_aimdo.control.init()
+    import comfy.memory_management
+    import comfy.model_management
+    import comfy.model_patcher
+    try:
+        took = comfy_aimdo.control.init_devices(
+            (d.index, int(args.vram_headroom * 1024 ** 3)) for d in comfy.model_management.get_all_torch_devices())
+    except TypeError:
+        took = comfy_aimdo.control.init_devices(d.index for d in comfy.model_management.get_all_torch_devices())
+    if took:
+        comfy_aimdo.control.set_log_warning()
+        comfy.model_patcher.CoreModelPatcher = comfy.model_patcher.ModelPatcherDynamic
+        comfy.memory_management.aimdo_enabled = True
+    return bool(took)
 
 
 # ---------------------------------------------------------------------- needs
