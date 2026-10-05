@@ -121,8 +121,11 @@ the mask the node already holds there, so the numbers a person reads are the
 numbers that apply, and nothing is detected again. The automatic pass still
 decides which frame each tile shows, and does so the same way with or without
 corrections; a corrected shot is tracked once, from the corrected seed. The
-owner's ask (2026-10-05): the car clip's wrong shots fixed without a frontend
-widget, and "the simpler elegant solution is always the better one".
+design is mrhf's (2026-10-05, on the masking board: number the outlines the
+tile already draws, and a correction is two numbers typed off it), and the
+numbering is mrteal's (`shot_table.py`). The owner's ask: the car clip's wrong
+shots fixed without a frontend widget, and "the simpler elegant solution is
+always the better one".
 
 Every phrase SAM 3 is given is an input: `subject_phrase` and `head_phrase`.
 

@@ -4,6 +4,16 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.194.1
+
+### Docs
+
+- **The corrections on the Subject Track are mrhf's design**, and 0.194.0
+  did not say so: number the outlines the preview tile already draws, and a
+  correction is two numbers typed off it (mrhf, 2026-10-05, on the masking
+  board). The person numbers are mrteal's (0.193.0). `subject_track.py`'s
+  docstring now names both. No behaviour changes.
+
 ## 0.194.0
 
 ### Added
