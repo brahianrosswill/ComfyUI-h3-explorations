@@ -73,14 +73,16 @@ MODELS = dict(
     # baked strength.
     unet_fl2va_pdd8_baked=("minimax_h3_fl2va_pruned_int8_convrot"
                            "_pdd8_baked_s1.safetensors"),
-    # Two fl2va/ref2va hybrids, both int8_convrot, both fl2va everywhere
-    # except the adaln projections named in their filenames. `b30` is the HF
-    # release (blocks 30-49, final layer left on fl2va); `adaln_all` is built
-    # here by `bench/build_hybrid.py` (all 50 blocks plus final_layer), which
-    # first reproduces the HF file byte-for-byte as its control. They exist
-    # to ask whether an fl2v distill LoRA transfers to reference work better on
-    # fl2va's linears than on ref2va's; `docs/roadmap.md`, the regime section.
-    # The filenames end `-int8`, not `_int8_convrot`; `substrate.py` tags them.
+    # One fl2va/ref2va hybrid, int8_convrot, fl2va everywhere except the adaln
+    # projections: `adaln_all` is built here by `bench/build_hybrid.py` (all
+    # 50 blocks plus final_layer). It exists to ask whether an fl2v distill
+    # LoRA transfers to reference work better on fl2va's linears than on
+    # ref2va's; `docs/roadmap.md`, the regime section. The filename ends
+    # `-int8`, not `_int8_convrot`; `substrate.py` tags it. A second hybrid,
+    # `unet_hybrid_b30` (the HF release, blocks 30-49), was retired on
+    # 2026-10-05: its download was gone from the box and the owner called it
+    # long deprecated (`docs/wiki/decisions.md`). `build_hybrid.py` once
+    # reproduced it byte for byte as its control.
     # FastVideo's FastH3 8-step V2 (HF FastVideo/FastVideo-FastH3-Comfy): a full
     # distilled T2VA DiT (data-free DMD2, trained WITH VSA-H3), pruned int8
     # convrot with its OWN curve basis and time table (not fl2va's; measured
@@ -90,7 +92,6 @@ MODELS = dict(
     # refiner, which ours keeps bf16. T2VA only: FL2VA and Ref2VA were not
     # distilled. Sampling contract: `FASTH3_*` below.
     unet_fasth3_v2="fastvideo_fasth3_8step_v2_pruned_int8_convrot.safetensors",
-    unet_hybrid_b30="minimax_h3_hybrid_fl2va_ref2va_b30-49-int8.safetensors",
     unet_hybrid_adaln_all="minimax_h3_hybrid_fl2va_ref2va_adaln_all-int8.safetensors",
     # `unet_vsa`, kijai's experimental FastVideo VSA checkpoint, left with
     # `MiniMaxH3VSAAttention` and its two probe graphs in 0.173.0 (owner,

@@ -17,6 +17,13 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-05
 
+- **The HF hybrid checkpoint `unet_hybrid_b30` is retired** (owner,
+  2026-10-05: "Remove that hybrid model, its long been deprecated", after
+  mrteal found its symlink dangling and the download gone). The key leaves
+  `h3_config.MODELS`, the loader map and the model-contents baseline; the
+  four dangling links (b15, b20, b25, b30) leave `models/diffusion_models/`.
+  Our own `unet_hybrid_adaln_all` stays, with its file. No graph used either.
+
 - **`check_no_owner_paths.py` scans the files git would take, not the
   gitignored trees** (mrteal, on mryellow's brief for the owner; 0.189.5).
   It used to walk everything under the repo, `internal/` and `data/`
