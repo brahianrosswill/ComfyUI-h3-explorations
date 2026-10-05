@@ -4,6 +4,18 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.193.2
+
+### Fixed
+
+- **The shot table gives a correction as the reason for a corrected shot.**
+  `shot_table.py` wrote the automatic pass's similarity as why a shot was
+  taken or left empty even when the tracker's `Shot.corrected` said a
+  person had decided it. A corrected row now reads "corrected by hand:
+  person 2 on frame N" or "corrected by hand: none". No tracker sets the
+  field yet; the corrections input that does is the next change to
+  `subject_track.py`. `bench/check_shot_table.py` holds both forms.
+
 ## 0.193.1
 
 ### Docs

@@ -184,6 +184,22 @@ def every_row_has_the_slots():
     corrected, *_ = _run(found_edit=correct_second)
     assert [row["corrected"] for row in corrected["shots"]] == ["", "person 2", "", ""], corrected["shots"][1]
     assert "(corrected: person 2)" in tbl.as_text(corrected), "the text does not show a correction"
+    # a correction is the reason, whatever the automatic pass scored: taken by hand, and removed by hand
+    def take_second(found):
+        shot = found.shots[1]
+        shot.corrected, shot.seed = "person 2", shot.shown
+    taken, *_ = _run(found_edit=take_second)
+    why = taken["shots"][1]["subject"]["why"]
+    assert why == f"corrected by hand: person 2 on frame {taken['shots'][1]['shown_frame']}", why
+    assert taken["shots"][1]["subject"]["person"] is not None and "under the line" not in why
+
+    def remove_third(found):
+        shot = found.shots[2]
+        shot.corrected, shot.seed = "none", None
+    removed, *_ = _run(found_edit=remove_third)
+    row = removed["shots"][2]
+    assert row["subject"]["why"] == "corrected by hand: none" and row["subject"]["person"] is None, row["subject"]
+    assert row["closest_person"] == 1, "a shot emptied by hand no longer names who the automatic pass took"
     assert table["pick_frame"] == 3 and table["pick_frame_named"] is True and table["match_named"] is True
 
 

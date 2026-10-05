@@ -145,6 +145,12 @@ def label_points(masks: torch.Tensor) -> list[tuple[int, float, float]]:
 # ------------------------------------------------------------------ the table
 
 def _why(shot, state: str, match: float, pick: str, phrase: str, named_frame: bool) -> str:
+    corrected = str(getattr(shot, "corrected", "") or "")
+    if corrected:
+        # A person's word outranks every automatic reason: the similarity the
+        # tracker saw is no longer why the shot is as it is.
+        where = f" on frame {shot.seed}" if shot.seed is not None else ""
+        return f"corrected by hand: {corrected}{where}"
     if shot.picked:
         how = "the frame named" if named_frame else "chosen automatically"
         return f"the {pick} `{phrase}` on frame {shot.seed}, {how}"
