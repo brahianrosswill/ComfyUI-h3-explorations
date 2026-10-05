@@ -3,12 +3,33 @@
 
 Model and media locations are runtime inputs. Persist logical names, hashes,
 dataset revisions, and repo-relative paths instead of usernames or home roots.
+
+## What it scans, decided 2026-10-05
+
+**The files git would take**: tracked files, plus untracked files no ignore
+rule covers, which are the ones the next `git add` can pick up. That is the
+repository; a path in it leaves this machine.
+
+**Not the gitignored trees.** `internal/` and `data/` hold session notes, raw
+captures and run scripts that are never distributed, and a raw capture's
+first line records where it ran. Until this date the walk covered them, and
+the check was red on those lines alone, with no tracked file among them, so
+it could not say whether the repository was clean. Scrubbing them would mean
+rewriting other sessions' dated notes for no reader.
+
+Two ways to look wider. `--include-ignored` walks everything under the root,
+as the check did before. A root given on the command line that is not this
+repo is walked whole, ignore rules or not, because a staging tree being
+prepared for upload is published whatever this repo's `.gitignore` says:
+
+    python bench/check_no_owner_paths.py <staging tree>
 """
 
 from __future__ import annotations
 
 import argparse
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -33,8 +54,33 @@ WINDOWS_HOME = re.compile(
 PATTERNS = (POSIX_HOME, MAC_HOME, WINDOWS_HOME)
 
 
-def text_files(root: Path):
-    for path in sorted(root.rglob("*")):
+def git_files(root: Path) -> list[Path] | None:
+    """What git would take from `root`: tracked, plus untracked and not ignored.
+
+    None when `root` is not the top of a git work tree or git is absent, and
+    the caller walks the directory instead.
+    """
+    try:
+        top = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, check=False)
+        if top.returncode != 0 or Path(top.stdout.strip()).resolve() != root:
+            return None
+        listed = subprocess.run(
+            ["git", "-C", str(root), "ls-files", "-z", "--cached", "--others",
+             "--exclude-standard"],
+            capture_output=True, check=False)
+    except OSError:
+        return None
+    if listed.returncode != 0:
+        return None
+    return sorted(root / name.decode("utf-8", "surrogateescape")
+                  for name in listed.stdout.split(b"\0") if name)
+
+
+def text_files(root: Path, candidates: list[Path] | None = None):
+    """Text artifacts under `root`: the given files, or the whole tree."""
+    for path in (candidates if candidates is not None else sorted(root.rglob("*"))):
         if not path.is_file() or path.is_symlink():
             continue
         try:
@@ -49,12 +95,18 @@ def text_files(root: Path):
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("root", nargs="?", type=Path, default=ROOT)
+    parser.add_argument("root", nargs="?", type=Path, default=ROOT,
+                        help="tree to scan (default: this repo, the files git would take)")
+    parser.add_argument("--include-ignored", action="store_true",
+                        help="walk everything under the root, gitignored files too")
     args = parser.parse_args()
     root = args.root.resolve()
+    candidates = None if args.include_ignored else git_files(root)
+    scope = ("every file under the root" if candidates is None
+             else "tracked and untracked-unignored files")
     failures = []
     scanned = 0
-    for path, relative in text_files(root):
+    for path, relative in text_files(root, candidates):
         scanned += 1
         data = path.read_bytes()
         for line_number, line in enumerate(data.splitlines(), 1):
@@ -62,11 +114,15 @@ def main() -> int:
                 failures.append(f"{relative}:{line_number}")
 
     if failures:
-        print("FAIL  machine-owner home path stored in repository text:")
+        print(f"FAIL  machine-owner home path stored in repository text ({scope}):")
         for failure in failures:
             print(f"  {failure}")
         return 1
-    print(f"ok    no_owner_paths   {scanned} text artifact(s) scanned")
+    if not scanned:
+        # An empty scan must not read as a clean one.
+        print("nothing graded: no text artifact found to scan")
+        return 2
+    print(f"ok    no_owner_paths   {scanned} text artifact(s) scanned ({scope})")
     return 0
 
 

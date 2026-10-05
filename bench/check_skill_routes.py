@@ -26,7 +26,12 @@ missing, no false positives.
 
 **Existence, not git-tracked.** `internal/blind_keys/` is correctly gitignored
 -- sealed scoring keys -- and a skill may legitimately route to it, so requiring
-tracked-ness would go red on a working entry point.
+tracked-ness would go red on a working entry point. **What that paragraph
+missed, found 2026-10-05:** a gitignored directory a script creates on demand
+exists only on a box that has run the script, so the route was red here once
+the directory was gone and would be red on any fresh checkout. `h3-ab-session`
+now points at `bench/blind_batch.py::KEY_DIR`, the constant that names the
+directory, and the rule is unchanged: a skill routes to what a checkout holds.
 
 ## Declaring a path absent on purpose
 

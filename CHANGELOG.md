@@ -4,6 +4,42 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.189.5
+
+### Fixed
+
+- **`check_no_owner_paths.py` answers for the repository.** It scans the
+  files git would take: tracked, plus untracked files no ignore rule covers.
+  It walked the gitignored `internal/` and `data/` too and was red on raw
+  captures and session notes there, with no tracked file among the hits.
+  `--include-ignored` restores the wide walk; a root that is not this repo
+  is walked whole; a scan that finds no text file exits 2. Green.
+- **The `h3-ab-session` skill's dead route.** Step 2 named
+  `internal/blind_keys/`, a gitignored directory that exists only after a
+  blind session seals a key and is gone from this box. It points at
+  `bench/blind_batch.py::KEY_DIR`. `reviewed` moves to `6fca7945` after a
+  re-read against `bench/run_graph_arms.py` and `bench/score_session.py`.
+  `check_skill_routes.py` is green; its three REVIEW lines for `h3-prompt`
+  are report-only and untouched.
+- **`check_model_contents.py` says what is wrong.** A model `h3_config`
+  names whose file is missing printed "no longer named by h3_config" as
+  well as "not on disk"; only the second was true. `--update-baseline`
+  carries such a model's fingerprint forward where it used to drop it.
+
+### Not changed
+
+- **`check_model_contents.py` is still red, and
+  `bench/results/model_contents_baseline.json` was not regenerated.**
+  `h3_config.MODELS` names `unet_hybrid_b30` and its file is a dangling
+  symlink. Retiring the key or restoring the file is the owner's decision;
+  regenerating would have dropped a fingerprint that cannot be rebuilt
+  without the file and left the check red on the missing file.
+
+### Docs
+
+- `docs/checks.md`: the index rows for the three checks.
+  `docs/wiki/decisions.md`: what each used to say.
+
 ## 0.189.4
 
 ### Added

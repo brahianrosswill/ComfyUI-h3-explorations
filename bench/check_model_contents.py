@@ -236,9 +236,21 @@ def main() -> int:
     baseline = json.loads(BASELINE.read_text())["models"] if BASELINE.exists() else {}
     moved = [k for k in sorted(set(baseline) & set(current)) if baseline[k] != current[k]]
     added = sorted(set(current) - set(baseline))
-    dropped = sorted(set(baseline) - set(current))
+    # A model h3_config still names whose file is not on this box is MISSING,
+    # not dropped. Until 2026-10-05 `dropped` was taken against what was read,
+    # so one dangling symlink printed both "no longer named by h3_config" and
+    # "named by h3_config, not on disk", and the first was false.
+    dropped = sorted(set(baseline) - set(targets))
+    absent = sorted((set(baseline) & set(targets)) - set(current))
 
     if args.update_baseline:
+        # Its fingerprint is carried forward for the same reason: the baseline
+        # cannot be regenerated without the file, and a file missing from one
+        # box is not the owner replacing a checkpoint.
+        for key in absent:
+            current[key] = baseline[key]
+            print(f"kept    {key}: not on disk, fingerprint carried from the "
+                  f"previous baseline")
         BASELINE.write_text(json.dumps({
             "baseline": "quantization fingerprint of every model h3_config names",
             "asserted_by": Path(__file__).name,

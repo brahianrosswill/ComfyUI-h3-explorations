@@ -17,6 +17,21 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-05
 
+- **`check_no_owner_paths.py` scans the files git would take, not the
+  gitignored trees** (mrteal, on mryellow's brief for the owner; 0.189.5).
+  It used to walk everything under the repo, `internal/` and `data/`
+  included, and was red on raw captures and session notes there with no
+  tracked file among the hits. `docs/checks.md` index row has the reasons
+  and the two ways to look wider.
+- **The `h3-ab-session` skill no longer routes to `internal/blind_keys/`**
+  (0.189.5). The directory did not move: `bench/blind_batch.py::KEY_DIR`
+  still names it, and the skill now points at that constant. It is absent
+  from this box, so the sealed keys of earlier blind sessions are not on
+  disk; nothing in the repo records who removed them or when.
+- **`check_model_contents.py` used to print "in the baseline but no longer
+  named by h3_config" for `unet_hybrid_b30`**, which `h3_config.MODELS`
+  names (0.189.5). The file's symlink dangles. Open, the owner's call:
+  retire the key or restore the download. The baseline was not regenerated.
 - **`docs/checks.md` "Running them" said exactly two checks need
   `PYTHONPATH`** (`check_clone_v_wiring.py`, `check_correctness.py`; 0.189.4).
   A sweep without the variable found `check_reference_encode.py` needed it
