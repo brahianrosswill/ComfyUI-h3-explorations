@@ -37,8 +37,10 @@ Older history lives elsewhere and is not copied here:
   disk; nothing in the repo records who removed them or when.
 - **`check_model_contents.py` used to print "in the baseline but no longer
   named by h3_config" for `unet_hybrid_b30`**, which `h3_config.MODELS`
-  names (0.189.5). The file's symlink dangles. Open, the owner's call:
-  retire the key or restore the download. The baseline was not regenerated.
+  names (0.189.5). The file's symlink dangled. It was left open as the
+  owner's call and the baseline was not regenerated; the owner retired the
+  key the same day (the entry above), and the baseline dropped its
+  fingerprint in 0.190.1.
 - **`docs/checks.md` "Running them" said exactly two checks need
   `PYTHONPATH`** (`check_clone_v_wiring.py`, `check_correctness.py`; 0.189.4).
   A sweep without the variable found `check_reference_encode.py` needed it

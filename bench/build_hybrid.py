@@ -51,9 +51,11 @@ The output lands wherever `--out` points; the repo convention is a
 `Storage`-side folder symlinked into `models/diffusion_models`, and the path
 is typed in the shell, never here.
 
-    # control, no write
+    # control, no write. It needs the HF release's b30-49 file, which is no
+    # longer on this box: `unet_hybrid_b30` was retired on 2026-10-05 and its
+    # download was already gone. Fetch it again to re-run the control.
     python bench/build_hybrid.py --blocks 30-49 \\
-        --verify-against models/diffusion_models/minimax_h3_hybrid_fl2va_ref2va_b30-49-int8.safetensors
+        --verify-against <dir>/minimax_h3_hybrid_fl2va_ref2va_b30-49-int8.safetensors
     # violation: must report a mismatch
     python bench/build_hybrid.py --blocks 25-49 --verify-against <same file>
     # the build

@@ -48,6 +48,21 @@ artifact.
   session's uncommitted change when this was written. Numbered past 0.190.1,
   which a session with work in flight has taken.
 
+## 0.190.1
+
+### Removed
+
+- **What was left of `unet_hybrid_b30`** after its retirement in 0.189.9:
+  the key in `bench/check_model_files.py`'s loader map, and its fingerprint
+  in `bench/results/model_contents_baseline.json` (`--update-baseline`;
+  nothing else in the file moved but the producer stamp).
+  `bench/build_hybrid.py`'s docstring says its byte-for-byte control needs
+  the HF b30-49 file fetched again. `check_model_contents.py` is green.
+- **The one entry in `bench/checks_baseline.json`.** No check is expected
+  red. A masked sweep: 66 green, 18 not graded, and one red that is not a
+  repo state: `check_capture_manifest_controls.py` reads the live server,
+  which went away while it ran; alone, with no server, it exits 2.
+
 ## 0.190.0
 
 ### Added

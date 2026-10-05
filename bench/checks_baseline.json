@@ -1,7 +1,5 @@
 {
   "what": "checks that bench/run_checks.py expects to be red, each with the reason; the runner fails only on a red this file does not name",
   "rule": "an entry is a debt with an owner, not an exemption: delete it the moment the check is green, and the runner prints STALE until you do",
-  "expected_red": {
-    "check_model_contents": "h3_config.MODELS names unet_hybrid_b30 and its file is a dangling symlink on this box; the owner decides whether to retire the key or restore the download (CHANGELOG 0.189.5)"
-  }
+  "expected_red": {}
 }
