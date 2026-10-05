@@ -8,14 +8,14 @@ this file is only a way to find a script by what it says it does.
 
 | group | scripts |
 |---|---|
-| [`check_*`](#check) | 85 |
+| [`check_*`](#check) | 86 |
 | [`measure_*`](#measure) | 35 |
 | [`analyze_*`](#analyze) | 23 |
 | [`grade_*`](#grade) | 21 |
 | [`compare_*`](#compare) | 17 |
 | [`build_*`](#build) | 16 |
 | [`probe_*`](#probe) | 11 |
-| [the rest](#the-rest) | 114 |
+| [the rest](#the-rest) | 115 |
 
 ## check
 
@@ -104,6 +104,7 @@ this file is only a way to find a script by what it says it does.
 | [`check_vae_precision_quantized.py`](check_vae_precision_quantized.py) | `MiniMaxH3VAEPrecision` refuses to cast a quantized half, and only that. |
 | [`check_vendor_config.py`](check_vendor_config.py) | That `vendor_config/` still is what the release ships, and still parses. |
 | [`check_video_mask.py`](check_video_mask.py) | The masked-source reduction and composite, and the ways each could keep the old subject. |
+| [`check_void_conversion.py`](check_void_conversion.py) | Hold `bench/convert_void_checkpoint.py`'s rename to core's CogVideoX model, without weights. |
 | [`check_vsa_core_patch.py`](check_vsa_core_patch.py) | Report whether this ComfyUI builds H3's VSA gate, and whether consistently. |
 | [`check_widget_deviations.py`](check_widget_deviations.py) | Every shipped widget value that differs from its node's own default is declared. |
 
@@ -295,6 +296,7 @@ this file is only a way to find a script by what it says it does.
 | [`convert_pdd_lora.py`](convert_pdd_lora.py) | Convert an alibaba-pai MiniMax-H3 PDD acceleration LoRA to this repo's format. |
 | [`convert_sam3_checkpoint.py`](convert_sam3_checkpoint.py) | Repack Meta's SAM 3 / SAM 3.1 checkpoint as a safetensors file core loads, changing no weight. |
 | [`convert_sam3d_body_checkpoint.py`](convert_sam3d_body_checkpoint.py) | Repack Meta's SAM 3D Body checkpoint and its MHR rig as the one safetensors file core loads, from the originals. |
+| [`convert_void_checkpoint.py`](convert_void_checkpoint.py) | Write netflix/void-model's checkpoint under the key names ComfyUI core loads, from the original. Header only. |
 | [`count_packed_rows.py`](count_packed_rows.py) | Exact packed-sequence rows, per segment, from the real `PackedLayout`. |
 | [`decode_draft_keepers.py`](decode_draft_keepers.py) | Give draft renders their real decode, from the latents the drafts saved. |
 | [`depth_profile_tables.py`](depth_profile_tables.py) | Per-block tables from the depth-profile outputs: Sol's error, the dense kernels' error, and whether the ranking holds across scenes. |

@@ -4,6 +4,44 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.190.11
+
+### Added
+
+- **`bench/convert_void_checkpoint.py`**: netflix/void-model's checkpoint
+  under the key names ComfyUI core loads, written from the original. Core's
+  `UNETLoader` refuses the upstream file ("Could not detect model type"): it
+  is in diffusers' key layout, and core's VOID template names a Comfy-Org
+  repack. The repack is a rename and nothing else, so the converter rewrites
+  the safetensors header and copies the data section as it is; no tensor is
+  read. `--verify` compares the result with the repack by HTTP range request,
+  header and sampled bytes, through the SAM 3D Body converter's `Repack`
+  reader. Same idea as 0.189.7: the file core loads, made from the original.
+- **`bench/check_void_conversion.py`**: the rename against core's own
+  `CogVideoXTransformer3DModel` built on CPU, one to one, and the writer on a
+  small synthetic file. No weights, no network. Indexed in `docs/checks.md`.
+- **`bench/results/2026-10-05_void_checkpoint_conversion.md`**: what the
+  repack is, how pass 1 was converted and what it was compared with. It
+  corrects one line of `docs/research/masking/2026-10-04_mrhf.md`, which says
+  the Comfy-Org repository holds no diffusion model; core's template names
+  both passes there. Pass 2 is not converted.
+- **`bench/results/2026-10-05_void_plate_turn.md`** and its `.json`: the
+  board's `build-void-plate`, a first probe. Core's VOID nodes, pass 1, on the
+  two shots of the band clip's turn window that hold the lead, with a
+  quadmask built from core's mask nodes and two prompts on one seed.
+  **Rendered, not judged.** Read from stills: the lead is removed in both
+  shots; the turn shot's plate is not clean under either prompt, and the
+  prompt decides what fills the hole there. The record also holds two things
+  about core's nodes found on the way: the decoded clip is three frames
+  longer than its input and shifted by three, and the kept area is not the
+  source's pixels. The graph was built by hand and is in no generator; the
+  clips for the owner are named in the record.
+- `bench/INDEX.md` and `bench/results/INDEX.md` regenerated.
+
+### Not changed
+
+- No node, no default, no shipped graph, nothing in `workflows/`.
+
 ## 0.190.10
 
 ### Docs
