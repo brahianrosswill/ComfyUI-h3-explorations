@@ -321,12 +321,21 @@ def price_references(records, width: int, height: int, length: int,
                 audio_rows = int(round(seconds * AUDIO_LATENT_FPS)) * 2
                 notes.append("soundtrack rows estimated to the target duration; "
                              "the aligned encode can add one VAE hop")
+            if not getattr(record, "use_vae", True):
+                # The append node turned this video's VAE copy off: the
+                # compiler builds no block for it, and core builds the audio
+                # latent only behind the video one, so no audio rows either.
+                rows = 0
+                audio_rows = 0
+                notes.append("use_vae off: text encoder only, no reference rows"
+                             + (", soundtrack not heard" if has_sound else ""))
             items.append(VideoPricing(index, label, (sw, sh), n, (cw, ch), lt, rows,
                                       (qw, qh), sampled, tokens, has_sound,
                                       audio_rows, notes))
-            blocks.append({"kind": "video_audio" if audio_rows else "video",
-                           "latent_t": lt, "latent_h": ch // 16, "latent_w": cw // 16,
-                           "ref_audio_t": audio_rows // 2})
+            if rows:
+                blocks.append({"kind": "video_audio" if audio_rows else "video",
+                               "latent_t": lt, "latent_h": ch // 16, "latent_w": cw // 16,
+                               "ref_audio_t": audio_rows // 2})
             if has_sound:
                 label_texts.append(f"{sound_label}: ")
             label_texts.append(f"{label}: ")

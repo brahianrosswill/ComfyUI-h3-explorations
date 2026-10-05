@@ -27,7 +27,8 @@
       "frames",
       "video_info",
       "soundtrack",
-      "references"
+      "references",
+      "use_vae"
     ],
     "node_id": "MiniMaxH3AppendRefVideo",
     "outputs": [

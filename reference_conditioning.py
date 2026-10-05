@@ -107,6 +107,14 @@ class RuntimeVideoReference:
     frames: Any
     loaded_fps: float
     soundtrack: Any | None
+    # False: this video reaches the model through the text encoder only (its
+    # 2 fps samples with timestamps); no VAE encode, no reference rows, and
+    # no audio rows either, since core builds the audio latent only behind
+    # the video one. The same gate as `vae` unwired, for one video
+    # (2026-10-05; the still's switch is 2026-10-03). Appended for the
+    # masked lane's encoder-only motion reference (`docs/research/masking/
+    # 2026-10-05_mryellow.md`, section 7).
+    use_vae: bool = True
 
 
 @dataclass(frozen=True)
@@ -709,14 +717,17 @@ def _compile_reference_records(
                 "data": qwen_frames,
                 "timestamps": [i / 2.0 for i in range(len(sample_indices))],
             })
-            if vae is None:
+            if vae is None or not record.use_vae:
                 # Encoder-only video: the whole block goes, soundtrack
                 # included, which is core's gate (the audio latent is built
-                # after the video one and never without it).
+                # after the video one and never without it). Either no VAE
+                # is wired, or this video's append node turned its own off.
                 logger.info(
-                    "[h3] reference video %d policy=%s: encoder only, no video "
-                    "VAE wired; %d raw frame(s) reach Qwen and no DiT rows",
-                    index + 1, video_policy, int(qwen_frames.shape[0]))
+                    "[h3] reference video %d policy=%s: encoder only (%s); "
+                    "%d raw frame(s) reach Qwen and no DiT rows",
+                    index + 1, video_policy,
+                    "no video VAE wired" if vae is None else "use_vae is off on its append node",
+                    int(qwen_frames.shape[0]))
                 continue
             latent = vae.encode(frames)
             # The grid comes off the tensor the VAE returned, as for a still
@@ -1091,23 +1102,45 @@ class MiniMaxH3AppendRefVideo(io.ComfyNode):
                         "label to the prompt. The model hears it only when "
                         "both VAEs are wired on the conditioning node.")),
                 H3References.Input("references", optional=True, tooltip=REFERENCES_CHAIN_TOOLTIP),
+                # Appended 2026-10-05, last and optional, as the still's
+                # switch was on 2026-10-03. On is what every serving
+                # implementation does. Off is the masked lane's cheap motion
+                # reference: the encoder reads the clip at two frames per
+                # second and the video model gets no rows for it.
+                io.Boolean.Input(
+                    "use_vae", default=True, optional=True,
+                    tooltip=(
+                        "On (default): the video model gets its own copy of "
+                        "this video, which costs rows on every sampling step.\n\n"
+                        "Off: the video reaches the model only through the "
+                        "text encoder's copy (two frames per second), and its "
+                        "soundtrack is not used. Much cheaper; the model sees "
+                        "less of the video.\n\n"
+                        "The same as leaving vae unwired on the conditioning "
+                        "node, for this one video."
+                    ),
+                ),
             ],
             outputs=[H3References.Output(display_name="references")],
         )
 
     @classmethod
-    def execute(cls, frames, video_info, soundtrack=None, references=None):
+    def execute(cls, frames, video_info, soundtrack=None, references=None, use_vae=True):
         frame_count, height, width = _image_shape(frames, "frames")
         loaded_fps = _loaded_fps(video_info, frame_count, height, width)
         if soundtrack is not None:
             _audio_shape(soundtrack, "soundtrack")
         records = _reference_tuple(references) + (RuntimeVideoReference(
-            frames=frames, loaded_fps=loaded_fps, soundtrack=soundtrack
+            frames=frames, loaded_fps=loaded_fps, soundtrack=soundtrack, use_vae=bool(use_vae),
         ),)
+        detail = (f"video, {width}x{height}, {frame_count} frames"
+                  + (" with its soundtrack" if soundtrack is not None else ""))
+        if not use_vae:
+            detail += ", text encoder only (use_vae off)"
+            if soundtrack is not None:
+                detail += "; the soundtrack keeps its label and is not heard"
         return io.NodeOutput(records, ui=ui.PreviewText(_appended_preview(
-            records, 2 if soundtrack is not None else 1,
-            f"video, {width}x{height}, {frame_count} frames"
-            + (" with its soundtrack" if soundtrack is not None else ""))))
+            records, 2 if soundtrack is not None else 1, detail)))
 
 
 class MiniMaxH3AppendRefAudio(io.ComfyNode):

@@ -4,6 +4,30 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.190.5
+
+### Added
+
+- **`MiniMaxH3AppendRefVideo` gains `use_vae`**, an optional switch appended
+  last and on by default, the video twin of the still's switch of 0.185.17
+  (listed there as not done). Off, that one video reaches the model through
+  the text encoder only: its two-frames-per-second samples with timestamps,
+  no VAE encode, no reference rows, and no audio rows for its soundtrack
+  either, since core builds the audio latent only behind the video one (the
+  label stays, as core's gate leaves it). It is `vae` left unwired on the
+  conditioner, for one video. Built for the masked lane's cheapest motion
+  arm: the source's subject as an encoder-only `<Video 1>`
+  (`docs/research/masking/2026-10-05_mryellow.md`, section 7). The append
+  node's preview says when it is off; the conditioning node's report prices
+  no rows for that video. `bench/check_reference_runtime.py` holds it with a
+  red control (`a_video_can_turn_its_own_vae_copy_off`); the node-id
+  manifest records the appended input. No graph turns it off yet.
+  Full sweep before this commit: 67 green, 18 not graded, 0 red.
+- Not done: `bench/preflight_graph.py` prices a video reference's rows
+  without reading the switch off the graph, so a graph that turns it off is
+  over-priced there until the generator emits such a graph, which is when
+  the reader will be added.
+
 ## 0.190.4
 
 ### Docs

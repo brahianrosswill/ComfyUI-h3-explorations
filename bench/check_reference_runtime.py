@@ -535,6 +535,48 @@ def a_still_can_turn_its_own_vae_copy_off():
         [item.dit_rows for item in priced.items])
 
 
+def a_video_can_turn_its_own_vae_copy_off():
+    """`use_vae` on the video append node is `vae` unwired, for one video.
+
+    A still and a sounded video, the video with `use_vae` off: both reach the
+    text encoder in order and unchanged (the soundtrack keeps its label), and
+    only the still gets a DiT block; the video's soundtrack gets no audio
+    block either, since core builds the audio latent only behind the video
+    one. RED CONTROL: with it on, the video gets its `video_audio` block. The
+    input is last and optional, the default is on, and the report prices no
+    rows for the video that turned it off.
+    """
+    import torch
+    frames = _frames()
+    still = R.MiniMaxH3AppendRefImage.execute(_frames(1, 64, 64), "match", "shared").args[0]
+    info = _video_info(frames, loaded_fps=30.0)
+    off = R.MiniMaxH3AppendRefVideo.execute(frames, info, soundtrack=_audio(), references=still, use_vae=False)
+    on = R.MiniMaxH3AppendRefVideo.execute(frames, info, soundtrack=_audio(), references=still)
+    assert [getattr(r, "use_vae", None) for r in off.args[0]] == [True, False]
+    assert [getattr(r, "use_vae", None) for r in on.args[0]] == [True, True], "the default must be on"
+    schema = R.MiniMaxH3AppendRefVideo.define_schema()
+    last = schema.inputs[-1]
+    assert last.id == "use_vae" and last.optional and last.default is True, last.id
+
+    items_off, blocks_off = R._compile_reference_records(
+        off.args[0], _VideoVae(), _AudioVae(), width=64, height=64, frame_count=22)
+    items_on, blocks_on = R._compile_reference_records(
+        on.args[0], _VideoVae(), _AudioVae(), width=64, height=64, frame_count=22)
+    kinds = [i["type"] for i in items_on]
+    assert kinds == ["image", "audio", "video"], kinds
+    assert [i["type"] for i in items_off] == kinds, "turning the VAE copy off must not change the presentation"
+    assert all(torch.equal(a["data"], b["data"]) for a, b in zip(items_off, items_on) if "data" in a), (
+        "turning the VAE copy off must not change what the text encoder is shown")
+    assert [b["kind"] for b in blocks_on] == ["image", "video_audio"], "red control: with use_vae on, the video gets its block"
+    assert [b["kind"] for b in blocks_off] == ["image"], f"the video with use_vae off still got a block: {[b['kind'] for b in blocks_off]}"
+
+    reference_report = importlib.import_module(f"{_REPO.name}.reference_report")
+    priced = reference_report.price_references(off.args[0], 64, 64, 22)
+    rows = [getattr(item, "dit_rows", 0) for item in priced.items]
+    assert rows[0] > 0 and rows[1] == 0, rows
+    assert priced.items[1].audio_rows == 0, priced.items[1].audio_rows
+
+
 def append_sizing_reaches_the_encoded_geometry():
     """`short_edge` and `allow_upscale` on the append change what the VAE gets.
 
@@ -951,6 +993,7 @@ CHECKS = (
     conditioning_node_assembles_the_real_payload_shape,
     encoder_only_references_skip_the_dit_rows,
     a_still_can_turn_its_own_vae_copy_off,
+    a_video_can_turn_its_own_vae_copy_off,
     preflight_reads_the_vae_gate_off_the_graph,
     video_grid_is_read_off_the_latent,
 )
