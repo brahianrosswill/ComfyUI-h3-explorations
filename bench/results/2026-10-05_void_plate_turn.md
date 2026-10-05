@@ -160,34 +160,96 @@ right.**
 
 ## Where core's port differs from upstream's own inference
 
-Found by the same reading. None of this was tested; each is a candidate for
-the panel, and the first is the one that fits mryellow's description.
+Found by the same reading, in two passes. Four differences; the first was
+found last and is the one the arms below test.
 
-1. **What the model is shown under the mask.** Upstream's shipped config sets
+1. **The pixel range the mask is encoded at.** Both sides hand `1 - mask` to
+   the VAE as the mask channels. Upstream's mask processor does not normalise
+   (`VaeImageProcessor(do_normalize=False)`), so its VAE, whose pixel
+   convention is -1 to 1, sees the mask in 0 to 1. Core's node calls
+   `VAE.encode`, which scales every input by `x * 2 - 1` for this VAE
+   (`comfy/sd.py`, `process_input`; checked on the loaded VAE). So:
+
+   | quadmask value | upstream's VAE sees | core's VAE sees |
+   |---|---|---|
+   | object, 1.0 | 0.0 | -1.0 |
+   | affected, about 0.5 | about 0.5 | about 0.0 |
+   | kept, 0.0 | 1.0 | 1.0 |
+
+   In core, the affected ring is encoded at the value upstream uses for the
+   object to remove, and the object at a value upstream never produces. For
+   the probe that means the whole blocky cell region was marked as an object,
+   which fits a flat panel of exactly that shape.
+
+   **This is a candidate defect in core, and it reaches core's own template**:
+   a plain subject mask wired into the conditioning node, as the template
+   does, is encoded at -1 where upstream uses 0. Not established here:
+   nobody has compared core's output with upstream's on the same input.
+   Whether to report it upstream is the owner's call.
+
+   It can be tested through core's node with no new code: halve the quadmask
+   before the node. Core then encodes `1 - m/2`, which after its scaling is
+   0.0 on the object, 0.5 on the ring and 1.0 on what is kept: upstream's
+   mask channels.
+2. **What the model is shown under the mask.** Upstream's shipped config sets
    `zero_out_mask_region = False`, and the pipeline then conditions on the
    whole, unmasked video (`masked_video = init_video`). Core's node always
-   multiplies the video by `1 - mask`: the object is blacked out and **the
-   affected ring is shown at half brightness**. Even upstream's other path
+   multiplies the video by `1 - mask`: the object is blacked out and the
+   affected ring is shown at half brightness. Even upstream's other path
    (`zero_out_mask_region = True`) blacks only the object and leaves the
-   affected area as it is. So in core the ring is a dimmed copy of the source,
-   which neither upstream path produces.
-2. **Guidance.** Upstream's config has `guidance_scale = 1.0`, with a negative
+   affected area as it is. With the quadmask halved as in 1, core shows the
+   object at half brightness and the ring at three quarters, which is nearer
+   upstream's and still not it.
+3. **Guidance.** Upstream's config has `guidance_scale = 1.0`, with a negative
    prompt about quality; core's template uses cfg 6 with an empty negative.
-   The probe used the template's. Both use 30 steps (upstream's script passes
-   30 and ignores its config's 50).
-3. **Windows.** Upstream's script calls the pipeline with `num_frames` set to
+   Both use 30 steps (upstream's script passes 30 and ignores its config's
+   50).
+4. **Windows.** Upstream's script calls the pipeline with `num_frames` set to
    its `temporal_window_size`, 85, and a multidiffusion stride in the config.
    Core's node samples the whole window at once; the probe gave it 189 and 45
    frames. How upstream stitches its windows was not read.
-4. Upstream quantises the mask to three levels inside the pipeline whatever
-   the config says (`use_trimask = True` is passed literally), so its overlap
-   level becomes "object". The probe has no overlap level, so nothing follows
-   for it.
 
-An arm at cfg 1 needs only a changed number in the probe's graph. Showing the
-model the unmasked video needs a conditioning node that does not multiply,
-which core's does not offer; nothing in this pack patches core, so that would
-be a node here.
+Also read, with nothing following for the probe: upstream quantises the mask
+to three levels inside the pipeline whatever the config says
+(`use_trimask = True` is passed literally), so its overlap level becomes
+"object". The probe has no overlap level.
+
+Showing the model the whole unmasked video (2) is not reachable through
+core's node. Nothing in this pack patches core, so it is a conditioning node
+here: `MiniMaxH3VoidConditioning` (`void_conditioning.py`), which does 1 and 2
+as upstream does and is held to upstream's arithmetic, with core's node as
+the control, by `bench/check_void_conditioning.py`. It has not rendered yet.
+
+## Second round: the mask's range, and guidance
+
+Two more arms on the empty prompt, seed 43, the same windows, through core's
+node (`second_round` in the record; clips beside the others, named
+`void_plate_turn_empty_cfg1_up` and `void_plate_turn_empty_cfg1`). **Not
+judged.** Read by me from strips of eight frames a shot
+(`internal/claude/2026-10-05_mrorange/void_AB_*_strip.jpg`), which the first
+round showed is not enough to judge a plate.
+
+- **B, the quadmask halved, cfg 1.** Core's VAE is then given upstream's mask
+  levels. On the turn shot the panel is gone: the wall where he stood is
+  drawn through with its pictures and the neon tube. From about the middle
+  of the shot a dark teal smear of him stays where he stands. On shot 1 a
+  smeared figure stays where he stood in roughly the second quarter of the
+  shot, where the first arm's stills showed none.
+- **A, the quadmask as before, cfg 1.** The first empty arm again: the panel
+  is there, and the two plates differ by about one level after encoding
+  (`plates_compared`). **This says nothing about guidance.** With an empty
+  positive and an empty negative prompt the two predictions are the same
+  tensor, so cfg cannot change the result; the arm should not have been
+  asked for. For the same reason arm C (cfg 6, mask halved) would have been B
+  again and was removed from the queue unrun. Guidance matters only once the
+  two prompts differ, as upstream's do.
+
+So of the four differences the arms have tested one: **the mask's pixel range
+is what draws the panel.** What B leaves, a ghost of him, has one candidate
+that the reading offers and no arm has tested: with the mask halved core
+still shows the model the object at half brightness, where upstream shows it
+whole. The node above removes that difference.
+
 
 ## Time
 

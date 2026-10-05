@@ -107,7 +107,9 @@
    "frames_returned_per_window": [
     192,
     48
-   ]
+   ],
+   "cfg": 6.0,
+   "mask_range": "core"
   },
   "scene": {
    "prompt": "A small group of young people in matching green sweatshirts stand and dance in a living room with framed pictures on the wall and table lamps, under coloured light.",
@@ -123,6 +125,44 @@
     "1118": 42.0,
     "1119": 3.7,
     "1120": 0.8
+   },
+   "frames_returned_per_window": [
+    192,
+    48
+   ],
+   "cfg": 6.0,
+   "mask_range": "core"
+  },
+  "empty_cfg1_up": {
+   "prompt": "",
+   "seed": 43,
+   "cfg": 1.0,
+   "mask_range": "upstream",
+   "per_node_s": {
+    "1016": 11.9,
+    "1018": 124.6,
+    "1019": 15.8,
+    "1116": 3.1,
+    "1118": 21.0,
+    "1119": 3.8
+   },
+   "frames_returned_per_window": [
+    192,
+    48
+   ]
+  },
+  "empty_cfg1": {
+   "prompt": "",
+   "seed": 43,
+   "cfg": 1.0,
+   "mask_range": "core",
+   "per_node_s": {
+    "1016": 11.9,
+    "1018": 124.5,
+    "1019": 15.2,
+    "1116": 3.1,
+    "1118": 21.1,
+    "1119": 3.8
    },
    "frames_returned_per_window": [
     192,
@@ -177,5 +217,37 @@
   "Video/mrorange/void_plate_turn_empty.mp4",
   "Video/mrorange/void_plate_turn_scene.mp4"
  ],
- "cache_state": "a server started for this run; each arm one queue; the first arm loaded T5, the VAE and the checkpoint cold, the second had them loaded"
+ "cache_state": "a server started for this run; each arm one queue; the first arm loaded T5, the VAE and the checkpoint cold, the second had them loaded",
+ "second_round": {
+  "what": "Arms B (empty_cfg1_up: cfg 1, the quadmask halved before core's node so its VAE is given upstream's mask levels) and A (empty_cfg1: cfg 1, the quadmask as before), queued on a peer's running server behind its renders, so no whole-arm wall time is kept; per_node_s holds the node times. Arm C (cfg 6, mask halved) was removed from the queue unrun: with an empty positive and an empty negative prompt the two predictions are the same tensor and cfg cannot change the result.",
+  "plates_compared": {
+   "what": "mean absolute difference in 8-bit levels between the arms' plates, read back from the assembled h264 clips, every twelfth frame of shot 1 and every fourth of the turn shot",
+   "empty_vs_empty_cfg1": 1.3,
+   "empty_vs_empty_cfg1_up": 5.88,
+   "empty_cfg1_vs_empty_cfg1_up": 5.89
+  },
+  "clips": [
+   "Video/mrorange/void_plate_turn_empty_cfg1_up_turnshot.mp4",
+   "Video/mrorange/void_plate_turn_empty_cfg1_up.mp4",
+   "Video/mrorange/void_plate_turn_empty_cfg1_turnshot.mp4",
+   "Video/mrorange/void_plate_turn_empty_cfg1.mp4"
+  ],
+  "mask_levels_the_encoder_is_given": {
+   "upstream": {
+    "object": 0.0,
+    "affected": 0.502,
+    "kept": 1.0
+   },
+   "core_node": {
+    "object": -1.0,
+    "affected": 0.0,
+    "kept": 1.0
+   },
+   "core_node_mask_halved": {
+    "object": 0.0,
+    "affected": 0.5,
+    "kept": 1.0
+   }
+  }
+ }
 }

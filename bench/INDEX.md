@@ -8,7 +8,7 @@ this file is only a way to find a script by what it says it does.
 
 | group | scripts |
 |---|---|
-| [`check_*`](#check) | 87 |
+| [`check_*`](#check) | 88 |
 | [`measure_*`](#measure) | 35 |
 | [`analyze_*`](#analyze) | 23 |
 | [`grade_*`](#grade) | 21 |
@@ -105,6 +105,7 @@ this file is only a way to find a script by what it says it does.
 | [`check_vae_precision_quantized.py`](check_vae_precision_quantized.py) | `MiniMaxH3VAEPrecision` refuses to cast a quantized half, and only that. |
 | [`check_vendor_config.py`](check_vendor_config.py) | That `vendor_config/` still is what the release ships, and still parses. |
 | [`check_video_mask.py`](check_video_mask.py) | The masked-source reduction and composite, and the ways each could keep the old subject. |
+| [`check_void_conditioning.py`](check_void_conditioning.py) | Hold `void_conditioning.py` to upstream VOID's conditioning arithmetic, on a synthetic clip and a stand-in VAE. |
 | [`check_void_conversion.py`](check_void_conversion.py) | Hold `bench/convert_void_checkpoint.py`'s rename to core's CogVideoX model, without weights. |
 | [`check_vsa_core_patch.py`](check_vsa_core_patch.py) | Report whether this ComfyUI builds H3's VSA gate, and whether consistently. |
 | [`check_widget_deviations.py`](check_widget_deviations.py) | Every shipped widget value that differs from its node's own default is declared. |
@@ -428,7 +429,7 @@ Arm manifests and the like; a manifest's line is its own `what`.
 | [`masked_v2v_arms.json`](masked_v2v_arms.json) | Masked video to video on the song node (video_mask.py), first runs, owner's clip and reference still, 2026-10-04. One window of the PDD8 song chain at the shipped canvas, the source's audio frozen hard, the singer tracked by SAM 3.1 and ... |
 | [`masked_v2v_band_arms.json`](masked_v2v_band_arms.json) | Masked video to video, second clip (owner, 2026-10-04): 1:35 to 2:07 of a six-person band video with coloured lighting changes and cutaways, the lead singer replaced from the same reference still as bench/masked_v2v_arms.json, on the ... |
 | [`mma_rate.cu`](mma_rate.cu) | Tensor-core MMA issue rates on this box: the forms Sol-Attn's exact branch |
-| [`node_id_manifest.json`](node_id_manifest.json) | (JSON, 39 top-level keys; it carries no description) |
+| [`node_id_manifest.json`](node_id_manifest.json) | (JSON, 40 top-level keys; it carries no description) |
 | [`pdd8_finisher_grid_arms.json`](pdd8_finisher_grid_arms.json) | The PDD8 finisher grid (board direction pdd8-finisher-grid, the owner's consolidation 2026-09-27) and #46, on _savelat twins throughout. Seed 730451892, each scene at its written length. |
 | [`pdd_bake_arms.json`](pdd_bake_arms.json) | The merged-versus-baked PDD8 pair, the first render of the backbone bake lane (docs/research/pdd/2026-09-05_bake_plan.md). One new arm per scene: PDD8 on the baked fl2va checkpoint with the stripped sidecar, sage on every step, Sol absent ... |
 | [`pdd_ladder_arms.json`](pdd_ladder_arms.json) | The PDD ladder the 2026-09-03 speedup ladder turned out to need. That ladder rendered PDD8 only as the shipped graph (sage auto plus Sol at the PDD window) and it lost to the true baseline on every scene; the owner pointed out that no arm ... |

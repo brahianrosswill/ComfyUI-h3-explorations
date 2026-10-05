@@ -4,6 +4,55 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.191.0
+
+### Added
+
+- **`MiniMaxH3VoidConditioning`** (`void_conditioning.py`): VOID's inpainting
+  conditioning as upstream's own inference builds it, for the masked lane's
+  clean plate. Same inputs and outputs as core's `VOIDInpaintConditioning`
+  but for `batch_size`, and it differs in two things read from
+  `netflix/void-model`'s inference code. The mask channels: both sides hand
+  `1 - mask` to the VAE, but upstream does not normalise it and core's
+  `VAE.encode` scales it by `x * 2 - 1`, so core's VAE is given the affected
+  area at upstream's value for the object and the object at a value upstream
+  never produces. And the video: upstream's shipped config shows the model
+  the whole video, where core's node multiplies it by `1 - mask`. The node
+  gives the VAE upstream's three mask levels in upstream's range, and
+  `video_under_mask` offers upstream's two paths, the whole video by default.
+  **Nothing in core is patched**; the node calls the VAE core loaded.
+  **It has not rendered yet**, and it is in no shipped graph.
+  - **A candidate defect in core, for the owner to decide whether to report**:
+    core's own VOID template wires a plain subject mask into its node, which
+    is then encoded at -1 where upstream uses 0. Established here: the two
+    code paths differ, and on the band clip correcting the range through
+    core's node removed a flat panel the size of the affected region. Not
+    established: that core's output is worse than upstream's on the same
+    input, which nobody has compared.
+- **`bench/check_void_conditioning.py`**: the node against upstream's
+  arithmetic on a synthetic clip, with core's node on the same input as the
+  control in two cases (the mask levels its encoder is given, and the dimmed
+  affected area). If core changes to match upstream the controls fail and
+  say so. Indexed in `docs/checks.md`; `bench/node_id_manifest.json` records
+  the node (`--write`, a permitted addition).
+
+### Docs
+
+- **`bench/results/2026-10-05_void_plate_turn.md`** and its `.json`: the four
+  differences between core's port and upstream's inference, numbered, with
+  the mask-range arithmetic on both sides; and a second round of two arms
+  through core's node. With the quadmask halved, so that core's VAE is given
+  upstream's mask levels, the panel is gone and a ghost of the subject
+  remains. The guidance arm repeated the first arm and says nothing about
+  guidance: with empty prompts on both sides cfg cannot change the result,
+  and the record says the arm should not have been asked for. Neither arm is
+  judged.
+
+### Not changed
+
+- No shipped graph and no default. `bench/run_checks.py`, masked: nothing
+  red.
+
 ## 0.190.18
 
 ### Added
