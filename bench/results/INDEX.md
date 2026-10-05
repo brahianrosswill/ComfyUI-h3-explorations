@@ -20,6 +20,7 @@ replaces `docs/evidence.md`, which says what the records established.
 | 2026-10-05 | masking | [VOID pass 1 converted from upstream for core's loader (2026-10-05)](2026-10-05_void_checkpoint_conversion.md) | a pure rename; the converted file matches Comfy-Org's repack by header and by sampled bytes, and core loads it |
 | 2026-10-05 | masking | [Sapiens2 parts on the band clip: class order, time per frame, hair against SAM 3 (2026-10-05)](2026-10-05_sapiens2_first_frame.md) | the class order is upstream's for the classes on the frame; hair found on every frame, where SAM 3's phrase missed four of 48 |
 | 2026-10-05 | sam3d | [SAM 3D Body: Meta's original files repacked for core, and what the repack holds that Meta did not publish (2026-10-05)](2026-10-05_sam3d_body_conversion.md) |  |
+| 2026-10-05 | masked | [2026-10-05: the turn arms on the masked lane (encoder-only motion reference)](2026-10-05_masked_v2v_motion_arms.md) |  |
 | 2026-10-04 | subject | [The subject track on three clips: what a match is compared on (2026-10-04)](2026-10-04_subject_track_three_clips.md) |  |
 | 2026-10-04 | masked | [The turn without a prompt: a late start from a softened source (2026-10-04)](2026-10-04_masked_v2v_turn_soft_arms.md) | not a fix. |
 | 2026-10-04 | masked | [Masked video to video: the first renders](2026-10-04_masked_v2v_first_run.md) |  |
@@ -43,7 +44,7 @@ replaces `docs/evidence.md`, which says what the records established.
 | 2026-10-01 | lora | [Where a LoRA at the call spends its time (2026-10-01)](2026-10-01_lora_branch_profile.md) |  |
 | 2026-10-01 | kitchen | [comfy-kitchen: h3-frontier merged to upstream main, 2026-10-01](2026-10-01_kitchen_merge_aade8d5.md) |  |
 
-Data files dated this month and not listed: 54.
+Data files dated this month and not listed: 55.
 
 ## 2026-09
 

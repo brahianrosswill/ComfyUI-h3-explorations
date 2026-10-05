@@ -4,6 +4,18 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.191.2
+
+- The turn arms rendered and recorded:
+  `bench/results/2026-10-05_masked_v2v_motion_arms.md` with its rows, eleven
+  arms on the band clip's turn shot through the Masked Source's
+  encoder-only motion reference (0.190.7). fl2va ignores the reference at
+  any step count, distilled or not; ref2va carries the turn at twelve and
+  sixteen steps and loses it at eight with or without its PDD8 bake, so the
+  step count is the variable, not the distill. Section 8 of
+  `docs/research/masking/2026-10-05_mryellow.md` reads the set; the
+  masking board carries the owner's decision. Indexes regenerated.
+
 ## 0.191.1
 
 ### Docs
