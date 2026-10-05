@@ -4,6 +4,21 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.190.9
+
+### Docs
+
+- **A library of uses, `docs/wiki/h3_uses.md`** (owner, 2026-10-05: "a
+  library of potential uses given what we have done here and can do here
+  holistically"). One row per thing a person can make, in eight parts: from
+  text and stills, from references, to a known audio track, changing part of
+  a video that exists, after a render, combinations the pieces allow that
+  nobody has rendered, the speed and quality options, and what is not
+  available. Each row says what H3 itself does for it, the nodes and graph
+  that do it today, its state and where the evidence is. Every graph, node,
+  document and record it names was checked to exist; it carries no
+  measurement and no verdict. `docs/wiki/index.md` routes to it.
+
 ## 0.190.8
 
 ### Docs
