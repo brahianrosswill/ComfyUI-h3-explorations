@@ -34,11 +34,20 @@ plain mean of them says 0, facing the camera.
                                 box's height for both axes.
   motion_follows_or_does_not    `bench/measure_subject_motion.py`: the same
                                 motion scores 1, the same motion late scores
-                                less and is found again at its shift, and a
-                                subject who never moves scores 0 AT EVERY
-                                SHIFT (the control: shifting must not let a
-                                still clip be compared only where the source
-                                has not yet moved).
+                                less and is found again at its shift, the
+                                same motion from another stance scores 1 with
+                                the stance as its offset, and a subject who
+                                never moves scores 0 AT EVERY SHIFT and IN
+                                ANY POSE, the middle of the source's range
+                                included (the two controls: the first forms
+                                of the metric failed each).
+  a_clip_is_graded_on_the_joints_its_source_moves
+                                a source that moves one arm is graded on that
+                                arm: the held joints get no score, the same
+                                motion on the other arm does not follow and
+                                shows as stray, and a nod the source does not
+                                make leaves the score alone and shows as
+                                stray on the head only.
   a_still_shot_is_not_graded    a source that only wobbles is "too still to
                                 grade" whatever the render does.
   the_lock_is_the_last_entry    the facing "locks" at the first step from
@@ -174,13 +183,14 @@ def the_lock_is_the_last_entry():
     assert S.lock_step([30.0, 30.0, None], 45.0) is None, "a last step with no reading locked"
 
 
-def _swing(t: float) -> dict:
-    """A made-up body: the arms swing with t, the rest stays put."""
-    pose = {j: [0.0, 0.0, 0.0] for names in M.GROUPS.values() for j in names}
-    for j in M.GROUPS["arms"]:
+def _swing(t: float, arm: tuple[str, ...] = ("left_elbow", "right_elbow", "left_wrist", "right_wrist"),
+           head_nod: float = 0.0) -> dict:
+    """A made-up body: the named arm joints swing with t, the head nods by `head_nod`, the rest stays put."""
+    pose = {j: [0.0, 0.0, 0.0] for j in M.JOINTS}
+    for j in arm:
         pose[j] = [math.sin(t), 0.5, math.cos(t)]
-    for j in M.GROUPS["head"]:
-        pose[j] = [0.0, 1.5, 0.0]
+    for j in M.PARTS["head"]:
+        pose[j] = [0.0, 1.5 + head_nod, 0.0]
     return pose
 
 
@@ -194,6 +204,7 @@ def joints_are_measured_on_the_body():
     worst = max(abs(a - b) for j in base for a, b in zip(base[j], moved[j]))
     assert worst < 1e-3, f"the same pose at another size and place reads {worst} apart"
     assert abs(math.dist(base["left_shoulder"], base["right_shoulder"]) - 0.8) < 1e-3, "the unit is not the torso's length"
+    assert set(base) == set(M.JOINTS), "the pose pass and the motion metric do not name the same joints"
     # on screen: one unit for both axes, the box's height
     box = {"x": 100.0, "y": 50.0, "width": 200.0, "height": 400.0}
     k2 = np.zeros((70, 2))
@@ -210,21 +221,52 @@ def motion_follows_or_does_not():
     }
     got = {name: M.score(src, rows, "in_body", 2) for name, rows in cases.items()}
     assert got["same"]["followed"] == 1.0 and got["same"]["verdict"] == "follows" and got["same"]["best_shift_frames"] == 0
-    assert 0.5 < got["late"]["followed"] < 0.9, got["late"]["followed"]
+    assert 0.2 < got["late"]["followed"] < 0.9, got["late"]["followed"]
+    # motion, not pose: the same motion from a different stance is fully followed, and the stance is the offset
+    apart = [{"in_body": {j: [v[0] + 0.3, v[1] - 0.2, v[2]] for j, v in _swing(i * 0.2).items()}} for i in range(20)]
+    stance = M.score(src, apart, "in_body", 2)
+    assert stance["followed"] == 1.0, f"a constant difference in stance cost {1 - stance['followed']}"
+    assert abs(stance["joints"]["left_wrist"]["offset"] - math.hypot(0.3, 0.2)) < 1e-3, stance["joints"]["left_wrist"]["offset"]
+    # and a subject frozen in the MIDDLE of the source's range earns nothing either
+    frozen_mid = M.score(src, [{"in_body": _swing(1.9)} for i in range(20)], "in_body", 2)
+    assert frozen_mid["followed"] == 0.0 and frozen_mid["followed_at_best_shift"] == 0.0, frozen_mid["followed"]
     assert got["late"]["best_shift_frames"] == 6 and got["late"]["followed_at_best_shift"] == 1.0, \
         "a render three samples late is not read as six frames late and fully followed there"
     # the control for the shift: a subject who never moves earns nothing at any shift
     assert got["still"]["followed"] == 0.0 and got["still"]["followed_at_best_shift"] == 0.0 \
         and got["still"]["verdict"] == "does not follow", got["still"]
-    # by part: only the arms move, so only the arms can be graded
-    assert got["late"]["parts"]["arms"]["followed"] == got["late"]["followed"] or got["late"]["parts"]["arms"]["followed"] < 1
-    assert got["same"]["parts"]["head"]["followed"] is None, "a part that never moves in the source got a score"
+    # the curve is the output: one distance per sampled frame for every joint, zeros when the motions are the same
+    wrist = got["late"]["joints"]["left_wrist"]
+    assert len(wrist["curve"]) == 20 and min(wrist["curve"]) >= 0.0 and max(wrist["curve"]) > 0.3, wrist["curve"][:5]
+    assert got["same"]["joints"]["left_wrist"]["curve"] == [0.0] * 20
+    assert stance["joints"]["left_wrist"]["curve"] == [0.0] * 20, "a different stance shows in the curve; it belongs in the offset"
+
+
+def a_clip_is_graded_on_the_joints_its_source_moves():
+    # a dart throw: one wrist and its elbow move, everything else is held
+    arm = ("right_elbow", "right_wrist")
+    src = [{"in_body": _swing(i * 0.2, arm)} for i in range(20)]
+    throws = M.score(src, [{"in_body": _swing(i * 0.2, arm)} for i in range(20)], "in_body", 2)
+    assert throws["moved_joints"] == list(arm) and throws["followed"] == 1.0, throws["moved_joints"]
+    assert throws["parts"]["hands"]["followed"] == 1.0 and throws["parts"]["head"]["followed"] is None \
+        and throws["parts"]["head"]["moved"] is False, "a part the source holds was given a score"
+    assert throws["joints"]["left_wrist"]["moved"] is False and throws["joints"]["left_wrist"]["followed"] is None
+    # the wrong arm: the motion is there and on the other side, which reads as not following
+    wrong = M.score(src, [{"in_body": _swing(i * 0.2, ("left_elbow", "left_wrist"))} for i in range(20)], "in_body", 2)
+    assert wrong["verdict"] == "does not follow" and wrong["followed"] == 0.0, wrong["followed"]
+    assert wrong["stray"] > 0.1, f"the other arm's motion did not show as stray: {wrong['stray']}"
+    # a render that throws as the source does and also nods where the source's head is still:
+    # the score is the throw's, and the nod shows as stray on the head and nowhere else
+    nods = M.score(src, [{"in_body": _swing(i * 0.2, arm, head_nod=0.02 * i)} for i in range(20)], "in_body", 2)
+    assert nods["followed"] == 1.0 and nods["verdict"] == "follows", nods["followed"]
+    assert nods["parts"]["head"]["stray"] > 0.05 and nods["parts"]["feet"]["stray"] == 0.0, nods["parts"]["head"]
+    assert throws["stray"] == 0.0
 
 
 def a_still_shot_is_not_graded():
     wobble = [{"in_body": _swing(0.001 * (i % 2))} for i in range(20)]
     out = M.score(wobble, [{"in_body": _swing(0.3)} for i in range(20)], "in_body", 2)
-    assert out["verdict"] == "too still to grade", out["verdict"]
+    assert out["verdict"] == "too still to grade" and out["moved_joints"] == [], out["verdict"]
     gone = M.score(wobble, [{"in_body": None} for i in range(20)], "in_body", 2)
     assert gone["verdict"] == "not measured" and gone["followed"] is None
 
@@ -233,7 +275,7 @@ def main() -> int:
     for fn in (yaw_reads_the_shoulder_line, the_seam_is_two_degrees_wide, a_held_turn_holds,
                a_gap_is_not_a_reading, order_matches_or_says_where, a_slice_lines_up_with_frames,
                the_lock_is_the_last_entry, joints_are_measured_on_the_body, motion_follows_or_does_not,
-               a_still_shot_is_not_graded):
+               a_clip_is_graded_on_the_joints_its_source_moves, a_still_shot_is_not_graded):
         case(fn.__name__, fn)
     return finish()
 

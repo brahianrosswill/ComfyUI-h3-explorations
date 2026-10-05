@@ -4,6 +4,35 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.197.1
+
+### Changed
+
+- **The motion metric reports every joint, frame by frame, and compares
+  motions, not poses** (the owner's word, 2026-10-05: the metrics must not
+  stay specific to the band clip). `bench/measure_subject_motion.py` now
+  writes one curve per joint and grades a clip on the joints its source
+  moves, weighted by how far each moves, so a throw is scored on the arm
+  and a walk on the legs. Joints the source holds are not scored; a render
+  that moves them shows as `stray`. Parts are reported apart: head,
+  shoulders, elbows, hands, hips, knees, feet.
+- **Its arithmetic changed twice the same evening, each time on a made-up
+  body.** Each joint is now taken from its own mean position before source
+  and render are compared, so a different stance is an `offset` and not a
+  distance in every frame; and the motionless baseline is the joint's
+  spread about its own mean, so a render frozen in any pose scores exactly
+  zero. The first form (0.197.0) failed both.
+- `FOLLOWS` is 0.25, set after the band-clip calibration and marked as
+  such where it is defined. It was 0.5 for the first form.
+
+### Measured
+
+- `bench/results/2026-10-05_subject_motion_calibration.md` and `.json`
+  are rewritten for the metric as it now is, on the same poses: the three
+  renders judged to follow score 0.34 to 0.51 (0.51 to 0.54 at their best
+  time shift) and the ten judged not to sit within 0.04 of zero. The record
+  says what it said when first committed.
+
 ## 0.197.0
 
 ### Added
