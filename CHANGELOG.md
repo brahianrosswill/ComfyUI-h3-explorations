@@ -4,6 +4,17 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.190.17
+
+- `workflows/build_workflows.py --dump-graphs`: a JSON map of each shipped
+  api path (relative to `workflows/`) to its label, task and the generator's
+  one-line note, built from the same `_graph_dir` call the writer uses and
+  returning before anything is built. The note lived only inside `main()`'s
+  `GRAPHS`, so the generated workflows index (`bench/build_index.py`, in
+  progress) had no way to read it. The stamped bench graphs and the
+  saved-latent decode graph are written by other paths and are not in the
+  map.
+
 ## 0.190.16
 
 ### Added

@@ -3570,6 +3570,10 @@ def main():
                     help="JSON map of shipped api filename -> its prompt, for "
                          "checks that compare a graph against ITS OWN expected "
                          "text rather than against every legal prompt")
+    ap.add_argument("--dump-graphs", action="store_true",
+                    help="JSON map of shipped api path (relative to workflows/) "
+                         "-> {label, task, note}, for the generated workflows "
+                         "index; nothing is built")
     ap.add_argument("--list-prompts", action="store_true",
                     help="one line per shipped graph: its name and prompt's first line")
     ap.add_argument("--print-prompt", metavar="GRAPH",
@@ -5103,6 +5107,20 @@ def main():
                     first_frame=extra.get("first_frame",
                                           _p["first_frame"].default))
             for fname, _label, task, prompt, extra, _note in GRAPHS}))
+        return 0
+
+    if args.dump_graphs:
+        # The authoritative `api path -> what the graph is` map, for
+        # `bench/build_index.py`'s workflows index. `GRAPHS` is local to this
+        # function and grows after its literal (`_daily`, `_twins`, ...), so
+        # no reader outside can see the note any other way. Paths come from
+        # `_graph_dir`, the same call the writer makes, so a graph that moves
+        # folder moves here with it.
+        print(json.dumps({
+            str((_graph_dir(out, extra, fname) / fname.replace(".json", "_api.json"))
+                .relative_to(out)):
+                {"label": label, "task": task, "note": note}
+            for fname, label, task, _prompt, extra, note in GRAPHS}))
         return 0
 
     if args.list_prompts or args.print_prompt:
