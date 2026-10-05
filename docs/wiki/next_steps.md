@@ -354,6 +354,11 @@ none tried:
 
 The owner's other half is written: `../h3_distills.md` (2026-09-26, one seed; revised when the second seed lands).
 
+**2026-10-05: PDMD is retired** (owner: "lets retire it. i didnt see anything
+from it worth keeping"). Its graphs, constants and note are out of the tree;
+`../roadmap.md`, "Closed lanes". The 2026-10-01 entry below is as written, and
+the section and file it points at are gone.
+
 **2026-10-01 (PDMD, FlashGen's closest sibling): parked.** Kijai's PDMD LoRAs
 were researched, wired, and judged once, blind, against FlashGen
 (`../h3_distills.md`, "PDMD"). FlashGen was preferred. Kijai's resize was

@@ -1,6 +1,6 @@
 # The sister checkouts: what each one is good for
 
-last updated: 2026-10-02 (section "What moved by 2026-10-02" added; a ComfyUI-H3-AudioRefine row; dated notes on the LightX2V row, the 2026-09-25 INT8 VAE sentence, and a correction to the 2026-09-25 AdaLN rounding claim); 2026-10-01 (the PDMD trainer: a row in the ComfyUI-side table, and its inference script added to what counts as a contract); 2026-09-27 (the TaoMate section trimmed to the checkouts after the lane was removed); 2026-09-26 (section "A distill's reference is its trainer's contract" added; the FastH3 V2 note under 2026-09-19 extended); 2026-09-25 (section "What moved by 2026-09-25" added; the PDD line and the vllm-omni #7693 bullet corrected in place); 2026-09-19 (section "What moved by 2026-09-19" added); 2026-09-15 (section "The streaming references: TaoMate" added; "What moved by 2026-09-11" added and the two comfy-kitchen rows corrected 2026-09-11; "What moved by 2026-09-10" added 2026-09-10; the tables are otherwise the 2026-08-28 read)
+last updated: 2026-10-05 (the `pdmd` row and the contract example, on PDMD's retirement); 2026-10-02 (section "What moved by 2026-10-02" added; a ComfyUI-H3-AudioRefine row; dated notes on the LightX2V row, the 2026-09-25 INT8 VAE sentence, and a correction to the 2026-09-25 AdaLN rounding claim); 2026-10-01 (the PDMD trainer: a row in the ComfyUI-side table, and its inference script added to what counts as a contract); 2026-09-27 (the TaoMate section trimmed to the checkouts after the lane was removed); 2026-09-26 (section "A distill's reference is its trainer's contract" added; the FastH3 V2 note under 2026-09-19 extended); 2026-09-25 (section "What moved by 2026-09-25" added; the PDD line and the vllm-omni #7693 bullet corrected in place); 2026-09-19 (section "What moved by 2026-09-19" added); 2026-09-15 (section "The streaming references: TaoMate" added; "What moved by 2026-09-11" added and the two comfy-kitchen rows corrected 2026-09-11; "What moved by 2026-09-10" added 2026-09-10; the tables are otherwise the 2026-08-28 read)
 
 `coderef/` holds the reference implementations. `ls -l coderef/` is the list of
 what is currently on disk — some symlinks, some real clones — and this page is
@@ -37,9 +37,9 @@ its trainer says to run it: the sampling contract the trainer ships.
 - a serving engine's validator that pins those values
   (`coderef/vllm-omni/vllm_omni/diffusion/models/minimax_h3/fasth3_checkpoint.py`
   checks FastH3 V2 against its file);
-- a trainer's own inference script and the scheduler it pins (PDMD's
-  `coderef/pdmd/worker/run_a10.py`, with diffusers' `MiniMaxH3Scheduler` at
-  the commit its README pins).
+- a trainer's own inference script and the scheduler it pins. The one
+  instance here was PDMD's `worker/run_a10.py`, retired with its lane on
+  2026-10-05.
 
 **The contract outranks a downstream template**, ComfyUI's included. A
 template is a claim to test against the contract. When they differ, the
@@ -52,9 +52,7 @@ template. That template departs from FastVideo's contract on the sampler, the
 VSA kept fraction and a dense warm-up. The contract arms rendered a different
 and more complete take (`../../bench/results/2026-09-26_fasth3_contract_s1.md`).
 FlashGen was already on its contract's schedule
-(`../research/2026-09-26_flashgen.md`). PDMD was built on its contract from
-the start: the trainer's grid is ComfyUI's `simple` at the base shifts, bit for
-bit (`../research/pdmd/2026-10-01_what_pdmd_is.md`).
+(`../research/2026-09-26_flashgen.md`).
 
 ---
 
@@ -109,7 +107,7 @@ Recorded here because it is a property of the *references*, not of our code:
 | `comfy-kitchen-kijai` | `bd3fc78` | kijai's fork, **read-only**, renamed from `comfy-kitchen-sol` on 2026-09-08. Its `.cu` files ship in no wheel, so `morton.md` quotes it by path under the old name. *Corrected 2026-09-11: this row named the clone `comfy-kitchen-sol` and said its built branch was installed; neither has been true since 2026-09-08.* |
 | `ComfyUI-UtilsCollection` | `5bac35b` | a third-party pack with its own PDD path. Two of our guards were **adopted from it** |
 | `Minimax-H3-Turbo` | `02e26d5` | the vendor README that publishes the distilled sigma grid `bench/check_distill_grid.py` grades against — a grid from the vendor, not one we computed |
-| `pdmd` | `03ee66b` | the PDMD release repo (pdmd2026), read 2026-10-01: inference scripts that pin PDMD's sampling contract (`worker/run_a10.py`, `run_a100.py`) and its LoRA fuse rule (`worker/fuse_lora.py`). It borrows job parsing from `Minimax-H3-Turbo` at the revision recorded here. No training code is published, so it says nothing about how the students were trained; the paper does (`../research/pdmd/`) |
+| `pdmd` | `03ee66b` | **Retired 2026-10-05 with its lane** (`../roadmap.md`, "Closed lanes"); nothing here reads it any more, and the checkout is the owner's to delete. It was the PDMD release repo (pdmd2026), read 2026-10-01 for the inference scripts that pinned PDMD's sampling contract. By 2026-10-05 its scripts had moved the 2-step audio shift (`AUDIO_SHIFT_2NFE`), which our 2-step probe never followed |
 | `ComfyUI-H3-AudioRefine` | `d78d34f` | a third-party pack, added to this table 2026-10-02 (cited before that from `../h3_audio_freeze.md` and `../h3_pdd.md`). It freezes the video stream of a sampled H3 latent and re-denoises only the audio stream through core's per-stream `noise_mask` on the undistilled model, with a K/V cache over the frozen video rows (`coderef/ComfyUI-H3-AudioRefine/README.md`, `TECHNICAL.md`). Read for the audio-refine regime, not installed |
 | `sage-fork` | `56a5be4` | our SageAttention fork |
 | `SLA` | `7db4039` | the sparse top-k attention reference |

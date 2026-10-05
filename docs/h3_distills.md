@@ -1,6 +1,6 @@
 # Which distill for which shot
 
-last updated: 2026-10-01 (PDMD added, from one blind session: one seed, five scenes); 2026-09-26 (written from one seed, two scenes, unblinded)
+last updated: 2026-10-05 (PDMD retired: its row and section reduced to a pointer); 2026-10-01 (PDMD added, from one blind session: one seed, five scenes); 2026-09-26 (written from one seed, two scenes, unblinded)
 
 > **Seed-matched clips are different scenes.** The same seed through each
 > distill gives a different scene: different camera angle and framing,
@@ -41,7 +41,6 @@ The numbers live in the records, not here:
 | **PDD8** | close-ups and medium shots: detail and colour | fast motion: artifacts, a cloned extra person, mangled text | slowest of the three distills |
 | **FlashGen** | motion that stays coherent (zoom-outs); detail; colour closest to the base | following who does what in a multi-person action scene | fastest |
 | **FastH3** (contract) | motion; fewer artifacts than PDD8 on the chase; audio | warm, oversaturated, contrasty grade; some coarse texture | between the two |
-| **PDMD** (4-step) | a muted, "cinematic" grade, which won the radio scene | ghosting at shot transitions; on i2va it cut away from the first frame | about FlashGen's |
 | base (reference) | lighting and prompt adherence | nothing here; it is the reference | the slowest by far |
 
 The sampler times per model are in the two subway records' `sampler_s`.
@@ -339,45 +338,14 @@ length.
   attention. It keeps 20% of video cubes, as trained, and a coarse branch
   covers the rest.
 
-## PDMD
+## PDMD (retired 2026-10-05)
 
-PDMD 4-step, run on its trainer's contract (`h3_text_to_video_pdmd`). What it
-is and every setting's source: `research/pdmd/2026-10-01_what_pdmd_is.md`.
-**This section rests on one blind session**: five owner-picked scenes, one seed
-each, three arms per scene: full-rank PDMD, kijai's resized PDMD, and FlashGen
-(`../bench/results/2026-10-01_2026-10-01_pdmd_vs_flashgen_verdict.json`). Two of
-its verdicts were set after the key was opened, from the owner's own notes, and
-the record says so on each.
-
-**Against FlashGen, FlashGen was preferred** on more scenes than PDMD, and one
-was a tie (the verdict record's contests).
-
-**Good.** The radio drama, where PDMD won: "the colors are more 'cinematic' and
-muted" against FlashGen's saturated grade.
-
-**Bad.**
-- **Ghosting at shot transitions:** "a weird ghosting fade out at the 5s mark
-  as it transitions to the woman speaking" (stairwell), and the old man seen
-  twice at a transition (ref2va). Both PDMD arms ghost at the same moment.
-- **The same muted grade lost the market:** "bright colors seem better" for
-  that scene.
-- **It did not hold a first frame (i2va):** it cut to the man at a desk, which
-  is nowhere in the prompt, where FlashGen made the push-in the prompt asks
-  for. Neither distill was trained for i2va.
-
-**Kijai's resize does not show.** Full-rank and kijai's PDMD were "same" on
-every scene ("same clip to me, both ghost at the same time"). Kijai's file
-drops part of each layer's change
-(`../bench/results/2026-10-01_pdmd_4step_lora_conversion.json`), and on these
-scenes that was invisible. So kijai's file is the default (`h3_config.PDMD_LORA`),
-and the lane is parked (`roadmap.md`, "Closed lanes").
-
-**Why.**
-- **Inference:** the muted grade fits the paper's claim that PDMD saturates
-  less than DMD-style distills (its Table E1), and FlashGen is a
-  distribution-matching distill without the projection.
-- **Not yet explained:** the transition ghosting. It appears in both PDMD
-  files, so it comes from PDMD's weights, not from the resize.
+The owner retired PDMD on 2026-10-05 ("i didnt see anything from it worth
+keeping"), four days after parking it. Its graphs, constants, check cases and
+research note are gone from the tree and live in git. What was tried, and
+what the owner saw, is one blind session against FlashGen:
+`../bench/results/2026-10-01_2026-10-01_pdmd_vs_flashgen_verdict.json`.
+Retired, not refuted (`roadmap.md`, "Closed lanes").
 
 ## Rules of thumb, provisional
 

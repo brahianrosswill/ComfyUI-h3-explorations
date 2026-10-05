@@ -4,6 +4,42 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.188.0
+
+### Removed
+
+- **PDMD is retired** (owner, 2026-10-05: "lets retire it. i didnt see anything
+  from it worth keeping"; parked since 2026-10-01). Out of the tree, and in
+  git: the four graphs (`h3_text_to_video_pdmd` and the `h3_probe_*_pdmd_*`
+  i2v, ref2va and 2-step probes), the `PDMD_*` constants in
+  `workflows/h3_config.py` and their place in `SOL_DISTILL_LORA_FILES`, the
+  PDMD contract case in `bench/check_distill_settings.py`,
+  `bench/measure_pdmd_lora_conversion.py`, the arm manifest
+  `bench/pdmd_vs_flashgen_arms.json`, and `docs/research/pdmd/`.
+  **Retired, not refuted:** it had one blind look, whose verdict record and
+  conversion records stay in `bench/results/` with the brief in
+  `bench/briefs/`. `docs/roadmap.md` "Closed lanes" has the row. What prompted
+  it: the trainer's scripts moved their 2-step audio shift
+  (`AUDIO_SHIFT_2NFE` in `coderef/pdmd/worker/run_a10.py`), which left our
+  2-step probe off its contract; the owner chose to retire the lane over
+  following it. The LoRA files under ComfyUI's `models/loras/h3/` and the
+  `coderef/pdmd` checkout were not touched and are the owner's to delete.
+
+### Changed
+
+- **`bench/check_distill_settings.py` fails any graph that loads a PDMD
+  LoRA**, the way it fails a turbo one, in place of grading PDMD's contract.
+
+### Docs
+
+- `docs/h3_distills.md` keeps a short retired note and a pointer to the
+  verdict record in place of its PDMD row and section.
+  `docs/wiki/references.md` marks the `pdmd` row retired and drops PDMD as
+  the example of a trainer's script being a contract.
+  `docs/wiki/next_steps.md`, `docs/wiki/index.md`, `docs/SOLATTN.md`,
+  `workflows/distill_experiments/README.md`, `docs/wiki/decisions.md` and the
+  regenerated prompt bank and catalogue follow.
+
 ## 0.187.0
 
 ### Changed

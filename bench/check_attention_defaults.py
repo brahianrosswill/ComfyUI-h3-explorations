@@ -414,7 +414,7 @@ def sol_model_loads_pdd(graph: dict, nid: str) -> bool:
 
 
 def sol_model_loads_distill_lora(graph: dict, nid: str) -> bool:
-    """Whether the model feeding Sol node `nid` carries a FlashGen or PDMD LoRA
+    """Whether the model feeding Sol node `nid` carries a FlashGen LoRA
     (`h3_config.SOL_DISTILL_LORA_FILES`), walked upstream like
     `sol_model_loads_pdd`. Those nodes take SOL_DISTILL_LORA_CUDA since
     2026-10-01, the generator's rule (`_sol_with_overrides`, and the FlashGen

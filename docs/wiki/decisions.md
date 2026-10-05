@@ -17,6 +17,17 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-05
 
+- **PDMD is retired and removed** (owner, 2026-10-05: "pdmd - lets retire it.
+  i didnt see anything from it worth keeping"; 0.188.0). Removed: the four
+  graphs, the `PDMD_*` constants, the contract case in
+  `check_distill_settings.py` (which now fails a graph loading a PDMD LoRA),
+  `bench/measure_pdmd_lora_conversion.py`, `bench/pdmd_vs_flashgen_arms.json`
+  and `docs/research/pdmd/`. Retired, not refuted: one blind look. The
+  records stay in `bench/results/` (`2026-10-01_*pdmd*`), the code in git, and
+  the lane in `docs/roadmap.md` "Closed lanes", whose row used to say the
+  graphs "stay buildable on kijai's files" and names what would reopen it no
+  longer. `docs/h3_distills.md` used to carry a PDMD row and section; it keeps
+  a pointer to the verdict record.
 - **The base samples with Euler; `er_sde` is gone from every graph** (owner,
   2026-10-05: "lets change our default sampler for all base / non-distill
   workflows - or rather, any workflow that uses er_sde - to now use euler. no

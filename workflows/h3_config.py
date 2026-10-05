@@ -594,7 +594,7 @@ SOL_RECOMMENDED_CUDA = dict(
     # was measured at.
     tau=1.0,
     # **0.2 here; 0.0 on every PDD graph since 2026-10-01** (SOL_PDD_OVERRIDES,
-    # owner decision, measured). FlashGen and PDMD graphs keep 0.2: 0.184.1
+    # owner decision, measured). FlashGen graphs keep 0.2: 0.184.1
     # extended 0.0 to them unmeasured and the owner reverted it the same day
     # (SOL_DISTILL_LORA_OVERRIDES). On the t2v PDD8-to-FlashGen finish the owner
     # could not tell 0.0 from 0.2 in five blind pairs, and 0.0 cut the sampler
@@ -804,14 +804,15 @@ SOL_PDD_OVERRIDES = dict(start_percent=0.0)
 
 SOL_PDD_CUDA = dict(SOL_RECOMMENDED_CUDA, **SOL_PDD_OVERRIDES)
 
-# The distill LoRAs applied at the call (FlashGen, PDMD) keep SOL_RECOMMENDED_CUDA's
+# The distill LoRAs applied at the call (FlashGen) keep SOL_RECOMMENDED_CUDA's
 # start_percent 0.2. **Reverted by the owner the same day it was set**: 0.184.1
 # gave them 0.0, extended from the PDD measurement and never measured on them (the
 # panel behind SOL_PDD_OVERRIDES rendered the PDD8-to-FlashGen finish, whose
-# FlashGen pass starts at sigma 0.8, so no FlashGen or PDMD render from pure noise
+# FlashGen pass starts at sigma 0.8, so no FlashGen render from pure noise
 # was judged at 0.0); 0.184.3 empties this again. Kept, empty, as the one place a
-# FlashGen/PDMD-only knob goes, apart from SOL_PDD_CUDA. `SOL_DISTILL_LORA_FILES`
-# (beside the FlashGen and PDMD constants) says which files it applies to.
+# FlashGen-only knob goes, apart from SOL_PDD_CUDA. `SOL_DISTILL_LORA_FILES`
+# (beside the FlashGen constants) says which files it applies to. PDMD's files
+# were in that set until the lane was retired on 2026-10-05.
 SOL_DISTILL_LORA_OVERRIDES = dict()  # was start_percent=0.0 in 0.184.1 only
 
 SOL_DISTILL_LORA_CUDA = dict(SOL_RECOMMENDED_CUDA, **SOL_DISTILL_LORA_OVERRIDES)
@@ -833,7 +834,7 @@ def sol_for_graph(pdd, steps, distill_lora=False):
     2026-10-01, so the PDD branch is the one that differs; the distill
     branch below is empty again since 0.184.3.
 
-    `distill_lora` -- the model carries a FlashGen or PDMD LoRA
+    `distill_lora` -- the model carries a FlashGen LoRA
     (`SOL_DISTILL_LORA_FILES`) and no PDD -- takes SOL_DISTILL_LORA_CUDA
     whole, the same way, since 2026-10-01. PDD wins when both are set.
     """
@@ -1316,34 +1317,10 @@ FLASHGEN_STEPS = 4
 #: 12. Read from the header, so a re-download that changed it would show.
 FLASHGEN_MANUAL_SIGMAS = "1.0, 0.965517, 0.888889, 0.679245, 0.0"
 
-# PDMD (pdmd2026, arXiv 2609.35768): DMD with a one-line projection, trained as
-# a rank-128 LoRA on the release's diffusers `transformer/`, which is the fl2va
-# partition bit for bit. T2VA only. What it is and every setting's source:
-# docs/research/pdmd/2026-10-01_what_pdmd_is.md.
-#: kijai's dynamic rank resizes (HF `Kijai/MiniMax-H3-experimental`,
-#: 2026-10-01; sv_fro 0.97, capped at rank 128). **Measured, owner decision
-#: 2026-10-01:** blind, they were "same" as our exact full-rank conversion on
-#: every scene of the first look and render a little faster
-#: (`bench/results/2026-10-01_2026-10-01_pdmd_vs_flashgen_verdict.json`), so they
-#: are the default and the full-rank files were deleted. What the resize keeps:
-#: `bench/results/2026-10-01_pdmd_{4,2}step_lora_conversion.json`.
-PDMD_LORA = "h3/minimax_h3_pdmd_4step_lora_avg_rank_57_bf16.safetensors"
-PDMD_2STEP_LORA = "h3/minimax_h3_pdmd_2step_lora_avg_rank_38_bf16.safetensors"
-#: **Inherited:** the step count each file was trained for (the model cards; the
-#: sidecar `tag`). The trainer samples `steps + 1` grid points of
-#: `shift(linspace(1, 0, N + 1))` at 12/3 on Euler, which is ComfyUI's
-#: `simple` at these counts bit for bit, so PDMD runs on `DISTILL_SAMPLING`
-#: and `SIGMA_SHIFT` with no ManualSigmas.
-PDMD_STEPS = {PDMD_LORA: 4, PDMD_2STEP_LORA: 2}
-#: **Inherited:** the published `lora_scale` 1.0 (alpha / rank = 128 / 128);
-#: kijai's files carry alpha = rank in every module so that 1.0 is that scale.
-PDMD_STRENGTH = 1.0
-
 #: The distill LoRAs applied at the call whose Sol nodes take
 #: SOL_DISTILL_LORA_CUDA (`sol_for_graph(..., distill_lora=True)`): every
-#: FlashGen and PDMD file. Owner decision 2026-10-01; see that constant.
-SOL_DISTILL_LORA_FILES = frozenset({FLASHGEN_LORA, FLASHGEN_R64_LORA, FLASHGEN_R64_REF2VA_LORA,
-                                    *PDMD_STEPS})
+#: FlashGen file. Owner decision 2026-10-01; see that constant.
+SOL_DISTILL_LORA_FILES = frozenset({FLASHGEN_LORA, FLASHGEN_R64_LORA, FLASHGEN_R64_REF2VA_LORA})
 
 #: Route 3 of the distill-routing idea (docs/research/2026-09-26_distill_routing.md;
 #: the design is in docs/wiki/next_steps.md, agreed by two sessions and the

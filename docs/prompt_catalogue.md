@@ -8,10 +8,10 @@ Scenes are ordered by how many graphs carry them, so the defaults that reach the
 
 | scene | bank id | graphs | words | shots | speakers | markers |
 |---|---|---|---|---|---|---|
-| [`LONG_T2V_PROMPT`](#long-t2v-prompt) | `t2va_covered_market` | 82 | 290 | 3 | 2 | `<d>` |
-| [`ref2va_role_character_environment`](#ref2va-role-character-environment) | `ref2va_role_character_environment` | 11 | 135 | 1 | 0 | — |
-| [`I2V_PROMPT`](#i2v-prompt) | `i2va_lighthouse_keyframe` | 10 | 90 | 1 | 0 | — |
+| [`LONG_T2V_PROMPT`](#long-t2v-prompt) | `t2va_covered_market` | 80 | 290 | 3 | 2 | `<d>` |
 | [`MARKET_REF2V_PROMPT`](#market-ref2v-prompt) | `ref2va_market_stallholder` | 10 | 598 | 3 | 2 | `<d>` |
+| [`ref2va_role_character_environment`](#ref2va-role-character-environment) | `ref2va_role_character_environment` | 10 | 135 | 1 | 0 | — |
+| [`I2V_PROMPT`](#i2v-prompt) | `i2va_lighthouse_keyframe` | 9 | 90 | 1 | 0 | — |
 | [`ref2va_role_character_garment_environment`](#ref2va-role-character-garment-environment) | `ref2va_role_character_garment_environment` | 9 | 173 | 1 | 0 | — |
 | [`fl2va_interior_converge`](#fl2va-interior-converge) | `fl2va_interior_converge` | 3 | 159 | 1 | 0 | — |
 | [`ref2va_image_video_audio_music`](#ref2va-image-video-audio-music) | `ref2va_image_video_audio_music` | 3 | 264 | 1 | 0 | — |
@@ -51,7 +51,7 @@ Scenes are ordered by how many graphs carry them, so the defaults that reach the
 
 ## LONG_T2V_PROMPT
 
-Carried by **82** graph(s). Sections: `integrated_multimodal_description`, `overall_soundscape`, `non_diegetic_music`.
+Carried by **80** graph(s). Sections: `integrated_multimodal_description`, `overall_soundscape`, `non_diegetic_music`.
 
 <details><summary>graphs</summary>
 
@@ -98,7 +98,6 @@ Carried by **82** graph(s). Sections: `integrated_multimodal_description`, `over
 - `h3_probe_t2v_pdd8_dense_api`
 - `h3_probe_t2v_pdd8_merge_api`
 - `h3_probe_t2v_pdd8_sage_api`
-- `h3_probe_t2v_pdmd_2step_api`
 - `h3_probe_t2v_policy_api`
 - `h3_probe_t2v_rotate_api`
 - `h3_probe_t2v_sage_rotate_api`
@@ -135,7 +134,6 @@ Carried by **82** graph(s). Sections: `integrated_multimodal_description`, `over
 - `h3_text_to_video_pdd_manual_sigmas_savelat_api`
 - `h3_text_to_video_pdd_savelat_api`
 - `h3_text_to_video_pdd_x0_api`
-- `h3_text_to_video_pdmd_api`
 - `h3_text_to_video_savelat_api`
 
 </details>
@@ -148,78 +146,6 @@ Loose crowd murmur under a high roof, wooden crates knocking hollow as they stac
 
 non_diegetic_music:
 N/A
-```
-
-## ref2va_role_character_environment
-
-Carried by **11** graph(s). Sections: `subject_definitions`, `summary`, `retention_analysis`, `detailed_description`, `overall_soundscape`, `non_diegetic_music`.
-
-<details><summary>graphs</summary>
-
-- `h3_image_ref_plus_text_to_video_api`
-- `h3_image_ref_plus_text_to_video_pdd_4step_api`
-- `h3_image_ref_plus_text_to_video_pdd_api`
-- `h3_probe_r2v_flashgen_4step_api`
-- `h3_probe_r2v_pdmd_4step_api`
-- `h3_probe_ref2v_pdd_345_api`
-- `h3_probe_ref2v_pdd_8s_api`
-- `h3_probe_ref2v_pdd_api`
-- `h3_probe_ref2v_pdd_headfree_api`
-- `h3_probe_reference_upscale_api`
-- `h3_probe_sol_on_refs_api`
-
-</details>
-
-```text
-subject_definitions:
-<Subject 1> is the main character in <Picture 1>, whose face, hair, and clothing are carried into the target video.
-<Subject 2> is the environment in <Picture 2>, which provides the setting for the target video.
-
-summary:
-[reference generation] The target video places <Subject 1> inside <Subject 2> for a single continuous shot.
-
-retention_analysis:
-<Subject 1> (appears in [Shot 1]): fully_preserved - face, hair, and clothing are retained.
-<Subject 2> (appears in [Shot 1]): fully_preserved - the visual setting is retained.
-
-detailed_description:
-The target video is in a cinematic live-action style.
-[Shot 1] A medium shot establishes <Subject 2>, then <Subject 1> enters from the left and stops at the center of the frame. The camera trucks right with small amplitude at slow speed.
-
-overall_soundscape:
-Natural ambient atmosphere continues throughout the shot.
-
-non_diegetic_music:
-N/A
-```
-
-## I2V_PROMPT
-
-Carried by **10** graph(s). Sections: none.
-
-<details><summary>graphs</summary>
-
-- `h3_first_frame_to_video_api`
-- `h3_first_frame_to_video_audio_freeze_api`
-- `h3_first_frame_to_video_pdd_api`
-- `h3_first_frame_to_video_pdd_savelat_api`
-- `h3_first_frame_to_video_stamped_api`
-- `h3_i2v_pdd8_flashgen_finish_api`
-- `h3_probe_i2v_flashgen_4step_api`
-- `h3_probe_i2v_pdmd_4step_api`
-- `h3_probe_i2v_step_switch_pdd8_flashgen_h080_api`
-- `h3_probe_i2v_step_switch_pdd8_flashgen_h080_savelat_api`
-
-</details>
-
-```text
-For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced.
-
-integrated_multimodal_description: [Shot 1] Live-action, cinematic, the subject shown in <Picture 1> holds its position, framing, lighting, and colors exactly as established in the image. The camera pushes in with small amplitude at slow speed while the subject begins to move, the surrounding scene staying continuous with the reference frame.
-
-overall_soundscape: Quiet room tone with a low ambient hum continues throughout, joined by soft physical sounds from the subject's movement.
-
-non_diegetic_music: N/A
 ```
 
 ## MARKET_REF2V_PROMPT
@@ -262,6 +188,76 @@ Loose crowd murmur under a high roof, wooden crates knocking hollow as they stac
 
 non_diegetic_music:
 N/A
+```
+
+## ref2va_role_character_environment
+
+Carried by **10** graph(s). Sections: `subject_definitions`, `summary`, `retention_analysis`, `detailed_description`, `overall_soundscape`, `non_diegetic_music`.
+
+<details><summary>graphs</summary>
+
+- `h3_image_ref_plus_text_to_video_api`
+- `h3_image_ref_plus_text_to_video_pdd_4step_api`
+- `h3_image_ref_plus_text_to_video_pdd_api`
+- `h3_probe_r2v_flashgen_4step_api`
+- `h3_probe_ref2v_pdd_345_api`
+- `h3_probe_ref2v_pdd_8s_api`
+- `h3_probe_ref2v_pdd_api`
+- `h3_probe_ref2v_pdd_headfree_api`
+- `h3_probe_reference_upscale_api`
+- `h3_probe_sol_on_refs_api`
+
+</details>
+
+```text
+subject_definitions:
+<Subject 1> is the main character in <Picture 1>, whose face, hair, and clothing are carried into the target video.
+<Subject 2> is the environment in <Picture 2>, which provides the setting for the target video.
+
+summary:
+[reference generation] The target video places <Subject 1> inside <Subject 2> for a single continuous shot.
+
+retention_analysis:
+<Subject 1> (appears in [Shot 1]): fully_preserved - face, hair, and clothing are retained.
+<Subject 2> (appears in [Shot 1]): fully_preserved - the visual setting is retained.
+
+detailed_description:
+The target video is in a cinematic live-action style.
+[Shot 1] A medium shot establishes <Subject 2>, then <Subject 1> enters from the left and stops at the center of the frame. The camera trucks right with small amplitude at slow speed.
+
+overall_soundscape:
+Natural ambient atmosphere continues throughout the shot.
+
+non_diegetic_music:
+N/A
+```
+
+## I2V_PROMPT
+
+Carried by **9** graph(s). Sections: none.
+
+<details><summary>graphs</summary>
+
+- `h3_first_frame_to_video_api`
+- `h3_first_frame_to_video_audio_freeze_api`
+- `h3_first_frame_to_video_pdd_api`
+- `h3_first_frame_to_video_pdd_savelat_api`
+- `h3_first_frame_to_video_stamped_api`
+- `h3_i2v_pdd8_flashgen_finish_api`
+- `h3_probe_i2v_flashgen_4step_api`
+- `h3_probe_i2v_step_switch_pdd8_flashgen_h080_api`
+- `h3_probe_i2v_step_switch_pdd8_flashgen_h080_savelat_api`
+
+</details>
+
+```text
+For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced.
+
+integrated_multimodal_description: [Shot 1] Live-action, cinematic, the subject shown in <Picture 1> holds its position, framing, lighting, and colors exactly as established in the image. The camera pushes in with small amplitude at slow speed while the subject begins to move, the surrounding scene staying continuous with the reference frame.
+
+overall_soundscape: Quiet room tone with a low ambient hum continues throughout, joined by soft physical sounds from the subject's movement.
+
+non_diegetic_music: N/A
 ```
 
 ## ref2va_role_character_garment_environment

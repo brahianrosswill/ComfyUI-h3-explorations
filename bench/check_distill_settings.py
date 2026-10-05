@@ -20,6 +20,10 @@ Claims, i.e. what breaks if a case is deleted:
                         "Closed lanes", 2026-09-26). Its vendor-row grading
                         (the `LEGAL` table, `UNATTESTED`, `OWNER_RECIPE`) went
                         with it and is in git
+  no retired PDMD       a graph loading a PDMD LoRA fails the same way:
+                        retired 2026-10-05, and the contract grading it
+                        had (one file, at the call, `simple` at the
+                        trained step count) is in git
   refine undistilled    an audio refine pass reaches its UNETLoader through
                         no LoRA loader
 
@@ -210,8 +214,9 @@ def classify_flashgen(lora_name):
     return "flashgen" in lora_name.lower()
 
 
-def classify_pdmd(lora_name):
-    """A PDMD LoRA (h3_config.PDMD_*): kijai's resizes since 2026-10-01."""
+def is_pdmd(lora_name):
+    """Any PDMD LoRA, a retired lane since 2026-10-05 (`docs/roadmap.md`,
+    "Closed lanes"): pdmd2026's files and kijai's resizes of them."""
     return "pdmd" in lora_name.lower()
 
 
@@ -330,6 +335,10 @@ def main():
             assert not retired, (
                 f"{path.name}: loads {retired}. Turbo LoRAs are a closed lane "
                 f"(docs/roadmap.md, 'Closed lanes', 2026-09-26)")
+            retired = [l for l in found.loras if is_pdmd(l)]
+            assert not retired, (
+                f"{path.name}: loads {retired}. PDMD is a retired lane "
+                f"(docs/roadmap.md, 'Closed lanes', 2026-10-05)")
             nodes_all = [n for n in doc.values() if isinstance(n, dict)]
             unets_all = {n["inputs"].get("unet_name") for n in nodes_all
                          if n.get("class_type") == "UNETLoader"}
@@ -464,46 +473,6 @@ def main():
                 got = (found.strengths or {}).get(found.loras[0])
                 assert got == cfg.FLASHGEN_STRENGTH, (
                     f"{path.name}: FlashGen strength {got}, want {cfg.FLASHGEN_STRENGTH}")
-                continue
-            if any(classify_pdmd(l) for l in found.loras):
-                # PDMD runs the trainer's contract: one file, on fl2va, applied
-                # at the call, at the base shift, Euler on `simple` at the step
-                # count the file was trained for, strength 1.0
-                # (docs/research/pdmd/2026-10-01_what_pdmd_is.md).
-                nodes = [n for n in doc.values() if isinstance(n, dict)]
-                assert len(found.loras) == 1 and found.loras[0] in cfg.PDMD_STEPS, (
-                    f"{path.name}: PDMD must load exactly one of {sorted(cfg.PDMD_STEPS)} "
-                    f"and nothing beside it, has {found.loras}")
-                lora = found.loras[0]
-                loaders = {n.get("class_type") for n in nodes if n.get("inputs", {}).get("lora_name") == lora}
-                assert loaders == {cfg.LORA_BRANCH_NODE}, (
-                    f"{path.name}: PDMD is applied at the call ({cfg.LORA_BRANCH_NODE}); a merge "
-                    f"into int8 keeps little of it. Has {sorted(map(str, loaders))}")
-                unets = {n["inputs"].get("unet_name") for n in nodes if n.get("class_type") == "UNETLoader"}
-                # Trained on fl2va. A reference graph needs the Ref2VA partition,
-                # so there PDMD is an untrained transfer by design
-                # (h3_probe_r2v_pdmd_4step); every other graph stays on fl2va.
-                is_ref = any(n.get("class_type") == "MiniMaxH3ReferenceConditioning" for n in nodes)
-                want_unet = cfg.MODELS["unet_ref2va" if is_ref else "unet_fl2va"]
-                assert unets == {want_unet}, (
-                    f"{path.name}: PDMD loads on {want_unet} here (fl2va, where it was trained, "
-                    f"or ref2va for a reference graph), has {sorted(map(str, unets))}")
-                effective = BASE_SHIFT if found.shift is None else found.shift
-                assert effective == BASE_SHIFT, (
-                    f"{path.name}: PDMD samples at the base {BASE_SHIFT}, has {effective}")
-                want = cfg.PDMD_STEPS[lora]
-                assert (found.scheduler, found.steps) == ("simple", want), (
-                    f"{path.name}: PDMD's grid is `simple` at {want} steps (the trainer's own, "
-                    f"bit for bit); graph has {found.scheduler!r}/{found.steps}")
-                manual = [n for n in nodes if n.get("class_type") == "ManualSigmas"]
-                assert not manual, f"{path.name}: PDMD needs no ManualSigmas, has {len(manual)}"
-                samplers = {doc[str(n["inputs"]["sampler"][0])]["inputs"].get("sampler_name")
-                            for n in nodes if n.get("class_type") == "SamplerCustomAdvanced"}
-                assert samplers == {cfg.DISTILL_SAMPLER}, (
-                    f"{path.name}: PDMD steps {cfg.DISTILL_SAMPLER}, graph has {sorted(map(str, samplers))}")
-                got = (found.strengths or {}).get(lora)
-                assert got == cfg.PDMD_STRENGTH, (
-                    f"{path.name}: PDMD strength {got}, want {cfg.PDMD_STRENGTH}")
                 continue
             pdd = [l for l in found.loras if classify_pdd(l)]
 
