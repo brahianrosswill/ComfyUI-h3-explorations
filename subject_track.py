@@ -106,6 +106,12 @@ or save node on either output would make core run the tracker on every queue,
 whatever the Masked Source decided. The outputs exist; a shipped graph leaves
 them unwired.
 
+**The shot table** (`shot_table.py`) is the same per-shot state as a table a
+person reviews once: per shot, who was found, numbered left to right as on
+the preview's outlines, who was taken and why. It is the fourth output, and
+its text is shown under the report. It reads `follow`'s result and changes
+nothing about how anyone is followed, so it does not move `MASK_VERSION`.
+
 Every phrase SAM 3 is given is an input: `subject_phrase` and `head_phrase`.
 
 Nothing here patches core. It calls core's own nodes (`SAM3_Detect`,
@@ -125,6 +131,8 @@ import torch
 import torch.nn.functional as F
 from comfy_api.latest import io, ui
 from PIL import Image, ImageDraw, ImageFont
+
+from . import shot_table
 
 logger = logging.getLogger(__name__)
 
@@ -642,7 +650,9 @@ def preview(frames: torch.Tensor, mask: torch.Tensor, shots: list[Shot], detect)
     The frame is the one the shot was taken on, or where its best candidate
     was seen. The subject's mask is tinted. Every detection there is outlined:
     green for the one taken, orange for the best candidate of an absent shot,
-    white for the rest. The label gives the shot, its frames, its score and
+    white for the rest. Each outline carries its person number at the top,
+    the number the shot table and a correction use (`shot_table.person_order`:
+    left to right). The label gives the shot, its frames, its score and
     whether it was picked, taken or absent.
     """
     height, width = int(frames.shape[1]), int(frames.shape[2])
@@ -667,6 +677,19 @@ def preview(frames: torch.Tensor, mask: torch.Tensor, shots: list[Shot], detect)
         box = draw.textbbox((8, 6), text, font=font)
         draw.rectangle((box[0] - 6, box[1] - 4, box[2] + 6, box[3] + 4), fill=(0, 0, 0))
         draw.text((8, 6), text, fill=(255, 255, 255), font=font)
+        label_bottom, label_right = box[3] + 6, box[2] + 8
+        subject = shot_table.person_number(found, s.index)
+        for number, col, row in shot_table.label_points(found):
+            x, y = col * TILE_WIDTH / width, row * th / height + 3
+            nb = draw.textbbox((0, 0), str(number), font=font)
+            w, h = nb[2] - nb[0] + 10, nb[3] - nb[1] + 8
+            x = min(max(x - w / 2, 0), TILE_WIDTH - w)
+            if y < label_bottom and x < label_right:      # clear of the shot's own label
+                y = label_bottom
+            y = min(y, th - h)
+            ink = (255, 255, 255) if number != subject else ((40, 255, 60) if s.seed is not None else (255, 160, 0))
+            draw.rectangle((x, y, x + w, y + h), fill=(0, 0, 0))
+            draw.text((x + 5 - nb[0], y + 4 - nb[1]), str(number), fill=ink, font=font)
         tiles.append(torch.from_numpy(np.asarray(pil).copy()).to(torch.float32) / 255.0)
     return torch.stack(tiles, dim=0) if tiles else torch.zeros((1, th, TILE_WIDTH, 3))
 
@@ -813,8 +836,11 @@ class MiniMaxH3SubjectTrack(io.ComfyNode):
             ],
             outputs=[
                 io.Mask.Output(display_name="mask", tooltip="One mask per frame at the frames' size; empty where the subject is absent."),
-                io.Image.Output(display_name="preview", tooltip="One labelled frame per shot."),
+                io.Image.Output(display_name="preview", tooltip="One labelled frame per shot, each person's outline numbered."),
                 io.String.Output(display_name="report"),
+                io.String.Output(display_name="shot_table",
+                                 tooltip="The shots as a table, in JSON: who was found in each, numbered as on the preview, "
+                                         "who was taken and why. A Save Shot Table node writes it out for review."),
             ],
         )
 
@@ -851,5 +877,8 @@ class MiniMaxH3SubjectTrack(io.ComfyNode):
                       cutting=cuts_line(steps, cut_at, named_cut))
         logger.info("[h3] MiniMaxH3SubjectTrack: %s", text.replace("\n", "; "))
         tiles = preview(frames, mask, found.shots, detect)
-        shown = {**ui.PreviewImage(tiles, cls=cls).as_dict(), **ui.PreviewText(text).as_dict()}
-        return io.NodeOutput(mask, tiles, text, ui=shown)
+        table = shot_table.build(found, detect, mask, state=_state, phrase=subject_phrase, pick=pick,
+                                 named_frame=named_frame, named_value=named_value, cuts=found_cuts)
+        both = text + "\n\n" + shot_table.as_text(table)
+        shown = {**ui.PreviewImage(tiles, cls=cls).as_dict(), **ui.PreviewText(both).as_dict()}
+        return io.NodeOutput(mask, tiles, text, shot_table.as_json(table), ui=shown)

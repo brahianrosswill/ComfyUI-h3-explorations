@@ -38,8 +38,9 @@ item drives the module's own functions on made-up frames and masks.
    picked one empty; nothing on the pick frame leaves everything empty and the
    report says so.
 6. **The node declares the phrase and every threshold as inputs**, with the
-   module's constants as their defaults, and three outputs with the mask
-   first. It is not an output node and it declares a `MASK_VERSION`, the two
+   module's constants as their defaults, and four outputs with the mask
+   first (the last is the shot table, `bench/check_shot_table.py`). It is
+   not an output node and it declares a `MASK_VERSION`, the two
    things `mask_store.py` needs for a kept mask to spare the tracker and to
    go stale when the node's method changes.
 
@@ -503,8 +504,8 @@ def check_schema(problems):
     for flat in ("pick_frame", "match_threshold", "cut_threshold"):
         if flat in inputs:
             problems.append(f"`{flat}` is also a top-level input: two inputs for one thing")
-    if len(schema.outputs) != 3 or schema.outputs[0].io_type != "MASK":
-        problems.append("the node's outputs are not mask, preview, report with the mask first")
+    if len(schema.outputs) != 4 or schema.outputs[0].io_type != "MASK":
+        problems.append("the node's outputs are not mask, preview, report, shot_table with the mask first")
     if getattr(schema, "is_output_node", False):
         problems.append("the node is an output node: core would run the tracker on every queue, kept mask or not")
     if not isinstance(getattr(st.MiniMaxH3SubjectTrack, "MASK_VERSION", None), int):

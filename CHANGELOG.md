@@ -4,6 +4,46 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.193.0
+
+### Added
+
+- **A per-shot table from the Subject Track** (the owner's pick on the
+  masking board, card `use-shot-table`). `MiniMaxH3SubjectTrack` gains a
+  fourth output, `shot_table`: per shot, its frames, the people found on
+  the frame it is shown on, which one is the subject and why, how many of
+  the shot's frames carry the subject, the closest person on a shot left
+  empty, and an empty caption slot. The node's text preview shows the table
+  under the report. `shot_table.py` builds it from `follow`'s result and
+  changes nothing about how anyone is followed, so `MASK_VERSION` does not
+  move and a kept mask stays valid.
+- **Person numbers on the preview's outlines**, by one rule in one function
+  (`shot_table.person_order`): left to right by the centre column of the
+  mask, ties to the higher one, from 1. The table uses the same numbers,
+  and the corrections input that follows resolves "shot N: person K"
+  through the same function.
+- `shot_table.py` also holds `MiniMaxH3SaveShotTable`, an output node
+  that writes the table as JSON and text and the numbered tiles as one
+  picture under a save prefix. **Not registered yet**: its line in
+  `nodes.py` and the node manifest follow in the next commit of this
+  work, after the VOID removal's second half.
+- **`bench/check_shot_table.py`**, on `bench/_lib`: ten cases over the
+  tracker's real `follow` on `check_subject_track.py`'s stand-in clip.
+  Numbering by the detector's order turns three of them red.
+
+### Changed
+
+- `bench/check_subject_track.py` expects four outputs with the mask first.
+
+### Not yet
+
+- On a render that keeps its mask the tracker does not run, so it emits no
+  table. The table is to travel with the kept mask (the Masked Source, the
+  mask store, the song node); that wiring is the next piece.
+- A sweep at this commit is red on `check_doc_inventory` and
+  `check_doc_links`, on rows and one citation naming the VOID files 0.192.0
+  removed; the second half of that removal clears them.
+
 ## 0.192.1
 
 - `bench/results/2026-10-05_void_plate_turn.md`: a note that the clips it

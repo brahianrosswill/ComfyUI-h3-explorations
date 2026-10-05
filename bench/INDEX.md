@@ -8,14 +8,14 @@ this file is only a way to find a script by what it says it does.
 
 | group | scripts |
 |---|---|
-| [`check_*`](#check) | 88 |
+| [`check_*`](#check) | 87 |
 | [`measure_*`](#measure) | 35 |
 | [`analyze_*`](#analyze) | 23 |
 | [`grade_*`](#grade) | 21 |
 | [`compare_*`](#compare) | 18 |
 | [`build_*`](#build) | 16 |
 | [`probe_*`](#probe) | 11 |
-| [the rest](#the-rest) | 116 |
+| [the rest](#the-rest) | 115 |
 
 ## check
 
@@ -89,6 +89,7 @@ this file is only a way to find a script by what it says it does.
 | [`check_sam3d_body_conversion.py`](check_sam3d_body_conversion.py) | Hold `bench/convert_sam3d_body_checkpoint.py`'s mapping to core's SAM 3D Body model, without weights. |
 | [`check_sam3d_body_vith.py`](check_sam3d_body_vith.py) | Hold `sam3d_body_vith.py` to Meta's ViT-H SAM 3D Body: the key set, the six geometry rules, and the backbone's forward. |
 | [`check_schema_defaults.py`](check_schema_defaults.py) | Check every node's schema defaults match its `execute` signature defaults. |
+| [`check_shot_table.py`](check_shot_table.py) | The per-shot table says what the tracker did, and its person numbers mean one thing everywhere. |
 | [`check_skill_routes.py`](check_skill_routes.py) | Fail when a skill routes an agent to a path that does not exist. |
 | [`check_sol_chunked.py`](check_sol_chunked.py) | Grade the chunked-producer forward before it is given a render. |
 | [`check_sol_kernel.py`](check_sol_kernel.py) | Check the installed `comfy_kitchen` still carries the Sol-Attn CUDA kernel. |
@@ -105,8 +106,6 @@ this file is only a way to find a script by what it says it does.
 | [`check_vae_precision_quantized.py`](check_vae_precision_quantized.py) | `MiniMaxH3VAEPrecision` refuses to cast a quantized half, and only that. |
 | [`check_vendor_config.py`](check_vendor_config.py) | That `vendor_config/` still is what the release ships, and still parses. |
 | [`check_video_mask.py`](check_video_mask.py) | The masked-source reduction and composite, and the ways each could keep the old subject. |
-| [`check_void_conditioning.py`](check_void_conditioning.py) | Hold `void_conditioning.py` to upstream VOID's conditioning arithmetic, on a synthetic clip and a stand-in VAE. |
-| [`check_void_conversion.py`](check_void_conversion.py) | Hold `bench/convert_void_checkpoint.py`'s rename to core's CogVideoX model, without weights. |
 | [`check_vsa_core_patch.py`](check_vsa_core_patch.py) | Report whether this ComfyUI builds H3's VSA gate, and whether consistently. |
 | [`check_widget_deviations.py`](check_widget_deviations.py) | Every shipped widget value that differs from its node's own default is declared. |
 
@@ -298,7 +297,6 @@ this file is only a way to find a script by what it says it does.
 | [`convert_sam3_checkpoint.py`](convert_sam3_checkpoint.py) | Repack Meta's SAM 3 / SAM 3.1 checkpoint as a safetensors file core loads, changing no weight. |
 | [`convert_sam3d_body_checkpoint.py`](convert_sam3d_body_checkpoint.py) | Repack Meta's SAM 3D Body checkpoint and its MHR rig as the one safetensors file core loads, from the originals. |
 | [`convert_sam3d_body_vith_checkpoint.py`](convert_sam3d_body_vith_checkpoint.py) | Repack Meta's ViT-H SAM 3D Body checkpoint and its MHR rig as the one safetensors file this pack's loader reads. |
-| [`convert_void_checkpoint.py`](convert_void_checkpoint.py) | Write netflix/void-model's checkpoint under the key names ComfyUI core loads, from the original. Header only. |
 | [`count_packed_rows.py`](count_packed_rows.py) | Exact packed-sequence rows, per segment, from the real `PackedLayout`. |
 | [`decode_draft_keepers.py`](decode_draft_keepers.py) | Give draft renders their real decode, from the latents the drafts saved. |
 | [`depth_profile_tables.py`](depth_profile_tables.py) | Per-block tables from the depth-profile outputs: Sol's error, the dense kernels' error, and whether the ranking holds across scenes. |
@@ -430,7 +428,7 @@ Arm manifests and the like; a manifest's line is its own `what`.
 | [`masked_v2v_arms.json`](masked_v2v_arms.json) | Masked video to video on the song node (video_mask.py), first runs, owner's clip and reference still, 2026-10-04. One window of the PDD8 song chain at the shipped canvas, the source's audio frozen hard, the singer tracked by SAM 3.1 and ... |
 | [`masked_v2v_band_arms.json`](masked_v2v_band_arms.json) | Masked video to video, second clip (owner, 2026-10-04): 1:35 to 2:07 of a six-person band video with coloured lighting changes and cutaways, the lead singer replaced from the same reference still as bench/masked_v2v_arms.json, on the ... |
 | [`mma_rate.cu`](mma_rate.cu) | Tensor-core MMA issue rates on this box: the forms Sol-Attn's exact branch |
-| [`node_id_manifest.json`](node_id_manifest.json) | (JSON, 40 top-level keys; it carries no description) |
+| [`node_id_manifest.json`](node_id_manifest.json) | (JSON, 39 top-level keys; it carries no description) |
 | [`pdd8_finisher_grid_arms.json`](pdd8_finisher_grid_arms.json) | The PDD8 finisher grid (board direction pdd8-finisher-grid, the owner's consolidation 2026-09-27) and #46, on _savelat twins throughout. Seed 730451892, each scene at its written length. |
 | [`pdd_bake_arms.json`](pdd_bake_arms.json) | The merged-versus-baked PDD8 pair, the first render of the backbone bake lane (docs/research/pdd/2026-09-05_bake_plan.md). One new arm per scene: PDD8 on the baked fl2va checkpoint with the stripped sidecar, sage on every step, Sol absent ... |
 | [`pdd_ladder_arms.json`](pdd_ladder_arms.json) | The PDD ladder the 2026-09-03 speedup ladder turned out to need. That ladder rendered PDD8 only as the shipped graph (sage auto plus Sol at the PDD window) and it lost to the true baseline on every scene; the owner pointed out that no arm ... |
