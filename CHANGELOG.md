@@ -4,6 +4,16 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.190.12
+
+### Docs
+
+- **`docs/wiki/h3_uses.md` says what each unshipped use needs**, one line
+  each in a new section, and gains two rows for movement in the masked
+  lane: a body mesh of the original as the video reference, and per-shot
+  captions written by a model. Its masked section now says the path is not
+  a trained task.
+
 ## 0.190.11
 
 ### Added

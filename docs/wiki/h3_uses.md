@@ -1,6 +1,6 @@
 # What can be made here: a library of uses
 
-last updated: 2026-10-05 (first written)
+last updated: 2026-10-05 (first written; what each unshipped use needs, added the same day)
 
 Written by hand, at the owner's ask (2026-10-05: "a library of potential
 uses given what we have done here and can do here holistically with
@@ -86,7 +86,8 @@ Not a trained task.
 
 A mask over part of each frame: the masked tokens are generated and
 everything else is the source's own pixels. Built on the song node, so the
-source's audio is kept too. [`masked_v2v.md`](masked_v2v.md) is this lane's
+source's audio is kept too. Not a trained task: the release's own edit is
+the reference route in section 2, which regenerates the whole frame. [`masked_v2v.md`](masked_v2v.md) is this lane's
 page and has its limits; the board the owner keeps for it lists every idea
 below with what would accept or reject it.
 
@@ -107,6 +108,8 @@ below with what would accept or reject it.
 | A thing that is not a person | the same mask | a mode on the Subject Track without the head comparison | proposed | the board |
 | Correct one shot by hand | none | numbered outlines on the preview, and a line of text | proposed | the board |
 | One review per clip before any render | none | a dry run that emits masks, parts, shots and captions | proposed | the board |
+| Movement from a body mesh of the original, with none of its look | the mesh rendered as the video reference | SAM 3D Body, which core runs; the weights are converted | proposed | `bench/results/2026-10-05_sam3d_body_conversion.md`; the board |
+| Movement from per-shot captions a model writes and the user can edit | the prompt, written by machine | core's text generation over the loaded encoder | proposed; it is still prompting | the board |
 | Movement from a control adapter | a trained mask-and-source path | none | closed: declined by the owner | [`decisions.md`](decisions.md), 2026-10-04 |
 | Movement from a late start on the schedule | the source showing through at the first step | none in the tree | closed: carries the original's look with its pose | `bench/results/2026-10-04_masked_v2v_turn_soft_arms.md` |
 
@@ -144,7 +147,35 @@ These are not uses; they change what a use costs and how it looks.
 | FastH3 | its own checkpoint, text to video only | `../h3_distills.md` |
 | Sol-Attn | sparse attention, on in the shipped video graphs | `MiniMaxH3Sol`; `../SOLATTN.md` |
 
-## 8. Not available here
+## 8. What each unshipped use needs
+
+One line each, for the rows above that are not shipped. A probe is listed
+only where something more than promoting its graph is needed.
+
+| use | what it needs |
+|---|---|
+| Encode references once, change only the prompt | a shipped graph that uses the two split nodes |
+| Prompt variations from lists on any graph | a graph outside the song lane that uses the fill node |
+| The tracker's matte on its own | nothing to use it; a clip it has not seen before it is trusted on one |
+| Head and hair only | a region that does not oversize the head; an original with short hair to try it on |
+| The original's movement as a video reference | its first renders, against the generic-prompt control |
+| Parts and a soft matte | a graph that consumes them: the parts mask as the Masked Source's mask, or the matte in its composite |
+| One garment, or only the hair | one render; the wiring exists |
+| A masked render through two samplers | a two-sampler masked graph, and a run on H3 |
+| Reshoot one shot | a shot or a frame range as the Masked Source's region, from the cut finder the tracker already has |
+| Keep the person, replace the world | the region and the composite inverted on the Masked Source; a still of the setting |
+| Redub | the mouth mask wired as the region with a new track frozen; one render to see whether a small hole holds |
+| Remove a person, and the shadow | a graph that runs core's VOID nodes under the kept mask; the weights are on disk |
+| Two people from two stills | two picks and a union of their masks |
+| A thing that is not a person | a choice on the Subject Track that turns the head comparison off |
+| Correct one shot by hand | numbers on the preview's outlines and a corrections line on the Subject Track |
+| One review per clip before a render | a path that stops before sampling; the tracker's preview and the song node's `preview` are two parts of it |
+| Movement from a body mesh | a node that renders the mesh over the frames, then one render |
+| Movement from captions | a node that captions each shot and assembles the prompt, shown for editing |
+| Make the sound again on a finished clip | a graph that starts from a saved latent, not from a fresh sample |
+| The combinations in section 6 | one render each |
+
+## 9. Not available here
 
 So that nobody plans on them. `../roadmap.md`, "Closed lanes", is the list
 and the reasons.
