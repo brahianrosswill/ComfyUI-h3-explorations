@@ -4,6 +4,18 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.190.6
+
+### Docs
+
+- **`bench/results/2026-10-05_sapiens2_first_frame.md` leads with what it
+  can carry** (mryellow's review, 2026-10-05). It says at the top that it is
+  one span of one clip; the timing section puts the part node beside core's
+  `SAM3_Detect` for the same frames in one table, so the size of the gain is
+  read off it; and the hair section leads with the agreement where SAM 3
+  found the subject's hair, then the frames where it did not. No figure
+  changed; the data file is untouched.
+
 ## 0.190.5
 
 ### Added

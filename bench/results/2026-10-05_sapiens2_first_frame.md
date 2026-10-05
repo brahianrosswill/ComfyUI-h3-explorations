@@ -10,6 +10,9 @@ what was seen. The script, its graph and the pictures are under
 `internal/claude/2026-10-05_mrorange/` (`sapiens2_first_frame.py`,
 `first_frame_label_sheet.png`, `first_frame_hair_tile.png`), not tracked.
 
+**Everything here is one span of one clip**: 48 consecutive frames of one
+shot, one subject, facing the camera at mid distance.
+
 ## What ran
 
 Two seconds of `thinkaboutthings_compressed.mp4` from 101.0 s, 48 frames at
@@ -64,12 +67,19 @@ map back, and not the model load:
 | segmentation and matting (node 201) | 0.33 |
 
 Both runs gave the same figures to within 0.01. As whole nodes in the second
-run, with their model loads: 8.2 s and 17.8 s for the 48 frames, against 8.5 s
-for the one `SAM3_Detect` phrase and 5.6 s for the Subject Track
-(`per_node_s`).
+run, with their model loads, for the 48 frames (`per_node_s`):
 
-So against the Masked Source's two phrases this is about half the time per
-frame, not a different order of magnitude. Where the 0.15 s goes has not been
+| node | seconds for 48 frames | per frame |
+|---|---|---|
+| Subject Parts, segmentation alone | 8.2 | 0.17 |
+| Subject Parts, segmentation and matting | 17.8 | 0.37 |
+| `SAM3_Detect`, the one phrase `hair` | 8.5 | 0.18 |
+| Subject Track | 5.6 | 0.12 |
+
+The Masked Source asks SAM 3 for two phrases by default
+(`video_mask.PART_PHRASES`), so its part detection is twice the `SAM3_Detect`
+row. Against that, segmentation alone is **about twice as fast, not ten
+times**; with matting it is about level. Where the 0.15 s goes has not been
 profiled; the crop, the resize of 29 channels of logits and the per-frame
 dilation all run one frame at a time. What the node buys is the next section,
 and every part from the one pass.
@@ -80,15 +90,16 @@ Sapiens2's Hair on the subject against SAM 3's `hair` cut to the subject's
 mask widened by `subject_margin`, which is what the Masked Source's
 `select_part` keeps. Both read back from 8-bit previews.
 
-- **SAM 3's detection was on somebody else on 4 of the 48 frames** (36, 37,
-  39, 45): it returns one detection for a phrase with no count, and on those
+- **Where SAM 3 found the lead's hair, on 44 of the 48 frames, the two masks
+  agree at an intersection over union of about 0.9** (0.89 to 0.92, median
+  0.91). Sapiens2's is the larger by about a thousand pixels on a mask of
+  about twenty-two thousand: on the tile for frame 6 it follows the loose
+  strands at the hair's lower edge further down the chest.
+- **On the other 4 frames (36, 37, 39, 45) SAM 3's detection was on somebody
+  else**: it returns one detection for a phrase with no count, and on those
   frames it was a neighbour's hair, with nothing on the lead. These are the
   frames the Masked Source carries from a neighbour. Sapiens2 found hair on
   the lead on all 48, and its area moves by a few percent across them.
-- On the other 44 frames the two masks agree at an intersection over union
-  between 0.89 and 0.92. Sapiens2's is the larger by about a thousand pixels
-  on a mask of about twenty-two thousand: on the tile for frame 6 it follows
-  the loose strands at the hair's lower edge further down the chest.
 - The matte for hair has three to four thousand pixels strictly between 0 and
   1 per frame, along the hair's outer edge, and is hard where the hair meets
   the face and the sweatshirt, as designed.
