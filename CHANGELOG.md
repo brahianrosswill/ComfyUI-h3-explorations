@@ -4,7 +4,7 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
-## 0.190.3
+## 0.190.4
 
 ### Docs
 
@@ -12,6 +12,10 @@ artifact.
   Sapiens2 licence**, at the owner's word the same day it was added
   (0.190.2). The page keeps the line naming the nodes that landed in
   0.190.0.
+- Renumbered from 0.190.3, which two sessions took within the same minutes.
+  The commit that made the change, 196749df, is titled 0.190.3; this entry
+  itself was carried into the tree by 7f8656f7, the other 0.190.3, whose
+  pathspec commit of this file picked it up while it was still uncommitted.
 
 ## 0.190.3
 
