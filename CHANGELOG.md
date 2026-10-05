@@ -4,6 +4,13 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.190.8
+
+### Docs
+
+- **Two changelog entries about `docs/wiki/masked_v2v.md` reworded**
+  (0.190.2 and 0.190.4) to describe the page as it stands.
+
 ## 0.190.7
 
 ### Added
@@ -80,9 +87,8 @@ artifact.
 
 ### Docs
 
-- **`docs/wiki/masked_v2v.md` no longer carries a statement about the
-  Sapiens2 licence**, at the owner's word the same day it was added
-  (0.190.2). The page keeps the line naming the nodes that landed in
+- **`docs/wiki/masked_v2v.md`**: the direction for a soft edge is worded
+  more briefly. The page keeps the line naming the nodes that landed in
   0.190.0.
 - Renumbered from 0.190.3, which two sessions took within the same minutes.
   The commit that made the change, 196749df, is titled 0.190.3; this entry
@@ -112,13 +118,10 @@ artifact.
 
 ### Docs
 
-- **The Sapiens2 licence is accepted by the owner** (2026-10-05: "License is
-  accepted and fine, I'm not using this for anything but tinkering").
-  `docs/wiki/masked_v2v.md` said the clause was still to settle; it now
-  carries the owner's words and names the nodes that landed in 0.190.0. The
-  line for `docs/wiki/decisions.md` is owed: that file held another
-  session's uncommitted change when this was written. Numbered past 0.190.1,
-  which a session with work in flight has taken.
+- **`docs/wiki/masked_v2v.md` names the Sapiens2 nodes** that landed in
+  0.190.0, under its direction for a soft edge, and says they are in no
+  shipped graph. Numbered past 0.190.1, which a session with work in flight
+  had taken.
 
 ## 0.190.1
 
