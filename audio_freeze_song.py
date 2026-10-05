@@ -107,7 +107,7 @@ from comfy_extras.nodes_minimax_h3 import FPS, _empty_av_latent
 
 from .audio_freeze import MiniMaxH3EncodeTrack, MiniMaxH3FreezeAudioWindow, _ffmpeg, _stereo
 from .conditioning import MiniMaxH3Conditioning
-from . import loop_plan, loop_resume
+from . import loop_plan, loop_resume, shot_table
 from .prompt_lists import H3PromptLists, fill_windows
 from .loop_output import CLEAN_OUTPUT_ARGS, join_and_mux, saved_outputs, window_dir, write_metadata_png
 from .reference_conditioning import H3References, MiniMaxH3ReferenceConditioning, RuntimeVideoReference, _order_records
@@ -516,6 +516,11 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
         join_and_mux(files, waveform, rate, out_path, work_dir, stem)
         png_path = (write_metadata_png(os.path.join(full_out, stem + ".png"), out_path, graph, extra)
                     if save_metadata_png else None)
+        # the tracker's per-shot table, kept with the mask (`video_mask.py`), beside the video
+        # under the same number: `<stem>_shots.json` and `<stem>_shots.md`
+        table_files = shot_table.write_beside(source, full_out, stem)
+        if table_files:
+            reports.append("shot table written beside the video: " + ", ".join(table_files))
         if not keep_windows:
             for p in files + stored_latents:
                 with contextlib.suppress(FileNotFoundError):

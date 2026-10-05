@@ -201,6 +201,15 @@ def check_store(problems, real_root):
         problems.append("a kept mask of another shape is returned")
     if not ms.has(k1, (N, H, W)) or ms.has(absent, (N, H, W)) or ms.load(None, (N, H, W)) is not None:
         problems.append("`has` and `load` disagree with what is on disk")
+    # the shot table rides in the mask's file: kept without one, a table is not found; kept with one, it is the same text
+    if ms.has(k1, (N, H, W), with_table=True) or ms.table(k1) != "" or ms.table(absent) != "" or ms.table(None) != "":
+        problems.append("a mask kept without a shot table is reported as carrying one")
+    text = '{"table": "h3 shot table", "note": "caf\\u00e9 \\u2014 two shots"}'
+    ms.save(k1, mask, text)
+    if not ms.has(k1, (N, H, W), with_table=True) or ms.table(k1) != text:
+        problems.append("a shot table kept with a mask does not read back as the same text")
+    if not torch.equal(ms.load(k1, (N, H, W)), mask) or ms.has(k1, (N + 1, H, W), with_table=True):
+        problems.append("keeping a shot table changed the mask, or a table is found under another shape")
     # a file is named after its source video and found again by its key alone
     frames = _frames()
     real_exists, real_path = folder_paths.exists_annotated_filepath, folder_paths.get_annotated_filepath
@@ -285,6 +294,42 @@ def check_node(problems):
         p3["102"]["inputs"]["detection_threshold"] = 0.9
         if not _node(p3).check_lazy_status(frames=frames, mask=None, segmenter=None, segmenter_clip=None, **settings):
             problems.append(f"{replace}: a changed tracker threshold used the old mask")
+        # the shot table: wiring it does not change the mask's key, a kept mask without one is a miss once,
+        # and after that a hit yields both with nothing asked
+        p4 = copy.deepcopy(prompt)
+        p4[NODE]["inputs"]["shot_table"] = ["103", 1]
+        wired = _node(p4)
+        if wired._mask_key(frames, True) != node._mask_key(frames, True):
+            problems.append(f"{replace}: wiring the shot table changed the kept mask's key")
+        if kept[0].get("shot_table") != "":
+            problems.append(f"{replace}: a source with no table wired carries {kept[0].get('shot_table')!r}")
+        asks = wired.check_lazy_status(frames=frames, mask=None, segmenter=None, segmenter_clip=None,
+                                       shot_table=None, **settings)
+        if "shot_table" not in asks or "mask" not in asks:
+            problems.append(f"{replace}: a kept mask with no table and the table wired asks for {asks}, "
+                            "not the mask and the table")
+        text = '{"table": "h3 shot table", "shots": []}'
+        vm.detect_part = lambda seg, clip, fr, where, phrases, threshold=0.5: mask[where]
+        try:
+            first = _args(wired.execute(frames, mask, segmenter=object(), segmenter_clip=object(),
+                                        shot_table=text, **settings))
+            asks = wired.check_lazy_status(frames=frames, mask=None, segmenter=None, segmenter_clip=None,
+                                           shot_table=None, **settings)
+            if asks:
+                problems.append(f"{replace}: a mask kept with its table: core is still asked for {asks}")
+            again = _args(wired.execute(frames, None, **settings))
+        finally:
+            vm.detect_part = real
+        if first[0].get("shot_table") != text or again[0].get("shot_table") != text:
+            problems.append(f"{replace}: the table is not the tracker's on the tracked run and on the kept one")
+        if not torch.equal(again[1], tracked[1]):
+            problems.append(f"{replace}: keeping the table changed the kept mask")
+        # the table is the tracker's own: a changed tracker setting is a new key, with no table under it
+        p5 = copy.deepcopy(p4)
+        p5["102"]["inputs"]["detection_threshold"] = 0.9
+        if "shot_table" not in _node(p5).check_lazy_status(frames=frames, mask=None, segmenter=None,
+                                                           segmenter_clip=None, shot_table=None, **settings):
+            problems.append(f"{replace}: a changed tracker threshold reused the old shot table")
         # RED CONTROL: turned off, it asks and reads nothing
         off = dict(settings, reuse_mask=False)
         if "mask" not in node.check_lazy_status(frames=frames, mask=None, segmenter=None, segmenter_clip=None, **off):
@@ -330,8 +375,9 @@ def check_node(problems):
         if i.id not in vm.MASK_KEY_SKIP:
             problems.append(f"{i.id} is appended after reuse_mask and would enter the kept mask's key")
     lazy = sorted(i.id for i in schema.inputs if getattr(i, "lazy", False))
-    if lazy != sorted(vm.LAZY_FOR_MASK):
-        problems.append(f"the lazy inputs are {lazy}, expected {sorted(vm.LAZY_FOR_MASK)}; `frames` must not be lazy")
+    expected_lazy = sorted(vm.LAZY_FOR_MASK + (vm.LAZY_FOR_TABLE,))
+    if lazy != expected_lazy:
+        problems.append(f"the lazy inputs are {lazy}, expected {expected_lazy}; `frames` must not be lazy")
 
 
 def check_graphs(problems):

@@ -42,6 +42,15 @@ rule is written on the node that declares the number.
 compressed. A hit returns the same bytes the tracker gave, so a render with a
 kept mask is the render with a tracked one.
 
+**The shot table rides with the mask** (2026-10-05). The Subject Track emits
+a per-shot table beside its mask (`shot_table.py`), and on a hit the tracker
+does not run, so nothing would emit it. `save` takes the table's text and
+writes it into the mask's own file, `table` reads it back, and `has` can be
+asked for a mask that has one. One file, one key: a hit yields both and a
+miss computes both. A mask kept before that date, or from a graph that did
+not wire the table, has none; a graph that wires the table treats such a
+file as a miss once, and the next run hits.
+
 **Where.** `masks/` in ComfyUI's output folder, beside `latents/` (owner,
 2026-10-04; it was ComfyUI's user directory for one commit, which is for
 settings and not somewhere anyone would look). A file is named after the
@@ -78,6 +87,8 @@ STORE_BYTES = 4 * 1024 ** 3
 DIRNAME = "masks"
 #: A kept mask's file name: an optional label, then the key's 40 hex digits.
 #: Only files of this shape are this module's to count, read or remove.
+#: The array a kept file holds its shot table under, a string of JSON.
+TABLE_FIELD = "shot_table"
 KEPT_NAME = re.compile(r"^(?:.+_)?[0-9a-f]{40}\.npz$")
 #: The label a key's file gets, noted by `mask_key` (which has the prompt) for
 #: `save` (which does not). Process-local and only a name: a key with no label
@@ -202,16 +213,32 @@ def _path(key: str) -> Path:
     return root() / (f"{label}_{key}.npz" if label else f"{key}.npz")
 
 
-def has(key: str | None, shape) -> bool:
-    """True when a mask of `shape` ([N, H, W]) is kept under `key`. Reads the header only."""
+def has(key: str | None, shape, with_table: bool = False) -> bool:
+    """True when a mask of `shape` ([N, H, W]) is kept under `key`. Reads the header only.
+
+    `with_table` also requires the file to carry a shot table.
+    """
     if key is None:
         return False
     path = _path(key)
     try:
         with np.load(path) as z:
-            return tuple(int(v) for v in z["shape"]) == tuple(int(v) for v in shape)
+            if tuple(int(v) for v in z["shape"]) != tuple(int(v) for v in shape):
+                return False
+            return TABLE_FIELD in z.files if with_table else True
     except UNREADABLE:
         return False
+
+
+def table(key: str | None) -> str:
+    """The shot table kept with `key`'s mask, or "" when the file has none or does not read."""
+    if key is None:
+        return ""
+    try:
+        with np.load(_path(key)) as z:
+            return str(z[TABLE_FIELD][()]) if TABLE_FIELD in z.files else ""
+    except UNREADABLE:
+        return ""
 
 
 def load(key: str | None, shape) -> torch.Tensor | None:
@@ -234,8 +261,12 @@ def load(key: str | None, shape) -> torch.Tensor | None:
     return mask
 
 
-def save(key: str | None, mask: torch.Tensor) -> float:
-    """Keep `mask` ([N, H, W]) under `key`, then drop the least recently used past the budget. Seconds taken."""
+def save(key: str | None, mask: torch.Tensor, shot_table: str = "") -> float:
+    """Keep `mask` ([N, H, W]) under `key`, then drop the least recently used past the budget. Seconds taken.
+
+    `shot_table` is the tracker's table for the same clip, kept in the same
+    file when it is not empty.
+    """
     if key is None:
         return 0.0
     t0 = time.perf_counter()
@@ -243,8 +274,9 @@ def save(key: str | None, mask: torch.Tensor) -> float:
     folder.mkdir(parents=True, exist_ok=True)
     data = mask.detach().to(torch.float32).cpu().contiguous().numpy()
     tmp = folder / f".{key}.{os.getpid()}.tmp.npz"
+    extra = {TABLE_FIELD: np.asarray(str(shot_table))} if shot_table else {}
     try:
-        np.savez_compressed(tmp, mask=data, shape=np.asarray(data.shape, dtype=np.int64))
+        np.savez_compressed(tmp, mask=data, shape=np.asarray(data.shape, dtype=np.int64), **extra)
         os.replace(tmp, _path(key))     # a reader sees the whole file or none of it
     finally:
         tmp.unlink(missing_ok=True)

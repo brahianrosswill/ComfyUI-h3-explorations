@@ -40,6 +40,10 @@ off a real result and not off rows typed for the purpose.
                                  picture under core's counter, and refuses a
                                  string that is not a table and a table of
                                  another version.
+  kept_table_is_written_beside   what the song node calls after its video:
+                                 the bundle's table lands as `<stem>_shots`
+                                 JSON and text, and a bundle with none writes
+                                 nothing.
   tracker_emits_the_table        the Subject Track declares the table as its
                                  last output, after mask, preview, report.
                                  Skipped until the tracker carries it.
@@ -258,6 +262,20 @@ def save_node_writes_three_files():
     return "two saves, the second under the next number"
 
 
+def kept_table_is_written_beside_a_render():
+    table, *_ = _run()
+    with tempfile.TemporaryDirectory() as tmp:
+        # what the song node does after its video: the Masked Source's bundle, the folder, the render's stem
+        names = tbl.write_beside({"frames": None, "shot_table": tbl.as_json(table)}, tmp, "song_00007")
+        assert names == ["song_00007_shots.json", "song_00007_shots.md"], names
+        assert json.loads((Path(tmp) / names[0]).read_text()) == table
+        assert (Path(tmp) / names[1]).read_text().strip() == tbl.as_text(table)
+        # a bundle with no table (no tracker wired, or a painted mask) writes nothing, and neither does no source
+        assert tbl.write_beside({"frames": None, "shot_table": ""}, tmp, "song_00008") == []
+        assert tbl.write_beside({"frames": None}, tmp, "song_00008") == [] and tbl.write_beside(None, tmp, "x") == []
+        assert sorted(p.name for p in Path(tmp).iterdir()) == sorted(names), "a render with no table left a file"
+
+
 def tracker_emits_the_table():
     outputs = st.MiniMaxH3SubjectTrack.define_schema().outputs
     names = [getattr(o, "display_name", None) for o in outputs]
@@ -272,7 +290,7 @@ def main() -> int:
     for fn in (numbering_is_left_to_right, rows_cover_the_clip, subject_number_names_the_mask,
                absent_shot_says_so, on_screen_is_counted, every_row_has_the_slots,
                text_says_what_json_says, labels_sit_on_their_outlines, save_node_writes_three_files,
-               tracker_emits_the_table):
+               kept_table_is_written_beside_a_render, tracker_emits_the_table):
         case(fn.__name__, fn)
     return finish()
 

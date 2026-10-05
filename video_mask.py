@@ -118,6 +118,15 @@ tracked mask. `mask_store.py` has the key, the format and the budget;
 `MASK_KEY_SKIP` below is the list of this node's inputs that do not change
 its mask.
 
+**The shot table travels with the mask** (2026-10-05, `shot_table.py`). The
+Subject Track's table says who was found and taken in each shot, and a
+person reviews it in place of a render. Wired into `shot_table` here, it is
+asked for only when the mask is (both are lazy and both come from the
+tracker), kept in the mask's file, read back on a hit, and handed on in the
+source bundle, where the song node writes it beside the video under the
+render's own number. Wiring it does not change the mask's key. A mask kept
+without a table is a miss the first time a graph wires one.
+
 Design from two third-party nodes, read and not run:
 `coderef/comfyui_dagthomas/nodes/h3/mouth_guard.py` (pixel grow, max-pool,
 max per run; it protects where this regenerates) and
@@ -187,7 +196,7 @@ PART_THRESHOLD = 0.5
 #: holds both directions.
 MASK_KEY_SKIP = ("grow_pixels", "feather_pixels", "paint_out", "composite", "change_threshold", "reuse_mask",
                  "motion_reference", "motion_short_edge", "motion_vae",
-                 "start_from", "start_top", "start_blur", "start_knots")
+                 "start_from", "start_top", "start_blur", "start_knots", "shot_table")
 #: `start_from` choices: what the regenerated tokens start from.
 #:
 #: `noise` is the shipped render: the schedule runs from its first knot and
@@ -235,6 +244,10 @@ MOTION_FRAME = "whole frame"
 MOTION_SHORT_EDGE = 384
 #: The inputs core is asked for only when no kept mask matches.
 LAZY_FOR_MASK = ("mask", "segmenter", "segmenter_clip")
+#: The tracker's shot table (`shot_table.py`), lazy with the mask and kept
+#: with it: a kept mask that carries a table spares the tracker for both, and
+#: one that carries none is a miss for a graph that wires the table, once.
+LAZY_FOR_TABLE = "shot_table"
 
 
 def run_lengths(latent_t: int) -> list[int]:
@@ -748,6 +761,11 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                 io.Int.Input("start_knots", default=START_KNOTS, min=1, max=4, optional=True,
                              tooltip=("For a softened start: how many steps of the schedule are skipped. More "
                                       "shows more of the blur in the result.")),
+                # appended 2026-10-05 (`shot_table.py`): lazy with the mask and kept with it
+                io.String.Input(LAZY_FOR_TABLE, optional=True, lazy=True, force_input=True,
+                                tooltip=("The Subject Track's `shot_table` output. It is kept with the mask, "
+                                         "so a render that reuses a kept mask still has it, and the song node "
+                                         "writes it next to the video.")),
             ],
             hidden=[io.Hidden.prompt, io.Hidden.unique_id],
             outputs=[H3MaskedSource.Output(display_name="source"),
@@ -770,14 +788,15 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
     def check_lazy_status(cls, frames=None, replace=REPLACE_WHOLE, reuse_mask=True, **kwargs):
         # None is a connected input core has not run yet; an unconnected
         # optional input is absent. `frames` is not lazy, so it is here.
-        wanted = LAZY_FOR_MASK if replace == REPLACE_PART else LAZY_FOR_MASK[:1]
+        wanted = (LAZY_FOR_MASK if replace == REPLACE_PART else LAZY_FOR_MASK[:1]) + (LAZY_FOR_TABLE,)
         missing = [name for name in wanted if name in kwargs and kwargs[name] is None]
         if not missing:
             return []
         key = cls._mask_key(frames, reuse_mask)
         if key is not None:
             from . import mask_store
-            if mask_store.has(key, tuple(frames.shape[:3])):
+            # with the table wired, only a kept mask that carries one is a hit
+            if mask_store.has(key, tuple(frames.shape[:3]), with_table=LAZY_FOR_TABLE in kwargs):
                 return []           # a kept mask matches: the tracker and the detector do not run
         return missing
 
@@ -789,7 +808,8 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                 part_threshold=PART_THRESHOLD, part_margin=PART_MARGIN, composite=COMPOSITE_CHANGED,
                 change_threshold=CHANGE_THRESHOLD, reuse_mask=True, motion_reference=MOTION_NONE,
                 motion_short_edge=MOTION_SHORT_EDGE, motion_vae=False, start_from=START_NOISE,
-                start_top=START_TOP_SHARE, start_blur=START_BLUR, start_knots=START_KNOTS) -> io.NodeOutput:
+                start_top=START_TOP_SHARE, start_blur=START_BLUR, start_knots=START_KNOTS,
+                shot_table=None) -> io.NodeOutput:
         if frames.ndim != 4:
             raise ValueError(f"frames must be [N, H, W, C]; got {tuple(frames.shape)}")
         if int(feather_pixels) > int(grow_pixels):
@@ -813,8 +833,17 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
         if key is not None:
             from . import mask_store
             kept = mask_store.load(key, tuple(frames.shape[:3]))
+        table = str(shot_table or "")
         if kept is not None:
             mask, note = kept, ", mask kept from an earlier run (nothing tracked)"
+            if table:
+                # the tracker ran for its table alone: the kept file had none (kept before the
+                # table existed, or by a graph that did not wire it). Keep it for the next run.
+                if mask_store.table(key) != table:
+                    mask_store.save(key, mask, table)
+                    note += ", its shot table kept with it now"
+            else:
+                table = mask_store.table(key)
         else:
             if mask is None:
                 # `check_lazy_status` found a kept mask and it did not read here: it has been removed
@@ -824,7 +853,7 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
             mask, note = cls._settle_mask(frames, mask, replace, segmenter, segmenter_clip, part_phrases,
                                           part_threshold, part_margin)
             if key is not None:
-                seconds = mask_store.save(key, mask)
+                seconds = mask_store.save(key, mask, table)
                 note += f", mask kept for the next run ({seconds:.0f} s to write)"
         covered = float((mask > 0.5).any(dim=0).float().mean())
         logger.info("[h3] MiniMaxH3MaskedSource: %d frames, replacing the %s%s, the mask touches %.1f%% of the "
@@ -840,7 +869,8 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                               "motion_reference": motion_reference, "motion_short_edge": int(motion_short_edge),
                               "motion_vae": bool(motion_vae),
                               "start_from": start_from, "start_top": float(start_top),
-                              "start_blur": int(start_blur), "start_knots": int(start_knots)},
+                              "start_blur": int(start_blur), "start_knots": int(start_knots),
+                              "shot_table": table},
                              mask.to(torch.float32))
 
     @classmethod

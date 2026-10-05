@@ -291,6 +291,18 @@ def write(table_json: str, tiles: torch.Tensor | None, folder: str, stem: str) -
     return names
 
 
+def write_beside(source: dict | None, folder: str, stem: str) -> list[str]:
+    """Write the table a Masked Source's bundle carries next to a render named `stem`; the names, or [].
+
+    The song node calls this after it writes its video. The bundle's table
+    came with the mask, tracked or kept (`video_mask.py`), so a render that
+    spared the tracker still gets its table. No tiles: a kept mask keeps the
+    table, not the tracker's preview.
+    """
+    text = (source or {}).get("shot_table") or ""
+    return write(text, None, folder, stem) if text else []
+
+
 class MiniMaxH3SaveShotTable(io.ComfyNode):
     @classmethod
     def define_schema(cls):
