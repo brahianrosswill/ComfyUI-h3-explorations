@@ -4,6 +4,31 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.191.3
+
+### Measured
+
+- **SAM 3D Body's two releases on one frame, on the CPU and on the card**
+  (`bench/results/2026-10-05_sam3d_body_vith.md`, `.json`). Core's predict
+  and render through the DINOv3 file and through the ViT-H file loaded by
+  `MiniMaxH3SAM3DBodyViTHLoader` (0.190.16): both put a mesh on the boxed
+  person in the same pose, in float32 and in half precision. Not an
+  accuracy comparison. The record also says what the run showed that the
+  code did not: core runs both releases in half precision on this card, and
+  an in-process caller of core's nodes has to set up the server's dynamic
+  VRAM layer first.
+
+### Added
+
+- **`bench/compare_sam3d_body_releases.py`**, the script behind the
+  record: one frame, one person box, both releases in its own process, a
+  contact tile under `internal/` and a JSON of how the predictions differ.
+  Masked it runs on the CPU.
+
+### Docs
+
+- The three indexes that list the new files, regenerated.
+
 ## 0.191.2
 
 - The turn arms rendered and recorded:
