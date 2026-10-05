@@ -4,6 +4,14 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.197.2
+
+### Fixed
+
+- `bench/results/INDEX.md` carries the motion record's new heading. The
+  0.197.1 commit rewrote the record and left the regenerated index out of
+  its pathspec, so the index check was red at that commit.
+
 ## 0.197.1
 
 ### Changed
