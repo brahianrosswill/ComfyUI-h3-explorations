@@ -27,8 +27,8 @@ by `_require_kernel`), not from a version string.
   key_bias          NOT exposed: legal only where the biased keys are
                     sink-covered, which on H3 means the conditioning rows,
                     and the model was never trained against such a bias.
-  block_len,        NOT exposed here: they belong to VSA's cube tiling
-  coarse_gate       (`vsa_attention.py`, parked; FastH3 uses core's node).
+  block_len,        NOT exposed here: they belong to VSA's cube tiling,
+  coarse_gate       which FastH3 gets from core's `BlockSparseAttention`.
 
 `sol_attn_chunked`, the second entry, is out of reach from an attention
 override: it consumes chunks of the fused `qkv_proj` output and applies rope

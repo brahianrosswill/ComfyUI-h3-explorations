@@ -1,6 +1,6 @@
 # The sister checkouts: what each one is good for
 
-last updated: 2026-10-05 (the `pdmd` row and the contract example, on PDMD's retirement); 2026-10-02 (section "What moved by 2026-10-02" added; a ComfyUI-H3-AudioRefine row; dated notes on the LightX2V row, the 2026-09-25 INT8 VAE sentence, and a correction to the 2026-09-25 AdaLN rounding claim); 2026-10-01 (the PDMD trainer: a row in the ComfyUI-side table, and its inference script added to what counts as a contract); 2026-09-27 (the TaoMate section trimmed to the checkouts after the lane was removed); 2026-09-26 (section "A distill's reference is its trainer's contract" added; the FastH3 V2 note under 2026-09-19 extended); 2026-09-25 (section "What moved by 2026-09-25" added; the PDD line and the vllm-omni #7693 bullet corrected in place); 2026-09-19 (section "What moved by 2026-09-19" added); 2026-09-15 (section "The streaming references: TaoMate" added; "What moved by 2026-09-11" added and the two comfy-kitchen rows corrected 2026-09-11; "What moved by 2026-09-10" added 2026-09-10; the tables are otherwise the 2026-08-28 read)
+last updated: 2026-10-05 (section "What moved by 2026-10-05" added, with a dated note on the 2026-10-02 UtilsCollection bullet it supersedes; the `pdmd` row and the contract example, on PDMD's retirement); 2026-10-02 (section "What moved by 2026-10-02" added; a ComfyUI-H3-AudioRefine row; dated notes on the LightX2V row, the 2026-09-25 INT8 VAE sentence, and a correction to the 2026-09-25 AdaLN rounding claim); 2026-10-01 (the PDMD trainer: a row in the ComfyUI-side table, and its inference script added to what counts as a contract); 2026-09-27 (the TaoMate section trimmed to the checkouts after the lane was removed); 2026-09-26 (section "A distill's reference is its trainer's contract" added; the FastH3 V2 note under 2026-09-19 extended); 2026-09-25 (section "What moved by 2026-09-25" added; the PDD line and the vllm-omni #7693 bullet corrected in place); 2026-09-19 (section "What moved by 2026-09-19" added); 2026-09-15 (section "The streaming references: TaoMate" added; "What moved by 2026-09-11" added and the two comfy-kitchen rows corrected 2026-09-11; "What moved by 2026-09-10" added 2026-09-10; the tables are otherwise the 2026-08-28 read)
 
 `coderef/` holds the reference implementations. `ls -l coderef/` is the list of
 what is currently on disk — some symlinks, some real clones — and this page is
@@ -688,6 +688,10 @@ say it does were true on their dates.
     and orders labels images, videos, audio, turning a video's soundtrack
     into a standalone audio reference. That departs from the label rules all
     four implementations agreed on in the 2026-08-28 pass. Reasoned, not run.
+    **Dated note, 2026-10-05:** the first half no longer holds. Since
+    `ed4716e` the path truncates, snaps the frame count and applies the
+    canvas rule; the label order still departs ("What moved by
+    2026-10-05").
   - "Pooled" and "refined" reference-video modes (`6552e04`) pool the VAE
     latent and then fit it by gradient steps
     (`coderef/ComfyUI-UtilsCollection/helpers/model_helpers.py::_pool_minimax_h3_visual_latent`,
@@ -718,6 +722,136 @@ say it does were true on their dates.
   (`e1768d5`), `ComfyUI-MiniMax-H3-LongMedia` (`409e4cb`),
   `comfyui-minimax-h3-audio-T8` (`70fb30f`) and `ComfyUI-H3-AudioRefine`
   (`d78d34f`), now a row in the ComfyUI-side table.
+
+---
+
+## What moved by 2026-10-05
+
+Read on 2026-10-05 by fetch, from each clone's upstream branch, against the
+revision the 2026-10-02 section recorded. Every clone but `pytorch` already
+sat at its upstream tip, so the commit list for one is
+`git log <recorded>..HEAD` inside it. Diffs were read for the commits named
+below and titles for the rest. The FastVideo, sglang and UtilsCollection
+reads were done by three read-only subagents from saved diffs and the
+checkouts; the claims this section rests on about our own code were then
+checked by hand (`lora_branch.py::parse_lora`, core's VAE calling kitchen's
+fused norm, core's `lcm` against `CONST.noise_scaling`, the open row in
+`../SOLATTN.md`). Nothing was run except the Triton probe named below.
+
+**Nothing below changes what runs on this card by itself, and nothing
+triggers the adopt-upstream rule: no upstream moved an H3 default.** Three
+owner decisions came out of the read, all dated 2026-10-05 in
+[`decisions.md`](decisions.md): the base sampler moved to Euler, PDMD was
+retired, and `MiniMaxH3LoRABranch` takes Kohya-style keys.
+
+- **`pdmd`** (`03ee66b` to `041b70b`). The trainer's scripts now set the
+  audio shift from `AUDIO_SHIFT_2NFE` when `steps == 2`
+  (`coderef/pdmd/worker/run_a10.py`, `run_a100.py`; `2fb6cd2`, `ef59058`),
+  and keep the old value "for paper metrics". Our 2-step probe never
+  followed; the owner retired the lane the same day (`../roadmap.md`,
+  "Closed lanes"). The range also adds an `eval/` tree. Not read further.
+- **`vllm-omni`** (`527982d88` to `9146284c1`). `b65f97bc4` (#8378) adds a
+  request-scoped `res_multistep`
+  (`coderef/vllm-omni/vllm_omni/diffusion/models/minimax_h3/sampling.py`).
+  Euler stays the default, and a fixed distilled schedule refuses anything
+  else. It is what prompted the owner to move our base to Euler:
+  `workflows/h3_config.py::SAMPLING` has the provenance.
+- **`sglang`** (`89f21671bb` to `efb62ce26`). No H3 sampling default moved:
+  the diff of
+  `coderef/sglang/python/sglang/multimodal_gen/configs/sample/minimax_h3.py`
+  adds a step floor constant.
+  - **Kohya LoRA keys and a community LoRA table** (`f048d5aa4b`, #35857):
+    `coderef/sglang/python/sglang/multimodal_gen/runtime/pipelines_core/lora/format_adapter.py` rewrites
+    `lora_unet_blocks_N_*` names to native ones, and the cookbook lists
+    community LoRAs with strengths and trigger phrases. Core's stock loader
+    already maps those names (`comfy/lora.py::model_lora_keys_unet`); our
+    at-the-call node refused them until 2026-10-05 and now reads them
+    through core's table (`lora_branch.py::native_keys`). None of the listed
+    LoRAs is on this box, and no Kohya-trained file has been run here.
+  - **The VAE decoder's RMSNorm and QK RoPE fused in Triton**
+    (`284cda01fb`, #41906), on unless `MINIMAX_H3_VAE_DECODER_FUSED_NORM=0`.
+    Core already does this through kitchen
+    (`comfy/ldm/minimax/vae.py`, `ck.rms_rope_split_half_` and
+    `linear_input_act(..., "rms_norm")`). Nothing to adopt.
+  - **Sparse routing in head chunks** (`1093c501df`, #41985): one call split
+    by heads so the routing tensors stay under a cap, output unchanged by
+    its own test. Its backend is not SM89. As an idea it would lower peak
+    VRAM in our dense-QKV `sol_attn` path on long clips, not speed it up;
+    our chunked producer chunks rows, not heads. Noted, not proposed.
+  - `150f568900` stops its Triton kernels specialising on sequence length;
+    kitchen's Triton backend has no such marking, and ComfyUI leaves that
+    backend off (`comfy/quant_ops.py`). `8663e3b670` (no full-video clone
+    after decode) and `a977e3b9d5` (stream an oversized DiT) are things
+    core already does. `efb62ce269` adds an explicit QKV layout override to
+    its loader, which matches the row-order question in
+    [`../custom_node_gaps.md`](../custom_node_gaps.md) without closing it.
+    `fbce0d9478` lets its own ComfyUI worker read serialized INT8 files.
+- **`FastVideo`** (`9491c863` to `6ded84ee`). `8444c089` (#1907) adds
+  inference for a FastH3 Ref2VA PDD student, and a reference-video policy
+  for VSA: each reference video is its own sparse region, and every video
+  query keeps a set share of each reference's tiles and of the target's
+  (`coderef/FastVideo/docs/inference/fasth3-distilled.md`,
+  `coderef/FastVideo/fastvideo/attention/backends/video_sparse_attn_h3.py`).
+  - **Nothing in it runs here.** The contract's tile size has one route, the
+    sm_100a/sm_103a kernel, with no Triton fallback (the same doc,
+    "Hardware"), and no checkpoint repo id is named in the docs or the
+    example.
+  - **What carries to SM89 is the idea, and it is already an open row:**
+    "Text and audio exact, references sparse, by permutation" in
+    [`../SOLATTN.md`](../SOLATTN.md), a permuting `sink_conditioning` mode
+    in `sol_attn_h3.py` with no kernel change. Our Sol node keeps reference
+    keys in the exact sink today. FastVideo keeps conditioning dense for
+    every checkpoint but this student, so upstream treats the policy as
+    trained; a training-free version needs a reference capture graded
+    first. Separate budgets per reference would need a per-region threshold
+    in kitchen's route kernel.
+  - Its PDD layer is the algorithm in `pdd_math.py` (fusion of a block of
+    heads by shifted-sigma increments, then Euler). Core's
+    `BlockSparseAttention` has one `keep_percent` and no reference regions.
+    `0cc41a22` is an sm_100a-only fix.
+- **`ComfyUI-UtilsCollection`** (`834d66b` to `cdffe30`). Not installed
+  here.
+  - `ed4716e` makes its reference-video path truncate, snap the frame count
+    and apply the canvas rule, as core does
+    (`coderef/ComfyUI-UtilsCollection/helpers/minimax_h3_reference_media_helpers.py::prepare_minimax_h3_reference_video`).
+    That retires the first half of the 2026-10-02 bullet on that path. The
+    label order (images, videos, then all audio) still departs from core.
+  - `0602581` adds a "DMAD re-noise" sampler for few-step distills
+    (`coderef/ComfyUI-UtilsCollection/helpers/sampling_helpers.py::sample_dmad_renoise`). Its update is
+    core's `lcm` on this model type, and it is off the contract of every
+    distill we run: FastH3's own scheduler takes an Euler step
+    (`coderef/FastVideo/fastvideo/models/schedulers/scheduling_minimax_h3.py`).
+  - `8a61115` moves its VLM presets toward
+    [`../prompting.md`](../prompting.md) (a shot header only at a real cut,
+    three base fields for T2VA); they keep timestamped timelines.
+    `10d28c3` adds a resolution and length picker sized by megapixels,
+    which leaves the trained canvases
+    ([`../h3_resolutions.md`](../h3_resolutions.md)); its length-from-a-clip
+    input is the one idea in the range we do not have.
+- **`triton`** (main, past `v3.8.0`). Main still pins the legacy `ptxas` for
+  architectures below 90 (`coderef/triton/cmake/nvidia-toolchain-version.json`,
+  `coderef/triton/third_party/nvidia/backend/compiler.py::get_ptxas`), and `140c33fc3c`
+  turns implicit floating-point fusion off by default; no release tag holds
+  it yet. The one Triton kernel in our render path, the sage fork's
+  `per_thread_int8`, returned bit-identical tensors under Triton's bundled
+  `ptxas` and under the system CUDA 13.2 Update 2 one (a probe run
+  2026-10-05; the script is in the session's `internal/` notes, and the
+  result is not a committed record). When a release carries the fusion
+  change, rerun that comparison before trusting sage on it.
+- **`pytorch`** is trunk, not what is installed. The installed release is
+  whatever `torch.__version__` says; read its code with
+  `git show <tag>:<path>` in the clone.
+- **No H3-relevant change:** `diffusers` (`578c9b2c6` to `c2798cc78`),
+  `LightX2V` (`8a97c759` to `0c2edc12`, one unrelated model),
+  `Model-Optimizer` (`44b46eba8` to `1a472379`), `flashinfer` (`11e188412`
+  to `188bdd769`, H3 kernels for SM90 and newer only), `transformers`,
+  `vllm`, `llm-compressor`: a commit-message search for Qwen3-VL, MiniMax
+  and H3 since 2026-10-02.
+- **Unmoved:** `Sana` (`670482d`), `DiffSynth-Studio` (`974cfa3`),
+  `MiniMax-H3` (`d21241f`), `Minimax-H3-Turbo` (`02e26d5`), `TurboDiffusion`
+  (`e3d6136`), `comfyui_dagthomas`, and comfy-kitchen's upstream main
+  (`vendor/rebuild_kernel.sh --check`). The continuation and audio packs
+  the 2026-10-02 list ends with are not under `coderef/` and were not read.
 
 ---
 

@@ -4,6 +4,22 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.189.1
+
+### Docs
+
+- **`docs/wiki/references.md` gains "What moved by 2026-10-05"**: what each
+  sister checkout landed since the 2026-10-02 read, and what it means here.
+  No upstream moved an H3 default. It records where the three owner
+  decisions of the day came from (the Euler base, PDMD's retirement, Kohya
+  keys), that nothing in FastVideo's new Ref2VA student runs on this card
+  and which of its ideas is already an open row in `docs/SOLATTN.md`, and
+  that UtilsCollection's reference-video path now snaps and truncates, which
+  the 2026-10-02 bullet said it did not; that bullet keeps a dated note.
+- `sol_attn_h3.py`'s header comment named `vsa_attention.py`, a file retired
+  with the VSA node on 2026-09-29. It names core's `BlockSparseAttention`
+  now. Comment only.
+
 ## 0.189.0
 
 ### Added
