@@ -1,10 +1,17 @@
 # VOID pass 1 converted from upstream for core's loader (2026-10-05)
 
 lane: masking
-verdict: a pure rename; the converted file matches Comfy-Org's repack by header and by sampled bytes, and core loads it
+verdict: done and then removed with the VOID code; the upstream checkpoint is a pure rename away from the file core loads
 
 Session mrorange. Found while building the clean-plate probe
 (`2026-10-05_void_plate_turn.md`).
+
+**The converter and its check were removed the same day with the rest of the
+VOID code, at the owner's word** (`2026-10-05_void_plate_turn.md` has the
+sentence). `bench/convert_void_checkpoint.py` and
+`bench/check_void_conversion.py` were last present at commit df3bd21b. What
+follows is the record of what was done; the commands in it no longer exist in
+the tree.
 
 ## What was wrong
 

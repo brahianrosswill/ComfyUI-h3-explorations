@@ -17,6 +17,16 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-05
 
+- **VOID is out, and the code built for it is removed** (owner, 2026-10-05,
+  on the board: "Park VOID entirely, lets remove the code we built from it -
+  it was built for cogvideox and its ghosting and not worth keeping or
+  preserving. Note we tested it and thats it. No current state docs or
+  workflows with it please."). Removed: `MiniMaxH3VoidConditioning`, the
+  checkpoint converter and their two checks, all last present at commit
+  df3bd21b. This reverses the line below from earlier the same day, which
+  parked the route and said the node and the converter stay. Kept: the
+  record of the test, `bench/results/2026-10-05_void_plate_turn.md`.
+
 - **The masked lane gets a second shipped graph on ref2va for shots that
   need the original's movement** (owner, 2026-10-05, on the masking board:
   "For this you just need my approval? If so yes").

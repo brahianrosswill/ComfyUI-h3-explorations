@@ -48,7 +48,6 @@ from .video_mask import MiniMaxH3MaskedSource
 from .plate_restore import MiniMaxH3RestorePlate
 from .subject_track import MiniMaxH3SubjectTrack
 from .sapiens2_parts import MiniMaxH3Sapiens2Loader, MiniMaxH3SubjectParts
-from .void_conditioning import MiniMaxH3VoidConditioning
 from .sam3d_body_vith import MiniMaxH3SAM3DBodyViTHLoader
 from .step_x0_observer import MiniMaxH3StepX0Observer
 from .core_sparse_capture import MiniMaxH3CoreSparseCapture
@@ -361,10 +360,9 @@ class H3ExplorationsExtension(ComfyExtension):
                 MiniMaxH3Sapiens2Loader, MiniMaxH3SubjectParts,
                 # appended 2026-10-05, SAM 3D Body's ViT-H release behind core's
                 # predict and render nodes (sam3d_body_vith.py)
-                MiniMaxH3SAM3DBodyViTHLoader,
-                # appended 2026-10-05, VOID's conditioning as upstream's inference builds it
-                # (void_conditioning.py)
-                MiniMaxH3VoidConditioning]
+                # `MiniMaxH3VoidConditioning` followed here for part of 2026-10-05 and is
+                # gone with the VOID code (owner, the same day). Removal moves nothing.
+                MiniMaxH3SAM3DBodyViTHLoader]
 
 
 async def comfy_entrypoint() -> H3ExplorationsExtension:

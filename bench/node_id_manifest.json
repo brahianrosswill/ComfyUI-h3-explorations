@@ -570,24 +570,5 @@
     "outputs": [
       "Output"
     ]
-  },
-  "MiniMaxH3VoidConditioning": {
-    "inputs": [
-      "positive",
-      "negative",
-      "vae",
-      "video",
-      "quadmask",
-      "width",
-      "height",
-      "length",
-      "video_under_mask"
-    ],
-    "node_id": "MiniMaxH3VoidConditioning",
-    "outputs": [
-      "positive",
-      "negative",
-      "latent"
-    ]
   }
 }

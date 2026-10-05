@@ -1,7 +1,7 @@
 # A clean plate from VOID on the band clip's turn window: a first probe (2026-10-05)
 
 lane: masking
-verdict: closed by the owner, the lane parked: "Not a single clip showed any improvement." No arm gave a plate on this clip
+verdict: tested and removed at the owner's word: "Not a single clip showed any improvement." No arm gave a plate on this clip
 
 Session mrorange, the board's `build-void-plate`. **Status: closed by the
 owner on 2026-10-05 and parked; see "Where it ended" first.** The first four
@@ -43,6 +43,13 @@ The numbers are in `2026-10-05_void_plate_turn.json`. The script and its
 graph are `internal/claude/2026-10-05_mrorange/void_plate_turn.py`, not
 tracked: the graph was built by hand from core's nodes and is in no
 generator.
+
+**Later the same day the code built for this was removed, at the owner's
+word**: "Park VOID entirely, lets remove the code we built from it - it was built for cogvideox and its ghosting and not worth keeping or preserving. Note we tested it and thats it. No current state docs or workflows with it please." `void_conditioning.py`
+(`MiniMaxH3VoidConditioning`), `bench/convert_void_checkpoint.py`,
+`bench/check_void_conversion.py` and `bench/check_void_conditioning.py` were
+last present at commit df3bd21b. Where this record says they stay, they do
+not. The board's cards are `ruled_out`. This record is what is kept.
 
 ## Where it ended
 

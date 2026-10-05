@@ -4,6 +4,40 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.192.0
+
+### Removed
+
+- **The VOID code** (owner, 2026-10-05: "Park VOID entirely, lets remove the
+  code we built from it - it was built for cogvideox and its ghosting and not
+  worth keeping or preserving. Note we tested it and thats it. No current
+  state docs or workflows with it please."). Gone: `MiniMaxH3VoidConditioning`
+  (`void_conditioning.py`, added in 0.191.0) and its registration;
+  `bench/convert_void_checkpoint.py` (0.190.11); `bench/check_void_conversion.py`
+  and `bench/check_void_conditioning.py`. All were last present at commit
+  df3bd21b. The node was in no shipped graph. `bench/node_id_manifest.json`
+  loses that one node, removed by hand so that nothing else in it moves.
+- `docs/wiki/masked_v2v.md` and the two rows of `docs/wiki/h3_uses.md` that
+  named VOID are cut to one line each: tested on 2026-10-05 and removed, with
+  the record.
+
+### Docs
+
+- The two records of the test,
+  `bench/results/2026-10-05_void_plate_turn.md` and
+  `bench/results/2026-10-05_void_checkpoint_conversion.md`, each carry a
+  dated note at the top that the code they describe is gone; they are kept
+  as the record that it was tested. `docs/wiki/decisions.md` has the line,
+  and says that it reverses the parking line from earlier the same day.
+
+### Not in this commit
+
+- `docs/checks.md` and the two generated indexes still name the deleted
+  files: they hold another session's uncommitted work, so they follow in
+  the next commits. Until then `check_doc_inventory.py` and
+  `check_doc_links.py` are red for that reason and no other; the rest of
+  `bench/run_checks.py`, masked, is green.
+
 ## 0.191.7
 
 - **A second shipped masked graph, on ref2va, for a shot that needs the

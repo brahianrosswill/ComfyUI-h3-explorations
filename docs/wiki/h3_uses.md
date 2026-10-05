@@ -103,7 +103,7 @@ below with what would accept or reject it.
 | Reshoot one shot, the rest untouched | the mask over whole frames of one shot | a shot or frame range on the Masked Source | proposed | the board |
 | Keep the person, replace the world | the mask inverted, a still of the setting as the reference | an inverted `replace` and composite | proposed | the board |
 | Redub: a new vocal on an existing video | the mask on the mouth, the new track frozen | the parts node's mouth mask, the song node | proposed | the board |
-| Remove a person; the original's shadow gone | a clean plate from VOID, which core ships, under the mask | a VOID graph with the kept mask | proposed | `../research/masking/2026-10-04_mrhf.md`, "VOID for the plate with nobody in it" |
+| Remove a person; the original's shadow gone | no route | VOID was tested on 2026-10-05 and removed | ruled out | `../../bench/results/2026-10-05_void_plate_turn.md` |
 | Two people replaced from two stills | two masks, two labelled stills | two Subject Track nodes and a union | proposed | the board |
 | A thing that is not a person | the same mask | a mode on the Subject Track without the head comparison | proposed | the board |
 | Correct one shot by hand | none | numbered outlines on the preview, and a line of text | proposed | the board |
@@ -165,7 +165,7 @@ only where something more than promoting its graph is needed.
 | Reshoot one shot | a shot or a frame range as the Masked Source's region, from the cut finder the tracker already has |
 | Keep the person, replace the world | the region and the composite inverted on the Masked Source; a still of the setting |
 | Redub | the mouth mask wired as the region with a new track frozen; one render to see whether a small hole holds |
-| Remove a person, and the shadow | a graph that runs core's VOID nodes under the kept mask; the weights are on disk |
+| Remove a person, and the shadow | no route: VOID was tested on 2026-10-05 and removed (`../../bench/results/2026-10-05_void_plate_turn.md`) |
 | Two people from two stills | two picks and a union of their masks |
 | A thing that is not a person | a choice on the Subject Track that turns the head comparison off |
 | Correct one shot by hand | numbers on the preview's outlines and a corrections line on the Subject Track |
