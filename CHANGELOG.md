@@ -4,6 +4,33 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.193.3
+
+### Added
+
+- **The Masked Source can start the new subject from the original's top,
+  softened** (`start_from`, with `start_top`, `start_blur` and `start_knots`;
+  appended last and optional, and the default, `noise`, is the shipped
+  render as it was). The owner approved it on the masking board
+  (2026-10-05: "Yes proceed with it"). Every late start tried so far put the
+  whole subject under the mask and carried the original's clothes with its
+  pose (`bench/results/2026-10-04_masked_v2v_turn_soft_arms.md`). This one
+  decides by token: sampling starts `start_knots` late, the top share of the
+  subject's height starts from a grey blur of the original, and the rest of
+  the subject starts from nothing, its latent set to zero after the encode
+  (`video_mask.soften_subject`, `top_of`, `start_zero_tokens`). The song node
+  slices the schedule itself, so the graph needs no extra node. Not rendered
+  yet: whether it turns him and keeps the reference is what the arms that
+  follow this commit are for.
+- `h3_config.MASKED_SOURCE` carries the four keys at their defaults, the node
+  manifest lists them, and the two masked graphs and their daily copies are
+  rebuilt with them and otherwise unchanged. Built with `--no-validate`,
+  another session's server being up on the older code; the validation
+  against a server on this code runs before the first arm.
+  `bench/check_video_mask.py` gains a case with its controls: only the
+  subject is softened, only its body's tokens are emptied, the margin and
+  every kept token are left, and the default changes nothing.
+
 ## 0.193.2
 
 ### Fixed

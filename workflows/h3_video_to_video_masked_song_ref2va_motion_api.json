@@ -244,6 +244,10 @@
       "motion_reference": "subject only",
       "motion_short_edge": 384,
       "motion_vae": false,
+      "start_from": "noise",
+      "start_top": 0.3,
+      "start_blur": 16,
+      "start_knots": 1,
       "segmenter": [
         "100",
         0

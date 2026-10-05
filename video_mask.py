@@ -186,7 +186,38 @@ PART_THRESHOLD = 0.5
 #: mask is final before any of these is read. `bench/check_mask_store.py`
 #: holds both directions.
 MASK_KEY_SKIP = ("grow_pixels", "feather_pixels", "paint_out", "composite", "change_threshold", "reuse_mask",
-                 "motion_reference", "motion_short_edge", "motion_vae")
+                 "motion_reference", "motion_short_edge", "motion_vae",
+                 "start_from", "start_top", "start_blur", "start_knots")
+#: `start_from` choices: what the regenerated tokens start from.
+#:
+#: `noise` is the shipped render: the schedule runs from its first knot and
+#: nothing of the source is under the mask. `the original's top, softened`
+#: starts the schedule late, so that what is in the latent under the mask
+#: shows through at the first step, and decides by token what that is: the
+#: top of the subject keeps a grey, blurred copy of the source, which carried
+#: which way the original faces on the one window it was tried on, and the
+#: rest of the subject starts from nothing, so the original's clothes are not
+#: there to be carried with it
+#: (`bench/results/2026-10-04_masked_v2v_turn_soft_arms.md` is what led here:
+#: every late start that held the whole subject changed the clothes).
+START_NOISE = "noise"
+START_TOP = "the original's top, softened"
+#: The default of `start_top`: the share of the subject's height, from the
+#: top, that keeps the softened source. Reasoned from one clip: the head and
+#: shoulders of a standing figure, and short of where the band clip's
+#: original has hair reaching his chest, since a softened hair mass is the
+#: likeliest thing to bring long hair back. The same share with the body
+#: filled in pixels gave half a turn in the record above; nothing was tried
+#: with the body at zero. A detected head (the part menu) is the intended
+#: second choice for this region and is not built.
+START_TOP_SHARE = 0.3
+#: The default of `start_blur`, pixels at the render's size. Seen on one
+#: window, same record: at this blur the softened source still turned him on
+#: both seeds tried, and at twice it no longer did.
+START_BLUR = 16
+#: The default of `start_knots`: how many knots late the schedule starts.
+#: Seen, same record: two knots left a softened source as a flat shape.
+START_KNOTS = 1
 #: `motion_reference` choices: what of the source window, if anything, the
 #: song node appends to the reference chain as a video, so the model is shown
 #: the original's movement through the channel it was trained to take motion
@@ -429,6 +460,64 @@ def above(subject: torch.Tensor, bottoms: torch.Tensor) -> torch.Tensor:
     return ((subject > 0.5) & (rows <= bottoms[:, None, None])).to(torch.float32)
 
 
+def soften_subject(pixels: torch.Tensor, hole: torch.Tensor, blur: int) -> torch.Tensor:
+    """[F, H, W, 3] with the pixels under `hole` [F, H, W] reduced to their coarse shape: no colour, blurred.
+
+    What a late start is given in place of the source inside the region.
+    Luminance only, blurred by a Gaussian of `blur` pixels that averages
+    inside the hole alone, so the background does not bleed in. Outside the
+    hole nothing changes.
+    """
+    sigma = max(float(blur), 0.5)
+    radius = int(3 * sigma)
+    k = torch.exp(-0.5 * (torch.arange(-radius, radius + 1, dtype=torch.float32) / sigma) ** 2)
+    k = (k / k.sum()).to(pixels.device, pixels.dtype)
+
+    def smooth(x: torch.Tensor) -> torch.Tensor:        # [N, 1, H, W]
+        x = F.conv2d(F.pad(x, (radius, radius, 0, 0), mode="replicate"), k.view(1, 1, 1, -1))
+        return F.conv2d(F.pad(x, (0, 0, radius, radius), mode="replicate"), k.view(1, 1, -1, 1))
+
+    out = pixels.clone()
+    for i in range(0, pixels.shape[0], CHUNK):
+        h = (hole[i:i + CHUNK] > 0.5).to(pixels.dtype).unsqueeze(1)
+        if not bool(h.any()):
+            continue
+        grey = pixels[i:i + CHUNK, ..., :3].mean(dim=-1).unsqueeze(1)
+        soft = smooth(grey * h) / smooth(h).clamp(min=1e-4)
+        img = pixels[i:i + CHUNK].movedim(-1, 1)
+        out[i:i + CHUNK] = (img * (1.0 - h) + soft.expand(-1, img.shape[1], -1, -1) * h).movedim(1, -1)
+    return out
+
+
+def top_of(hole: torch.Tensor, share: float) -> torch.Tensor:
+    """The top `share` of the rows each frame's hole covers, [F, H, W] of 0 or 1. An empty frame stays empty."""
+    on = hole > 0.5
+    rows = on.any(dim=2)                                                    # [F, H]
+    index = torch.arange(hole.shape[1], device=hole.device).unsqueeze(0)
+    first = torch.where(rows, index, hole.shape[1]).min(dim=1).values
+    last = torch.where(rows, index, -1).max(dim=1).values
+    cut = first + (float(share) * (last - first + 1).clamp(min=0)).round().long()
+    return (on & (index < cut.unsqueeze(1)).unsqueeze(2)).to(torch.float32)
+
+
+def start_zero_tokens(source: dict, mask: torch.Tensor, tokens: torch.Tensor) -> torch.Tensor | None:
+    """The regenerated tokens whose latent starts from nothing, [latent_t, lat_h, lat_w] of 0 or 1. None when the start is noise.
+
+    `mask` is the window's fitted mask and `tokens` its token mask, as
+    `window` returns them. The subject's tokens (the mask widened by half of
+    `grow_pixels`, where the softening is) are zeroed except those the top
+    share touches. Tokens of the margin beyond that keep the source: they are
+    background, and what they hold is what the composite wants there anyway.
+    """
+    if source.get("start_from", START_NOISE) == START_NOISE:
+        return None
+    hole = grow(mask, int(source["grow_pixels"]) // 2)
+    shape = tuple(int(n) for n in tokens.shape)
+    body = token_mask(hole, *shape)
+    keep = token_mask(top_of(hole, float(source["start_top"])), *shape)
+    return (tokens > 0.5).to(torch.float32) * body * (1.0 - keep)
+
+
 def window_frames(source: dict, first_frame: int, frames: int, width: int, height: int):
     """One window of a source on the render canvas: its fitted frames, its fitted mask, frames held.
 
@@ -506,6 +595,9 @@ def window(source: dict, first_frame: int, frames: int, width: int, height: int,
     encode = pixels
     if source.get("paint_out"):
         encode = fill_subject(pixels, grow(mask, int(source["grow_pixels"]) // 2))
+    elif source.get("start_from", START_NOISE) != START_NOISE:
+        # a late start shows what is encoded here; `start_zero_tokens` then empties the body's tokens
+        encode = soften_subject(pixels, grow(mask, int(source["grow_pixels"]) // 2), int(source["start_blur"]))
     return pixels, encode, tokens, mask, short
 
 
@@ -637,6 +729,25 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                                           "On: the video model also gets its own copy, which costs rows on "
                                           "every sampling step and may not fit the card at a long window. "
                                           "Read the song node's report before queueing.")),
+                # appended 2026-10-05: the per-token late start (`START_TOP`)
+                io.Combo.Input("start_from", options=[START_NOISE, START_TOP], default=START_NOISE, optional=True,
+                               tooltip=("What the new subject starts from. `noise` (default): nothing of the "
+                                        "original is under the mask.\n\n"
+                                        "`the original's top, softened`: sampling starts late, the top of the "
+                                        "subject from a grey blur of the original and the rest from nothing, "
+                                        "so the model can see which way the original faces without seeing "
+                                        "its clothes. Try it when the new subject should turn with the "
+                                        "original. Costs a blur per frame, and saves the steps skipped.")),
+                io.Float.Input("start_top", default=START_TOP_SHARE, min=0.05, max=1.0, step=0.05, optional=True,
+                               tooltip=("For a softened start: the share of the subject's height, from the top, "
+                                        "that keeps the blurred original. Lower it if the original's hair comes "
+                                        "back; raise it if the subject does not follow the original.")),
+                io.Int.Input("start_blur", default=START_BLUR, min=1, max=128, optional=True,
+                             tooltip=("For a softened start: the blur, in pixels. Raise it if the original's "
+                                      "look comes through; lower it if the subject does not follow.")),
+                io.Int.Input("start_knots", default=START_KNOTS, min=1, max=4, optional=True,
+                             tooltip=("For a softened start: how many steps of the schedule are skipped. More "
+                                      "shows more of the blur in the result.")),
             ],
             hidden=[io.Hidden.prompt, io.Hidden.unique_id],
             outputs=[H3MaskedSource.Output(display_name="source"),
@@ -677,7 +788,8 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                 segmenter=None, segmenter_clip=None, part_phrases=PART_PHRASES,
                 part_threshold=PART_THRESHOLD, part_margin=PART_MARGIN, composite=COMPOSITE_CHANGED,
                 change_threshold=CHANGE_THRESHOLD, reuse_mask=True, motion_reference=MOTION_NONE,
-                motion_short_edge=MOTION_SHORT_EDGE, motion_vae=False) -> io.NodeOutput:
+                motion_short_edge=MOTION_SHORT_EDGE, motion_vae=False, start_from=START_NOISE,
+                start_top=START_TOP_SHARE, start_blur=START_BLUR, start_knots=START_KNOTS) -> io.NodeOutput:
         if frames.ndim != 4:
             raise ValueError(f"frames must be [N, H, W, C]; got {tuple(frames.shape)}")
         if int(feather_pixels) > int(grow_pixels):
@@ -686,6 +798,12 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                 "would reach the subject's own pixels and bring the original back at its edge")
         if replace not in (REPLACE_WHOLE, REPLACE_PART):
             raise ValueError(f"unknown replace {replace!r}; one of {[REPLACE_WHOLE, REPLACE_PART]}")
+        if start_from not in (START_NOISE, START_TOP):
+            raise ValueError(f"unknown start_from {start_from!r}; one of {[START_NOISE, START_TOP]}")
+        if start_from != START_NOISE and paint_out:
+            raise ValueError(
+                "paint_out fills the subject in before the encode, so a softened start has nothing to "
+                "soften: turn one of the two off")
         if composite not in (COMPOSITE_REGION, COMPOSITE_CHANGED):
             raise ValueError(f"unknown composite {composite!r}; one of {[COMPOSITE_REGION, COMPOSITE_CHANGED]}")
         if motion_reference not in (MOTION_NONE, MOTION_SUBJECT, MOTION_FRAME):
@@ -720,7 +838,9 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                               "feather_pixels": int(feather_pixels), "paint_out": bool(paint_out),
                               "composite": composite, "change_threshold": float(change_threshold),
                               "motion_reference": motion_reference, "motion_short_edge": int(motion_short_edge),
-                              "motion_vae": bool(motion_vae)},
+                              "motion_vae": bool(motion_vae),
+                              "start_from": start_from, "start_top": float(start_top),
+                              "start_blur": int(start_blur), "start_knots": int(start_knots)},
                              mask.to(torch.float32))
 
     @classmethod

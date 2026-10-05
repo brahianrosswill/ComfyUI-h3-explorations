@@ -303,7 +303,11 @@
       "reuse_mask",
       "motion_reference",
       "motion_short_edge",
-      "motion_vae"
+      "motion_vae",
+      "start_from",
+      "start_top",
+      "start_blur",
+      "start_knots"
     ],
     "node_id": "MiniMaxH3MaskedSource",
     "outputs": [

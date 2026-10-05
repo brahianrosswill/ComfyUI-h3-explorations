@@ -348,7 +348,11 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                     f"its end: load more of it at {FPS} fps (the loader's frame cap), or shorten `extent`")
             lines.append(f"source video: {have} frames, mask grown {source['grow_pixels']} px, "
                          f"blend {source['feather_pixels']} px"
-                         + (", subject painted out before the encode" if source.get("paint_out") else ""))
+                         + (", subject painted out before the encode" if source.get("paint_out") else "")
+                         + ((f", sampling starts {int(source['start_knots'])} knot(s) late: the top "
+                             f"{100.0 * float(source['start_top']):.0f}% of the subject from the original blurred by "
+                             f"{int(source['start_blur'])} px, the rest of it from nothing")
+                            if source.get("start_from", video_mask.START_NOISE) != video_mask.START_NOISE else ""))
         # Every rendering window's conditioning before any window samples; see
         # the module docstring for why the key is the text (and, with
         # references, the frame count) and nothing else.
@@ -420,8 +424,13 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                     raise ValueError(
                         f"the video VAE returned {tuple(z.shape)} for a {w.frames}-frame window; the "
                         f"window's latent is {tuple(empty_video.shape)}")
-                latent = {"samples": comfy.nested_tensor.NestedTensor(
-                    (z.to(device=empty_video.device, dtype=empty_video.dtype), empty_audio))}
+                z = z.to(device=empty_video.device, dtype=empty_video.dtype)
+                empty = video_mask.start_zero_tokens(source, src_mask, src_tokens)
+                if empty is not None:
+                    # H3's latent has no shift and a scale of one (`comfy/latent_formats.py::MiniMaxH3Video`),
+                    # so a zero here is a zero for the model: these tokens carry no source into a late start
+                    z = z * (1.0 - empty[None, None].to(z))
+                latent = {"samples": comfy.nested_tensor.NestedTensor((z, empty_audio))}
             # Always the real value: the window node freezes nothing when
             # `previous` is None and keeps the widget for what the NEXT window
             # takes. Passing 0 for the first window was the zero-as-mode this
@@ -452,8 +461,15 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                 latent_image = comfy.sample.fix_empty_latent_channels(model, wlatent["samples"])
                 noise = comfy.sample.prepare_noise(latent_image, int(seed) + i)
                 x0_output = {}
-                callback = latent_preview.prepare_callback(model, sigmas.shape[-1] - 1, x0_output)
-                samples = guider.sample(noise, latent_image, sampler, sigmas,
+                run_sigmas = sigmas
+                if source is not None and source.get("start_from", video_mask.START_NOISE) != video_mask.START_NOISE:
+                    late = int(source["start_knots"])
+                    if late >= int(sigmas.shape[-1]) - 1:
+                        raise ValueError(
+                            f"start_knots {late} leaves no step of a {int(sigmas.shape[-1]) - 1}-step schedule")
+                    run_sigmas = sigmas[late:]
+                callback = latent_preview.prepare_callback(model, run_sigmas.shape[-1] - 1, x0_output)
+                samples = guider.sample(noise, latent_image, sampler, run_sigmas,
                                         denoise_mask=wlatent.get("noise_mask"),
                                         callback=callback, disable_pbar=False, seed=int(seed) + i)
                 samples = samples.to(comfy.model_management.intermediate_device())

@@ -417,6 +417,71 @@ def check_motion_reference(problems):
         _fail(problems, "a Masked Source with no motion reference must add nothing to the static label plan")
 
 
+def check_late_start(problems):
+    """`start_from`: `noise` changes nothing; the softened start greys only the subject in the frames to encode and
+    empties only the body's tokens, leaving the top share, the margin and every kept token; off by default."""
+    grow_px = 48                                   # wider than a token, so the margin beyond the subject has tokens of its own
+    w, h, lat_w, lat_h = 256, 160, 16, 10
+    torch.manual_seed(0)
+    frames = torch.rand(FRAMES, h, w, 3)
+    mask = torch.zeros(FRAMES, h, w)
+    mask[:, 20:140, 96:160] = 1.0
+    frames[:, 20:140, 96:160] = torch.tensor([0.1, 0.8, 0.3])       # a green subject
+    base = {"frames": frames, "mask": mask, "grow_pixels": grow_px, "feather_pixels": 4, "paint_out": False}
+
+    def start(**kw):
+        return {**base, "start_from": vm.START_TOP, "start_top": 0.3, "start_blur": 8, "start_knots": 1, **kw}
+
+    pixels, encode, tokens, fitted, _held = vm.window({**base, "start_from": vm.START_NOISE}, 0, FRAMES, w, h, LATENT_T, lat_h, lat_w)
+    if not torch.equal(pixels, encode):
+        problems.append("start_from `noise` changed the frames to encode")
+    if vm.start_zero_tokens({**base, "start_from": vm.START_NOISE}, fitted, tokens) is not None or vm.start_zero_tokens(base, fitted, tokens) is not None:
+        problems.append("start_from `noise`, or a source without the key, empties tokens")
+
+    pixels, encode, tokens, fitted, _held = vm.window(start(), 0, FRAMES, w, h, LATENT_T, lat_h, lat_w)
+    if not torch.equal(pixels, frames):
+        problems.append("a softened start changed the frames the composite restores")
+    inside = encode[0, 30:130, 104:152]
+    if not bool(((inside[..., 0] - inside[..., 1]).abs() < 1e-5).all()) or float(inside.std()) > 0.05:
+        problems.append("the subject is not a grey blur in the frames to encode: its colour or its detail would start the render")
+    changed = (encode != pixels).any(dim=-1)
+    if bool((changed & ~(vm.grow(mask, grow_px // 2) > 0.5)).any()):
+        problems.append("a softened start changed pixels outside the subject's hole")
+    empty = vm.start_zero_tokens(start(), fitted, tokens)
+    if tuple(empty.shape) != (LATENT_T, lat_h, lat_w):
+        problems.append(f"the emptied tokens are {tuple(empty.shape)}, not the window's token grid")
+        return
+    rows = empty[0].amax(dim=1)
+    if float(rows[1]) or float(rows[2]):
+        problems.append(f"token rows under the top of the subject are emptied; they must keep the softened source: {rows.tolist()}")
+    if not all(float(rows[r]) for r in (5, 6, 7)):
+        problems.append(f"token rows under the body are not emptied, so the original's clothes would start the render: {rows.tolist()}")
+    if float((empty * (1.0 - tokens)).sum()) != 0.0:
+        problems.append("a kept token is emptied: the plate would lose source pixels")
+    # a token is a 2x2 patch of latent cells, so the subject's edge at cell 5 takes cells 4 and 5 together
+    if float(empty[:, :, :4].sum()) != 0.0 or float(empty[:, :, 12:].sum()) != 0.0:
+        problems.append("margin tokens beside the subject are emptied; they hold background and must keep it")
+    if float(tokens[:, :, :4].sum() + tokens[:, :, 12:].sum()) == 0.0:
+        problems.append("the control failed: this canvas has no regenerated margin tokens beside the subject to leave alone")
+    if float(vm.start_zero_tokens(start(start_top=1.0), fitted, tokens).sum()) != 0.0:
+        problems.append("with the whole subject kept, tokens are still emptied")
+    if float(empty.sum()) == 0.0:
+        problems.append("the control failed: nothing is emptied at the default share either")
+    gone = mask.clone()
+    gone[0] = 0.0                                   # a frame the subject is not in
+    px2, enc2, _t, _m, _h = vm.window(start(mask=gone), 0, FRAMES, w, h, LATENT_T, lat_h, lat_w)
+    if not torch.equal(enc2[0], px2[0]):
+        problems.append("a frame the subject is not in was softened")
+    schema = vm.MiniMaxH3MaskedSource.define_schema()
+    inputs = {i.id: i for i in schema.inputs}
+    names = ("start_from", "start_top", "start_blur", "start_knots")
+    for name, default in zip(names, (vm.START_NOISE, vm.START_TOP_SHARE, vm.START_BLUR, vm.START_KNOTS)):
+        if name not in inputs or getattr(inputs[name], "default", None) != default or not getattr(inputs[name], "optional", False):
+            problems.append(f"`{name}` is not an optional input defaulting to {default!r}: the shipped render would change")
+        if name not in vm.MASK_KEY_SKIP:
+            problems.append(f"`{name}` is not in MASK_KEY_SKIP: changing it would track the subject afresh")
+
+
 def check_graphs(problems):
     seen = 0
     for path in h3_config.graph_paths(WORKFLOWS, include_bench=True):
@@ -460,7 +525,7 @@ def check_graphs(problems):
 
 def main() -> int:
     problems: list[str] = []
-    for check in (check_temporal, check_token_grid, check_feather, check_composite, check_window, check_fit, check_paint_out, check_part, check_changed_alpha, check_motion_reference, check_graphs):
+    for check in (check_temporal, check_token_grid, check_feather, check_composite, check_window, check_fit, check_paint_out, check_part, check_changed_alpha, check_motion_reference, check_late_start, check_graphs):
         check(problems)
     for p in problems:
         print(f"FAIL  {p}")
@@ -468,7 +533,7 @@ def main() -> int:
         print("ok    the masked source keeps every subject frame, sits on core's token grid, feathers off the "
               "subject, composites exactly, holds a short source, crops the mask as the frames, paints out only "
               "inside the regenerated tokens, takes a part only from the subject, restores the margin under "
-              "`only what changed`, builds a motion reference on grey or whole at the short edge asked, and is wired whole in every graph")
+              "`only what changed`, builds a motion reference on grey or whole at the short edge asked, softens only the subject and empties only its body's tokens for a late start, and is wired whole in every graph")
     return 1 if problems else 0
 
 

@@ -1245,7 +1245,8 @@ SUBJECT_TRACK = dict(subject_phrase="person", pick="largest", pick_on="automatic
 MASKED_SOURCE = dict(grow_pixels=64, feather_pixels=8, replace="whole subject", paint_out=False,
                      part_phrases="hair, head", part_threshold=0.5, part_margin=8,
                      composite="only what changed", change_threshold=0.05, reuse_mask=True,
-                     motion_reference="none", motion_short_edge=384, motion_vae=False)
+                     motion_reference="none", motion_short_edge=384, motion_vae=False,
+                     start_from="noise", start_top=0.3, start_blur=16, start_knots=1)
 #: **Measured** 2026-10-05 (`bench/results/2026-10-05_masked_v2v_motion_arms.md`):
 #: with the subject's own frames as an encoder-only video reference, ref2va
 #: carries the original's turn at 12 and 16 steps and loses it at 8 with or
