@@ -1,6 +1,6 @@
 # One render, stage by stage: code, owner, guard, reference
 
-last updated: 2026-09-11 (one reference cell renamed after the kitchen clone move; otherwise the 2026-08-28 page)
+last updated: 2026-10-04 (the masked video to video rows); 2026-09-11 (one reference cell renamed after the kitchen clone move; otherwise the 2026-08-28 page)
 
 The cross-index. For each stage of a render: **our code**, the **document that
 owns** it, the **check that would go red** if it broke, and the
@@ -77,3 +77,17 @@ they constrain, under *What a matched seed does not match* in
 matched by a shared seed when arms differ in canvas or length, and the first
 run after a state change is not the arm's settled behaviour. That file owns
 them; this row exists so nobody rediscovers them from the stage table.
+
+## Masked video to video
+
+The lane's own page is [`masked_v2v.md`](masked_v2v.md). These rows are the
+stages a masked render adds to the song chain.
+
+| stage | our code | owner | guard | compare against |
+|---|---|---|---|---|
+| cuts, the pick, the match across shots | `subject_track.py` (`cut_scores`, `main_subject`, `follow`) | the module docstring; [`masked_v2v.md`](masked_v2v.md) for the limits | `check_subject_track.py`, with stand-ins for SAM 3: it cannot check that the features tell real people apart | core's `SAM3_VideoTrack` with a text prompt, for what it does across a cut; `coderef/sam3` for the caller-mask request |
+| tracking inside a shot | core `SAM3_VideoTrack` on its `initial_mask` path, called from `subject_track.py` | core | nothing | `coderef/sam3` |
+| the region and what is encoded | `video_mask.py` (`grow`, `token_mask`, `window`) | the module docstring; [`../h3_audio_freeze.md`](../h3_audio_freeze.md) section 4 | `check_video_mask.py` | core's `SetLatentNoiseMask` and mask resize, which the docstring says are not enough |
+| the kept mask | `mask_store.py` (`mask_key`) | the module docstring | `check_mask_store.py` | nothing |
+| the composite | `video_mask.py` (`changed_alpha`, `composite`) | [`../h3_audio_freeze.md`](../h3_audio_freeze.md) section 4 | `check_video_mask.py` | nothing |
+| the mask through two samplers | `plate_restore.py`, in no shipped graph | the module docstring | `check_plate_restore.py`, on a stub model: not run on H3 | core's `KSamplerX0Inpaint` |

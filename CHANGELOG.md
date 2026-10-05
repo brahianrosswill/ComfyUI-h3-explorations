@@ -4,6 +4,21 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.186.48
+
+### Docs
+
+- **The wiki has a page for masked video to video**, `docs/wiki/masked_v2v.md`
+  (owner, 2026-10-04: how these work, the known constraints, and directions
+  to consider). It walks the Subject Track, the Masked Source and the song
+  node in the order a render meets them, names each limit with the record
+  that shows it, and lists the directions with what is known about each. It
+  carries no measurement. `docs/wiki/index.md` routes to it,
+  `docs/wiki/stages.md` gains the masked stages with their guards,
+  `docs/wiki/decisions.md` gains three lines for 2026-10-04, and
+  `docs/h3_audio_freeze.md` section 4 says where its account of the Subject
+  Track went stale the same day.
+
 ## 0.186.47
 
 ### Changed

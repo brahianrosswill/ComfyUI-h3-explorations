@@ -1,6 +1,6 @@
 # Freezing a known audio track: audio-driven video on MiniMax H3
 
-last updated: 2026-10-04 (section 4, the song node's `source`: masked video to video); 2026-09-27 (section 5 idea 9, the TaoMate adapter, removed with that lane); 2026-09-25 (dated notes in sections 3 and 5); 2026-09-15
+last updated: 2026-10-04 (section 4, the song node's `source`: masked video to video; `docs/wiki/masked_v2v.md` is the lane's current map); 2026-09-27 (section 5 idea 9, the TaoMate adapter, removed with that lane); 2026-09-25 (dated notes in sections 3 and 5); 2026-09-15
 
 **The owner of this lane.** Opened 2026-09-12 by the owner: drop a song of any
 length, keep it exactly, and have the picture move to it, the way the owner's
@@ -307,7 +307,10 @@ clips (`bench/results/2026-10-04_masked_v2v_first_run.md`,
   mask, does carry the turn with no prompt text and brings the original's
   hair and clothes with it, from the first knot dropped
   (`bench/results/2026-10-04_masked_v2v_band.md`, "The turn without a
-  prompt"). **Open**: the owner does not want to prompt movement.
+  prompt"). The same start from a softened copy of the original still
+  changes his clothes
+  (`bench/results/2026-10-04_masked_v2v_turn_soft_arms.md`). **Open**: the
+  owner does not want to prompt movement.
 - **The margin decides how far the new subject may differ from the old one,
   in place as well as in outline.** Seen on the band clip: at the wider
   margin the replaced lead stands further to one side than at the default,
@@ -332,7 +335,10 @@ clips (`bench/results/2026-10-04_masked_v2v_first_run.md`,
   (`mask_store.py`, another peer's). The shipped graph carries no core
   tracker and no object index. On the band clip one pick took the three
   shots the lead is in and no cutaway, once the match threshold was set from
-  that run's own numbers.
+  that run's own numbers. *(Later the same day the node stopped needing a
+  frame or a threshold from the user, and a third clip changed what a match
+  is compared on: [`wiki/masked_v2v.md`](wiki/masked_v2v.md) is the current
+  description, and the code beats both.)*
 - **What was compared and dropped, same window and seed** (the band rows'
   `per_node_s` have the times): the baseline chain, no distill and no Sol,
   several times slower and to the owner's eye worse on likeness, with a

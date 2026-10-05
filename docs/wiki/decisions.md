@@ -17,6 +17,27 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-04
 
+- **The Subject Track sets itself, and was validated by two other sessions
+  before it landed** (owner, 2026-10-04: "OK - if mrblue can validate this
+  works, im good", "And same with mrpink when hes done and ready"). mrblue's
+  run found the first draft failing on a one-person clip; the rework landed
+  as 0.186.45. That evening, on the owner's word ("If you know how to solve
+  those, do it. Everyone else is offline"), a third clip broke it again and
+  the node now compares a person in two places and asks a lone person for a
+  head (0.186.47). It replaced: a pick frame and a match value the user had
+  to set, then a score floor that kept a microphone out by a narrow margin.
+  [`masked_v2v.md`](masked_v2v.md) has how it works and its limits.
+- **Inputs marked advanced stay visible, and that is accepted** (owner,
+  2026-10-04, on finding they do not fold away in their frontend: "its
+  visible without clicking anything", then "yep thats fine leave it"). The
+  marking stays in the schemas and is not relied on to shorten a node.
+- **A late start from a softened copy of the original is not adopted for the
+  turn.** Eight arms: he turns, and his clothes change, and on one seed his
+  hair (`bench/results/2026-10-04_masked_v2v_turn_soft_arms.md`). The code
+  the arms ran on is saved beside that record and is not in the tree. What
+  is left is the owner's to choose between: a clause about facing, or
+  different clothes.
+
 - **Masked video to video, version one, is the two-node design on the
   distilled chain** (owner, 2026-10-04: "Yes I did say the two node design",
   "Lets make that the shipped workflow", "if good, we can lock in and say

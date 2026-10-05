@@ -14,8 +14,10 @@ Items from the `mrpink` helper lane first; `evalman`'s render lane appends its
 own below the rule.
 
 **Masked video to video (owner, 2026-10-04): version one shipped; movement is the open problem.**
-- What it is and what it is not: [`../h3_audio_freeze.md`](../h3_audio_freeze.md)
-  section 4. What was decided and against what: `decisions.md`, 2026-10-04.
+- How it works, its limits and the wider set of directions:
+  [`masked_v2v.md`](masked_v2v.md). The dated account:
+  [`../h3_audio_freeze.md`](../h3_audio_freeze.md) section 4. What was
+  decided and against what: `decisions.md`, 2026-10-04.
   The renders and the owner's verdicts:
   `../../bench/results/2026-10-04_masked_v2v_band.md` and
   `../../bench/results/2026-10-04_masked_v2v_first_run.md`. Each session's
