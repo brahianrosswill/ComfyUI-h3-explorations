@@ -4,6 +4,27 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.189.6
+
+### Added
+
+- **`bench/run_checks.py`** runs every `bench/check_*.py` with the card
+  masked and prints one row per check: exit code, seconds, and the line that
+  explains a result that is not green. It exits 1 only when a check is red
+  that `bench/checks_baseline.json` does not name. `--only` runs a subset,
+  `--logs DIR` keeps a log per check and a `summary.tsv`. Each check is
+  started with `H3_CHECK_SWEEP=1`, so nothing it starts queues a render.
+- **`bench/checks_baseline.json`**: the checks expected red, each with its
+  reason. One entry, `check_model_contents` (0.189.5, "Not changed"). An
+  entry whose check is no longer red is printed as STALE.
+
+### Docs
+
+- `docs/checks.md`: the opening no longer says there is no runner; "Running
+  them" leads with the sweep; Gaps item 2 is narrowed to what is still true
+  (no case registry) and names the three checks that exit 2 from argparse
+  because they take a required argument.
+
 ## 0.189.5
 
 ### Fixed

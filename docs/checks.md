@@ -3,8 +3,10 @@
 Index of every check in `bench/`. One row per script: what it defends, what it
 needs to run, and whether it has earned trust.
 
-There is no test suite and no runner. Each script is standalone, prints its own
-`ok` / `FAIL` lines, and returns a non-zero exit code on failure.
+There is no test suite. Each script is standalone, prints its own `ok` /
+`FAIL` lines, and returns a non-zero exit code on failure.
+`bench/run_checks.py` runs them all with the card masked and compares what is
+red with `bench/checks_baseline.json` ("Running them").
 
 **Per-check narrative and the run logs live in
 [`docs/check_postmortems.md`](check_postmortems.md)**, not here. This file is
@@ -130,6 +132,26 @@ Most need neither CUDA nor a model and finish in about a second.
 # from the repo root, with the ComfyUI venv python
 python bench/check_keyframe_canvas.py
 ```
+
+**Before a commit that changes a node schema, a default or a loader, run the
+sweep:**
+
+```bash
+<comfy venv python> bench/run_checks.py            # every check_*.py, masked
+<comfy venv python> bench/run_checks.py --only sol --logs <dir>
+```
+
+It prints one row per check (exit code, seconds, and the line that explains
+a result that is not green) and exits 1 only when a check is red that
+`bench/checks_baseline.json` does not name. That file lists the checks that
+are red for a stated reason, one line each; an entry whose check is no longer
+red is printed as STALE and should be deleted. Exit 2 from a check is
+"nothing graded" and is never a failure of the sweep. Every check is started
+with `CUDA_VISIBLE_DEVICES=` and with `H3_CHECK_SWEEP=1`, which the one check
+that would queue a render reads and refuses on. It does not run
+`smoke_h3.py`, and it does not run the card cases: the checks that need the
+card report 2, and running those unmasked on a free card is still a separate
+step.
 
 **No check needs `PYTHONPATH`.** Those that import comfy put the ComfyUI root
 on `sys.path` themselves, and the rest never import it. Until 2026-10-05 this
@@ -539,9 +561,13 @@ One line each. The narrative behind items marked *(pm)* is in
 1. **The `claims block` column is the record.** Where it reads `no`, "what
    breaks if this case is deleted" needs reading the assertions and inferring
    backwards.
-2. **No runner.** Every script prints its own `ok` / `FAIL` with no shared
-   harness and no case registry, so there is no one-report run and no reliable
-   case count.
+2. ~~No runner.~~ `bench/run_checks.py` since 2026-10-05 gives the one-report
+   run, per check. Still true: most scripts print their own `ok` / `FAIL`
+   and there is no case registry, so there is no reliable case count.
+   Checks that take a required argument (`check_native_h3_presentation.py`,
+   `check_released_encoder_is_stock.py`, `check_sol_probe.py`) exit 2 from
+   argparse in a sweep, which reads as "nothing graded" by accident rather
+   than by a `needs(...)` line.
 3. ~~The `PYTHONPATH` split is invisible until it fails.~~ Closed 2026-10-05:
    every check that imports comfy bootstraps `sys.path`, the last three
    through `bench/_lib::bootstrap`. What is left of it is that most checks
