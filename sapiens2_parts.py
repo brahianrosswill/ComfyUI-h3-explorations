@@ -305,6 +305,7 @@ def subject_parts(frames: torch.Tensor, subject: torch.Tensor, classes: tuple[in
         logits = seg(crops)
         alphas = matting(crops) if matting is not None else None
         wide = grow(subject[index].to(torch.float32), int(subject_margin)) > 0.5
+        soft = []                      # per frame: the alpha on the frame, and where the label map says background
         for j, (f, box) in enumerate(zip(index, boxes)):
             shape = (box[3] - box[1], box[2] - box[0])
             scores = F.interpolate(logits[j:j + 1].to(torch.float32), size=shape, mode="bilinear", align_corners=False)
@@ -320,11 +321,17 @@ def subject_parts(frames: torch.Tensor, subject: torch.Tensor, classes: tuple[in
             if alphas is not None:
                 alpha = F.interpolate(alphas[j:j + 1].to(torch.float32), size=shape, mode="bilinear",
                                       align_corners=False)[0, 0].clamp(0.0, 1.0).cpu()
-                near = grow(out.parts[f][None], int(matte_reach))[0] > 0.5
-                region = chosen | (near & (label == BACKGROUND) & on_subject)
-                out.matte[f] = paste_back(alpha, box, height, width) * region.to(torch.float32)
+                soft.append((paste_back(alpha, box, height, width), (label == BACKGROUND) & on_subject))
             else:
                 out.matte[f] = out.parts[f]
+        if alphas is not None:
+            # one dilation for the batch: measured on CPU, 2026-10-05, a frame at a time it cost about three
+            # times as much per frame
+            near = grow(out.parts[index], int(matte_reach)) > 0.5
+            for j, f in enumerate(index):
+                alpha, background = soft[j]
+                region = (out.parts[f] > 0.5) | (near[j] & background)
+                out.matte[f] = alpha * region.to(torch.float32)
     out.seconds = time.perf_counter() - began
     if where and not bool(out.found.any()):
         raise ValueError(

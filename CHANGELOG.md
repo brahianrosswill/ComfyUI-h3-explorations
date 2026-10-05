@@ -4,6 +4,26 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.195.2
+
+### Fixed
+
+- **The ref2va motion graph's prompt is now the exact text the arms
+  measured**, and 0.191.7's "verified on one render" is withdrawn. mrteal's
+  yaw metric (`bench/results/2026-10-05_subject_yaw_calibration.md`, 0.195.0)
+  disagreed with the by-eye reading of the shipped graph's render and was
+  right; the owner, on the clip: "he doesnt turn his head he bobs it side to
+  side". On its first prompt, the shipped masked text with the three
+  `<Video 1>` lines grafted on, he does not turn; the turn was measured only
+  on mrhf's generic subject-swap text with those lines. `prompt_bank/ref2va_masked_subject_motion.txt` is
+  that text, both motion graphs are rebuilt from it, and the record, the
+  research note, the audit row and the decisions line carry the correction
+  with what they used to say. A render of the regenerated graph is owed
+  before it is called verified. The record also gains the evening's distill
+  and Sol arms: no knot list, bake or Sol setting carries the reference at
+  eight evaluations, the base loses it at ten, so the step count is the
+  variable and twelve stays the shipped constant.
+
 ## 0.195.1
 
 ### Changed
