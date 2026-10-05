@@ -4,6 +4,21 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.196.2
+
+### Docs
+
+- **The per-token late start is rendered and recorded: it carries the turn
+  and changes the clothes.** Six arms on the band clip's turn window
+  (`bench/results/2026-10-05_masked_v2v_per_token_arms.md`, with its rows).
+  At the first seed it turns him on three of the four chains, including
+  ref2va with no reference and fl2va PDD8 with the motion reference, where
+  each control faces the camera; his face, cap and hair hold. His clothes
+  change to a striped garment on every arm. A zero latent decodes to a
+  textured grey, so "the body from nothing" was not what those tokens were
+  given. Not adopted; `start_from` stays in the Masked Source, off by
+  default. The generated indexes list the record.
+
 ## 0.196.1
 
 ### Added
