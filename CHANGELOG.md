@@ -4,6 +4,49 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.196.0
+
+### Added
+
+- **The shot table travels with the kept mask and is written beside the
+  render** (code in `1dfadf2b`, which was committed without this entry
+  because the file held another session's uncommitted one).
+  `MiniMaxH3MaskedSource` gains an appended input, `shot_table`, for the
+  Subject Track's fourth output: optional, lazy with the mask. `mask_store`
+  keeps the table in the mask's own file under the same key (`save` takes
+  it, `table` reads it, `has(..., with_table=True)` is the hit test when
+  it is wired), so on a hit the tracker runs for neither. A mask kept
+  without a table is a miss once for a graph that wires one. `shot_table`
+  is in `MASK_KEY_SKIP`: wiring it does not change a mask's key. The
+  source bundle carries the table and `MiniMaxH3AudioFreezeSong` writes
+  `<stem>_shots.json` and `<stem>_shots.md` beside the video under the
+  render's own number (`shot_table.write_beside`). No picture on that
+  path: a kept mask keeps the table, not the tracker's preview.
+- **The shipped masked graphs wire it.** In `build_workflows.py` the Masked
+  Source takes the tracker's output 3. Four graphs change, each by that one
+  link: `h3_video_to_video_masked_song_pdd8`,
+  `h3_video_to_video_masked_song_ref2va_motion` and their two `daily/`
+  copies.
+
+### Checks
+
+- `bench/check_mask_store.py`: the table's round trip, the key, and the
+  lazy logic for both replace modes; three mutations turn it red.
+  `bench/check_shot_table.py`: what the song node calls, and that every
+  shipped graph whose Masked Source takes the tracker's mask takes its
+  table too.
+
+### Not verified
+
+- **The rebuild was not validated against a server.** The generator
+  validates against the running server's schema, and the server up at the
+  time was started before the new input existed, so it refused the link as
+  an unknown input. Built with `--no-validate`; a scratch build diffed
+  against the validated tree differs in exactly those four links and
+  nothing else, and the link is held against the node's own schema by the
+  check above. A validated rebuild is owed after the next server start.
+- No render has gone through the wiring.
+
 ## 0.195.3
 
 ### Changed

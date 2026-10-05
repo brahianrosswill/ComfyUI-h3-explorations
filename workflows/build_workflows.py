@@ -2198,8 +2198,12 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
             g["104"] = {"class_type": "MiniMaxH3MaskedSource",
                         # the segmenter is wired whether or not `replace` reads it, so
                         # changing that one choice needs no rewiring
+                        # `shot_table` is the tracker's fourth output: lazy with the mask and
+                        # kept with it, so it does not run the tracker on a hit either, and the
+                        # song node writes it beside the video (`shot_table.py`, 2026-10-05).
                         "inputs": {"frames": ["28", 0], "mask": ["105", 0], **(masked_source or MASKED_SOURCE),
-                                   "segmenter": ["100", 0], "segmenter_clip": ["100", 1]}}
+                                   "segmenter": ["100", 0], "segmenter_clip": ["100", 1],
+                                   "shot_table": ["105", 3]}}
             g["74"]["inputs"]["source"] = ["104", 0]
     elif freeze_song_refs or freeze_song_lists or freeze_song_source:
         raise SystemExit("freeze_song_refs, freeze_song_lists and freeze_song_source need freeze_song")

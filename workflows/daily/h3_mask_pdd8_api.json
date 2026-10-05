@@ -257,6 +257,10 @@
       "segmenter_clip": [
         "100",
         1
+      ],
+      "shot_table": [
+        "105",
+        3
       ]
     }
   }

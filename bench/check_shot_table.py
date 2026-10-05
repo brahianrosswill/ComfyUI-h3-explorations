@@ -44,6 +44,9 @@ off a real result and not off rows typed for the purpose.
                                  the bundle's table lands as `<stem>_shots`
                                  JSON and text, and a bundle with none writes
                                  nothing.
+  shipped_graphs_wire_the_table  every shipped graph whose Masked Source
+                                 takes the tracker's mask also takes its
+                                 table, from the output the schema names.
   tracker_emits_the_table        the Subject Track declares the table as its
                                  last output, after mask, preview, report.
                                  Skipped until the tracker carries it.
@@ -276,6 +279,33 @@ def kept_table_is_written_beside_a_render():
         assert sorted(p.name for p in Path(tmp).iterdir()) == sorted(names), "a render with no table left a file"
 
 
+def shipped_graphs_wire_the_table():
+    sys.path.insert(0, str(T.REPO / "workflows"))
+    import h3_config
+    tracker_outputs = [getattr(o, "display_name", None) for o in st.MiniMaxH3SubjectTrack.define_schema().outputs]
+    slot = tracker_outputs.index("shot_table")
+    vm = importlib.import_module("_h3pack.video_mask")
+    source_inputs = [i.id for i in vm.MiniMaxH3MaskedSource.define_schema().inputs]
+    assert "shot_table" in source_inputs, "the Masked Source has no shot_table input for a graph to wire"
+    wired, unwired = 0, []
+    for path in h3_config.graph_paths(T.REPO / "workflows"):
+        graph = json.loads(path.read_text())
+        for node in graph.values():
+            if node.get("class_type") != "MiniMaxH3MaskedSource":
+                continue
+            mask = node["inputs"].get("mask")
+            source = graph.get(str(mask[0]), {}) if isinstance(mask, list) else {}
+            if source.get("class_type") != "MiniMaxH3SubjectTrack":
+                continue            # a mask that is not the tracker's has no table to carry
+            if node["inputs"].get("shot_table") == [mask[0], slot]:
+                wired += 1
+            else:
+                unwired.append(path.name)
+    assert wired, "no shipped graph wires a Subject Track into a Masked Source; this case reads nothing"
+    assert not unwired, f"graphs whose Masked Source takes the tracker's mask and not its table: {unwired}"
+    return f"{wired} graph(s), from the tracker's output {slot}"
+
+
 def tracker_emits_the_table():
     outputs = st.MiniMaxH3SubjectTrack.define_schema().outputs
     names = [getattr(o, "display_name", None) for o in outputs]
@@ -290,7 +320,8 @@ def main() -> int:
     for fn in (numbering_is_left_to_right, rows_cover_the_clip, subject_number_names_the_mask,
                absent_shot_says_so, on_screen_is_counted, every_row_has_the_slots,
                text_says_what_json_says, labels_sit_on_their_outlines, save_node_writes_three_files,
-               kept_table_is_written_beside_a_render, tracker_emits_the_table):
+               kept_table_is_written_beside_a_render, shipped_graphs_wire_the_table,
+               tracker_emits_the_table):
         case(fn.__name__, fn)
     return finish()
 
