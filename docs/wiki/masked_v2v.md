@@ -1,6 +1,6 @@
 # Masked video to video: how it works, what it cannot do, where to go next
 
-last updated: 2026-10-04 (first written, after the Subject Track's third clip)
+last updated: 2026-10-05 (the Sapiens2 licence, accepted by the owner); 2026-10-04 (first written, after the Subject Track's third clip)
 
 Written by hand. This is the lane's map for a reader who has not followed
 it: the pieces in the order a render meets them, the limits each one has
@@ -194,9 +194,13 @@ wider set, with what each would buy and what is known about it.
   second model pass. Read, not run on this clip.
   `../research/masking/2026-10-04_mrhf.md`, "Effects outside the silhouette"
   and "VOID for the plate with nobody in it".
-- **A soft edge instead of a hard one**: a matting model on the subject. The
-  candidate read has a licence clause to settle first. Same note,
-  "Matting" and "Sapiens2: which files, and a licence clause".
+- **A soft edge instead of a hard one**: a matting model on the subject.
+  The nodes for it exist (`sapiens2_parts.py`, `MiniMaxH3SubjectParts`) and
+  are in no shipped graph. The licence clause that was open is settled:
+  the owner, 2026-10-05, "License is accepted and fine, I'm not using this
+  for anything but tinkering". What was read of the model:
+  `../research/masking/2026-10-04_mrhf.md`, "Matting" and "Sapiens2: which
+  files, and a licence clause".
 
 **The render**
 

@@ -4,6 +4,18 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.190.2
+
+### Docs
+
+- **The Sapiens2 licence is accepted by the owner** (2026-10-05: "License is
+  accepted and fine, I'm not using this for anything but tinkering").
+  `docs/wiki/masked_v2v.md` said the clause was still to settle; it now
+  carries the owner's words and names the nodes that landed in 0.190.0. The
+  line for `docs/wiki/decisions.md` is owed: that file held another
+  session's uncommitted change when this was written. Numbered past 0.190.1,
+  which a session with work in flight has taken.
+
 ## 0.190.0
 
 ### Added
