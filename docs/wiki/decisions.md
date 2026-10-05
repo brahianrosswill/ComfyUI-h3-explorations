@@ -48,6 +48,10 @@ Older history lives elsewhere and is not copied here:
   without its PDD bake. The fl2va PDD8 graph stays the default. The owner
   asked where 12 comes from: the lowest count on a three-point ladder (8,
   12, 16) seen to carry the reference, one seed at 8 and 12.
+  Corrected the same evening: the graph's first prompt (the shipped masked
+  text with the reference lines grafted on) did not turn him on its own
+  render, which mrteal's yaw metric caught; the shipped prompt is now the
+  exact text the arms measured, and the threshold ladder gained 10 (no turn).
 - **A check may run a coderef file as a one-off numeric reference; nothing
   shipped depends on coderef** (owner, 2026-10-05, on the masking board:
   "yes you can test it just dont write code that relies on it here - just

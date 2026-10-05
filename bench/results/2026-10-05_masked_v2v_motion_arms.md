@@ -130,17 +130,22 @@ eleven rows, the server stopped at 15:35.
 | arm | chain | steps | reference | turn | look |
 |---|---|---|---|---|---|
 | `ref2va_base12_noref_s1` | ref2va undistilled, the generic prompt as mrhf wrote it, `motion_reference` none | 12 | **none** | no; faces the camera through the shot | kept |
-| `ship_ref2va_motion_s1` | `workflows/h3_video_to_video_masked_song_ref2va_motion_api.json` as generated, the band clip, seed one, one window | 12 | same as motion | yes, a partial one: side-on by frame 257, three-quarter back by 267, the face still partly visible at 277 where the arm shows his back | kept |
+| `ship_ref2va_motion_s1` | `workflows/h3_video_to_video_masked_song_ref2va_motion_api.json` as first generated (its prompt the shipped masked text with the three `<Video 1>` lines grafted on), the band clip, seed one, one window | 12 | same as motion | **no.** Corrected 2026-10-05 after mrteal's yaw metric disagreed (`2026-10-05_subject_yaw_calibration.md`: largest turn 34 degrees against 180 for the arm) and tight crops confirmed it: the owner's judgment of the clip: "he doesnt turn his head he bobs it side to side"; on tight crops the shoulders angle around frames 257 to 263 and are square to the camera again by 273. This row first said "yes, a partial one: side-on by frame 257, three-quarter back by 267", a misread of the contact sheet. | kept |
 
 The control is the question the owner asked ("if you just use the ref2va
 model and dont pass in the video reference"): on ref2va at twelve steps with
 nothing but the plate, the still and the generic prompt he does not turn. So
 the reference is what carries the turn, and ref2va above eight steps is what
-lets it through. The shipped graph's own render turns him less fully than the
-arm at the same seed; the two differ only in the prompt's base text (the
-shipped `ref2va_masked_subject_swap` against mrhf's generic male prompt,
-each with the same three `<Video 1>` lines). One seed each; the base text is
-the next knob if a fuller turn is wanted from the shipped graph.
+lets it through. The shipped graph's own render, on the first shipped prompt, does not turn
+him; the arm at the same seed does. The two differ only in the prompt's base
+text: the arm ran mrhf's generic subject-swap text with the three `<Video 1>`
+lines, the first shipped prompt grafted the same lines onto
+`ref2va_masked_subject_swap`. So the base text is not a knob but part of
+what was measured, and the same evening the shipped prompt
+(`prompt_bank/ref2va_masked_subject_motion.txt`) was replaced by the arm's
+exact text and both motion graphs rebuilt; the arm `ref2va_base12_s1` is
+then the shipped chain and prompt at the shipped count, and a fresh render
+of the regenerated graph is owed before "verified" is said of it again.
 
 ## Verdict, revised
 
@@ -151,6 +156,50 @@ the next knob if a fuller turn is wanted from the shipped graph.
   ref2va at twelve does not turn him. The step count and the reference are
   both needed; the distill is not the variable.
 - The route ships as `h3_video_to_video_masked_song_ref2va_motion_api.json`
-  (and `daily/h3_mask_ref2va_motion_api.json`), verified on one render of
-  the generated graph; the fl2va PDD8 graph stays the default for a shot
-  that needs no movement from the source.
+  (and `daily/h3_mask_ref2va_motion_api.json`) with the measured prompt text
+  since the evening's correction; its first render on the first prompt did
+  not turn him (see the corrected row), so the evidence for the shipped
+  chain is the arm `ref2va_base12_s1`, not a render of the generated file.
+  The fl2va PDD8 graph stays the default for a shot that needs no movement
+  from the source.
+
+## Appended 17:50: can a distill carry it, and is Sol the cause at eight
+
+Owner's questions: whether any distill or knot list carries the reference,
+and whether Sol-Attn's sparse steps, rather than the count, lose it at eight.
+Same window, seed, still, reference and prompt as the arms above.
+
+| arm | chain | evaluations | Sol | turn | look |
+|---|---|---|---|---|---|
+| `ref2va_pdd8mid_s1` | ref2va PDD8 LoRA on an eight-knot list that moves two knots into the mid range (`1.0, 0.972973, 0.923077, 0.878049, 0.8, 0.734694, 0.631579, 0.444444, 0.0`, widths `[8,8,4,4,2,2,2,2]` on the PDD grid) | 8 | on, start 0.0 (the PDD recipe of the day) | no; no gesture either | kept |
+| `ref2va_base10_s1` | ref2va undistilled | 10 | on, start 0.2 | no; faces the camera, hands near the waist | kept |
+| `ref2va_pdd8_nosol_s1` | ref2va PDD8 LoRA, the file's own knots, the Sol node bypassed (dense kitchen attention every step) | 8 | off | no; a glance to the side around frame 257, then the camera | kept |
+| `ref2va_pdd8_sol02_s1` | ref2va PDD8 LoRA, the file's own knots, Sol started at 0.2 (what the reverted shipped chain runs) | 8 | on, start 0.2 | no | kept |
+
+Not rendered: `ref2va_flashgen4_s1` (FlashGen four-step, the rank-64 ref2va
+LoRA) and `ref2va_base8_nosol_s1` were killed mid-render when my own wait
+stopped the server with them still queued, three runners having interleaved
+on one queue; and then dropped, not requeued, on the owner's word the same
+evening: "we need to have a path to being comfortable and confident doing
+those instead of optimizing for this one off." The lane moves to a benchmark
+across diverse clips (the board's `build-lane-benchmark`); the band clip's
+schedule ladder ends here. The
+`ref2va_pdd8mid_s1` row with zero song-node seconds is the mux failure of the
+first attempt (its window folder was removed mid-run), not a render.
+
+What the four say:
+
+- The threshold on the undistilled base is between ten and twelve
+  evaluations on this seed: eight and ten face the camera, twelve and
+  sixteen turn.
+- Moving the PDD8 knots into the mid range does not help; nor does the
+  six-evaluation list above it. The bake behaves as the base at the same
+  count, so a knot list cannot buy back what eight evaluations lose.
+- Sol is not the cause at eight: with the Sol node bypassed he still faces
+  the camera, and with Sol started at 0.2 instead of 0.0 he still does. The
+  owner's reversal of the 0.0 start (0.194.2) stands on its own reasoning;
+  it is not what the reference needed.
+- So no shipped distill carries an encoder-only video reference on ref2va,
+  and the dense-block question the owner raised for the case where Sol was
+  the cause does not arise. The price of the reference is the step count,
+  twelve on this seed.
