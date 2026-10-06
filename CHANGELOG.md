@@ -7,6 +7,13 @@ artifact.
 <!-- To add an entry: write a file in changelog.d/ (changelog.d/README.md has the three steps) and run
      bench/build_changelog.py. Do not type an entry in here: the newest entries below are generated. -->
 
+## 0.204.1
+<!-- changelog.d/mrsun-frozen-cache-stage-split-record.md -->
+
+### Added
+
+- `bench/results/2026-10-06_frozen_cache_stage_split.md`, with its rows and the log lines it reads: the first card run of the frozen video cache's stage timers, on the three audio-refine arms of `bench/frozen_cache_arms.json`. It measures what a cached step costs with almost nothing live, which the masked lane's cost model had only derived, splits it by stage, and restates that model's ceilings for today's masked windows with the measured figure. No masked window has run through the cache.
+
 ## 0.204.0
 <!-- changelog.d/mrgood-window-keep.md -->
 

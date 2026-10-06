@@ -19,6 +19,7 @@ replaces `docs/evidence.md`, which says what the records established.
 | 2026-10-06 | masked | [The Subject Track and the part node at their defaults on the lane's three windows (2026-10-06)](2026-10-06_subject_track_defaults.md) | at defaults one window was masked on a microphone and one misses a shot; the first is fixed by a rule, the second by a correction; the part was found on every frame the subject is a person |
 | 2026-10-06 | masked | [The shipped motion graph with "a person" and with "a man" in its text: two renders on the band window (2026-10-06)](2026-10-06_masked_v2v_person_text.md) | one seed: with "a person" he still turns and ends where the source ends, and starts later than with "a man"; the shipped graph on the measured text reproduces the 2026-10-05 arm frame for frame; neither clip watched |
 | 2026-10-06 | masked | [Where a masked song render's time goes: two renders of one stretch, by node and by stage (2026-10-06)](2026-10-06_masked_render_time_breakdown.md) | sampling is four fifths of a render at both canvases; the plate's VAE encode is the largest stage after it and with the conditioning makes about an eighth of what a repeat run pays without needing to; the loader's working copy and the still's span across windows cannot win; the composite runs on the processors |
+| 2026-10-06 | masked | [The frozen video cache's cached step, timed by stage on the refine pass (2026-10-06)](2026-10-06_frozen_cache_stage_split.md) | a cached step with almost no live rows costs 6.87 s against a 23.0 s stock step at 104,515 rows, and no one stage owns it: the store, qkv over every row, the attention call and the time between blocks are each a fifth to a quarter; that fixed cost is a fifth lower than the figure derived for the masked lane's cost model, so break-even moves from a live share near one half to a little above it |
 | 2026-10-06 | masked | [A picture inside bars lost its cuts: the Subject Track's cut score on a padded source (2026-10-06)](2026-10-06_bordered_source_cuts.md) | a source with flat bars at its edges had no cut found at defaults; the score now leaves flat borders out and finds the bare picture's cuts; unbordered sources score exactly as before |
 | 2026-10-05 | masking | [A clean plate from VOID on the band clip's turn window: a first probe (2026-10-05)](2026-10-05_void_plate_turn.md) | tested and removed at the owner's word: "Not a single clip showed any improvement." No arm gave a plate on this clip |
 | 2026-10-05 | masking | [VOID pass 1 converted from upstream for core's loader (2026-10-05)](2026-10-05_void_checkpoint_conversion.md) | done and then removed with the VOID code; the upstream checkpoint is a pure rename away from the file core loads |
@@ -54,7 +55,7 @@ replaces `docs/evidence.md`, which says what the records established.
 | 2026-10-01 | lora | [Where a LoRA at the call spends its time (2026-10-01)](2026-10-01_lora_branch_profile.md) |  |
 | 2026-10-01 | kitchen | [comfy-kitchen: h3-frontier merged to upstream main, 2026-10-01](2026-10-01_kitchen_merge_aade8d5.md) |  |
 
-Data files dated this month and not listed: 67.
+Data files dated this month and not listed: 69.
 
 ## 2026-09
 
