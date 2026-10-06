@@ -228,6 +228,75 @@ def plan_windows(total_frames: int, window_frames: int, context_frames: int,
     return plan
 
 
+def frames_covered(lengths: list[int], context_frames: int) -> int:
+    """The frames a run of windows covers from its first frame: every window after the first
+    adds its length less the context it shares with the one before."""
+    return sum(lengths) - int(context_frames) * (len(lengths) - 1) if lengths else 0
+
+
+def frames_read(total_frames: int, window_frames: int, context_frames: int, timeline: str = "") -> int:
+    """How many frames of the track a run's windows read, counted from frame zero.
+
+    Never fewer than `total_frames` and usually more: the last window ends at or past the end
+    of the track ("Lengths" above). A loader that holds the track's own picture for the song
+    node has to load this many and no more: what it loads past this, nothing reads, and what
+    the mask's tracker does with it is wasted (`workflows/build_workflows.py`, `freeze_song_source`).
+    """
+    segments = plan_windows(total_frames, window_frames, context_frames, parse_timeline(timeline))
+    return frames_covered([n for _entry, lengths in segments for n in lengths], context_frames)
+
+
+def frames_kept(covered: int, track_seconds: float) -> int:
+    """How many of the frames a run's windows cover are written: all of them, or as many as the
+    track runs when it ends first.
+
+    The last window ends at or past the end of the track it was planned from ("Lengths" above).
+    When the track on hand is longer than that, as with an `extent` of its first seconds, nothing
+    is past the track and every frame is kept. When it is not, the frames past its end are
+    dropped from the last window before it is encoded, so the finished video ends with its
+    track, on a whole frame (`loop_output.join_and_mux` says why not in the join). A last
+    window that a run before 2026-10-06 stored holds its tail still, and nothing renders it
+    again while its key matches: reused under a track that ends first, which is the usual
+    whole-track song queued again unchanged, it is cut in the join, which leaves a stray
+    frame or two past the cut. Not handled yet; `reuse_windows` off for one run rewrites it.
+    """
+    return min(int(covered), int(math.ceil(float(track_seconds) * FPS)))
+
+
+def extent_shortfall(track_seconds: float, asked_seconds: float | None, total_frames: int,
+                     source_frames: int | None = None, asked_reads: int | None = None) -> str | None:
+    """One line for the song node's report when a run cannot cover what it was asked for, or None.
+
+    Two ways it happens, and neither is refused: a clip that is simply shorter than the
+    extent has to render without anyone touching a widget.
+
+    - The track is shorter than the extent asked for, by a frame or more. On a graph whose
+      track is its source video's own audio, that is what a loader cap under the extent looks
+      like, since the loader cuts the audio where it cuts the frames: the line gives the
+      frames the source holds and the frames the asked extent reads (`asked_reads`).
+    - The source's picture is shorter than the track (`source_frames` under `total_frames`):
+      the frames past its end hold the last one, unmasked, to the end of the run. A source
+      a few frames short of the PLAN but not of the track is not this: those frames are past
+      the track and are not written (`frames_kept`).
+    """
+    parts = []
+    if asked_seconds is not None and float(asked_seconds) - float(track_seconds) >= 1.0 / FPS:
+        line = (f"shorter than asked: the track is {float(track_seconds):.2f}s and this run was asked for "
+                f"{float(asked_seconds):g}s, so it covers the track and no more")
+        if source_frames is not None:
+            line += (f". The source video holds {int(source_frames)} frames"
+                     + (f" and {float(asked_seconds):g}s reads {int(asked_reads)}" if asked_reads else "")
+                     + "; if the file is longer than that, raise the loader's frame_load_cap"
+                     + (f" to {int(asked_reads)}" if asked_reads else ""))
+        parts.append(line)
+    if source_frames is not None and int(source_frames) < int(total_frames):
+        short = int(total_frames) - int(source_frames)
+        parts.append(f"the source's picture ends early: it holds {int(source_frames)} frames and the track runs "
+                     f"{int(total_frames)}, so the last {short} hold its final frame, unmasked. If the file is "
+                     "longer than that, raise the loader's frame_load_cap")
+    return "; ".join(parts) or None
+
+
 @dataclass
 class Plan:
     entries: list[tuple[float, str]]

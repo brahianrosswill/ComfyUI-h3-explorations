@@ -1020,6 +1020,29 @@ def _core_cpu_when_no_card():
         comfy.cli_args.args.cpu = True
 
 
+def _song_frames_read(seconds: float, window_frames: int, context_frames: int, timeline: str = "") -> int:
+    """How many frames of its track the song node reads for an extent of `seconds`.
+
+    The node's own count, from the node's own planner (`loop_plan.frames_read`), with the
+    total it derives from the extent (`audio_freeze_song.py::execute`, `total_frames`): a
+    source loader's cap is set from it, so the graph loads what the plan reads and the mask's
+    tracker works on nothing else. `loop_plan.py` is loaded by path as `resolution.py` is
+    below, and for the same reason; its one import outside the standard library is core's
+    frame rate.
+    """
+    import importlib.util
+
+    for extra in (HERE.parent.parent.parent, HERE.parent):
+        if str(extra) not in sys.path:
+            sys.path.insert(0, str(extra))
+    _core_cpu_when_no_card()
+    spec = importlib.util.spec_from_file_location("_h3_loop_plan_for_build", HERE.parent / "loop_plan.py")
+    plan = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = plan       # its dataclasses look their module up by name
+    spec.loader.exec_module(plan)
+    return plan.frames_read(int(math.ceil(float(seconds) * FPS)), int(window_frames), int(context_frames), timeline)
+
+
 def _resolution_widgets(width, height, length):
     """The Resolution node's inputs for an explicit width/height.
 
@@ -2197,11 +2220,15 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
             # The video is the track: its frames at 24 fps and canvas width
             # (the loader holds them all, so not at the file's own size), its
             # audio in place of LoadAudio. Ids 100-105, used by nothing else.
+            # The cap is the count the song node's plan reads for this extent, no more:
+            # until 2026-10-06 it was the extent plus a whole window, and the tracker
+            # worked on every frame of that (`bench/results/2026-10-06_masked_render_time_breakdown.md`).
             g.pop("48")
             g["28"] = {"class_type": REF_VIDEO_LOADER,
                        "inputs": {"video": PLACEHOLDER_VIDEO, "force_rate": REF_VIDEO_FORCE_RATE,
                                   "custom_width": cv["width"], "custom_height": 0,
-                                  "frame_load_cap": int(math.ceil(freeze_song_seconds * FPS)) + length,
+                                  "frame_load_cap": _song_frames_read(freeze_song_seconds, length, freeze_context,
+                                                                      freeze_song_timeline),
                                   "start_time": 0.0, "format": "AnimateDiff"}}
             g["74"]["inputs"]["audio"] = ["28", 2]
             g["100"] = {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": SEGMENTER}}

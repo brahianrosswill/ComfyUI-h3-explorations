@@ -306,7 +306,10 @@ DECLARED: dict[tuple[str, str], tuple] = {
         ("HOUSE", "h3_config.FPS, so a reference video is resampled to the "
                   "rate the model works at", 24.0),
     (h3_config.REF_VIDEO_LOADER, "frame_load_cap"):
-        ("ARM", "the arm's frame count; h3_config.REF_VIDEO_LENGTH"),
+        ("ARM", "the arm's frame count; h3_config.REF_VIDEO_LENGTH. On the masked "
+                "video-to-video graphs, the frames the song node's plan reads for "
+                "the graph's extent (loop_plan.frames_read; build_workflows.py, "
+                "freeze_song_source)"),
     (h3_config.REF_VIDEO_LOADER, "custom_width"):
         ("ARM", "the canvas width on the masked video-to-video graph, where the "
                 "loader holds every frame of the source it loads, so they are "

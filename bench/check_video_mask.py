@@ -58,6 +58,12 @@ that could happen.
 10. **Every graph that wires a Masked Source wires it whole**: into a song
    node's `source`, its mask tracked over the same frames it carries, and the
    song node's track taken from the same loader as those frames.
+11. **The loader loads the frames the song node's plan reads, and no more.**
+   The tracker works on every frame the loader hands it, so a cap past what
+   the plan reads for the graph's extent, window and context is tracking
+   nothing renders (`loop_plan.frames_read`; a spare window of it until
+   2026-10-06). A cap under it would hold the last frame where the plan
+   expects picture. The count is the planner's own, not restated here.
 
 No model, no CUDA, no server.
 
@@ -89,15 +95,15 @@ from comfy.ldm.minimax.model import FRAME_PER_TOKEN, mask_row_values  # noqa: E4
 import h3_config  # noqa: E402
 
 
-def _load():
-    """`video_mask` as a module of a stand-in package (`check_audio_freeze.py` says why)."""
+def _load(name: str = "video_mask"):
+    """A root module of the pack as a module of a stand-in package (`check_audio_freeze.py` says why)."""
     pkg = types.ModuleType("_h3pack")
     pkg.__path__ = [str(REPO)]
     sys.modules.setdefault("_h3pack", pkg)
-    spec = importlib.util.spec_from_file_location("_h3pack.video_mask", REPO / "video_mask.py")
+    spec = importlib.util.spec_from_file_location(f"_h3pack.{name}", REPO / f"{name}.py")
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
-    sys.modules["_h3pack.video_mask"] = module
+    sys.modules[f"_h3pack.{name}"] = module
     spec.loader.exec_module(module)
     return module
 
@@ -516,8 +522,30 @@ def check_late_start(problems):
             problems.append(f"`{name}` is not in MASK_KEY_SKIP: changing it would track the subject afresh")
 
 
+def check_loader_cap(problems, path, graph, loader_id, song, plan):
+    """Item 11: the source loader's cap against what the song node's plan reads."""
+    import math
+    loader, ins = graph.get(loader_id, {}), song["inputs"]
+    cap = loader.get("inputs", {}).get("frame_load_cap")
+    if cap is None:
+        problems.append(f"{path.name}: the source loader {loader_id} has no frame_load_cap to hold to the plan")
+        return
+    if ins.get("extent") != "first_seconds":
+        problems.append(f"{path.name}: the song node's extent is {ins.get('extent')!r}, so how many frames the "
+                        "loader must hold cannot be read from the graph")
+        return
+    total = int(math.ceil(float(ins["extent.seconds"]) * plan.FPS))     # as `audio_freeze_song.py::execute`
+    reads = plan.frames_read(total, int(ins["window_frames"]), int(ins["context_frames"]), str(ins.get("timeline") or ""))
+    if int(cap) != reads:
+        problems.append(f"{path.name}: the loader's frame_load_cap is {int(cap)} and the song node's plan reads "
+                        f"{reads} frames for {ins['extent.seconds']} s at windows of {ins['window_frames']} with "
+                        f"{ins['context_frames']} of context" + (": the tracker works on frames nothing renders"
+                                                                 if int(cap) > reads else ": the plan runs out of picture"))
+
+
 def check_graphs(problems):
     seen = 0
+    plan = _load("loop_plan")
     for path in h3_config.graph_paths(WORKFLOWS, include_bench=True):
         graph = json.loads(path.read_text())
         for nid, node in graph.items():
@@ -550,6 +578,7 @@ def check_graphs(problems):
                         for v in n.get("inputs", {}).values()):
                     problems.append(f"{path.name}: the Subject Track's preview or report is wired, which defeats the kept mask")
             for song in users:
+                check_loader_cap(problems, path, graph, frames_from, song, plan)
                 if song["inputs"].get("audio", [None])[0] != frames_from:
                     problems.append(f"{path.name}: the song node's track is not the audio of the source video")
                 if "segmenter" not in ins or "segmenter_clip" not in ins:
@@ -570,7 +599,7 @@ def main() -> int:
         print("ok    the masked source keeps every subject frame, sits on core's token grid, feathers off the "
               "subject, composites exactly, holds a short source, crops the mask as the frames, paints out only "
               "inside the regenerated tokens, takes a part only from the subject, restores the margin under "
-              "`only what changed`, builds a motion reference on grey or whole at the short edge asked, softens only the subject and empties only its body's tokens for a late start, and is wired whole in every graph")
+              "`only what changed`, builds a motion reference on grey or whole at the short edge asked, softens only the subject and empties only its body's tokens for a late start, is wired whole in every graph, and its loader loads the frames the plan reads")
     return 1 if problems else 0
 
 

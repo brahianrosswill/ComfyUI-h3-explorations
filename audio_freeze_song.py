@@ -281,7 +281,7 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
         max_seconds = (float(extent["seconds"]) if choice == "first_seconds" and not isinstance(extent, str)
                        else (30.0 if choice == "first_seconds" else None))
         waveform, rate, _ = _stereo(audio)
-        seconds = waveform.shape[-1] / rate
+        track_seconds = seconds = waveform.shape[-1] / rate
         if max_seconds is not None:
             seconds = min(seconds, max_seconds)
         total_frames = int(math.ceil(seconds * FPS))
@@ -322,9 +322,28 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
         first = len(reused)
 
         clock = loop_plan.clock
-        total = sum(w.frames for w in windows) - context_frames * (n_windows - 1)
+        total = loop_plan.frames_covered([w.frames for w in windows], context_frames)
+        # what is written of that: every frame, or as far as the track runs when it ends first;
+        # the frames past it come off the last window's tail before it is encoded
+        kept_frames = loop_plan.frames_kept(total, track_seconds)
         lines = [f"{n_windows} windows {[w.frames for w in windows]} with {context_frames}-frame context, "
                  f"{total} frames ({total / FPS:.2f}s) over {seconds:.2f}s of track"]
+        # A run that cannot cover what it was asked for says so here, second line of the report,
+        # and in the log: it is not refused (`loop_plan.extent_shortfall`). On a masked graph the
+        # usual cause is the loader's frame cap left under a raised extent; the two are separate
+        # widgets (2026-10-06). `source` is lazy and None in a preview, which then reports the
+        # track alone.
+        asked_reads = None
+        if max_seconds is not None and source is not None:
+            with contextlib.suppress(ValueError):   # a timeline the longer extent would refuse
+                asked_reads = loop_plan.frames_read(int(math.ceil(max_seconds * FPS)), int(window_frames),
+                                                    context_frames, timeline)
+        shortfall = loop_plan.extent_shortfall(
+            track_seconds, max_seconds, total_frames,
+            int(source["frames"].shape[0]) if source is not None else None, asked_reads)
+        if shortfall:
+            lines.append(shortfall)
+            logger.warning("[h3] MiniMaxH3AudioFreezeSong: %s", shortfall)
         for i, (at, label) in enumerate(entries):
             mine = [w for w in windows if w.entry == i]
             lines.append(f"{label} at {clock(at)}: " + (
@@ -565,6 +584,11 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                 del alpha
                 mark("composite")
             images = images[int(trim):]
+            if w.number == n_windows and total > kept_frames:
+                # past the track's end: dropped here, at the frames, so the join copies whole windows
+                images = images[:int(images.shape[0]) - (total - kept_frames)]
+                reports.append(f"[{w.number}] the track ends {total - kept_frames} frames before this window "
+                               "does; they are not written")
             video_path, latent_path = loop_resume.window_paths(work_dir, filename, w.number)
             # the old latent goes first: a latent on disk must mean its video finished
             with contextlib.suppress(FileNotFoundError):
@@ -583,7 +607,7 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
         # join, and mux the whole track cut to the video
         out_path = os.path.join(full_out, stem + ".mp4")
         clock[0] = time.perf_counter()
-        join_and_mux(files, waveform, rate, out_path, work_dir, stem)
+        join_and_mux(files, waveform, rate, out_path, work_dir, stem, kept_frames)
         mark("join and mux")
         if spent:
             reports.append(f"seconds by stage, {sum(spent.values()):.0f} in all: "

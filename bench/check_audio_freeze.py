@@ -33,8 +33,20 @@ things here, each a way the freeze could look present and not be:
    longest first; entries past the covered length drop; a too-short entry, a
    bad timeline line, a label with no block, a block with no label and a cut
    past its window's end are refused; lists get one use per entry, or one per
-   window with no timeline; and every input a preview skips is declared lazy
-   on the song node, with a copy missing one refused.
+   window with no timeline; `frames_read` is the furthest frame any placed
+   window slices from the track, which is what a source loader has to hold;
+   a run that cannot cover what it was asked for gets one line saying so
+   (`extent_shortfall`: a track shorter than the extent, or a source whose
+   picture ends before its track), and one that can gets none;
+   and every input a preview skips is declared lazy on the song node, with a
+   copy missing one refused.
+6. **The join returns every frame its windows hold.** `loop_output.join_and_mux`
+   through ffmpeg on two small windows, noisy and flat, under a track exactly
+   as long as the video, a second shorter and a second longer: every frame
+   back, evenly spaced, and the track padded or cut to the video. Under
+   `-shortest` the first two lost a frame to four (2026-10-06). And
+   `loop_plan.frames_kept`: every covered frame, or as far as the track runs,
+   which is where a short track is cut, at the frames.
 
 The encoder is faked (zeros of the right shape) so this runs with no model,
 no CUDA and no server; the real audio VAE is exercised by
@@ -475,6 +487,59 @@ def lazy_problems(source: str) -> list[str]:
     return [f"{name} is in LAZY but not declared lazy" for name in lazy if name not in declared]
 
 
+def check_join(problems):
+    """`loop_output.join_and_mux` returns every frame its files hold, in order, whatever the track's length.
+
+    The cases that lost frames under `-shortest` (2026-10-06): two windows under a track exactly as long
+    as the video and under a shorter one, on noisy frames and on flat ones, which x264 packs differently.
+    """
+    import importlib.util
+    import shutil
+    import subprocess
+    import tempfile
+    if shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None:
+        _fail(problems, "join: ffmpeg and ffprobe are needed to hold the join and are not on PATH")
+        return
+    pkg = sys.modules.get("_h3pack")
+    spec = importlib.util.spec_from_file_location("_h3pack.loop_output", REPO / "loop_output.py")
+    lo = importlib.util.module_from_spec(spec)
+    sys.modules["_h3pack.loop_output"] = lo
+    assert pkg is not None and spec.loader is not None
+    spec.loader.exec_module(lo)
+    lengths, fps = (22, 17), int(lo.FPS)       # the sizes the loss was first seen at, with a 5-frame trim
+    total = sum(lengths)
+    torch.manual_seed(0)
+    with tempfile.TemporaryDirectory() as tmp:
+        for kind in ("noisy", "flat"):
+            files = []
+            for i, n in enumerate(lengths):
+                path = str(Path(tmp) / f"{kind}_{i}.mp4")
+                frames = torch.rand(n, 96, 160, 3) if kind == "noisy" else torch.full((n, 96, 160, 3), 0.5)
+                raw = (frames * 255).round().to(torch.uint8).numpy().tobytes()
+                made = subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", "160x96",
+                                       "-r", str(fps), "-i", "-", "-c:v", "libx264", "-preset", "medium", "-crf", "19",
+                                       "-pix_fmt", "yuv420p", *lo.CLEAN_OUTPUT_ARGS, path], input=raw, capture_output=True)
+                if made.returncode != 0:
+                    _fail(problems, f"join: could not write a test window: {made.stderr.decode(errors='replace')[-200:]}")
+                    return
+                files.append(path)
+            for label, seconds in (("exactly as long as the video", total / fps), ("a second shorter", total / fps - 1.0),
+                                   ("a second longer", total / fps + 1.0)):
+                out = str(Path(tmp) / "joined.mp4")
+                lo.join_and_mux(files, torch.zeros(1, 2, int(round(44100 * seconds))), 44100, out, tmp, "joined", total)
+                got = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+                                      "frame=best_effort_timestamp", "-of", "csv=p=0", out], capture_output=True, text=True).stdout.split()
+                stamps = sorted(int(x.strip(",")) for x in got)
+                steps = {b - a for a, b in zip(stamps, stamps[1:])}
+                if len(stamps) != total or len(steps) != 1:
+                    _fail(problems, f"join: {kind} windows of {lengths} under a track {label} came back with "
+                                    f"{len(stamps)} frames of {total}" + ("" if len(steps) == 1 else ", not evenly spaced"))
+                audio = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a:0", "-show_entries", "stream=duration",
+                                        "-of", "csv=p=0", out], capture_output=True, text=True).stdout.strip().strip(",")
+                if abs(float(audio) - total / fps) > 0.05:
+                    _fail(problems, f"join: the track under {kind} windows is {audio}s for a {total / fps:.3f}s video")
+
+
 def check_song_plan(problems):
     import math
     import loop_plan as lp
@@ -567,6 +632,51 @@ def check_song_plan(problems):
     headers_only = "[Shot 1] A wide shot of the room. [Shot 2] The shot cuts to her hands."
     lp.place_windows(lp.plan_song(600, 345, ctx, headers_only, ""), [headers_only] * len(cut.uses), ctx)
 
+    # What a source loader has to hold: `frames_read` against the furthest frame any placed
+    # window slices from the track (the first frame and count the song node hands
+    # `video_mask.window`), with and without a timeline, on whole and ragged lengths.
+    for total, timeline in ((math.ceil(30 * lp.FPS), ""), (345, ""), (346, ""), (3000, ""), (141, ""),
+                            (FLICKER_FRAMES, FLICKER_TIMELINE)):
+        placed = lp.plan_song(total, 345, ctx, "one prompt", timeline)
+        furthest = max(int(round(w.start * lp.FPS)) + w.frames
+                       for w in lp.place_windows(placed, ["one prompt"] * len(placed.uses), ctx))
+        reads = lp.frames_read(total, 345, ctx, timeline)
+        if reads != furthest or reads < total:
+            _fail(problems, f"frames read: a {total}-frame track{' with a timeline' if timeline else ''} is said to "
+                            f"read {reads} frames and its windows slice up to frame {furthest}")
+    if lp.frames_covered([345], ctx) != 345 or lp.frames_covered([], ctx) != 0:
+        _fail(problems, "frames read: one window does not cover its own length, or none covers something")
+
+    # The line a run prints when it cannot cover what it was asked for (`extent_shortfall`).
+    quiet = (lp.extent_shortfall(31.375, 30.0, 720, 753, 753),         # the shipped masked graph: nothing to say
+             lp.extent_shortfall(200.0, None, 4800),                   # the whole track, no source
+             lp.extent_shortfall(30.0 - 0.5 / lp.FPS, 30.0, 720, 720), # under a frame short
+             lp.extent_shortfall(10.0, 10.0, 240, 240, 243))           # a few frames short of the plan, not of the track
+    if any(quiet):
+        _fail(problems, f"shortfall: a run that covers what it was asked for printed {[q for q in quiet if q]}")
+    raised = lp.extent_shortfall(31.375, 40.0, 753, 753, lp.frames_read(math.ceil(40 * lp.FPS), 345, ctx))
+    if not raised or "753 frames" not in raised or "frame_load_cap" not in raised \
+            or str(lp.frames_read(math.ceil(40 * lp.FPS), 345, ctx)) not in raised or "40s" not in raised:
+        _fail(problems, f"shortfall: an extent raised past the loader's cap printed {raised!r}")
+    plain = lp.extent_shortfall(14.4, 30.0, 346)
+    if not plain or "frame_load_cap" in plain or "14.40s" not in plain:
+        _fail(problems, f"shortfall: a short track with no source printed {plain!r}")
+    early = lp.extent_shortfall(30.0, 30.0, 720, 600, 753)
+    if not early or "600 frames" not in early or "last 120" not in early or "shorter than asked" in early:
+        _fail(problems, f"shortfall: a source that ends before its track printed {early!r}")
+    # What is written of the frames a plan covers: all of them, or as far as the track runs.
+    for covered, track, want in ((753, 44.375, 753), (753, 31.375, 753), (753, 753 / lp.FPS - 1e-4, 753),
+                                 (753, 30.0, 720), (753, 30.01, 721), (345, 14.0, 336), (345, 14.375, 345)):
+        if lp.frames_kept(covered, track) != want:
+            _fail(problems, f"frames kept: {covered} frames under a {track}s track keeps "
+                            f"{lp.frames_kept(covered, track)}, not {want}")
+    song_source = (REPO / "audio_freeze_song.py").read_text(encoding="utf-8")
+    if "join_and_mux(files, waveform, rate, out_path, work_dir, stem, kept_frames)" not in song_source \
+            or "images[:int(images.shape[0]) - (total - kept_frames)]" not in song_source:
+        _fail(problems, "frames kept: the song node no longer cuts the last window at the frames and joins that many")
+    if "loop_plan.extent_shortfall(" not in song_source or "logger.warning(\"[h3] MiniMaxH3AudioFreezeSong: %s\", shortfall)" not in song_source:
+        _fail(problems, "shortfall: the song node no longer prints and logs the line")
+
     source = (REPO / "audio_freeze_song.py").read_text(encoding="utf-8")
     for p in lazy_problems(source):
         _fail(problems, f"preview: {p}")
@@ -585,6 +695,7 @@ def main() -> int:
     check_window_geometry(problems)
     check_resume(problems)
     check_song_plan(problems)
+    check_join(problems)
     n, frozen = check_graphs(problems)
     print(f"  {n} api graphs walked, {frozen} carry {FREEZE}, none carry {STOCK_MASK}"
           if not any(STOCK_MASK in p for p in problems) else
@@ -596,7 +707,8 @@ def main() -> int:
         return 1
     print("  ok    slice on the grid and exact; nested mask survives the sampler's "
           "reshape and a flat one is refused; every freeze graph is wired end to end; "
-          "resume keys; the loop plan lines up with its timeline and its refusals and controls bite")
+          "resume keys; the loop plan lines up with its timeline and its refusals and controls bite; "
+          "the join returns every frame its windows hold")
     return 0
 
 

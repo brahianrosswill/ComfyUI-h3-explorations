@@ -40,6 +40,8 @@ from comfy_api.latest import io, ui
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
 
+from comfy_extras.nodes_minimax_h3 import FPS
+
 from .audio_freeze import _ffmpeg, _write_wav
 
 
@@ -58,12 +60,22 @@ CLEAN_OUTPUT_ARGS = ["-map_metadata", "-1", "-fflags", "+bitexact"]
 AAC_BITRATE = "256k"
 
 
-def join_and_mux(files: list[str], waveform, rate: int, out_path: str, scratch_dir: str, stem: str) -> None:
-    """Concatenate `files` without re-encoding and mux the track cut to the video. No metadata.
+def join_and_mux(files: list[str], waveform, rate: int, out_path: str, scratch_dir: str, stem: str,
+                 frames: int) -> None:
+    """Concatenate `files` without re-encoding and mux the track under them. No metadata.
 
-    The windows must share every muxer setting or the stream copy fails. The
-    concat list and the track are written to `scratch_dir` and removed whether
-    or not ffmpeg succeeds.
+    `frames` is how many frames the files hold between them, and the output is exactly that
+    long: the length is given to ffmpeg as a duration and the track is padded with silence to
+    reach it. Until 2026-10-06 the length was left to `-shortest`, which with copied video
+    cuts where the audio's last packet ends: a track as long as its video, or shorter, came
+    back a frame to four short of what the windows held, and on some pictures dozens long
+    (`bench/check_audio_freeze.py` holds the cases). Nothing is cut here any more. A track
+    that ends before its windows do is cut at the frames, before they are encoded
+    (`loop_plan.frames_kept`), because a copied stream cannot be cut cleanly between its
+    reordered frames.
+
+    The windows must share every muxer setting or the stream copy fails. The concat list and
+    the track are written to `scratch_dir` and removed whether or not ffmpeg succeeds.
     """
     list_path = os.path.join(scratch_dir, stem + "_concat.txt")
     wav_path = os.path.join(scratch_dir, stem + "_track.wav")
@@ -74,8 +86,8 @@ def join_and_mux(files: list[str], waveform, rate: int, out_path: str, scratch_d
         _write_wav(wav_path, waveform, rate)
         cmd = [_ffmpeg(), "-y", "-v", "error", "-f", "concat", "-safe", "0", "-i", list_path,
                "-i", wav_path, "-map", "0:v:0", "-map", "1:a:0",
-               "-c:v", "copy", "-c:a", "aac", "-b:a", AAC_BITRATE, "-shortest",
-               *CLEAN_OUTPUT_ARGS, out_path]
+               "-c:v", "copy", "-af", "apad", "-c:a", "aac", "-b:a", AAC_BITRATE,
+               "-t", f"{int(frames) / FPS:.6f}", *CLEAN_OUTPUT_ARGS, out_path]
         proc = subprocess.run(cmd, capture_output=True)
         if proc.returncode != 0:
             raise RuntimeError(f"ffmpeg failed joining into {out_path}: "

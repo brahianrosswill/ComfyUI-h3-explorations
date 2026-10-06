@@ -635,7 +635,8 @@ def window(source: dict, first_frame: int, frames: int, width: int, height: int,
     A loop's last window ends at or past the end of its track
     (`loop_plan.py`, "Lengths"), so the source can run out inside it. The
     missing frames repeat the last one with nothing masked: they are past the
-    track, the join cuts them, and a held plate is what a frozen row should see.
+    track and are not written (`loop_plan.frames_kept`), and a held plate is
+    what a frozen row should see.
     A window that starts past the source's end is refused; that is a source
     that does not belong to this track.
     """
