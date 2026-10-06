@@ -60,11 +60,20 @@ own below the rule.
 - The kept mask across a server restart: every reuse so far was inside one
   session, where core's cache does the same.
 - Owed, lower: the original subject's shadow stays in the plate; the source
-  is resampled twice on its way to the canvas (the loader, then the fit); a
-  frozen-row cache for a partly masked video
-  (`frozen_video_cache.py::_gate` takes a wholly frozen one only), which is
-  where render time would come back, since most rows are frozen; the margin
-  as a share of the subject's size and not a pixel count.
+  is resampled twice on its way to the canvas (the loader, then the fit); the
+  margin as a share of the subject's size and not a pixel count.
+- **The frozen-row cache on a masked window: written, not yet run on one.**
+  `MiniMaxH3FrozenVideoCache` takes a partly masked video since 2026-10-06
+  (`frozen_video_cache.py::_gate` says which calls it takes and which it
+  leaves stock, with the reason). It is in no masked graph. What a cached
+  step costs with nothing live is measured, on the refine pass, and what
+  that would save a masked window is modelled from it:
+  `../../bench/results/2026-10-06_frozen_cache_stage_split.md`. Owed, in
+  order: a generator argument that puts it on a masked graph as an arm; one
+  matched pair on the band window with `verify` on, read for the regenerated
+  rows next to kept ones first and for the log's rebuild reasons; then the
+  owner's eye. A cadence for `refresh` and a width for `halo` come from that
+  run, not from the model.
 - Parked by the owner, 2026-10-04: two samplers. The node that restores the
   plate between them is written and held to core's sampler on a stub model
   (`../../plate_restore.py`, `../../bench/check_plate_restore.py`), is in no

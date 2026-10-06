@@ -17,6 +17,17 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-06
 
+- **Prose corrected: the frozen-row cache takes a partly masked video.**
+  `docs/wiki/next_steps.md` listed "a frozen-row cache for a partly masked
+  video (`frozen_video_cache.py::_gate` takes a wholly frozen one only)" as
+  owed; the gate now takes any call that freezes some row and regenerates
+  another, and the entry says what is owed instead (an arm, a matched pair,
+  the owner's eye). `docs/checks.md` said of `check_frozen_video_cache.py`
+  "text rows live must beat text cached (`LIVE_KINDS` monkeypatched)"; that
+  ordering held by the seed on the check's model and is no longer asserted,
+  and the constant is `ALWAYS_LIVE_KINDS`. The row says what the check holds
+  now.
+
 - **The masked graphs' prompt is written by a node, and the fl2va PDD8 graph
   ships the generic text** (owner, 2026-10-06: generalise the lane beyond one
   clip, and a prompt that covers different scenarios without the long

@@ -90,7 +90,7 @@ with none is a helper the others import.
 | [`core_sparse_capture.py`](core_sparse_capture.py) | `MiniMaxH3CoreSparseCapture` | Capture q/k/v on core's sparse producer path, and change nothing. |
 | [`denoise_mask_probe.py`](denoise_mask_probe.py) | `MiniMaxH3DenoiseMaskProbe` | Log the denoise mask each masked sampling step actually uses, and change nothing. |
 | [`exact_blocks.py`](exact_blocks.py) | `MiniMaxH3ExactBlocks` | Run named DiT blocks on EXACT attention -- neither sage nor Sol-Attn. |
-| [`frozen_video_cache.py`](frozen_video_cache.py) | `MiniMaxH3FrozenVideoCache` | Cache the frozen video of an H3 audio-refine pass, so its steps run on the live rows only. |
+| [`frozen_video_cache.py`](frozen_video_cache.py) | `MiniMaxH3FrozenVideoCache` | Cache the frozen rows of an H3 sampling run, so its steps run on the live rows only. |
 | [`keyframe_canvas.py`](keyframe_canvas.py) |  | Resolve an H3 canvas from a keyframe, the way the reference pipeline does. |
 | [`lora_branch.py`](lora_branch.py) | `MiniMaxH3LoRABranch` | Apply an H3 LoRA as a separate low-rank branch, so none of it is lost to the int8 grid. |
 | [`marker_arms.py`](marker_arms.py) |  | Bench-only marker-corpus arms: bind one to a CLIP, and read back what bound. |
