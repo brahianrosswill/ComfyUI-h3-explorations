@@ -7,6 +7,17 @@ artifact.
 <!-- To add an entry: write a file in changelog.d/ (changelog.d/README.md has the three steps) and run
      bench/build_changelog.py. Do not type an entry in here: the newest entries below are generated. -->
 
+## 0.206.1
+<!-- changelog.d/mryellow-jr-upper-body-waist.md -->
+
+### Changed
+
+- **The head-and-upper-body text no longer asserts a waistband the frame may
+  not show.** The sentence that joins the still's clothing to what the
+  original wears below it now begins "where the frame shows the waist", for
+  a subject seen from the waist up or behind other people. The role's
+  wording has still not rendered.
+
 ## 0.206.0
 <!-- changelog.d/mryellow-jr-upper-body-role.md -->
 

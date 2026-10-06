@@ -184,9 +184,12 @@ ROLES: dict[str, dict] = {
                "movement of the one person whose upper body is replaced stay exactly as they already are "
                "from the first frame to the last. Only that person's head and upper body change: they are "
                "those of <Subject 1>."),
+        # "where the frame shows the waist": a subject seen from the waist up, behind other people,
+        # has no waistband in the picture, and the text outranks the picture where they disagree
         place=("[Shot 1] From the waist up that person is <Subject 1>: {poss} head sits where that person's "
-               "head was and is the same size, at the scale of everything around it, and the clothing of "
-               "<Picture 1> meets the waistband of what that person wears below it with no gap."),
+               "head was and is the same size, at the scale of everything around it, and where the frame "
+               "shows the waist, the clothing of <Picture 1> meets the waistband of what that person wears "
+               "below it with no gap."),
         unreferenced=("The upper body of <Subject 1> and the legs below it move as one body: it turns when "
                       "they turn, leans when they step, and the arms swing in time with them."),
         shot=(
