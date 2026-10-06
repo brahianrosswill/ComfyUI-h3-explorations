@@ -7,6 +7,16 @@ artifact.
 <!-- To add an entry: write a file in changelog.d/ (changelog.d/README.md has the three steps) and run
      bench/build_changelog.py. Do not type an entry in here: the newest entries below are generated. -->
 
+## 0.203.1
+<!-- changelog.d/mryellow-jr-conditioning-seconds-per-window.md -->
+
+### Added
+
+- The song node's report gives the conditioning's seconds per window, with
+  the build of a motion reference apart from the encode. The run's total
+  alone could not say whether later windows pay what the first one does,
+  which is what the board's card on conditioning per window is decided on.
+
 ## 0.203.0
 <!-- changelog.d/mrteal-jr-bordered-source-cuts.md -->
 

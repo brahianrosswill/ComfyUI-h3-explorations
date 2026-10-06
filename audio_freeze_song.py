@@ -389,6 +389,7 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                 if ck in conds:
                     continue
                 comfy.model_management.throw_exception_if_processing_interrupted()
+                lap.clear()
                 refs_w = references
                 if motion != video_mask.MOTION_NONE:
                     pixels, mask, _held = video_mask.window_frames(
@@ -400,6 +401,7 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                         frames=ref_frames, loaded_fps=float(FPS), soundtrack=None,
                         use_vae=bool(source.get("motion_vae", False))),)
                     motion_label = assign_labels(_order_records(refs_w))[-1]
+                    mark("motion reference")
                 if refs_w is None:
                     out = MiniMaxH3Conditioning.execute(clip, vae, w.text, width, height, w.frames,
                                                         canvas="explicit")
@@ -408,6 +410,10 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                                                                  w.frames, vae=vae, audio_vae=audio_vae)
                 conds[ck] = getattr(out, "args", out)[0]
                 del refs_w
+                mark("conditioning")
+                # per window: the first carries the encoder coming onto the card, the later ones are warm
+                reports.append(f"[{w.number}] conditioning seconds: "
+                               + ", ".join(f"{name} {took:.1f}" for name, took in lap.items()))
             mark("conditioning")
             if motion != video_mask.MOTION_NONE and first < n_windows:
                 reports.append(f"motion reference: {motion} at a {int(source['motion_short_edge'])} short edge, "
