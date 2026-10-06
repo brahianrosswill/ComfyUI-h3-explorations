@@ -51,6 +51,12 @@ things here, each a way the freeze could look present and not be:
    window writes on any window length, context or track length; and a stored
    window whose file holds another count (one stored whole before the cut
    existed) is not what the run would write, so it is not reused.
+   And `bench/join_stretches.py`, which joins several runs' windows over
+   consecutive stretches under the clip's own audio: every frame, evenly
+   spaced, the audio as long as the video with a tone where the span puts
+   it, the reviews joined from their own files, and each refusal (a window
+   missing, a stretch given twice or out of order, a span that does not end
+   where the frames do) with nothing written.
 
 The encoder is faked (zeros of the right shape) so this runs with no model,
 no CUDA and no server; the real audio VAE is exercised by
@@ -564,6 +570,127 @@ def check_join(problems):
                                         f"for a {total / fps:.3f}s video")
 
 
+def check_join_stretches(problems):
+    """`bench/join_stretches.py`: several runs' windows, one file, the clip's own audio over the span.
+
+    Two stand-in runs of two windows each, written by the song node's writer, and a clip whose audio
+    is silent but for a tone that begins half a second into the span: the joined file holds every
+    frame evenly spaced, its audio is as long as its video, and the tone is where the span puts it,
+    which is what a wrong seek would move. Then each way a hand-run goes wrong is refused with nothing
+    written: a window missing, a stretch given twice, the stretches out of order, a span that does not
+    end where the frames do. The reviews join the same way from their own files.
+    """
+    import importlib
+    import importlib.util
+    import math
+    import os
+    import re
+    import subprocess
+    import tempfile
+    lo = importlib.import_module("_h3pack.loop_output")
+    song = importlib.import_module("_h3pack.audio_freeze_song")
+    spec = importlib.util.spec_from_file_location("_h3_join_stretches", HERE / "join_stretches.py")
+    js = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = js
+    spec.loader.exec_module(js)
+    ffmpeg, fps, rate = lo._ffmpeg(), int(lo.FPS), 44100
+    torch.manual_seed(0)
+    with tempfile.TemporaryDirectory() as tmp:
+        lengths = {"a": (22, 17), "b": (12, 9)}
+        for run, counts in lengths.items():
+            os.makedirs(os.path.join(tmp, f"{run}_windows"))
+            for i, n in enumerate(counts, start=1):
+                for suffix, height in (("", 96), ("_with_mask", 192)):
+                    song._write_frames_mp4(os.path.join(tmp, f"{run}_windows", f"{run}_00001_window_{i}{suffix}.mp4"),
+                                           torch.rand(n, height, 160, 3), 19)
+            open(os.path.join(tmp, f"{run}_windows", f"{run}_00001_window_1.safetensors"), "wb").close()   # a latent beside them
+        start, total = 3.0, sum(sum(c) for c in lengths.values())
+        split = start + sum(lengths["a"]) / fps
+        end = start + total / fps
+        clip = os.path.join(tmp, "clip.wav")
+        wave = torch.zeros(1, 2, int(rate * (end + 2.0)))
+        tone_at = int(round((start + 0.5) * rate))
+        wave[..., tone_at:tone_at + rate // 4] = 0.5 * torch.sin(torch.arange(rate // 4) * 2 * math.pi * 440 / rate)
+        lo._write_wav(clip, wave, rate)
+        a, b = os.path.join(tmp, "a_windows"), os.path.join(tmp, "b_windows")
+
+        def packets(path, stream):
+            text = subprocess.run([ffmpeg, "-v", "error", "-i", path, "-map", f"0:{stream}:0", "-c", "copy", "-f", "framecrc", "-"],
+                                  capture_output=True, text=True).stdout
+            return sorted(int(line.split(",")[2]) for line in text.splitlines() if line and not line.startswith("#"))
+        for review in (False, True):
+            out = os.path.join(tmp, "joined_review.mp4" if review else "joined.mp4")
+            try:
+                wrote = js.join(clip, start, end, [(a, start), (b, split)], out, review=review)
+            except Exception as exc:  # noqa: BLE001 -- a refusal of the right inputs is the finding
+                _fail(problems, f"join stretches: two runs that tile their span were not joined ({type(exc).__name__}: {exc})")
+                return
+            stamps = packets(out, "v")
+            steps = {y - x for x, y in zip(stamps, stamps[1:])}
+            if wrote != total or len(stamps) != total or len(steps) != 1:
+                _fail(problems, f"join stretches: {total} frames in four {'reviews' if review else 'windows'} came back as "
+                                f"{len(stamps)}" + ("" if len(steps) == 1 else ", not evenly spaced"))
+            pcm = subprocess.run([ffmpeg, "-v", "error", "-i", out, "-vn", "-ac", "1", "-ar", str(rate), "-f", "f32le", "-"],
+                                 capture_output=True).stdout
+            heard = torch.frombuffer(bytearray(pcm), dtype=torch.float32)
+            loud = (heard.abs() > 0.1).nonzero()
+            if abs(heard.numel() / rate - total / fps) > 0.05:
+                _fail(problems, f"join stretches: the audio is {heard.numel() / rate:.3f}s under a {total / fps:.3f}s video")
+            size = re.search(r", (\d+)x(\d+)[, ]", subprocess.run([ffmpeg, "-hide_banner", "-i", out], capture_output=True, text=True).stderr)
+            if size is None or int(size.group(2)) != (192 if review else 96):
+                _fail(problems, f"join stretches: asked for the {'reviews' if review else 'windows'}, the joined picture is "
+                                f"{size.group(0).strip(', ') if size else 'unreadable'}")
+            if not loud.numel() or abs(int(loud[0]) / rate - 0.5) > 0.03:
+                _fail(problems, "join stretches: the clip's audio is not where the span puts it: a tone half a second into "
+                                f"the span is heard at {int(loud[0]) / rate:.3f}s" if loud.numel() else
+                                "join stretches: the clip's audio over the span is silent in the joined file")
+        before = Path(tmp, "joined.mp4").read_bytes()
+        try:
+            js.join(clip, start, end, [(a, start), (b, split)], os.path.join(tmp, "joined.mp4"))
+            _fail(problems, "join stretches: an existing file was overwritten without being asked")
+        except ValueError as exc:
+            if "exists" not in str(exc):
+                _fail(problems, f"join stretches: an existing file was refused for another reason: {str(exc)[:120]}")
+        if Path(tmp, "joined.mp4").read_bytes() != before:
+            _fail(problems, "join stretches: an existing file was changed without being asked")
+        left = sorted(os.listdir(tmp))
+        # a join that comes out with the wrong count is refused after the fact, and takes its file with it
+        honest = js.count_frames
+        js.count_frames = lambda tool, path: honest(tool, path) + (1 if path.endswith(".part.mp4") else 0)
+        try:
+            js.join(clip, start, end, [(a, start), (b, split)], os.path.join(tmp, "miscounted.mp4"))
+            _fail(problems, "join stretches: a joined file with the wrong frame count was kept")
+        except ValueError:
+            pass
+        finally:
+            js.count_frames = honest
+        if sorted(os.listdir(tmp)) != left:
+            _fail(problems, f"join stretches: a join refused after the fact left {sorted(set(os.listdir(tmp)) - set(left))} behind")
+        refusals = (("a stretch given twice", [(a, start), (a, split)], end, "twice"),
+                    ("the stretches out of order", [(b, split), (a, start)], end, "out of order"),
+                    ("a stretch left out", [(b, split)], end, "missing"),
+                    ("a span that ends past the frames", [(a, start), (b, split)], end + 1.0, "span"))
+        for label, stretches, to, word in refusals:
+            out = os.path.join(tmp, "refused.mp4")
+            try:
+                js.join(clip, start, to, stretches, out)
+                _fail(problems, f"join stretches: {label} was joined, not refused")
+            except ValueError as exc:
+                if word and word not in str(exc):
+                    _fail(problems, f"join stretches: {label} was refused without saying so: {str(exc)[:120]}")
+            if os.path.exists(out) or sorted(os.listdir(tmp)) != left:
+                _fail(problems, f"join stretches: {label} was refused but left a file behind")
+        # What it cannot catch, and does not claim to: stretches swapped WITH their start times swapped to
+        # match. The files do not say where in the clip they belong; the starts given are taken as true.
+        os.remove(os.path.join(b, "b_00001_window_1.mp4"))
+        try:
+            js.join(clip, start, end, [(a, start), (b, split)], os.path.join(tmp, "refused.mp4"))
+            _fail(problems, "join stretches: a run with a window missing was joined, not refused")
+        except ValueError as exc:
+            if "without a gap" not in str(exc):
+                _fail(problems, f"join stretches: a missing window was refused without naming the gap: {str(exc)[:120]}")
+
+
 def check_song_plan(problems):
     import math
     import loop_plan as lp
@@ -772,6 +899,7 @@ def main() -> int:
     check_resume(problems)
     check_song_plan(problems)
     check_join(problems)
+    check_join_stretches(problems)
     n, frozen = check_graphs(problems)
     print(f"  {n} api graphs walked, {frozen} carry {FREEZE}, none carry {STOCK_MASK}"
           if not any(STOCK_MASK in p for p in problems) else
