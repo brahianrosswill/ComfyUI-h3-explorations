@@ -75,6 +75,11 @@ in place by the next run of the graph. A run reuses the stored windows whose
 inputs have not changed, in order, and renders from the first that has
 (`reuse_windows`); `loop_resume.py` says what a window's key covers and what it
 cannot see. The seed holds after each queue so a re-queue can reuse.
+A window that does render again, because its seed, the sampler or the
+schedule changed, reuses two things an earlier run in this server session
+made, under the same switch: its source latent and its conditioning
+(`window_keep.py`, 2026-10-06). Those are kept in memory, found by the
+objects they were made from, and the report says which windows used them.
 `keep_windows` off removes this run's window files after the join. The
 finished `<prefix>_NNNNN.mp4` carries no metadata (`loop_output.py` says why);
 `save_metadata_png` writes the first frame as a PNG carrying the prompt and
@@ -114,6 +119,7 @@ from .loop_output import CLEAN_OUTPUT_ARGS, join_and_mux, saved_outputs, window_
 from .reference_conditioning import H3References, MiniMaxH3ReferenceConditioning, RuntimeVideoReference, _order_records
 from .reference_order import assign_labels
 from . import video_mask
+from . import window_keep
 
 logger = logging.getLogger(__name__)
 
@@ -229,8 +235,11 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                                             "names them as <Picture N>.")),
                 io.Boolean.Input("reuse_windows", default=True,
                                  tooltip=("Reuse the stored windows whose inputs have not changed, in order, and "
-                                          "render from the first that has. Off renders every window: use it after "
-                                          "replacing a model, LoRA or reference file under the same name.")),
+                                          "render from the first that has. A window that renders again also reuses "
+                                          "its source encode and its prompt encode from an earlier run in this "
+                                          "session, when nothing they are made from has changed. Off renders every "
+                                          "window from nothing: use it after replacing a model, LoRA or reference "
+                                          "file under the same name.")),
                 H3PromptLists.Input("lists", optional=True,
                                     tooltip=("Prompt List nodes filling __name__ placeholders in the prompt: one "
                                              "value per timeline entry, or per window with no timeline.")),
@@ -358,6 +367,7 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
         # the module docstring for why the key is the text (and, with
         # references, the frame count) and nothing else.
         track_latent, conds, cond_keys = None, {}, {}
+        kept_conds: list[int] = []
         reports = list(lines)
         # Where the render's time goes, by stage, for the report (2026-10-06): this node encodes,
         # samples and decodes inside itself, so nothing outside it can time its stages. Wall clock
@@ -390,6 +400,21 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                     continue
                 comfy.model_management.throw_exception_if_processing_interrupted()
                 lap.clear()
+                # What an earlier run of this stretch encoded is reused under `reuse_windows`
+                # (`window_keep.py`): found by the objects it was made from, so a hit is the
+                # same conditioning an encode would give, and the text encoder is not asked for.
+                # With the switch off nothing is read from the keep, and what this run encodes
+                # replaces what was there, as its windows replace the stored ones.
+                cond_kept = window_keep.cond_key(clip, w.text, w.frames, width, height, references, vae, audio_vae,
+                                                 source, int(round(w.start * FPS)))
+                kept = window_keep.CONDS.get(*cond_kept) if reuse_windows else None
+                if kept is not None:
+                    conds[ck], label = kept
+                    motion_label = label if label is not None else motion_label
+                    kept_conds.append(w.number)
+                    mark("conditioning")
+                    reports.append(f"[{w.number}] conditioning kept from an earlier run (not encoded)")
+                    continue
                 refs_w = references
                 if motion != video_mask.MOTION_NONE:
                     pixels, mask, _held = video_mask.window_frames(
@@ -410,6 +435,8 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                                                                  w.frames, vae=vae, audio_vae=audio_vae)
                 conds[ck] = getattr(out, "args", out)[0]
                 del refs_w
+                # with the reference's name in the prompt, which the report line below reads
+                window_keep.CONDS.put(*cond_kept, (conds[ck], motion_label if motion != video_mask.MOTION_NONE else None))
                 mark("conditioning")
                 # per window: the first carries the encoder coming onto the card, the later ones are warm
                 reports.append(f"[{w.number}] conditioning seconds: "
@@ -420,7 +447,9 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                                + ("with the video model's copy" if source.get("motion_vae") else "text encoder only")
                                + f", named {motion_label} in the prompt, built per window from the source")
         reports.append((f"reused windows 1-{first} of {n_windows}" if first else "no stored window reused")
-                       + (f"; {len(conds)} conditioning(s) encoded for {n_windows - first} rendered window(s)"
+                       + (f"; {len(conds) - len(kept_conds)} conditioning(s) encoded"
+                          + (f" and {len(kept_conds)} kept from an earlier run" if kept_conds else "")
+                          + f" for {n_windows - first} rendered window(s)"
                           if first < n_windows else "; nothing rendered")
                        + (" with references" if references is not None and first < n_windows else ""))
 
@@ -442,7 +471,16 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                 if held:
                     reports.append(f"[{w.number}] the source ends {held} frames before this window does; "
                                    "its last frame is held, unmasked")
-                z = vae.encode(src_encode)
+                # The plate's encode does not depend on the seed or the schedule: under `reuse_windows`
+                # an earlier run's is reused (`window_keep.py`). Kept as the VAE returned it, before the
+                # late start's multiply below; the window node copies the video before it writes context in.
+                latent_kept = window_keep.latent_key(source, vae, int(round(w.start * FPS)), w.frames, width, height)
+                z = window_keep.LATENTS.get(*latent_kept) if reuse_windows else None
+                if z is not None:
+                    reports.append(f"[{w.number}] source latent kept from an earlier run (not encoded)")
+                else:
+                    z = vae.encode(src_encode)
+                    window_keep.LATENTS.put(*latent_kept, z)
                 del src_encode
                 if tuple(z.shape) != tuple(empty_video.shape):
                     raise ValueError(

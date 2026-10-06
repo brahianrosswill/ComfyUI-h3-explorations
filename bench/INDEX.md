@@ -8,7 +8,7 @@ this file is only a way to find a script by what it says it does.
 
 | group | scripts |
 |---|---|
-| [`check_*`](#check) | 91 |
+| [`check_*`](#check) | 92 |
 | [`measure_*`](#measure) | 38 |
 | [`analyze_*`](#analyze) | 23 |
 | [`grade_*`](#grade) | 21 |
@@ -112,6 +112,7 @@ this file is only a way to find a script by what it says it does.
 | [`check_video_mask.py`](check_video_mask.py) | The masked-source reduction and composite, and the ways each could keep the old subject. |
 | [`check_vsa_core_patch.py`](check_vsa_core_patch.py) | Report whether this ComfyUI builds H3's VSA gate, and whether consistently. |
 | [`check_widget_deviations.py`](check_widget_deviations.py) | Every shipped widget value that differs from its node's own default is declared. |
+| [`check_window_keep.py`](check_window_keep.py) | Hold the keep a song window's source latent and conditioning are reused from (`window_keep.py`). |
 
 ## measure
 
