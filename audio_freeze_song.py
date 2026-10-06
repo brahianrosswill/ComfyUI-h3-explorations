@@ -92,6 +92,7 @@ import contextlib
 import logging
 import math
 import os
+import time
 import subprocess
 
 import torch
@@ -358,11 +359,25 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
         # references, the frame count) and nothing else.
         track_latent, conds, cond_keys = None, {}, {}
         reports = list(lines)
+        # Where the render's time goes, by stage, for the report (2026-10-06): this node encodes,
+        # samples and decodes inside itself, so nothing outside it can time its stages. Wall clock
+        # at stage ends, where a result has already come back from the card. Changes nothing rendered.
+        spent: dict[str, float] = {}
+        lap: dict[str, float] = {}
+        clock = [time.perf_counter()]
+
+        def mark(stage: str) -> None:
+            now = time.perf_counter()
+            spent[stage] = spent.get(stage, 0.0) + now - clock[0]
+            lap[stage] = lap.get(stage, 0.0) + now - clock[0]
+            clock[0] = now
+
         if first < n_windows:
             enc = MiniMaxH3EncodeTrack.execute(audio_vae, audio, level)
             enc = getattr(enc, "args", enc)
             track_latent = enc[0]
             reports.append(enc[1])
+            mark("track encode")
             # A motion reference is built per window from the source (`video_mask.motion_reference`):
             # the window's own frames, so its key carries the window number.
             motion = source.get("motion_reference", video_mask.MOTION_NONE) if source is not None else video_mask.MOTION_NONE
@@ -393,6 +408,7 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                                                                  w.frames, vae=vae, audio_vae=audio_vae)
                 conds[ck] = getattr(out, "args", out)[0]
                 del refs_w
+            mark("conditioning")
             if motion != video_mask.MOTION_NONE and first < n_windows:
                 reports.append(f"motion reference: {motion} at a {int(source['motion_short_edge'])} short edge, "
                                + ("with the video model's copy" if source.get("motion_vae") else "text encoder only")
@@ -408,6 +424,8 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
         for w in windows[first:]:
             i = w.number - 1
             comfy.model_management.throw_exception_if_processing_interrupted()
+            lap.clear()
+            clock[0] = time.perf_counter()
             latent, _count = _empty_av_latent(width, height, w.frames)
             src_pixels = src_tokens = src_mask = None
             if source is not None:
@@ -431,6 +449,7 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                     # so a zero here is a zero for the model: these tokens carry no source into a late start
                     z = z * (1.0 - empty[None, None].to(z))
                 latent = {"samples": comfy.nested_tensor.NestedTensor((z, empty_audio))}
+                mark("source encode")
             # Always the real value: the window node freezes nothing when
             # `previous` is None and keeps the widget for what the NEXT window
             # takes. Passing 0 for the first window was the zero-as-mode this
@@ -449,6 +468,7 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                 reports.append(f"[{w.number}] source kept outside the mask: "
                                f"{100.0 * float(src_tokens.mean()):.1f}% of the window's video tokens regenerate")
 
+            mark("window setup")
             untouched = src_tokens is not None and not bool(src_tokens.any())
             if untouched:
                 # nothing is masked in this window (the subject is off screen): every
@@ -473,6 +493,7 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                                         denoise_mask=wlatent.get("noise_mask"),
                                         callback=callback, disable_pbar=False, seed=int(seed) + i)
                 samples = samples.to(comfy.model_management.intermediate_device())
+                mark("sampling")
             prev = {"samples": samples}
 
             if untouched and src_pixels is not None:
@@ -483,6 +504,7 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                 images = vae.decode(video_stream)
                 if images.ndim == 5:
                     images = images.reshape(-1, *images.shape[-3:])
+            mark("decode")
             if src_pixels is not None and src_tokens is not None and not untouched:
                 if source.get("composite") == video_mask.COMPOSITE_CHANGED:
                     # the render is kept only where it changed the picture or the old subject stood
@@ -497,6 +519,7 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                     alpha = video_mask.pixel_alpha(src_tokens, height, width, source["feather_pixels"])
                 images = video_mask.composite(images, src_pixels, alpha)
                 del alpha
+                mark("composite")
             images = images[int(trim):]
             video_path, latent_path = loop_resume.window_paths(work_dir, filename, w.number)
             # the old latent goes first: a latent on disk must mean its video finished
@@ -510,10 +533,17 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
             reports.append(f"[{w.number}] wrote {written} frames to {os.path.basename(video_path)}")
             del images
             comfy.model_management.soft_empty_cache()
+            mark("write")
+            reports.append(f"[{w.number}] seconds: " + ", ".join(f"{name} {took:.1f}" for name, took in lap.items()))
 
         # join, and mux the whole track cut to the video
         out_path = os.path.join(full_out, stem + ".mp4")
+        clock[0] = time.perf_counter()
         join_and_mux(files, waveform, rate, out_path, work_dir, stem)
+        mark("join and mux")
+        if spent:
+            reports.append(f"seconds by stage, {sum(spent.values()):.0f} in all: "
+                           + ", ".join(f"{name} {took:.1f}" for name, took in sorted(spent.items(), key=lambda kv: -kv[1])))
         png_path = (write_metadata_png(os.path.join(full_out, stem + ".png"), out_path, graph, extra)
                     if save_metadata_png else None)
         # the tracker's per-shot table, kept with the mask (`video_mask.py`), beside the video

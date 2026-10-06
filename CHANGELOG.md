@@ -7,6 +7,20 @@ artifact.
 <!-- To add an entry: write a file in changelog.d/ (changelog.d/README.md has the three steps) and run
      bench/build_changelog.py. Do not type an entry in here: the newest entries below are generated. -->
 
+## 0.202.1
+<!-- changelog.d/mryellow-jr-song-stage-seconds.md -->
+
+### Added
+
+- **The song node reports where its time went.** `MiniMaxH3AudioFreezeSong`
+  encodes, samples and decodes inside itself, so nothing outside it could
+  time its stages: a render record held one figure for the whole node, and
+  the pipeline telemetry sees it as one block. Its report now carries, per
+  window, the seconds spent on the source encode, the window's setup,
+  sampling, decode, composite and the write, and at the end the seconds by
+  stage over the whole run with the track encode, the conditioning and the
+  join. Wall clock read at stage ends; nothing that is rendered changes.
+
 ## 0.202.0
 <!-- changelog.d/mryellow-jr-person-text-rendered.md -->
 
