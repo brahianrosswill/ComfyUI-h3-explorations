@@ -61,6 +61,16 @@ item drives the module's own functions on made-up frames and masks.
    where they come in, and the report names what was left out. Two controls:
    with no head anywhere every favourite votes as before, and a frame the
    user names is taken as named.
+9. **A picture inside bars keeps its cuts.** A clip padded at the sides, at
+   the top and bottom, or both, as a 4:3 picture on a wide canvas is: the
+   bars' edges are the same in every frame, and scored with the picture they
+   pull every cut's score down until the automatic threshold finds none
+   (measured on a real padded file, `bench/results/2026-10-06_bordered_source_cuts.md`).
+   The score is taken on the picture, and the cut is found where the bare
+   picture's is. Controls: a clip with no border scores exactly what the
+   formula without the border step gives, so nothing moves for one; a strip
+   that is flat in one shot and not in the next is picture, not border; bars
+   with a little coding noise are still bars.
 
 What this cannot check: that SAM 3's features tell real people apart, that
 its tracker follows them, or that the text encoder loads. Those need the card;
@@ -108,6 +118,85 @@ def _load():
 st = _load()
 
 H, W = 72, 128
+
+
+def _padded(picture: torch.Tensor, side: int = 0, top: int = 0, value: float = 0.0) -> torch.Tensor:
+    """`picture` centred on a larger frame of one flat `value`: bars at the sides, the top and bottom, or both."""
+    h, w, c = picture.shape
+    out = torch.full((h + 2 * top, w + 2 * side, c), float(value))
+    out[top:top + h, side:side + w] = picture
+    return out
+
+
+def _plain_cut_scores(frames: torch.Tensor) -> torch.Tensor:
+    """The cut score over the whole frame, written out again: what `cut_scores` was before it looked for borders."""
+    w, h = st.CUT_SIZE
+    grey = frames[..., :3].to(torch.float32).mean(dim=-1, keepdim=True).movedim(-1, 1)
+    small = torch.nn.functional.interpolate(grey, size=(h, w), mode="area")[:, 0]
+    edges = (small[:, 1:, 1:] - small[:, 1:, :-1]).abs() + (small[:, 1:, 1:] - small[:, :-1, 1:]).abs()
+    e = edges.flatten(1)
+    e = e - e.mean(dim=1, keepdim=True)
+    e = e / e.norm(dim=1, keepdim=True).clamp(min=1e-6)
+    return 1.0 - (e[1:] * e[:-1]).sum(dim=1)
+
+
+def check_borders(problems):
+    """A picture inside bars: the cut is found where the bare picture's is, and a clip without bars is untouched."""
+    a, b = _picture(1, 6, 8), _picture(2, 9, 5)
+    shots = [a, torch.roll(a, 2, dims=1), torch.roll(a, 4, dims=1), b, torch.roll(b, 2, dims=1), torch.roll(b, 4, dims=1)]
+    bare = torch.stack(shots, dim=0)
+    want = st.find_cuts(st.cut_scores(bare), st.auto_cuts(st.cut_scores(bare)))
+    if want != [3]:
+        problems.append(f"the bare stand-in's cut is {want}, not [3]: the bordered cases below have nothing to stand against")
+        return
+    for name, side, top in (("bars at the sides", W // 6, 0), ("bars at the top and bottom", 0, H // 6), ("bars all round", W // 8, H // 8)):
+        frames = torch.stack([_padded(f, side, top) for f in shots], dim=0)
+        seen: dict = {}
+        scores = st.cut_scores(frames, seen) if _takes_found() else st.cut_scores(frames)
+        got = st.find_cuts(scores, st.auto_cuts(scores))
+        if got != want:
+            problems.append(f"{name}: cuts {got} at the automatic threshold {st.auto_cuts(scores):.2f}, not {want} "
+                            f"(scores {[round(float(v), 2) for v in scores]}); the bars' edges are in every frame and "
+                            "must not be scored")
+        t, bt, l, r = seen.get("borders", (0, 0, 0, 0))
+        if (bool(l and r), bool(t and bt)) != (bool(side), bool(top)):
+            problems.append(f"{name}: borders found are top {t}, bottom {bt}, left {l}, right {r} (rows and columns at "
+                            "the cut score's size)")
+    # nothing moves for a clip without borders: the same numbers as the formula with no border step
+    relit = (a * torch.tensor([0.4, 1.0, 0.7]) + 0.15).clamp(0, 1)
+    for name, frames in (("the bare stand-in", bare), ("a relit shot and a cut", torch.stack([a, a, relit, relit, b, b], dim=0))):
+        if not torch.equal(st.cut_scores(frames), _plain_cut_scores(frames)):
+            problems.append(f"{name} has no border and its scores are not the plain formula's: a clip without bars must "
+                            "score exactly as before")
+    if not _takes_found():
+        problems.append("cut_scores does not report what it left out: it takes no second argument for the borders found")
+        return
+    # a strip that is flat in one shot and not in the next is picture
+    dark = [f.clone() for f in shots]
+    for f in dark[:3]:
+        f[: H // 6] = 0.0
+    seen = {}
+    st.cut_scores(torch.stack(dark, dim=0), seen)
+    if seen.get("borders") != (0, 0, 0, 0):
+        problems.append(f"a strip that is black in the first shot only was taken as a border: {seen.get('borders')}")
+    # bars with a little coding noise are still bars
+    g = torch.Generator().manual_seed(7)
+    noisy = torch.stack([_padded(f, W // 6, 0) for f in shots], dim=0)
+    noisy = (noisy + (torch.rand(noisy.shape, generator=g) - 0.5) * (2.0 / 255.0)).clamp(0, 1)
+    seen = {}
+    scores = st.cut_scores(noisy, seen)
+    if st.find_cuts(scores, st.auto_cuts(scores)) != want or not all(seen.get("borders", (0, 0, 0, 0))[2:]):
+        problems.append(f"bars with coding noise: cuts {st.find_cuts(scores, st.auto_cuts(scores))}, borders {seen.get('borders')}")
+    line = st.borders_line(seen, W + 2 * (W // 6), H)
+    if "left" not in line or "right" not in line or "top" in line:
+        problems.append(f"the report's line about borders does not name the sides left out: {line!r}")
+    if st.borders_line({"borders": (0, 0, 0, 0)}, W, H) != "":
+        problems.append("the report speaks of borders on a clip that has none")
+
+
+def _takes_found() -> bool:
+    import inspect
+    return len(inspect.signature(st.cut_scores).parameters) >= 2
 
 
 def _picture(seed: int, rows: int, cols: int) -> torch.Tensor:
@@ -661,7 +750,7 @@ def check_schema(problems):
 
 def main() -> int:
     problems: list[str] = []
-    for check in (check_cuts, check_ranges, check_counted, check_choose, check_signature, check_follow, check_corrections,
+    for check in (check_cuts, check_borders, check_ranges, check_counted, check_choose, check_signature, check_follow, check_corrections,
                   check_automatic, check_alone, check_headless_vote, check_two_places, check_empty, check_schema):
         check(problems)
     for p in problems:

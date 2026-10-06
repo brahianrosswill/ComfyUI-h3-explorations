@@ -31,7 +31,13 @@ core's `initial_mask` path and has none of the three behaviours above.
    nine cuts from every other frame (the ninth is a jump cut inside a
    cutaway). The threshold is a value the user names, or automatic: the
    middle of the widest gap in the clip's own scores, since two clips already
-   disagreed about one fixed value.
+   disagreed about one fixed value. The score is taken on the picture: bars
+   at a frame's edges that stay one flat value through the clip (`flat_borders`)
+   are left out, because their edges are the same in every frame and pull
+   every cut's score down. On a 4:3 picture padded onto the wide canvas the
+   same eleven cuts scored 0.86 and under where the bare picture's scored
+   0.87 and over, and the automatic threshold found none
+   (`bench/results/2026-10-06_bordered_source_cuts.md`).
 2. People: each shot is looked at on one frame a little way in
    (`PROBE_OFFSET`; the first frame after a cut is where blur and a dissolve
    land). SAM 3 is asked for `subject_phrase` there. Core's detector returns
@@ -162,6 +168,11 @@ logger = logging.getLogger(__name__)
 #: purpose: a cut moves every edge, and grain or a gesture should not count.
 #: Reasoned, not measured.
 CUT_SIZE = (192, 108)
+#: A row or column at a frame's edge is border when all of it, in every frame,
+#: lies within this of one value (frames are 0 to 1). Reasoned, not measured:
+#: wide enough for a coded black bar's noise after the reduction to
+#: `CUT_SIZE`, far under the spread of any strip that holds a picture.
+BORDER_FLAT = 4.0 / 255.0
 #: The default of `cut_threshold`, used when `cuts` is `at a value`, and what
 #: automatic falls back to when the clip's scores show no clear gap. Reasoned
 #: from two clips, neither of which it suits as a fixed value: see `CUT_FLOOR`.
@@ -241,27 +252,76 @@ def counted(phrase: str, most: int) -> str:
     return ", ".join(p if re.match(r"^.+?\s*:\s*[\d.]+\s*$", p) else f"{p}:{max(int(most), 1)}" for p in parts)
 
 
-def cut_scores(frames: torch.Tensor) -> torch.Tensor:
+def flat_borders(small: torch.Tensor) -> tuple[int, int, int, int]:
+    """How many rows and columns of `small` ([F, h, w]) are border: (top, bottom, left, right).
+
+    A row or column is border when every value in it, in every frame, lies
+    within `BORDER_FLAT` of one value: the bars of a picture padded or
+    letterboxed into another shape. Counted inward from each edge to the first
+    line that is not. A strip that is flat in one shot and not in the next is
+    picture, and so is a still background, which is not one flat value. A clip
+    that is flat all over has no border, since it has no picture either.
+    """
+    if small.shape[0] == 0:
+        return 0, 0, 0, 0
+    low, high = small.amin(dim=0), small.amax(dim=0)
+    rows = ((high.amax(dim=1) - low.amin(dim=1)) <= BORDER_FLAT).tolist()
+    cols = ((high.amax(dim=0) - low.amin(dim=0)) <= BORDER_FLAT).tolist()
+
+    def run(flags) -> int:
+        n = 0
+        for flat in flags:
+            if not flat:
+                break
+            n += 1
+        return n
+
+    top, bottom, left, right = run(rows), run(rows[::-1]), run(cols), run(cols[::-1])
+    if top + bottom >= len(rows) or left + right >= len(cols):
+        return 0, 0, 0, 0
+    return top, bottom, left, right
+
+
+def borders_line(found: dict, width: int, height: int) -> str:
+    """The report's words about borders left out of the cut score, in the frames' own pixels; empty when there are none."""
+    top, bottom, left, right = (found or {}).get("borders", (0, 0, 0, 0))
+    w, h = CUT_SIZE
+    sides = [(top, "top", height / h), (bottom, "bottom", height / h), (left, "left", width / w), (right, "right", width / w)]
+    named = [f"about {int(round(n * scale))} px at the {side}" for n, side, scale in sides if n]
+    return ("flat borders left out of the cut score: " + ", ".join(named)) if named else ""
+
+
+def cut_scores(frames: torch.Tensor, found: dict | None = None) -> torch.Tensor:
     """[F, H, W, C] frames to [F - 1] scores; entry i is the step into frame i + 1.
 
     One minus the correlation of the two frames' gradient-magnitude maps at
     `CUT_SIZE`. About 0 for a held shot, well under 1 for a lighting change or
     ordinary movement, about 1 across a cut.
+
+    Flat borders (`flat_borders`) are left out, with the one line beside each
+    that the reduction mixes with the bar, so the score is the picture's. A
+    clip with no border scores exactly as it did before borders were looked
+    for. `found`, when given, receives `borders`: the rows and columns left
+    out at `CUT_SIZE`, as (top, bottom, left, right).
     """
     w, h = CUT_SIZE
-    out, prev = [], None
+    parts = []
     for i in range(0, frames.shape[0], 64):
         grey = frames[i:i + 64, ..., :3].to(torch.float32).mean(dim=-1, keepdim=True).movedim(-1, 1)
-        small = F.interpolate(grey, size=(h, w), mode="area")[:, 0]
-        edges = (small[:, 1:, 1:] - small[:, 1:, :-1]).abs() + (small[:, 1:, 1:] - small[:, :-1, 1:]).abs()
-        e = edges.flatten(1)
-        e = e - e.mean(dim=1, keepdim=True)
-        e = e / e.norm(dim=1, keepdim=True).clamp(min=1e-6)
-        if prev is not None:
-            e = torch.cat([prev, e], dim=0)
-        out.append(1.0 - (e[1:] * e[:-1]).sum(dim=1))
-        prev = e[-1:]
-    return torch.cat(out, dim=0).cpu() if out else torch.zeros(0)
+        parts.append(F.interpolate(grey, size=(h, w), mode="area")[:, 0])
+    if not parts:
+        return torch.zeros(0)
+    small = torch.cat(parts, dim=0)
+    top, bottom, left, right = flat_borders(small)
+    if found is not None:
+        found["borders"] = (top, bottom, left, right)
+    # beside a bar the reduction's line is part bar and part picture: an edge in every frame, so it goes too
+    small = small[:, top + bool(top):h - bottom - bool(bottom), left + bool(left):w - right - bool(right)]
+    edges = (small[:, 1:, 1:] - small[:, 1:, :-1]).abs() + (small[:, 1:, 1:] - small[:, :-1, 1:]).abs()
+    e = edges.flatten(1)
+    e = e - e.mean(dim=1, keepdim=True)
+    e = e / e.norm(dim=1, keepdim=True).clamp(min=1e-6)
+    return (1.0 - (e[1:] * e[:-1]).sum(dim=1)).cpu()
 
 
 def find_cuts(scores: torch.Tensor, threshold: float) -> list[int]:
@@ -878,8 +938,9 @@ class MiniMaxH3SubjectTrack(io.ComfyNode):
     #: threshold from the clip's scores and inclusive, and a lone person taken
     #: under the line when the pick frame shows nobody else. 6: a match has to
     #: hold on the head as well, and the lone person has to have a head. 7: a
-    #: shot's favourite with no head is not counted for the automatic pick.
-    MASK_VERSION = 7
+    #: shot's favourite with no head is not counted for the automatic pick. 8:
+    #: the cut score leaves a clip's flat borders out.
+    MASK_VERSION = 8
 
     @classmethod
     def define_schema(cls):
@@ -977,7 +1038,8 @@ class MiniMaxH3SubjectTrack(io.ComfyNode):
             raise ValueError("cuts `at a value` needs its `cut_threshold`")
         n, h, w = int(frames.shape[0]), int(frames.shape[1]), int(frames.shape[2])
         began = time.perf_counter()
-        steps = cut_scores(frames)
+        seen: dict = {}
+        steps = cut_scores(frames, seen)
         cut_at = float(cut_threshold) if named_cut else auto_cuts(steps)
         found_cuts = find_cuts(steps, cut_at)
         by_hand = parse_corrections(corrections, len(shot_ranges(n, found_cuts)))
@@ -988,7 +1050,7 @@ class MiniMaxH3SubjectTrack(io.ComfyNode):
                            float(match_threshold) if named_value else None, detect, sign, track, corrections=by_hand)
         mask = assemble(n, h, w, found.pieces)
         text = report(found, found_cuts, pick, subject_phrase, named_frame, named_value, time.perf_counter() - began,
-                      cutting=cuts_line(steps, cut_at, named_cut))
+                      cutting="\n".join(filter(None, [cuts_line(steps, cut_at, named_cut), borders_line(seen, w, h)])))
         logger.info("[h3] MiniMaxH3SubjectTrack: %s", text.replace("\n", "; "))
         tiles = preview(frames, mask, found.shots, detect)
         table = shot_table.build(found, detect, mask, state=_state, phrase=subject_phrase, pick=pick,
