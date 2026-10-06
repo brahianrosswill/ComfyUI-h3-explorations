@@ -4,6 +4,10 @@ Files here are **upstream's, kept verbatim and git-tracked**. They live in this
 repo for one reason: before 2026-08-14 the CUDA Sol-Attn node existed in three
 untracked copies on this machine and nothing could say which one was running.
 
+An edited copy of upstream code that the pack runs does not belong here.
+Meta's SAM 3.1 inference code is in [`meta_sam3/`](../meta_sam3/README.md),
+under its own licence, with its edits declared.
+
 ## The arrangement, changed 2026-08-30
 
 `sol_attn_minimax.py` is now a **read-only reference**. The node that runs is
