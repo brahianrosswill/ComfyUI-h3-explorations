@@ -164,6 +164,27 @@ def wired_parts_must_be_named():
     assert m.assemble(replace=m.REPLACE_PARTS, picture_gives=m.GIVES_HEAD) == m.assemble(replace=m.REPLACE_PART)
 
 
+def upper_body_role_keeps_the_legs():
+    # chosen here, never followed: the Masked Source has no `replace` that means the upper body
+    assert m.GIVES_UPPER in m.GIVES and m.resolve_gives(m.GIVES_UPPER, m.REPLACE_PARTS) == m.GIVES_UPPER
+    for replace in (None, m.REPLACE_WHOLE, m.REPLACE_PART):
+        assert m.resolve_gives(m.GIVES_FOLLOW, replace) != m.GIVES_UPPER, replace
+    moving = m.assemble("man", picture_gives=m.GIVES_UPPER, replace=m.REPLACE_PARTS, motion_reference=MOTION_ON)
+    still = m.assemble("man", picture_gives=m.GIVES_UPPER, replace=m.REPLACE_PARTS, motion_reference=m.MOTION_NONE)
+    for text in (moving, still):
+        for want in ("From the waist up that person is <Subject 1>", "on that person's own legs",
+                     "the legs, what is worn below the waist and the setting are the scene's own",
+                     "fully_preserved"):
+            assert text.count(want) == 1, want
+    # with no <Video 1> the sentence that ties the upper body to the kept legs stands where MOVES would
+    unreferenced = m.ROLES[m.GIVES_UPPER]["unreferenced"]
+    assert unreferenced in still and m.MOVES not in still
+    assert m.MOVES in moving and unreferenced not in moving
+    # from the waist up the performance is the whole person's, both voices
+    assert m.ROLES[m.GIVES_UPPER]["performance"] is m.ROLES[m.GIVES_WHOLE]["performance"]
+    assert "the head and upper body (set here)" in m.summary(picture_gives=m.GIVES_UPPER, replace=m.REPLACE_PARTS)
+
+
 def copies_match_the_masked_source():
     # read from the source, so this check needs neither torch nor ComfyUI for it
     tree = ast.parse((REPO / "video_mask.py").read_text(encoding="utf-8"))
@@ -259,7 +280,8 @@ def main() -> int:
             print(f"wrote prompt_bank/{pid}.txt")
         return 0
     for fn in (bank_copies_are_what_it_writes, every_combination_is_well_formed, extra_lands_in_the_shot,
-               subject_is_the_users_words, summary_says_what_was_worked_out, wired_parts_must_be_named, copies_match_the_masked_source, config_is_the_defaults,
+               subject_is_the_users_words, summary_says_what_was_worked_out, wired_parts_must_be_named, upper_body_role_keeps_the_legs,
+               copies_match_the_masked_source, config_is_the_defaults,
                graders_read_what_the_node_writes, node_reads_the_source, shipped_graphs_wire_the_node):
         case(fn.__name__, fn)
     return finish()

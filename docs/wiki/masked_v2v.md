@@ -47,8 +47,14 @@ Two more graphs since 2026-10-06, neither rendered yet:
   `the wired parts`. At the part node's own ticks that is hair, face and
   neck, on the original's body and clothes, so the body's movement is the
   source's. Ticking another part changes the region, and the prompt node's
-  `picture_gives` then has to say what the still provides; a clothing text
-  is not written yet. What the part node was seen to find, on which clips:
+  `picture_gives` then has to say what the still provides. With upper
+  clothing and hands ticked as well, that is `the head and upper body`
+  (2026-10-06): the still's head and what it wears above the waist, on the
+  original's legs. It is the choice for a still that shows the person from
+  the chest up, which cannot dress legs; where it came from and what has
+  and has not rendered is in `masked_prompt_text.py`'s docstring. No
+  shipped graph ticks those parts yet. What the part node was seen to find,
+  on which clips:
   `../../bench/results/2026-10-05_sapiens2_first_frame.md`.
 
 All four are in `workflows/daily/` too, as `h3_mask_pdd8_api.json`,

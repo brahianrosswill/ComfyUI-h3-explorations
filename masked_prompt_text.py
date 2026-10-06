@@ -31,7 +31,15 @@ any subject beyond those three words (`blonde haired woman`, `man wearing a
 red cap`), the silent variant, and every head-and-hair text, which generalises
 `prompt_bank/ref2va_masked_head_swap.txt` (rendered on the band clip) the
 way the whole-person text generalised its own first version: no count of
-people, no duration, no camera claim.
+people, no duration, no camera claim. **Rendered as a typed text, not as
+this wording**: the head-and-upper-body role (2026-10-06). A text typed for
+one still, with that still's clothing named in it, rendered twice on the
+ref2va motion graph with Sapiens2's hair, face, upper clothing and hands
+wired into the Masked Source, and both were the first renders of that clip's
+widest window the owner accepted (the masking board, finding mj-06; one
+clip, one seed, two window lengths). The role below is that text with the
+still's own words moved into `subject`; its sentences for a render with no
+motion reference have not rendered at all.
 """
 from __future__ import annotations
 
@@ -58,8 +66,9 @@ VOICES = (VOICE_MAIN, VOICE_SILENT)
 
 GIVES_FOLLOW = "what the Masked Source replaces"
 GIVES_WHOLE = "the whole person"
+GIVES_UPPER = "the head and upper body"
 GIVES_HEAD = "the head and hair"
-GIVES = (GIVES_FOLLOW, GIVES_WHOLE, GIVES_HEAD)
+GIVES = (GIVES_FOLLOW, GIVES_WHOLE, GIVES_UPPER, GIVES_HEAD)
 
 # The Masked Source's own values. COPIES, because `video_mask.py` imports
 # torch and ComfyUI and this file must not; `bench/check_masked_prompt.py`
@@ -101,7 +110,8 @@ MUSIC = "non_diegetic_music: N/A"
 
 #: What the still provides -> that role's text. `shot` is the paragraph before
 #: the performance sentences, `performance` the sentences per voice choice,
-#: `close` what ends the shot.
+#: `close` what ends the shot. `unreferenced`, where a role has it, is the
+#: sentence that stands where `MOVES` would when there is no `<Video 1>`.
 ROLES: dict[str, dict] = {
     GIVES_WHOLE: dict(
         definition=("<Subject 1> is the {who} shown in <Picture 1>, preserving {poss} facial identity, hair, "
@@ -152,6 +162,46 @@ ROLES: dict[str, dict] = {
                "other people, the walls, the furniture and the ground are visible exactly as before, steady "
                "and in focus."),
     ),
+    # A still that shows a person from the chest up cannot dress their legs: asked for the whole
+    # person it gave a head at the portrait's scale or nobody, and asked for this it held
+    # (2026-10-06, the docstring's last paragraph). The Masked Source's `replace` has no value
+    # that means it, so it is chosen here, with the matching parts wired.
+    GIVES_UPPER: dict(
+        definition=("<Subject 1> is the {who} shown in <Picture 1>, preserving {poss} facial identity, "
+                    "{poss} hair, anything worn on the head and the clothing on {poss} upper body in "
+                    "<Picture 1>{motion}. The background, lighting and framing of <Picture 1> are not "
+                    "present in the target video."),
+        summary=("[reference generation] <Subject 1> takes the place of one person from the waist up in a "
+                 "scene that is already lit, framed and cut, on that person's own legs and in what that "
+                 "person wears below the waist, {voice}, while everything else in the scene stays as it "
+                 "is."),
+        retention=("<Subject 1> (appears in [Shot 1]): fully_preserved - retain the same face, hair, "
+                   "headwear and upper-body clothing in every frame, at every distance from the camera and "
+                   "from every side; the legs, what is worn below the waist and the setting are the "
+                   "scene's own."),
+        scene=("The target video is photorealistic live-action, and its setting, its lighting, its framing, "
+               "every other person and object in it, and the legs, what is worn below the waist and the "
+               "movement of the one person whose upper body is replaced stay exactly as they already are "
+               "from the first frame to the last. Only that person's head and upper body change: they are "
+               "those of <Subject 1>."),
+        place=("[Shot 1] From the waist up that person is <Subject 1>: {poss} head sits where that person's "
+               "head was and is the same size, at the scale of everything around it, and the clothing of "
+               "<Picture 1> meets the waistband of what that person wears below it with no gap."),
+        unreferenced=("The upper body of <Subject 1> and the legs below it move as one body: it turns when "
+                      "they turn, leans when they step, and the arms swing in time with them."),
+        shot=(
+            "The arms and hands of <Subject 1> move as that person's arms and hands move.",
+            "The scene's own light falls on <Subject 1> exactly as it falls on the legs below {obj} and on "
+            "what is beside {obj}: the same direction, the same softness and the same colour on the face, "
+            "the hair and the clothing, and whenever the light changes colour or brightness, the light on "
+            "<Subject 1> changes with it at the same moment.",
+            "Seen from the side or from behind, <Subject 1> keeps the same hair, the same headwear, the "
+            "same build and the same clothing.",
+        ),
+        performance=None,  # the whole person's, set below
+        close=("Everyone and everything else is untouched: the other people, the walls, the furniture and "
+               "the ground are visible exactly as before, steady and in focus."),
+    ),
     GIVES_HEAD: dict(
         definition=("<Subject 1> is the {who} shown in <Picture 1>, preserving {poss} facial identity, "
                     "{poss} hair and anything worn on the head in <Picture 1>{motion}. The clothing, "
@@ -197,6 +247,10 @@ ROLES: dict[str, dict] = {
                "the ground are visible exactly as before, steady and in focus."),
     ),
 }
+
+# From the waist up the performance is the whole person's: the typed text this role came from
+# used those sentences unchanged.
+ROLES[GIVES_UPPER]["performance"] = ROLES[GIVES_WHOLE]["performance"]
 
 
 def resolve_gives(picture_gives: str, replace: str | None) -> str:
@@ -272,7 +326,8 @@ def assemble(subject: str = SUBJECT_PERSON, voice: str = VOICE_MAIN, picture_giv
     poss, obj, _word = pronouns(subject)
     fill = dict(poss=poss, obj=obj, motion=MOTION_CLAUSE if moving else "",
                 voice=SUMMARY_VOICE[voice], who="{who}", added="{added}")
-    shot = [role["place"]] + ([MOVES] if moving else []) + list(role["shot"]) + list(role["performance"][voice])
+    moves = [MOVES] if moving else [role["unreferenced"]] if "unreferenced" in role else []
+    shot = [role["place"]] + moves + list(role["shot"]) + list(role["performance"][voice])
     added = re.sub(r"\s+", " ", add_to_shot or "").strip()
     if added:
         shot.append("{added}")

@@ -73,6 +73,10 @@ class MiniMaxH3MaskedPrompt(io.ComfyNode):
                                         "`what the Masked Source replaces`: worked out from the wired `source`. "
                                         "Leave it here unless the Masked Source replaces `the wired parts`.\n\n"
                                         "`the whole person`: face, hair, build and clothing.\n\n"
+                                        "`the head and upper body`: face, hair, headwear and the clothing "
+                                        "above the waist, on the original's legs. For a still that shows "
+                                        "the person from the chest up; wire the matching parts into the "
+                                        "Masked Source.\n\n"
                                         "`the head and hair`: the head only, on the original's body and "
                                         "clothes.")),
                 io.String.Input("add_to_shot", multiline=True, default="",
