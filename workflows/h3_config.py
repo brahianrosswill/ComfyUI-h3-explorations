@@ -1267,11 +1267,15 @@ MASKED_MOTION_STEPS = 12
 MASKED_MOTION_SOURCE = dict(MASKED_SOURCE, motion_reference="subject only")
 #: `MiniMaxH3MaskedPrompt` (`masked_prompt.py`), which writes the masked
 #: graphs' prompt from these choices and from the Masked Source wired into
-#: it. Equal to the node's defaults: a reference still of anybody, who is the
-#: voice on the track, with what the still provides read off the Masked
+#: it. Equal to the node's defaults: a reference still of anybody (`subject`
+#: is the user's own words for who it shows), who is the voice on the track, with what the still provides read off the Masked
 #: Source's `replace`. **Reasoned**: a shipped graph holds a placeholder
-#: still, so its text cannot assume a man or a woman. The sentences and what
-#: each has rendered on are in `masked_prompt_text.py`.
+#: still, so its text cannot assume a man or a woman. **Measured** once,
+#: 2026-10-06 (`bench/results/2026-10-06_masked_v2v_person_text.md`): on the
+#: motion graph "a person" carried the band clip's turn and started it later
+#: than "man" at the same seed, so a user sets `subject` to match their
+#: still. The sentences and what each has rendered on are in
+#: `masked_prompt_text.py`.
 MASKED_PROMPT_NODE = "MiniMaxH3MaskedPrompt"
 #: The Sapiens2 route to a part of the subject (`sapiens2_parts.py`): the
 #: loader's two folders under `models/sapiens2/`, and `MiniMaxH3SubjectParts`
@@ -1289,10 +1293,10 @@ SUBJECT_PARTS = dict(hair=True, face_and_neck=True, upper_clothing=False, lower_
 #: mask, and since that can be any part, the prompt node is told what the
 #: still provides (`masked_prompt_text.resolve_gives` refuses to guess).
 MASKED_PARTS_SOURCE = dict(MASKED_SOURCE, replace="the wired parts")
-MASKED_PARTS_PROMPT = dict(subject="a person", voice="the main voice on the track",
-                           picture_gives="the head and hair", extra="")
-MASKED_PROMPT = dict(subject="a person", voice="the main voice on the track",
-                     picture_gives="what the Masked Source replaces", extra="")
+MASKED_PARTS_PROMPT = dict(subject="person", voice="the main voice on the track",
+                           picture_gives="the head and hair", add_to_shot="")
+MASKED_PROMPT = dict(subject="person", voice="the main voice on the track",
+                     picture_gives="what the Masked Source replaces", add_to_shot="")
 
 # ---- FastH3 8-step V2 ------------------------------------------------------------
 #: **Inherited** from ComfyUI's own template, Comfy-Org/workflow_templates

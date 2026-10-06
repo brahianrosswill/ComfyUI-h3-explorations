@@ -15,8 +15,18 @@ Each case is a way a render could run on a text nobody meant:
                                   `<Video 1>` named exactly when a motion
                                   reference is on, `(S1)` exactly when the
                                   subject is the voice.
-  extra_lands_in_the_shot         `extra` appears once, on the shot's line,
+  extra_lands_in_the_shot         `add_to_shot` appears once, on the shot's line,
                                   on one line whatever whitespace it held.
+  subject_is_the_users_words      `subject` lands once, in the subject's
+                                  definition, as one phrase whatever article,
+                                  punctuation and whitespace it came with;
+                                  an empty one is "person"; the first man or
+                                  woman word in it sets the pronouns; a brace
+                                  or a list placeholder passes through.
+  summary_says_what_was_worked_out  the lines the node shows above the text
+                                  name the pronouns and the word that
+                                  decided them, where `picture_gives` came
+                                  from, and where the movement comes from.
   wired_parts_must_be_named       the Masked Source's `the wired parts` can
                                   be any part, so following it is refused
                                   with the input to set named.
@@ -91,7 +101,8 @@ def bank_copies_are_what_it_writes():
 
 def every_combination_is_well_formed():
     count = 0
-    for subject, voice, gives, motion in itertools.product(m.SUBJECTS, m.VOICES, m.ROLES, (None, m.MOTION_NONE, MOTION_ON)):
+    for subject, voice, gives, motion in itertools.product((m.SUBJECT_PERSON, m.SUBJECT_MAN, m.SUBJECT_WOMAN, "man wearing a red cap"),
+                                                         m.VOICES, m.ROLES, (None, m.MOTION_NONE, MOTION_ON)):
         text = m.assemble(subject, voice, gives, motion_reference=motion)
         what = (subject, voice, gives, motion)
         at = [text.find(name) for name in SECTIONS]
@@ -99,7 +110,7 @@ def every_combination_is_well_formed():
         assert "{" not in text and "}" not in text, f"{what}: an unfilled slot"
         assert ("<Video 1>" in text) == (motion == MOTION_ON), f"{what}: <Video 1> named without a reference, or not named with one"
         assert ("(S1)" in text) == (voice == m.VOICE_MAIN), f"{what}: the speaker tag does not follow the voice choice"
-        assert f"is the {m.SUBJECTS[subject][0]} shown in <Picture 1>" in text, f"{what}: the noun"
+        assert f"is the {subject} shown in <Picture 1>" in text, f"{what}: the subject"
         assert text == text.strip() and "  " not in text, f"{what}: stray whitespace"
         count += 1
     return f"{count} combinations"
@@ -107,12 +118,40 @@ def every_combination_is_well_formed():
 
 def extra_lands_in_the_shot():
     added = "<Subject 1> moves in step with\n  the people on either side. "
-    text = m.assemble(extra=added)
+    text = m.assemble(add_to_shot=added)
     want = "<Subject 1> moves in step with the people on either side."
     assert text.count(want) == 1
     line = next(ln for ln in text.split("\n") if ln.startswith("[Shot 1]"))
     assert want in line and line.index(want) < line.index("Everyone and everything else")
-    assert m.assemble(extra="  \n ") == m.assemble()
+    assert m.assemble(add_to_shot="  \n ") == m.assemble()
+
+
+def subject_is_the_users_words():
+    for gives in m.ROLES:
+        text = m.assemble(subject=" A blonde haired woman,\n wearing a grey T-shirt. ", picture_gives=gives)
+        want = "<Subject 1> is the blonde haired woman, wearing a grey T-shirt shown in <Picture 1>, preserving her"
+        assert text.count(want) == 1 and text.count("blonde haired") == 1, gives
+        assert m.assemble(subject=" \n", picture_gives=gives) == m.assemble(picture_gives=gives)
+        assert m.assemble(subject="a person", picture_gives=gives) == m.assemble(picture_gives=gives)
+    # the first man or woman word decides the pronouns, and none means "their"
+    for subject, want in (("man wearing a red cap", "his"), ("Woman in a man's hat", "her"), ("lady", "her"),
+                          ("tall boy", "his"), ("person in a mantle", "their"), ("singer", "their")):
+        assert m.pronouns(subject)[0] == want, (subject, m.pronouns(subject))
+        assert f"preserving {want} facial identity" in m.assemble(subject=subject)
+    # the user's words are not a template: a brace or a list placeholder passes through as typed
+    assert "is the {a} __who__ shown in" in m.assemble(subject="{a} __who__")
+    assert "He {waves} __x__." in m.assemble(add_to_shot="He {waves} __x__.")
+
+
+def summary_says_what_was_worked_out():
+    plain = m.summary()
+    assert "pronouns: their" in plain and "no Masked Source wired" in plain and "added to the shot: nothing" in plain
+    wired = m.summary("blonde haired woman", replace=m.REPLACE_PART, motion_reference=MOTION_ON, add_to_shot="She waves.")
+    for want in ('"the blonde haired woman shown in <Picture 1>"', 'pronouns: her (from "woman")',
+                 "the still gives: the head and hair (read from the Masked Source's `replace`)",
+                 "movement: from <Video 1>", "added to the shot: She waves."):
+        assert want in wired, (want, wired)
+    assert "(set here)" in m.summary(picture_gives=m.GIVES_HEAD, replace=m.REPLACE_PARTS)
 
 
 def wired_parts_must_be_named():
@@ -136,7 +175,7 @@ def copies_match_the_masked_source():
 
 def config_is_the_defaults():
     assert h3_config.MASKED_PROMPT == dict(subject=m.SUBJECT_PERSON, voice=m.VOICE_MAIN,
-                                           picture_gives=m.GIVES_FOLLOW, extra=""), h3_config.MASKED_PROMPT
+                                           picture_gives=m.GIVES_FOLLOW, add_to_shot=""), h3_config.MASKED_PROMPT
     assert m.assemble(**h3_config.MASKED_PROMPT) == m.assemble()
 
 
@@ -159,8 +198,8 @@ def graders_read_what_the_node_writes():
     assert _read(_graph(dict(h3_config.MASKED_SOURCE))) == m.assemble()
     assert _read(_graph(dict(h3_config.MASKED_MOTION_SOURCE))) == m.assemble(motion_reference=MOTION_ON)
     assert _read(_graph(dict(h3_config.MASKED_SOURCE, replace=m.REPLACE_PART))) == m.assemble(replace=m.REPLACE_PART)
-    assert _read(_graph(dict(h3_config.MASKED_SOURCE), subject=m.SUBJECT_WOMAN, extra="She waves.")) == \
-        m.assemble(subject=m.SUBJECT_WOMAN, extra="She waves.")
+    assert _read(_graph(dict(h3_config.MASKED_SOURCE), subject="blonde haired woman", add_to_shot="She waves.")) == \
+        m.assemble(subject="blonde haired woman", add_to_shot="She waves.")
     # a combination the node refuses is reported as unresolved, never as some other text
     (refused,) = prompts.carriers(_graph(dict(h3_config.MASKED_SOURCE, replace=m.REPLACE_PARTS)))
     assert refused.texts == () and refused.note, refused
@@ -184,6 +223,7 @@ def node_reads_the_source():
     assert node.execute(source=moving).args[0] == m.assemble(motion_reference=MOTION_ON)
     assert node.execute().args[0] == m.assemble()
     assert node.execute(source=dict(plain, replace=vm.REPLACE_PART)).args[0] == m.assemble(replace=m.REPLACE_PART)
+    assert node.execute(source=plain, subject="man in a red cap").args[0] == m.assemble(subject="man in a red cap")
     schema = node.define_schema()
     defaults = {i.id: getattr(i, "default", None) for i in schema.inputs if i.id != "source"}
     assert defaults == h3_config.MASKED_PROMPT, defaults
@@ -219,7 +259,7 @@ def main() -> int:
             print(f"wrote prompt_bank/{pid}.txt")
         return 0
     for fn in (bank_copies_are_what_it_writes, every_combination_is_well_formed, extra_lands_in_the_shot,
-               wired_parts_must_be_named, copies_match_the_masked_source, config_is_the_defaults,
+               subject_is_the_users_words, summary_says_what_was_worked_out, wired_parts_must_be_named, copies_match_the_masked_source, config_is_the_defaults,
                graders_read_what_the_node_writes, node_reads_the_source, shipped_graphs_wire_the_node):
         case(fn.__name__, fn)
     return finish()

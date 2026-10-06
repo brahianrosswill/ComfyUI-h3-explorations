@@ -235,10 +235,10 @@ def _assembled(ins: dict, graph: dict) -> str | None:
     up = (graph[str(link[0])].get("inputs", {}) or {}) if wired else None
     try:
         return m.assemble(ins.get("subject", m.SUBJECT_PERSON), ins.get("voice", m.VOICE_MAIN),
-                          ins.get("picture_gives", m.GIVES_FOLLOW), ins.get("extra", ""),
+                          ins.get("picture_gives", m.GIVES_FOLLOW), ins.get("add_to_shot", ""),
                           up.get("replace", m.REPLACE_WHOLE) if wired else None,
                           up.get("motion_reference", m.MOTION_NONE) if wired else None)
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, AttributeError):
         return None
 
 

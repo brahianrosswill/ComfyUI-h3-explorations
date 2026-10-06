@@ -8,6 +8,16 @@ what it replaces, so the two cannot disagree (until 2026-10-06 turning the
 motion reference on with an older text left `<Video 1>` unnamed, and nothing
 said so).
 
+**Four things to set, and what the node works out itself.** `subject` is
+who the still shows, in the user's words, and is the one input most renders
+need: it completes a sentence the tooltip shows. The pronouns are read off
+it. `voice` and `picture_gives` are choices with a default that fits most
+clips, and `picture_gives` reads the Masked Source unless told otherwise.
+`add_to_shot` is free text for one render. Whether the text names
+`<Video 1>` is never set here: it follows the Masked Source. Above the text,
+the node shows one line per input saying what it did with it, so nothing it
+worked out is hidden.
+
 **What the `source` wire costs.** The song node's `preview` asks for no
 loader and no model, but it does ask for its prompt, and this node asks for
 the Masked Source. So with `source` wired, a preview tracks the subject the
@@ -18,10 +28,9 @@ was not done: core computes a node's cache fingerprint without the graph
 changed setting on the Masked Source would have left this node's old text in
 the cache.
 
-The text is shown on the node on every run. To change one sentence for
-every render, edit the constant in `masked_prompt_text.py`; to add to one
-render, use `extra`; to write the whole text by hand, type it into the song
-node's `prompt` as before and leave this node out.
+To change one sentence for every render, edit the constant in
+`masked_prompt_text.py`; to write the whole text by hand, type it into the
+song node's `prompt` as before and leave this node out.
 """
 from __future__ import annotations
 
@@ -43,38 +52,46 @@ class MiniMaxH3MaskedPrompt(io.ComfyNode):
             display_name="MiniMax H3 Masked Prompt (video to video)",
             category="model/latent/minimax",
             description=(
-                "Writes the prompt for a masked video-to-video render from a few choices, so the long "
-                "reference-format text is never typed. Wire `prompt` into the song node's `prompt` and the "
-                "Masked Source's `source` into this node. The text is shown here on every run."),
+                "Writes the prompt for a masked video-to-video render, so the long reference-format text is "
+                "never typed. Say who the still shows in `subject`; the rest has defaults. Wire `prompt` into "
+                "the song node's `prompt` and the Masked Source's `source` into this node. The node shows what "
+                "it did with each input, then the text."),
             inputs=[
-                io.Combo.Input("subject", options=list(text.SUBJECTS), default=text.SUBJECT_PERSON,
-                               tooltip="Who the reference still shows. Sets the noun and the pronouns."),
+                io.String.Input("subject", default=text.SUBJECT_PERSON,
+                                tooltip=("Who the still shows, in a few words. It completes the sentence "
+                                         "\"<Subject 1> is the ... shown in <Picture 1>\".\n\n"
+                                         "Examples: `person`, `woman`, `blonde haired woman`, `man wearing a "
+                                         "red cap`.\n\n"
+                                         "Say only what is in the still: where the words and the still "
+                                         "disagree, the words win. `man` or `woman` in it sets the pronouns.")),
                 io.Combo.Input("voice", options=list(text.VOICES), default=text.VOICE_MAIN,
-                               tooltip=("`the main voice on the track`: the subject sings or speaks it, lips "
-                                        "in time.\n\n`silent`: the subject's lips stay closed.")),
+                               tooltip=("Whether the new subject is the one heard on the track.\n\n"
+                                        "`the main voice on the track`: they sing or speak it, lips in time.\n\n"
+                                        "`silent`: their lips stay closed.")),
                 io.Combo.Input("picture_gives", options=list(text.GIVES), default=text.GIVES_FOLLOW,
-                               tooltip=("What the reference still provides.\n\n"
-                                        "`what the Masked Source replaces`: read from the wired `source`.\n\n"
+                               tooltip=("What the model takes from the still.\n\n"
+                                        "`what the Masked Source replaces`: worked out from the wired `source`. "
+                                        "Leave it here unless the Masked Source replaces `the wired parts`.\n\n"
                                         "`the whole person`: face, hair, build and clothing.\n\n"
                                         "`the head and hair`: the head only, on the original's body and "
                                         "clothes.")),
-                io.String.Input("extra", multiline=True, default="",
-                                tooltip=("Sentences added to the shot as written, for example what the "
-                                         "subject does. Call the subject <Subject 1>.")),
+                io.String.Input("add_to_shot", multiline=True, default="",
+                                tooltip=("Optional. Sentences added to the description of the shot, as written. "
+                                         "Call the subject <Subject 1>.\n\n"
+                                         "Example: `<Subject 1> moves in step with the people on either side.`")),
                 H3MaskedSource.Input("source", optional=True,
-                                     tooltip=("The Masked Source's `source` output. The prompt then names "
-                                              "the motion reference when it is on, and what is replaced.")),
+                                     tooltip=("The Masked Source's `source` output. The text then follows it: "
+                                              "what is replaced, and the motion reference when it is on.")),
             ],
             outputs=[io.String.Output(display_name="prompt", tooltip="The text, for the song node's `prompt`.")],
         )
 
     @classmethod
     def execute(cls, subject=text.SUBJECT_PERSON, voice=text.VOICE_MAIN, picture_gives=text.GIVES_FOLLOW,
-                extra="", source=None) -> io.NodeOutput:
+                add_to_shot="", source=None) -> io.NodeOutput:
         replace = source.get("replace") if source is not None else None
         motion = source.get("motion_reference") if source is not None else None
-        prompt = text.assemble(subject, voice, picture_gives, extra, replace, motion)
-        logger.info("[h3] MiniMaxH3MaskedPrompt: %s, %s, the still gives %s, %s", subject, voice,
-                    text.resolve_gives(picture_gives, replace),
-                    "movement from <Video 1>" if motion not in (None, text.MOTION_NONE) else "no motion reference")
-        return io.NodeOutput(prompt, ui=ui.PreviewText(prompt))
+        prompt = text.assemble(subject, voice, picture_gives, add_to_shot, replace, motion)
+        did = text.summary(subject, voice, picture_gives, add_to_shot, replace, motion)
+        logger.info("[h3] MiniMaxH3MaskedPrompt: %s", did.replace("\n", "; "))
+        return io.NodeOutput(prompt, ui=ui.PreviewText(f"{did}\n\n{prompt}"))

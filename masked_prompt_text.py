@@ -4,9 +4,10 @@ H3's reference format is six sections of long prose, and in the masked lane
 most of it never changes: the plate holds the setting, the framing and the
 cuts, so the text names none of them and one prompt serves every window of
 any clip (owner, 2026-10-04: the lane must not need a prompt written for a
-shot). What does change is small: who the reference still shows, whether
-they are the voice on the track, what of them the still provides, and
-whether the original's movement is shown to the model as `<Video 1>`. Until
+shot). What does change is small: who the reference still shows (a few of
+the user's own words, from which the pronouns follow), whether they are the
+voice on the track, what of them the still provides, and whether the
+original's movement is shown to the model as `<Video 1>`. Until
 2026-10-06 each combination was a file somebody typed out, and turning the
 motion reference on with the old text left `<Video 1>` unnamed.
 
@@ -21,8 +22,13 @@ No torch and no ComfyUI: the node, the generator and `workflows/prompts.py`
 Where the sentences come from. **Rendered**: the whole-person texts are
 mrhf's generic swap prompts of 2026-10-04 (one window, one seed each, on the
 band clip) and the `<Video 1>` lines are the ones the motion arms measured
-(`bench/results/2026-10-05_masked_v2v_motion_arms.md`). **Not rendered**:
-the silent variant, and every head-and-hair text, which generalises
+(`bench/results/2026-10-05_masked_v2v_motion_arms.md`). The noun is not
+free: on the one pair rendered, the motion text for "the person" turned the
+subject as the text for "the man" did and started the turn later
+(`bench/results/2026-10-06_masked_v2v_person_text.md`; one window, one
+seed), so `subject` is worth setting to match the still. **Not rendered**:
+any subject beyond those three words (`blonde haired woman`, `man wearing a
+red cap`), the silent variant, and every head-and-hair text, which generalises
 `prompt_bank/ref2va_masked_head_swap.txt` (rendered on the band clip) the
 way the whole-person text generalised its own first version: no count of
 people, no duration, no camera claim.
@@ -33,15 +39,18 @@ import re
 
 # ---- the choices -----------------------------------------------------------
 
-SUBJECT_PERSON = "a person"
-SUBJECT_MAN = "a man"
-SUBJECT_WOMAN = "a woman"
-#: choice -> (noun, possessive, object pronoun)
-SUBJECTS: dict[str, tuple[str, str, str]] = {
-    SUBJECT_PERSON: ("person", "their", "them"),
-    SUBJECT_MAN: ("man", "his", "him"),
-    SUBJECT_WOMAN: ("woman", "her", "her"),
-}
+#: `subject` is the user's own words for who the still shows, and completes
+#: "<Subject 1> is the ... shown in <Picture 1>": `person`, `woman`,
+#: `blonde haired woman`, `man wearing a red cap`. The three below are the
+#: forms that have rendered.
+SUBJECT_PERSON = "person"
+SUBJECT_MAN = "man"
+SUBJECT_WOMAN = "woman"
+#: The words that set the pronouns, read off `subject`: the first one found
+#: decides, and none means "their". Reasoned, and kept short on purpose: a
+#: wrong guess shows in the text the node displays, and the wording fixes it.
+HIS = ("man", "boy", "guy", "gentleman", "male")
+HER = ("woman", "girl", "lady", "female")
 
 VOICE_MAIN = "the main voice on the track"
 VOICE_SILENT = "silent"
@@ -61,8 +70,9 @@ REPLACE_PARTS = "the wired parts"
 MOTION_NONE = "none"
 
 # ---- the sentences ---------------------------------------------------------
-# `{noun}`, `{poss}` and `{obj}` are filled from SUBJECTS; `{motion}` and
-# `{voice}` from the clauses below.
+# `{poss}` and `{obj}` are the pronouns `pronouns` reads off the subject;
+# `{motion}` and `{voice}` come from the clauses below; `{who}` is the user's
+# own words for the subject, put in last and literally.
 
 MOTION_CLAUSE = (", whose body motion, posture, gestures, head movements and their timing come from the "
                  "person in <Video 1>")
@@ -94,7 +104,7 @@ MUSIC = "non_diegetic_music: N/A"
 #: `close` what ends the shot.
 ROLES: dict[str, dict] = {
     GIVES_WHOLE: dict(
-        definition=("<Subject 1> is the {noun} shown in <Picture 1>, preserving {poss} facial identity, hair, "
+        definition=("<Subject 1> is the {who} shown in <Picture 1>, preserving {poss} facial identity, hair, "
                     "build and the clothing visible in <Picture 1>{motion}. The background, lighting and "
                     "framing of <Picture 1> are not present in the target video."),
         summary=("[reference generation] <Subject 1> takes the place of one person in a scene that is "
@@ -143,7 +153,7 @@ ROLES: dict[str, dict] = {
                "and in focus."),
     ),
     GIVES_HEAD: dict(
-        definition=("<Subject 1> is the {noun} shown in <Picture 1>, preserving {poss} facial identity, "
+        definition=("<Subject 1> is the {who} shown in <Picture 1>, preserving {poss} facial identity, "
                     "{poss} hair and anything worn on the head in <Picture 1>{motion}. The clothing, "
                     "background, lighting and framing of <Picture 1> are not present in the target video."),
         summary=("[reference generation] The head of <Subject 1> takes the place of one person's head in a "
@@ -204,27 +214,68 @@ def resolve_gives(picture_gives: str, replace: str | None) -> str:
         f"to what <Picture 1> provides, one of {list(ROLES)}")
 
 
+def who(subject: str) -> str:
+    """The user's words for the subject as they sit in the sentence: one line, no leading article, no full stop."""
+    words = re.sub(r"\s+", " ", subject or "").strip().strip(",.;: ")
+    words = re.sub(r"^(?:a|an|the)\s+", "", words, flags=re.IGNORECASE)
+    return words or SUBJECT_PERSON
+
+
+def pronouns(subject: str) -> tuple[str, str, str]:
+    """(possessive, object pronoun, the word that decided) for a subject; the word is "" when none did."""
+    found = [(m.start(), m.group(0).lower()) for m in re.finditer(r"[A-Za-z]+", who(subject))
+             if m.group(0).lower() in HIS + HER]
+    if not found:
+        return "their", "them", ""
+    word = min(found)[1]
+    return ("his", "him", word) if word in HIS else ("her", "her", word)
+
+
+def summary(subject: str = SUBJECT_PERSON, voice: str = VOICE_MAIN, picture_gives: str = GIVES_FOLLOW,
+            add_to_shot: str = "", replace: str | None = None, motion_reference: str | None = None) -> str:
+    """What the node did with each input, one line each, for the user to read above the text."""
+    poss, _obj, word = pronouns(subject)
+    gives = resolve_gives(picture_gives, replace)
+    moving = motion_reference not in (None, MOTION_NONE)
+    lines = [
+        f"subject: \"the {who(subject)} shown in <Picture 1>\"; pronouns: {poss}"
+        + (f" (from \"{word}\")" if word else " (no man or woman word in the subject)"),
+        f"voice: {voice}",
+        f"the still gives: {gives}"
+        + (" (read from the Masked Source's `replace`)" if picture_gives == GIVES_FOLLOW and replace is not None
+           else " (no Masked Source wired)" if picture_gives == GIVES_FOLLOW else " (set here)"),
+        "movement: from <Video 1>, the Masked Source's motion reference" if moving
+        else "movement: from the prompt (the Masked Source's motion reference is off)" if replace is not None
+        else "movement: from the prompt (no Masked Source wired)",
+        "added to the shot: " + (re.sub(r"\s+", " ", add_to_shot or "").strip() or "nothing"),
+    ]
+    return "\n".join(lines)
+
+
 def assemble(subject: str = SUBJECT_PERSON, voice: str = VOICE_MAIN, picture_gives: str = GIVES_FOLLOW,
-             extra: str = "", replace: str | None = None, motion_reference: str | None = None) -> str:
+             add_to_shot: str = "", replace: str | None = None, motion_reference: str | None = None) -> str:
     """The prompt for one masked render.
 
-    `replace` and `motion_reference` are the Masked Source's own values, or
-    None when no source is wired (the whole person, no `<Video 1>`). `extra`
-    is added to the shot as written, after the performance sentences.
+    `subject` is who the still shows, in the user's words; it sits in the
+    subject's definition, and the pronouns follow it (`pronouns`). The text
+    outranks the picture where the two disagree (`docs/prompting.md`,
+    "Silence is not neutral"), so words that match the still hold a look the
+    render drifts from and words that do not match override it. `replace`
+    and `motion_reference` are the Masked Source's own values, or None when
+    no source is wired (the whole person, no `<Video 1>`). `add_to_shot` is
+    added to the shot as written, after the performance sentences.
     """
-    if subject not in SUBJECTS:
-        raise ValueError(f"unknown subject {subject!r}; one of {list(SUBJECTS)}")
     if voice not in VOICES:
         raise ValueError(f"unknown voice {voice!r}; one of {list(VOICES)}")
     role = ROLES[resolve_gives(picture_gives, replace)]
     moving = motion_reference not in (None, MOTION_NONE)
-    noun, poss, obj = SUBJECTS[subject]
-    fill = dict(noun=noun, poss=poss, obj=obj, motion=MOTION_CLAUSE if moving else "",
-                voice=SUMMARY_VOICE[voice])
+    poss, obj, _word = pronouns(subject)
+    fill = dict(poss=poss, obj=obj, motion=MOTION_CLAUSE if moving else "",
+                voice=SUMMARY_VOICE[voice], who="{who}", added="{added}")
     shot = [role["place"]] + ([MOVES] if moving else []) + list(role["shot"]) + list(role["performance"][voice])
-    added = re.sub(r"\s+", " ", extra or "").strip()
+    added = re.sub(r"\s+", " ", add_to_shot or "").strip()
     if added:
-        shot.append(added)
+        shot.append("{added}")
     shot += [role["close"], CAMERA]
     sections = [
         "subject_definitions:\n" + "\n".join([role["definition"]] + ([VIDEO_DEFINITION] if moving else [])),
@@ -234,4 +285,5 @@ def assemble(subject: str = SUBJECT_PERSON, voice: str = VOICE_MAIN, picture_giv
         SOUNDSCAPE,
         MUSIC,
     ]
-    return "\n\n".join(sections).format(**fill)
+    # the user's words go in last and literally: they may hold a brace or a `__list__` placeholder
+    return "\n\n".join(sections).format(**fill).replace("{who}", who(subject)).replace("{added}", added)

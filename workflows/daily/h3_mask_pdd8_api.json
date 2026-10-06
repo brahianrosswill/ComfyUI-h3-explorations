@@ -270,10 +270,10 @@
   "106": {
     "class_type": "MiniMaxH3MaskedPrompt",
     "inputs": {
-      "subject": "a person",
+      "subject": "person",
       "voice": "the main voice on the track",
       "picture_gives": "what the Masked Source replaces",
-      "extra": "",
+      "add_to_shot": "",
       "source": [
         "104",
         0

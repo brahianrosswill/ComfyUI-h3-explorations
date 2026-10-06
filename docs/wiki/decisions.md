@@ -21,8 +21,8 @@ Older history lives elsewhere and is not copied here:
   ships the generic text** (owner, 2026-10-06: generalise the lane beyond one
   clip, and a prompt that covers different scenarios without the long
   reference-format text being retyped). `MiniMaxH3MaskedPrompt`
-  (`masked_prompt.py`) writes it from three choices and from the Masked
-  Source wired into it; the sentences are constants in
+  (`masked_prompt.py`) writes it from who the still shows, two choices and
+  the Masked Source wired into it; the sentences are constants in
   `masked_prompt_text.py`. What it replaced: both shipped masked graphs held
   a typed text in the song node. The PDD8 graph's was
   `ref2va_masked_subject_swap`, which says one performer, alone, standing
@@ -37,6 +37,12 @@ Older history lives elsewhere and is not copied here:
   seed, without them (mrhf's note beside the texts under `internal/`, which
   is not tracked). The person text with the motion lines has not been
   rendered, and neither have the node's head-and-hair and silent texts.
+  *Later the same day:* it rendered once, beside the same graph with "a
+  man". The man text reproduced the 2026-10-05 arm exactly, so the node,
+  the shipped graph and the day's code change nothing in the output on
+  that window and seed; the person text turned him and started the turn
+  later. The default stays "a person" and the lane's page says to set
+  `subject`: `bench/results/2026-10-06_masked_v2v_person_text.md`.
 
 ## 2026-10-05
 

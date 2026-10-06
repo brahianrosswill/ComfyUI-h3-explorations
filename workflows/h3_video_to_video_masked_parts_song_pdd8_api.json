@@ -309,10 +309,10 @@
   "106": {
     "class_type": "MiniMaxH3MaskedPrompt",
     "inputs": {
-      "subject": "a person",
+      "subject": "person",
       "voice": "the main voice on the track",
       "picture_gives": "the head and hair",
-      "extra": "",
+      "add_to_shot": "",
       "source": [
         "104",
         0

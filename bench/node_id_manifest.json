@@ -290,7 +290,7 @@
       "subject",
       "voice",
       "picture_gives",
-      "extra",
+      "add_to_shot",
       "source"
     ],
     "node_id": "MiniMaxH3MaskedPrompt",

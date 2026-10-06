@@ -128,15 +128,28 @@ where in core.
 
 The reference format is six sections of prose, and in this lane almost none
 of it depends on the clip, because the plate holds the setting, the framing
-and the cuts. The node writes the text from three choices: who the still
-shows (`subject`: a person, a man, a woman), whether they are the voice on
-the track (`voice`), and what the still provides (`picture_gives`). It reads
-the rest off the Masked Source wired into its `source`: what is replaced,
-and whether a motion reference is on, in which case it writes the
-`<Video 1>` lines. So the text and the Masked Source cannot disagree.
-`extra` adds sentences to the shot as written. The text is shown on the node
-on every run.
+and the cuts. The node writes the text from who the still shows (`subject`,
+a few of the user's own words: `woman`, `man wearing a red cap`), whether
+they are the voice on the track (`voice`), and what the still provides
+(`picture_gives`). It works the rest out: the pronouns from `subject`, and
+from the Masked Source wired into its `source` what is replaced and whether
+a motion reference is on, in which case it writes the `<Video 1>` lines. So
+the text and the Masked Source cannot disagree. `add_to_shot` adds
+sentences to the shot as written. On every run the node shows one line per
+input saying what it did with it, then the text.
 
+- **Set `subject` to match the still.** The shipped graphs say "person"
+  because their still is a placeholder. On the one pair rendered, the motion
+  graph turned the subject with either word and started the turn later with
+  "person" than with "man":
+  `../../bench/results/2026-10-06_masked_v2v_person_text.md`. One window and
+  one seed, read by the lane's metrics, not watched.
+- **More words in `subject` are strong in both directions.** Where a text
+  and a reference disagree the text wins ([`../prompting.md`](../prompting.md),
+  "Silence is not neutral"), so words that match the still should hold a
+  look the render drifts from, and words that do not match override the
+  still. Say only what is in the still. Nothing beyond the three single
+  words has rendered in this lane.
 - **Where the sentences live.** Constants in `masked_prompt_text.py`, whose
   docstring says which have rendered and which have not. Changing one
   changes every graph that wires the node; `bench/check_masked_prompt.py
