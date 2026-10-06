@@ -30,6 +30,12 @@ that were rendered are `bench/masked_v2v_arms.json` and
 
 ## Notes
 
+- [`2026-10-06_mrsun.md`](2026-10-06_mrsun.md): SAM 3.1's video pipeline as
+  Meta built it, frame by frame, with the builder's values; where core's port
+  departs (its own shorter session logic, the presence score dropped); which
+  of the Subject Track's complaints are core's and which are Meta's; what a
+  port would stand on and what Meta's code needs to run as a reference. A
+  reading; nothing was run.
 - [`2026-10-04_mrhf.md`](2026-10-04_mrhf.md): which Hugging Face models help
   beyond SAM 3.1 (effects outside the silhouette, matting, sync and identity
   instruments, sub-part masks); how core's SAM3 tracker behaves with several
