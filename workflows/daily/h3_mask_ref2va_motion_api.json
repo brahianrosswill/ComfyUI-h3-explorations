@@ -220,7 +220,8 @@
       "cuts": "automatic",
       "detection_threshold": 0.5,
       "max_people": 16,
-      "head_phrase": "head"
+      "head_phrase": "head",
+      "corrections": ""
     }
   },
   "104": {
