@@ -1,6 +1,6 @@
 # Masked video to video: how it works, what it cannot do, where to go next
 
-last updated: 2026-10-06 (the prompt node; the review and parts graphs); 2026-10-05 (the ref2va motion graph; the Sapiens2 nodes named); 2026-10-04 (first written, after the Subject Track's third clip)
+last updated: 2026-10-06 (a loss inside a shot is searched and `subject_from`; the prompt node; the review and parts graphs); 2026-10-05 (the ref2va motion graph; the Sapiens2 nodes named); 2026-10-04 (first written, after the Subject Track's third clip)
 
 Written by hand. This is the lane's map for a reader who has not followed
 it: the pieces in the order a render meets them, the limits each one has
@@ -106,6 +106,26 @@ docstring is the authority and lists the steps; `follow` is the function.
   automatic pass and on the frame that shot's tile shows: a person by the
   number on their outline, or nobody (`parse_corrections`, `_correct`). The
   other shots and the frames the tiles show do not move.
+- **A subject let go inside a shot.** A tracker call is seeded once, so a
+  subject the tracker let go was lost for the rest of the shot.
+  A run of frames the track leaves empty is probed every `PROBE_STRIDE`
+  frames from the side that is tracked, and the track is seeded again on
+  the first frame that shows the subject (`regain`). Who that is, is
+  decided against a gallery of the shot's own tracked frames
+  (`gallery_frames`, `gallery_scores`, `clear_best`), never by being the
+  only detection; `REGAIN_SAME` and `REGAIN_MARGIN` in `subject_track.py`
+  carry their provenance. Frames that stay empty are in the report and in
+  the shot table's `frames_without_subject`. A shot corrected by hand is
+  not searched.
+- **The same person as an earlier run.** The shot table carries the picked
+  shot's gallery. `subject_from` on the Subject Track takes an earlier
+  run's `shot_table` output, or the path of the `..._shots.json` it saved,
+  and the pick on this load is then made against that gallery and not by
+  `pick`. If nobody on any frame looked at is that person, nothing is
+  picked and the report says so. For a long clip rendered in pieces
+  (`bench/join_stretches.py`). Its limit: the score falls when the person
+  is much smaller or larger than the gallery shows them
+  (`bench/results/2026-10-06_subject_track_regain_and_handover.md`).
 - **What it shows.** One labelled tile per shot and a text report: who was
   taken, who was the best candidate where nobody was, every score with the
   line marked, every phrase and threshold used.

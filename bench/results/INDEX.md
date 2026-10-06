@@ -17,6 +17,7 @@ replaces `docs/evidence.md`, which says what the records established.
 | date | lane | record | verdict |
 |---|---|---|---|
 | 2026-10-06 | masked | [The window keep on the card: one window rendered twice, the second on a kept latent and conditioning (2026-10-06)](2026-10-06_window_keep_matched_pair.md) | accepted: the second run's stored window latent equals the first's on both streams and its videos are the same bytes; the source encode and the conditioning are gone from its stage seconds; one short window, one seed, one stretch |
+| 2026-10-06 | masked | [The Subject Track after a loss inside a shot, and the subject handed from one run to the next (2026-10-06)](2026-10-06_subject_track_regain_and_handover.md) | on one clip the track is seeded again 48 frames after the tracker lets go and a later load picks the same person from an earlier run's gallery where the pick rule takes somebody else; the line between the subject and another person is 0.88 with three hundredths to spare, and the subject is refused where the gallery shows them at a much larger size |
 | 2026-10-06 | masked | [The Subject Track and the part node at their defaults on the lane's three windows (2026-10-06)](2026-10-06_subject_track_defaults.md) | at defaults one window was masked on a microphone and one misses a shot; the first is fixed by a rule, the second by a correction; the part was found on every frame the subject is a person |
 | 2026-10-06 | masked | [The part model shown the subject alone: two windows, with and without (2026-10-06)](2026-10-06_part_model_shown_subject_alone.md) | with everything further than 8 pixels from the tracked subject's mask replaced by flat colour before the part model sees it, the parts cover a median of 96% of the subject over the window and never under 70%, from the first frame; without it the same node covers under 3% through the first 27 frames; on a second clip's window, where the parts were already on the subject, coverage is within about two points frame by frame and the part reaches further into the margin around the subject; counted, not looked at, on one window of each of two clips |
 | 2026-10-06 | masked | [How much of the tracked subject a part mask covers: the figure, on the clip that showed it was missing (2026-10-06)](2026-10-06_part_coverage.md) | on one arm of the second test clip the part mask covered under a quarter of its own median share of the tracked subject on 40 of 360 frames, all of them in the first 51, while the part node reported the part "found on every frame"; the new per-frame figure names those frames from the two masks alone, and on 37 of them most of the part lies off the subject's mask |
@@ -62,7 +63,7 @@ replaces `docs/evidence.md`, which says what the records established.
 | 2026-10-01 | lora | [Where a LoRA at the call spends its time (2026-10-01)](2026-10-01_lora_branch_profile.md) |  |
 | 2026-10-01 | kitchen | [comfy-kitchen: h3-frontier merged to upstream main, 2026-10-01](2026-10-01_kitchen_merge_aade8d5.md) |  |
 
-Data files dated this month and not listed: 75.
+Data files dated this month and not listed: 76.
 
 ## 2026-09
 

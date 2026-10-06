@@ -72,6 +72,36 @@ item drives the module's own functions on made-up frames and masks.
    that is flat in one shot and not in the next is picture, not border; bars
    with a little coding noise are still bars.
 
+10. **A subject let go inside a shot is found again, and nobody else is
+   taken for them.** One shot with no cut; the stand-in tracker cannot follow
+   through a stretch where the subject is hidden, as core's tracker cannot.
+   The track is seeded again on the first probed frame where the subject is
+   back, judged against a gallery of the shot's own tracked frames, runs
+   both ways over the empty run, and the frames they were hidden on stay
+   empty; the report names where the track let go and where it was found,
+   and the shot table lists the frames with no subject, the gallery's frames
+   and what every probe scored. The same when the run is at the shot's
+   start, searched backward from the tracked side. Controls: a subject who
+   never comes back is searched for and not found, the person beside them is
+   not taken, and the report says so; a track with no empty run detects and
+   tracks exactly what it did before (items 4 and 7 above assert the calls);
+   a tracker that keeps letting go is seeded again at most `REGAIN_MOST`
+   times. On a clip with one person: the only person the detector returns
+   after the loss is taken when they are the subject, and NOT taken when
+   they are somebody else, which is what core's detector returned for a
+   phrase on the card (2026-10-06); a thing with no head is nobody; and two
+   people who both look like the subject, closer together than
+   `REGAIN_MARGIN`, are a gap and not a guess.
+11. **An earlier run's subject is recognised in a later load.** A run keeps
+   a gallery of its picked shot's track, the shot table carries it, and it
+   reads back as it was. Handed to a run on another load, it makes the
+   pick: a person who is alone and the largest on the probe frame, whom the
+   pick rule takes, is refused, and the subject is picked on the first
+   frame looked at that shows them. Controls: without the gallery the rule
+   does take that person; with it and no subject in the load, nobody is
+   picked and every mask is empty; a table with no gallery, a missing file
+   and text that is not a table are refused by name.
+
 What this cannot check: that SAM 3's features tell real people apart, that
 its tracker follows them, or that the text encoder loads. Those need the card;
 `docs/research/masking/2026-10-04_mrhf.md` has what was measured.
@@ -105,7 +135,7 @@ comfy.cli_args.args.cpu = True  # no CUDA context for a logic check; the sibling
 def _load():
     """`subject_track` as a module of a stand-in package (`check_audio_freeze.py` says why)."""
     pkg = types.ModuleType("_h3pack")
-    pkg.__path__ = [str(REPO)]
+    pkg.__path__ = [str(MODULE.parent), str(REPO)]   # a draft's own `shot_table.py` beside it comes first
     sys.modules.setdefault("_h3pack", pkg)
     spec = importlib.util.spec_from_file_location("_h3pack.subject_track", MODULE)
     assert spec is not None and spec.loader is not None
@@ -569,6 +599,238 @@ def check_alone(problems):
                         "the lone rule applies only when the pick frame shows nobody else")
 
 
+def _lost_world(visible, n: int = 48, reach: int | None = None):
+    """One shot of `n` frames, no cut: the subject and one other person; the tracker cannot cross a hidden stretch.
+
+    `visible(f)` says whether the subject can be seen on frame `f`. The detector returns the other person on every
+    frame and the subject where they are visible. A track covers the frames from its seed out to the nearest hidden
+    frame on either side and no further, as core's tracker stays empty once it has let an object go; `reach`
+    limits it to that many frames forward of the seed, a tracker that keeps letting go.
+    """
+    subject, other = _box(40, 10, 80, 60), _box(0, 20, 20, 50)
+    sigs = [(subject, torch.tensor([1.0, 0.0, 0.0])), (other, torch.tensor([0.0, 1.0, 0.0]))]
+    calls = {"detect": [], "track": []}
+    def detect(f: int):
+        calls["detect"].append(f)
+        people = [other] + ([subject] if visible(f) else [])
+        return torch.stack(people, dim=0), [0.9] * len(people)
+    def sign(_frame: int, mask: torch.Tensor):
+        return next(v for m, v in sigs if torch.equal(m, mask))
+    def track(start: int, end: int, seed: int, mask: torch.Tensor):
+        calls["track"].append((start, end, seed, "subject" if torch.equal(mask, subject) else "other"))
+        out = torch.zeros((end - start, H, W))
+        f = seed
+        while f < end and visible(f) and (reach is None or f - seed < reach):
+            out[f - start] = mask
+            f += 1
+        f = seed - 1
+        while f >= start and visible(f):
+            out[f - start] = mask
+            f -= 1
+        return out
+    return subject, detect, sign, track, calls
+
+
+def _near(regained, want) -> bool:
+    """A shot's `regained` against what is expected, the two similarities to three places."""
+    return [(a, f, n, round(score, 3), round(second, 3)) for a, f, n, score, second in regained] == want
+
+
+def check_regain(problems):
+    """A track that lets the subject go inside a shot is seeded again where they are back, and only on them."""
+    hidden = lambda f: 20 <= f < 24
+    subject, detect, sign, track, calls = _lost_world(lambda f: not hidden(f))
+    got = st.follow(48, [], st.PICK_LARGEST, 3, 0.8, detect, sign, track, stride=4, offset=1)
+    shot = got.shots[0]
+    want = [(0, 48, 3, "subject"), (20, 48, 24, "subject")]
+    if calls["track"] != want:
+        problems.append(f"hidden on frames 20-23 of one shot: tracked {calls['track']}, not {want}: the first track ends "
+                        "at 19, and the empty run 20-47 is seeded again on the first probed frame the subject is back on")
+    if not _near(shot.regained, [(20, 24, 2, 1.0, 0.0)]) or shot.searched:
+        problems.append(f"regained {shot.regained}, searched {shot.searched}; one regain, let go on 20, found on 24 among "
+                        "2 detections at similarity 1.0 to the gallery, the other person at 0.0")
+    if shot.gallery != [0, 3, 5, 8, 11, 14, 16, 19] or [p[:2] for p in shot.probes] != [(20, 1), (24, 2)]:
+        problems.append(f"the gallery was taken on frames {shot.gallery} and the probes were {shot.probes}; eight frames spread "
+                        "over the tracked 0-19, and probes on 20 (the other person alone) and 24")
+    mask = st.assemble(48, H, W, got.pieces)
+    on = [bool(m.any()) for m in mask]
+    if on != [not hidden(f) for f in range(48)]:
+        problems.append(f"the mask is on frames {[f for f, v in enumerate(on) if v]}; it should be every frame but 20-23, "
+                        "where the subject is hidden")
+    if any(v and not torch.equal(m, subject) for m, v in zip(mask, on)):
+        problems.append("a frame of the regained track does not carry the subject's mask")
+    if shot.shown != 3 or shot.seed != 3:
+        problems.append(f"the regain moved the shot's tile to frame {shot.shown} (seed {shot.seed}); a correction reads its "
+                        "numbers off that tile, so it must stay on the pick frame")
+    text = st.report(got, [], st.PICK_LARGEST, "person", True, True, 1.0)
+    if "let go on frame 20 and found again on frame 24 (similarity 1.00 to the shot's own track, the next person there 0.00, 2 detection(s) there)" not in text:
+        problems.append(f"the report does not say where the track let go and where it was found: {text!r}")
+    table = st.shot_table.build(got, detect, mask, state=st._state, phrase="person", pick=st.PICK_LARGEST,
+                                named_frame=True, named_value=True, cuts=[])
+    row = table["shots"][0]
+    if row.get("frames_without_subject") != [[20, 23]] or row["frames_with_subject"] != 44:
+        problems.append(f"the shot table gives frames without the subject {row.get('frames_without_subject')} and "
+                        f"{row['frames_with_subject']} with; the subject is hidden on 20-23 of 48")
+    if row.get("regained") != [{"lost_from_frame": 20, "seed_frame": 24, "detections": 2, "similarity": 1.0, "next_person": 0.0}]:
+        problems.append(f"the shot table's regained is {row.get('regained')}")
+    if row.get("gallery_frames") != shot.gallery or [p["frame"] for p in row.get("probes_after_a_loss", [])] != [20, 24]:
+        problems.append(f"the shot table's gallery {row.get('gallery_frames')} and probes {row.get('probes_after_a_loss')}")
+    if "none on 20-23" not in st.shot_table.as_text(table):
+        problems.append("the shot table's text does not name the frames with no subject")
+
+    # the run at the shot's start: searched backward from the side that is tracked
+    hidden = lambda f: 10 <= f < 16
+    subject, detect, sign, track, calls = _lost_world(lambda f: not hidden(f))
+    got = st.follow(48, [], st.PICK_LARGEST, 30, 0.8, detect, sign, track, stride=4, offset=1)
+    want = [(0, 48, 30, "subject"), (0, 16, 7, "subject")]
+    if calls["track"] != want or not _near(got.shots[0].regained, [(0, 7, 2, 1.0, 0.0)]):
+        problems.append(f"hidden on 10-15, picked on 30: tracked {calls['track']} and regained {got.shots[0].regained}; the "
+                        f"empty run 0-15 is probed from 15 down (15 and 11 are hidden, 7 is not): {want}")
+    on = [bool(m.any()) for m in st.assemble(48, H, W, got.pieces)]
+    if on != [not hidden(f) for f in range(48)]:
+        problems.append(f"with the run at the shot's start the mask is on {[f for f, v in enumerate(on) if v]}, not every frame but 10-15")
+
+    # control: the subject never comes back. Searched, not found, and the person beside them is not taken
+    subject, detect, sign, track, calls = _lost_world(lambda f: f < 20)
+    got = st.follow(48, [], st.PICK_LARGEST, 3, 0.8, detect, sign, track, stride=4, offset=1)
+    shot = got.shots[0]
+    if calls["track"] != [(0, 48, 3, "subject")] or shot.regained or shot.searched != [(20, 47)]:
+        problems.append(f"the subject leaves at frame 20 for good: tracked {calls['track']}, regained {shot.regained}, "
+                        f"searched {shot.searched}; nobody is there to find, and the other person must not be taken")
+    if float(st.assemble(48, H, W, got.pieces)[20:].sum()) != 0.0:
+        problems.append("frames after the subject left carry a mask")
+    probed = [f for f in calls["detect"] if f >= 20]
+    if sorted(set(probed)) != list(range(20, 48, 4)):
+        problems.append(f"the empty run 20-47 was probed on {sorted(set(probed))}, not every 4th frame from 20")
+    said = st.report(got, [], st.PICK_LARGEST, "person", True, True, 1.0)
+    if "searched and not found on frames 20-47 (the best person on any frame looked at scored 0.00; the line is" not in said:
+        problems.append(f"the report does not say a run was searched, the subject not found, and what the best person scored: {said!r}")
+
+    # control: a tracker that keeps letting go is seeded again a bounded number of times
+    subject, detect, sign, track, calls = _lost_world(lambda f: True, n=200, reach=13)
+    got = st.follow(200, [], st.PICK_LARGEST, 3, 0.8, detect, sign, track, stride=4, offset=1)
+    if len(got.shots[0].regained) != st.REGAIN_MOST or len(calls["track"]) != st.REGAIN_MOST + 1:
+        problems.append(f"a tracker that holds 13 frames at a time was seeded again {len(got.shots[0].regained)} times "
+                        f"({len(calls['track'])} track calls); the bound is REGAIN_MOST = {st.REGAIN_MOST}")
+
+    # a clip with one person. After the loss the detector returns ONE person for the phrase: taken when they are the
+    # subject, not taken when they are somebody else (seen on the card, 2026-10-06), and a thing with no head is nobody
+    full, bystander, mic, twin = _box(50, 5, 70, 65), _box(20, 5, 100, 70), _box(0, 0, 10, 30), _box(90, 5, 110, 65)
+    def unit(c: float, axis: int) -> torch.Tensor:
+        v = torch.zeros(4); v[0] = c; v[axis] = (1 - c * c) ** 0.5
+        return v
+    sigs = [(full, torch.tensor([1.0, 0, 0, 0])), (bystander, unit(0.85, 1)), (mic, unit(0.99, 2)), (twin, unit(0.985, 3))]
+    def solo(later):
+        tracked = []
+        def detect(f: int):
+            people = [full] if f < 20 else ([] if f < 24 else list(later))
+            return (torch.stack(people, dim=0) if people else torch.zeros((0, H, W))), [0.9] * len(people)
+        def sign(_frame: int, mask: torch.Tensor):
+            v = next(v for m, v in sigs if torch.equal(m, mask))
+            return v, (None if torch.equal(mask, mic) else v)
+        def track(start: int, end: int, seed: int, mask: torch.Tensor):
+            tracked.append((start, end, seed))
+            out = torch.zeros((end - start, H, W))
+            lo, hi = (0, 20) if seed < 20 else (24, 48)
+            out[max(lo, start) - start:min(hi, end) - start] = mask
+            return out
+        return detect, sign, track, tracked
+    detect, sign, track, tracked = solo([full])
+    got = st.follow(48, [], st.PICK_LARGEST, 3, None, detect, sign, track, stride=4, offset=1)
+    if tracked != [(0, 48, 3), (20, 48, 24)] or not _near(got.shots[0].regained, [(20, 24, 1, 1.0, -1.0)]):
+        problems.append(f"one person, back after the loss: tracked {tracked}, regained {got.shots[0].regained}; the one "
+                        "detection is the subject, at 1.0 to the gallery, with nobody else to be clear of")
+    detect, sign, track, tracked = solo([bystander])
+    got = st.follow(48, [], st.PICK_LARGEST, 3, None, detect, sign, track, stride=4, offset=1)
+    shot = got.shots[0]
+    if tracked != [(0, 48, 3)] or shot.regained or shot.searched != [(20, 47)] or float(st.assemble(48, H, W, got.pieces)[20:].sum()):
+        problems.append(f"a bystander alone after the loss was taken: tracked {tracked}, regained {shot.regained}. They score "
+                        f"0.85 to the gallery, under the line {st.REGAIN_SAME}; being the only detection must not be enough, "
+                        "which is what core's detector did with the phrase on the card")
+    if "searched and not found on frames 20-47 (the best person on any frame looked at scored 0.85" not in st.report(
+            got, [], st.PICK_LARGEST, "person", True, False, 1.0):
+        problems.append("the report does not say what the rejected person scored")
+    detect, sign, track, tracked = solo([mic])
+    got = st.follow(48, [], st.PICK_LARGEST, 3, None, detect, sign, track, stride=4, offset=1)
+    if tracked != [(0, 48, 3)] or got.shots[0].regained:
+        problems.append(f"a thing alone after the loss was taken: tracked {tracked}; it scores 0.99 under the top third but "
+                        "has no head, and the gallery has one on every frame, so it is nobody")
+    detect, sign, track, tracked = solo([full, twin])
+    got = st.follow(48, [], st.PICK_LARGEST, 3, None, detect, sign, track, stride=4, offset=1)
+    if tracked != [(0, 48, 3)] or got.shots[0].regained or got.shots[0].searched != [(20, 47)]:
+        problems.append(f"two people within the margin of each other (1.00 and 0.985): tracked {tracked}, regained "
+                        f"{got.shots[0].regained}; closer than REGAIN_MARGIN = {st.REGAIN_MARGIN} is a gap, not a guess")
+
+    # THE HAND-OVER: an earlier run's gallery picks the subject here, where the pick rule would take somebody else
+    subject, detect, sign, track, calls = _lost_world(lambda f: True)
+    first = st.follow(48, [], st.PICK_LARGEST, 3, 0.8, detect, sign, track, stride=4, offset=1)
+    table = st.shot_table.build(first, detect, st.assemble(48, H, W, first.pieces), state=st._state, phrase="person",
+                                pick=st.PICK_LARGEST, named_frame=True, named_value=True, cuts=[])
+    if table["gallery"]["frames"] != first.gallery_frames or len(table["gallery"]["signatures"]) != st.GALLERY_MOST:
+        problems.append(f"the shot table's gallery has frames {table['gallery']['frames']} and "
+                        f"{len(table['gallery']['signatures'])} signatures; the run kept {first.gallery_frames}")
+    handed = st.shot_table.gallery_from(st.shot_table.as_json(table))
+    if len(handed) != st.GALLERY_MOST or not all(abs(float((a[0] * b[0]).sum()) - 1.0) < 1e-4 for a, b in zip(handed, first.gallery)):
+        problems.append("a gallery read back from the shot table's JSON is not the one the run kept")
+    # the next load: the subject is hidden on its first 20 frames, and the OTHER person is the largest throughout
+    big, small = _box(10, 5, 90, 70), _box(100, 20, 120, 50)
+    sigs = [(big, torch.tensor([0.0, 1.0, 0.0])), (small, torch.tensor([1.0, 0.0, 0.0]))]
+    def later(with_subject):
+        tracked = []
+        def detect(f: int):
+            people = [big] + ([small] if with_subject and f >= 20 else [])
+            return torch.stack(people, dim=0), [0.9] * len(people)
+        def sign(_frame: int, mask: torch.Tensor):
+            return next(v for m, v in sigs if torch.equal(m, mask))
+        def track(start: int, end: int, seed: int, mask: torch.Tensor):
+            tracked.append((start, end, seed, "subject" if torch.equal(mask, small) else "other"))
+            return mask[None].repeat(end - start, 1, 1)
+        return detect, sign, track, tracked
+    detect, sign, track, tracked = later(True)
+    got = st.follow(48, [], st.PICK_LARGEST, None, None, detect, sign, track, stride=4, offset=1, gallery=handed)
+    if tracked != [(0, 48, 20, "subject")] or got.pick_frame != 20 or got.gallery_given != st.GALLERY_MOST:
+        problems.append(f"with the earlier run's gallery handed in: tracked {tracked}, pick frame {got.pick_frame}; the other "
+                        "person is alone and the largest on the probe frame and must be refused, and the subject is picked "
+                        "on frame 20, the first frame looked at that shows them")
+    said = st.report(got, [], st.PICK_LARGEST, "person", False, False, 1.0)
+    if "chosen as the subject an earlier run handed in: similarity 1.00" not in said or "earlier frame(s) refused, the best of them 0.00" not in said:
+        problems.append(f"the report does not say the pick came from the handed-in gallery and what was refused: {said!r}")
+    detect, sign, track, tracked = later(True)
+    got = st.follow(48, [], st.PICK_LARGEST, None, None, detect, sign, track, stride=4, offset=1)
+    if tracked != [(0, 48, 1, "other")]:
+        problems.append(f"the control: with no gallery the pick rule takes the largest person on the probe frame, {tracked}; "
+                        "if it does not, the hand-over case above proves nothing")
+    detect, sign, track, tracked = later(False)
+    got = st.follow(48, [], st.PICK_LARGEST, None, None, detect, sign, track, stride=4, offset=1, gallery=handed)
+    if tracked or got.pick_frame is not None or float(st.assemble(48, H, W, got.pieces).sum()):
+        problems.append(f"the subject is not in the load at all: tracked {tracked}; with a gallery handed in nobody is picked "
+                        "and every mask is empty, where the pick rule would have taken the other person")
+    if "is the subject an earlier run handed in (the best scored 0.00" not in st.report(got, [], st.PICK_LARGEST, "person", False, False, 1.0):
+        problems.append("the report does not say nobody matched the handed-in subject, with the best score seen")
+    for bad, need in (("{}", "carries no gallery"), ("/no/such/file_shots.json", "no shot table at"), ("{not json", "is not a shot table")):
+        try:
+            st.shot_table.gallery_from(bad)
+        except ValueError as error:
+            if need not in str(error):
+                problems.append(f"gallery_from({bad!r}) raised {error!r}, which does not say {need!r}")
+        else:
+            problems.append(f"gallery_from({bad!r}) was accepted")
+
+    frames_of = st.gallery_frames(torch.stack([_box(0, 0, 4, 4) if f % 3 else torch.zeros((H, W)) for f in range(40)], dim=0), 5)
+    if len(frames_of) != 5 or any(f % 3 == 0 for f in frames_of) or frames_of[0] != 1 or frames_of[-1] != 38:
+        problems.append(f"gallery_frames gave {frames_of}: five frames that carry a mask, from the first (1) to the last (38)")
+    # the smallest and the largest mask are in the gallery, wherever in the run they fall
+    sized = torch.stack([_box(0, 0, 2, 2) if f == 7 else _box(0, 0, 60, 60) if f == 22 else _box(0, 0, 10, 10) for f in range(40)], dim=0)
+    frames_of = st.gallery_frames(sized, 5)
+    if len(frames_of) != 5 or 7 not in frames_of or 22 not in frames_of or frames_of[0] != 0 or frames_of[-1] != 39:
+        problems.append(f"gallery_frames gave {frames_of} for a run whose mask is smallest on frame 7 and largest on 22: both "
+                        "belong in it, with the run's first and last frame")
+
+    runs = st.empty_runs(torch.stack([_box(0, 0, 4, 4) if f in (2, 3, 7) else torch.zeros((H, W)) for f in range(9)], dim=0))
+    if runs != [(0, 2), (4, 7), (8, 9)]:
+        problems.append(f"empty_runs gave {runs} for a mask on frames 2, 3 and 7 of 9, not [(0, 2), (4, 7), (8, 9)]")
+
+
 def check_headless_vote(problems):
     """Nothing named: a thing the detector takes for a person does not win the pick by owning the longest shot."""
     # the shape of the one-person clip's first window (bench/results/2026-10-06_subject_track_defaults.md): the
@@ -740,9 +1002,12 @@ def check_schema(problems):
         problems.append("the node is an output node: core would run the tracker on every queue, kept mask or not")
     if not isinstance(getattr(st.MiniMaxH3SubjectTrack, "MASK_VERSION", None), int):
         problems.append("the node declares no integer MASK_VERSION, so a kept mask would survive a change to how it is made")
-    last = schema.inputs[-1]
-    if last.id != "corrections" or getattr(last, "default", None) != "" or not last.tooltip or not getattr(last, "multiline", False):
-        problems.append("`corrections` is not the node's last input, a multi-line text that is empty by default, with a tooltip")
+    fix, last = schema.inputs[-2], schema.inputs[-1]
+    if fix.id != "corrections" or getattr(fix, "default", None) != "" or not fix.tooltip or not getattr(fix, "multiline", False):
+        problems.append("`corrections` is not the node's last input but one, a multi-line text that is empty by default, with a tooltip")
+    # appended after it, so a graph saved before it keeps every widget where it was
+    if last.id != "subject_from" or getattr(last, "default", None) != "" or not last.tooltip or not getattr(last, "optional", False):
+        problems.append("`subject_from` is not the node's last input, an optional text that is empty by default, with a tooltip")
     sel = st._selection({"match": st.AT_VALUE, "match_threshold": 0.5}, "match", "match_threshold")
     if sel != (st.AT_VALUE, 0.5) or st._selection(st.AUTOMATIC, "match", "match_threshold") != (st.AUTOMATIC, None):
         problems.append("a DynamicCombo's nested dict, or a bare selection, is not read as the choice and its value")
@@ -751,14 +1016,15 @@ def check_schema(problems):
 def main() -> int:
     problems: list[str] = []
     for check in (check_cuts, check_borders, check_ranges, check_counted, check_choose, check_signature, check_follow, check_corrections,
-                  check_automatic, check_alone, check_headless_vote, check_two_places, check_empty, check_schema):
+                  check_automatic, check_alone, check_regain, check_headless_vote, check_two_places, check_empty, check_schema):
         check(problems)
     for p in problems:
         print(f"FAIL  {p}")
     if not problems:
         print("ok    the subject track finds a cut and not a lighting change, covers every frame once, picks by the "
               "rule, follows the subject and nobody else across shots, takes a correction by the tile's numbers, "
-              "leaves absent shots empty, and declares what it asks SAM as inputs")
+              "finds a subject again that the track let go inside a shot and takes nobody else for them, leaves "
+              "absent shots empty, and declares what it asks SAM as inputs")
     return 1 if problems else 0
 
 

@@ -47,6 +47,23 @@ off a real result and not off rows typed for the purpose.
   shipped_graphs_wire_the_table  every shipped graph whose Masked Source
                                  takes the tracker's mask also takes its
                                  table, from the output the schema names.
+  gaps_are_listed                inside a shot the subject is in, the frames
+                                 the mask leaves empty are listed as runs, in
+                                 the JSON and the text; a shot with no
+                                 subject lists none, since `on_screen` says
+                                 it. A track the tracker seeded again inside
+                                 a shot is listed with where it let go, where
+                                 it was found and what it scored, and so is
+                                 every frame probed after the loss. Delete
+                                 and a gap in a mask is something a person
+                                 finds in the render.
+  gallery_travels_in_the_table   the subject as the picked shot's track
+                                 showed them is in the table, survives JSON,
+                                 and reads back as the signatures the run
+                                 kept; a table without one, a missing file
+                                 and text that is no table are refused by
+                                 name, because handing in nothing would be
+                                 today's pick rule in silence.
   tracker_emits_the_table        the Subject Track declares the table as its
                                  last output, after mask, preview, report.
                                  Skipped until the tracker carries it.
@@ -177,6 +194,63 @@ def on_screen_is_counted():
     assert whole["shots"][0]["frames_with_subject"] == 8, whole["shots"][0]
     assert cut["shots"][0]["frames_with_subject"] == 4 and cut["shots"][0]["on_screen"] is True, cut["shots"][0]
     assert whole["shots"][2]["frames_with_subject"] == 8, "a subject who enters late is tracked back to the shot's start"
+
+
+def gaps_are_listed():
+    def drop_first_four(mask):
+        mask = mask.clone()
+        mask[0:4] = 0
+        return mask
+    whole, *_ = _run()
+    cut, *_ = _run(drop_first_four)
+    assert all(row["frames_without_subject"] == [] for row in whole["shots"]), [r["frames_without_subject"] for r in whole["shots"]]
+    assert cut["shots"][0]["frames_without_subject"] == [[0, 3]], cut["shots"][0]["frames_without_subject"]
+    assert cut["shots"][1]["on_screen"] is False and cut["shots"][1]["frames_without_subject"] == [], \
+        "a shot with no subject at all lists its whole length as a gap; `on_screen` already says it"
+    assert "4 of 8 frames; none on 0-3 |" in tbl.as_text(cut), tbl.as_text(cut)
+    assert "none on" not in tbl.as_text(whole), "a shot with no gap names one"
+    # a track seeded again inside its shot: the tracker's own result on a world where it lets go
+    hidden = lambda f: 20 <= f < 24
+    _subject, detect, sign, track, _calls = T._lost_world(lambda f: not hidden(f))
+    found = st.follow(48, [], st.PICK_LARGEST, 3, 0.8, detect, sign, track, stride=4, offset=1)
+    table = tbl.build(found, detect, st.assemble(48, H, W, found.pieces), state=st._state, phrase="person",
+                      pick=st.PICK_LARGEST, named_frame=True, named_value=True, cuts=[])
+    row = table["shots"][0]
+    assert row["frames_without_subject"] == [[20, 23]] and row["frames_with_subject"] == 44, row
+    assert row["regained"] == [{"lost_from_frame": 20, "seed_frame": 24, "detections": 2, "similarity": 1.0, "next_person": 0.0}], row["regained"]
+    assert [p["frame"] for p in row["probes_after_a_loss"]] == [20, 24] and row["probes_after_a_loss"][0]["best"] == 0.0, row["probes_after_a_loss"]
+    assert row["gallery_frames"] == found.shots[0].gallery and len(row["gallery_frames"]) == st.GALLERY_MOST
+    assert json.loads(tbl.as_json(table)) == table, "a table with a regain does not survive JSON"
+
+
+def gallery_travels_in_the_table():
+    table, found, _detect, _boxes = _run()
+    gallery = table["gallery"]
+    assert gallery["frames"] == found.gallery_frames and gallery["frames"], gallery["frames"]
+    assert len(gallery["signatures"]) == len(found.gallery) and gallery["handed_in"] == 0 and gallery["pick_probes"] == []
+    back = tbl.gallery_of(json.loads(tbl.as_json(table)))
+    assert len(back) == len(found.gallery)
+    for mine, theirs in zip(back, found.gallery):
+        views = st._views(theirs)
+        assert len(mine) == len(views)
+        for a, b in zip(mine, views):
+            assert (a is None) == (b is None)
+            assert a is None or float((a - b).abs().max()) < 1e-4, "a signature read back is not the one the run kept"
+    assert len(tbl.gallery_from(tbl.as_json(table))) == len(found.gallery)
+    with tempfile.TemporaryDirectory() as folder:
+        path = Path(folder) / "run_00001_shots.json"
+        path.write_text(tbl.as_json(table))
+        assert len(tbl.gallery_from(str(path))) == len(found.gallery), "a saved shot table's gallery is not read from its path"
+    bare = dict(table)
+    del bare["gallery"]
+    for bad, need in ((json.dumps(bare), "carries no gallery"), ("/no/such/run_shots.json", "no shot table at"), ("{not json", "is not a shot table")):
+        try:
+            tbl.gallery_from(bad)
+        except ValueError as error:
+            assert need in str(error), f"gallery_from refused {bad[:30]!r} without saying {need!r}: {error}"
+        else:
+            raise AssertionError(f"gallery_from accepted {bad[:30]!r}")
+    assert tbl.gallery_of(bare) == [], "a table written before the gallery reads as having one"
 
 
 def every_row_has_the_slots():
@@ -318,7 +392,8 @@ def tracker_emits_the_table():
 def main() -> int:
     torch.set_grad_enabled(False)
     for fn in (numbering_is_left_to_right, rows_cover_the_clip, subject_number_names_the_mask,
-               absent_shot_says_so, on_screen_is_counted, every_row_has_the_slots,
+               absent_shot_says_so, on_screen_is_counted, gaps_are_listed, gallery_travels_in_the_table,
+               every_row_has_the_slots,
                text_says_what_json_says, labels_sit_on_their_outlines, save_node_writes_three_files,
                kept_table_is_written_beside_a_render, shipped_graphs_wire_the_table,
                tracker_emits_the_table):

@@ -165,6 +165,18 @@ def _why(shot, state: str, match: float, pick: str, phrase: str, named_frame: bo
     return f"up to {shot.seen} detection(s), none that could be compared"
 
 
+def _runs(flags: list[bool], first: int) -> list[list[int]]:
+    """The runs of True in `flags` as [first frame, last frame], numbered from `first`."""
+    runs, start = [], None
+    for i, v in enumerate(list(flags) + [False]):
+        if v and start is None:
+            start = i
+        elif not v and start is not None:
+            runs.append([first + start, first + i - 1])
+            start = None
+    return runs
+
+
 def build(found, detect: Callable[[int], tuple[torch.Tensor, list[float]]], mask: torch.Tensor, *,
           state: Callable[[object], str], phrase: str, pick: str, named_frame: bool, named_value: bool,
           cuts: list[int]) -> dict:
@@ -193,6 +205,9 @@ def build(found, detect: Callable[[int], tuple[torch.Tensor, list[float]]], mask
         taken = shot.seed is not None
         candidate = person_number(masks, shot.index)
         with_subject = int(present[shot.start:shot.end].sum())
+        # inside a shot the subject is in, the frames the mask leaves empty: a track let go and not found again,
+        # or a subject out of view. Empty for a shot with no subject at all, which `on_screen` already says.
+        without = _runs((~present[shot.start:shot.end]).tolist(), int(shot.start)) if with_subject else []
         rows.append({
             "shot": number,
             "first_frame": int(shot.start),
@@ -213,6 +228,15 @@ def build(found, detect: Callable[[int], tuple[torch.Tensor, list[float]]], mask
             "corrected": str(getattr(shot, "corrected", "") or ""),
             "on_screen": with_subject > 0,
             "frames_with_subject": with_subject,
+            "frames_without_subject": without,
+            # each time the tracker seeded its track again inside the shot; a tracker without that has no such field
+            "regained": [{"lost_from_frame": int(a), "seed_frame": int(f), "detections": int(n),
+                          "similarity": round(float(score), 3), "next_person": None if second < 0 else round(float(second), 3)}
+                         for a, f, n, score, second in getattr(shot, "regained", [])],
+            "probes_after_a_loss": [{"frame": int(f), "detections": int(n), "best": round(float(best), 3),
+                                     "next_person": None if second < 0 else round(float(second), 3)}
+                                    for f, n, best, second in getattr(shot, "probes", [])],
+            "gallery_frames": [int(f) for f in getattr(shot, "gallery", [])],
             "caption": "",
         })
     return {
@@ -229,7 +253,51 @@ def build(found, detect: Callable[[int], tuple[torch.Tensor, list[float]]], mask
         "cuts": [int(c) for c in cuts],
         "numbering": NUMBERING,
         "shots": rows,
+        # the subject as the picked shot's own track showed them, for a later run to recognise them by
+        # (`gallery_of`): the frames, and per frame one signature per place compared, null where there was none
+        "gallery": {"frames": [int(f) for f in getattr(found, "gallery_frames", [])],
+                    "signatures": [[None if v is None else [round(float(x), 5) for x in v.flatten().tolist()] for v in views]
+                                   for views in getattr(found, "gallery", [])],
+                    "handed_in": int(getattr(found, "gallery_given", 0)),
+                    "pick_probes": [{"frame": int(f), "detections": int(n), "best": round(float(best), 3),
+                                     "next_person": None if second < 0 else round(float(second), 3)}
+                                    for f, n, best, second in getattr(found, "pick_probes", [])]},
     }
+
+
+def gallery_of(table: dict) -> list[tuple]:
+    """The gallery a shot table carries, as the tracker takes it: one tuple of signatures per frame. Empty when it has none."""
+    out = []
+    for views in (table.get("gallery") or {}).get("signatures") or []:
+        out.append(tuple(None if v is None else torch.tensor(v, dtype=torch.float32) for v in views))
+    return out
+
+
+def gallery_from(source: str) -> list[tuple]:
+    """The gallery of an earlier run, from its shot table: the table's JSON itself, or the path of a `_shots.json`.
+
+    A path that is not absolute is looked for under ComfyUI's output folder, where the Save Shot Table node and
+    the song node write it. A table with no gallery, one written before the tracker kept one or by a run that
+    picked nobody, is refused by name: handing in nothing would silently be today's pick rule.
+    """
+    text = str(source or "").strip()
+    where = "the shot table wired in"
+    if not text.startswith("{"):
+        path = text if os.path.isabs(text) else os.path.join(folder_paths.get_output_directory(), text)
+        if not os.path.isfile(path):
+            raise ValueError(f"subject_from: no shot table at {path}")
+        where = path
+        with open(path, encoding="utf-8") as handle:
+            text = handle.read()
+    try:
+        table = json.loads(text)
+    except json.JSONDecodeError as error:
+        raise ValueError(f"subject_from: {where} is not a shot table's JSON ({error})") from None
+    out = gallery_of(table) if isinstance(table, dict) else []
+    if not out:
+        raise ValueError(f"subject_from: {where} carries no gallery of the subject. It was written before the Subject "
+                         "Track kept one, or by a run that picked nobody: run that Subject Track again")
+    return out
 
 
 def as_json(table: dict) -> str:
@@ -257,6 +325,10 @@ def as_text(table: dict) -> str:
         if row["corrected"]:
             who += f" (corrected: {row['corrected']})"
         seen = (f"{row['frames_with_subject']} of {row['frames']} frames" if row["on_screen"] else "no")
+        gaps = row.get("frames_without_subject") or []
+        if gaps:
+            seen += "; none on " + ", ".join(str(a) if a == b else f"{a}-{b}" for a, b in gaps[:6]) + (
+                f", and {len(gaps) - 6} more runs" if len(gaps) > 6 else "")
         lines.append(
             f"| {row['shot']} | {row['first_frame']}-{row['last_frame']} | {row['shown_frame']} | "
             f"{len(row['people'])} | {who} | {seen} | {subject['why']} | {row['caption']} |")

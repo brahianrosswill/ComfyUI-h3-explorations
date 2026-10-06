@@ -93,6 +93,34 @@ core's `initial_mask` path and has none of the three behaviours above.
    too; naming a value for `match` turns the rule off.
 8. Tracking: from the seed frame forward to the shot's end and backward to its
    start, each a tracker call with the seed mask as `initial_mask`.
+9. A subject let go inside a shot is looked for again (`regain`). A tracker
+   call is seeded once and never detects again, so when it lets the subject
+   go, every later frame of the shot is empty however long the subject is
+   back in view. Measured on one clip on the card, a single shot with no
+   cut: the mask ended on frame 680 of 1,065 and never came back. So a run of frames the track leaves empty is treated
+   is probed every `PROBE_STRIDE` frames from the side that is tracked, and
+   each person a probed frame shows is compared with the subject AS THIS
+   SHOT'S OWN TRACK SHOWED THEM: a gallery of up to `GALLERY_MOST`
+   signatures taken under the tracked mask on frames spread over the part
+   of the shot that was tracked (`gallery_of`). A person's score is their
+   best plain similarity to the gallery, the lower of the two places a
+   person is compared (step 6). The first frame whose best person scores at
+   or above `REGAIN_SAME`, and at least `REGAIN_MARGIN` above the next
+   person on that frame, seeds the track again, run both ways over the
+   empty run. Nobody is taken on a rule about being alone. Measured on one
+   clip on the card, 2026-10-06, with a phrase that returns one detection a
+   frame: after the track let go, that one detection was a region at the
+   frame's edge with no head on four of the eight frames looked at, two
+   edge regions on one, nothing on one, and the subject on three; and on a
+   later frame it was a person whose mask shares no pixel with the
+   subject's track. What is still
+   empty afterwards stays empty, and the report and the shot table name
+   those frames and what every probe scored. Its limits, plainly: the
+   gallery is what the first track held, so a first pick on the wrong
+   person is not put right by this; a subject who comes back looking
+   unlike every gallery frame (turned away, far smaller) is not found; and
+   a subject who has really left costs a probe every `PROBE_STRIDE` frames
+   to the shot's end. A shot corrected by hand is not searched.
 
 **How far the matching can be trusted.** SAM 3's trunk is trained to say what
 a thing is, not who, so people in the same clothes score close together. On
@@ -191,6 +219,31 @@ PROBE_OFFSET = 4
 #: Frames between probes of a shot whose first look found no match.
 #: Reasoned: half a second at the pack's frame rate.
 PROBE_STRIDE = 12
+#: A run of frames a track leaves empty inside its shot is searched when it is
+#: at least this long. Reasoned: the search looks every `PROBE_STRIDE` frames,
+#: so a shorter run may hold no frame to look at.
+REGAIN_MIN_RUN = PROBE_STRIDE
+#: The most times one shot's track is seeded again. Reasoned: a bound on the
+#: cost of a shot whose track keeps letting go; not measured.
+REGAIN_MOST = 8
+#: The most frames of a shot's own track kept as the gallery a person found
+#: after a loss is compared with. Reasoned: enough to hold the turns and sizes
+#: of one shot, at one trunk pass and one head detection each; not measured.
+GALLERY_MOST = 8
+#: A person is the subject at or above this plain similarity to a gallery of
+#: the subject. Measured on one clip on the card, 2026-10-06, one shot with no
+#: cut (`bench/results/2026-10-06_subject_track_regain_and_handover.md`): the
+#: subject found again after the track let go scored 0.89 to 0.93 against the
+#: shot's own gallery, at a quarter of the size the gallery's frames show, and
+#: 0.95 to 0.97 where the gallery was close in time and size; another person
+#: the detector returned for the phrase scored 0.86, and detections at the
+#: frame's edge 0.70 to 0.74. The line sits between 0.86 and 0.89: three
+#: hundredths on one clip, which is thin. At `PLAIN_SAME` (0.93), where this
+#: started, the subject was refused after the loss.
+REGAIN_SAME = 0.88
+#: ...and at least this far above the next person on the same frame. FIRST
+#: ROUGH PASS: reasoned, not measured.
+REGAIN_MARGIN = 0.03
 #: Automatic matching, similarity relative to the pick frame's other people:
 #: nothing below this is the subject. Measured on one clip on the card, the
 #: band segment with five others on the pick frame: the lead 0.92 and 0.94,
@@ -493,6 +546,13 @@ class Shot:
     width: int = 0               # columns the mask on `shown` covers
     seen: int = 0                # the most detections on any frame looked at
     corrected: str = ""          # what a correction said of this shot: `person 2`, `none`, or nothing
+    # each time the track was seeded again inside the shot: (the first frame it had left empty, the frame it was
+    # seeded on, detections there, similarity to the shot's gallery, the next person's similarity or -1)
+    regained: list[tuple[int, int, int, float, float]] = field(default_factory=list)
+    searched: list[tuple[int, int]] = field(default_factory=list)   # empty runs searched with nothing found: (first, last)
+    # every frame probed after a loss: (frame, detections, best similarity to the gallery, the next person's or -1)
+    probes: list[tuple[int, int, float, float]] = field(default_factory=list)
+    gallery: list[int] = field(default_factory=list)                # the frames the gallery was taken on
 
 
 @dataclass
@@ -508,6 +568,12 @@ class Followed:
     views: int = 1                   # places a person is compared: head and shoulders, and the head
     views_used: int = 1              # of those, how many the subject has on the pick frame
     passed_over: list[tuple[int, int]] = field(default_factory=list)   # (shot, frame): a favourite with no head, not counted for the pick
+    # the subject as the picked shot's own track showed them: the frames, and each frame's signature per place compared
+    gallery_frames: list[int] = field(default_factory=list)
+    gallery: list[tuple] = field(default_factory=list)
+    gallery_given: int = 0           # signatures handed in from an earlier run, which then chose the pick
+    # with a gallery handed in, every frame looked at for the pick: (frame, detections, best similarity, the next person's or -1)
+    pick_probes: list[tuple[int, int, float, float]] = field(default_factory=list)
 
 
 _CORRECTION = re.compile(r"^shot\s*(\d+)\s*[:=]?\s*(?:person\s*(\d+)|(none))$", re.IGNORECASE)
@@ -577,12 +643,73 @@ def main_subject(shots: list[Shot], pick: str, detect, sign,
     return shot.probe, i
 
 
+def empty_runs(piece: torch.Tensor) -> list[tuple[int, int]]:
+    """The runs of frames a tracked piece [n, H, W] leaves empty, as (first, one past the last) in the piece's own numbers."""
+    on = (piece > 0.5).flatten(1).any(dim=1).tolist()
+    runs, first = [], None
+    for i, v in enumerate(on + [True]):
+        if not v and first is None:
+            first = i
+        elif v and first is not None:
+            runs.append((first, i))
+            first = None
+    return runs
+
+
+def gallery_frames(piece: torch.Tensor, most: int = GALLERY_MOST) -> list[int]:
+    """Up to `most` frames of a tracked piece that carry a mask; the piece's own numbers.
+
+    Spread evenly over the frames that carry one, and the frames where the mask is smallest and largest are among
+    them, each in place of the evenly spread frame nearest to it: on the card a subject found again scored lower
+    the further his size was from the gallery's (0.89 to 0.91 at a quarter of it, 0.95 to 0.97 close to it), so
+    the gallery should hold the sizes the track saw and not only its times. Measured on one clip, 2026-10-06; on
+    that clip the smallest frame was the last one, was in the gallery anyway and was never the best match.
+    """
+    area = (piece > 0.5).flatten(1).sum(dim=1)
+    on = (area > 0).nonzero().flatten().tolist()
+    if len(on) <= most:
+        return on
+    chosen = sorted({on[round(k * (len(on) - 1) / (most - 1))] for k in range(most)})
+    for extreme in (min(on, key=lambda f: (int(area[f]), f)), max(on, key=lambda f: (int(area[f]), -f))):
+        if extreme not in chosen:
+            nearest = min(chosen, key=lambda f: abs(f - extreme))
+            chosen[chosen.index(nearest)] = extreme
+    return sorted(set(chosen))
+
+
+def gallery_scores(found: torch.Tensor, frame: int, gallery: list[tuple], sign) -> list[float]:
+    """Each detection's plain similarity to a gallery of the subject: its best over the gallery, the lower of the places compared.
+
+    The places compared are the ones every gallery entry has. A detection that lacks one of them scores -1: with no
+    head where the subject always had one, it is likelier a thing or a person cut off by the frame than the subject.
+    """
+    held = [k for k in range(len(gallery[0])) if all(g[k] is not None for g in gallery)] if gallery else []
+    out = []
+    for m in found:
+        views = _views(sign(frame, m))
+        if not held or any(k >= len(views) or views[k] is None for k in held):
+            out.append(-1.0)
+            continue
+        out.append(min(max(similarity(g[k], views[k]) for g in gallery) for k in held))
+    return out
+
+
+def clear_best(sims: list[float]) -> tuple[int | None, float, float]:
+    """Which detection is the subject by `gallery_scores`, with its score and the next person's: at or above
+    `REGAIN_SAME` and `REGAIN_MARGIN` clear of the next. None when nobody is."""
+    order = sorted(range(len(sims)), key=lambda k: -sims[k])
+    best = sims[order[0]] if order else -1.0
+    second = sims[order[1]] if len(order) > 1 else -1.0
+    taken = order[0] if order and best >= REGAIN_SAME and best - second >= REGAIN_MARGIN else None
+    return taken, float(best), float(second)
+
+
 def follow(n_frames: int, cuts: list[int], pick: str, pick_frame: int | None, match_threshold: float | None,
            detect: Callable[[int], tuple[torch.Tensor, list[float]]],
            sign: Callable[[int, torch.Tensor], torch.Tensor | None],
            track: Callable[[int, int, int, torch.Tensor], torch.Tensor],
            stride: int = PROBE_STRIDE, offset: int = PROBE_OFFSET,
-           corrections: dict[int, int | None] | None = None) -> Followed:
+           corrections: dict[int, int | None] | None = None, gallery: list[tuple] | None = None) -> Followed:
     """The subject's mask per frame, shot by shot. The model work is in three callables.
 
     `detect(frame)` returns that frame's detections, [N, H, W] and their
@@ -600,6 +727,14 @@ def follow(n_frames: int, cuts: list[int], pick: str, pick_frame: int | None, ma
     without them, so each shot's `shown` frame is the one its tile shows
     either way; a corrected shot is then seeded on that frame from the
     person of that number there, or left empty.
+
+    `gallery` is the subject as an earlier run's track showed them
+    (`Followed.gallery` of that run, through the shot table). With one and
+    no frame named, the pick is not made by `pick`'s rule: each shot's probe
+    frame and then every `stride`-th frame is looked at, and the first frame
+    with a person who is the subject by the gallery (`clear_best`) is the
+    pick. When nobody is, nothing is picked and every mask is empty: a gap
+    is the honest answer where the rule would take somebody else.
     """
     corrections = dict(corrections or {})
     shots = [Shot(s, e, probe=min(s + max(int(offset), 0), e - 1)) for s, e in shot_ranges(n_frames, cuts)]
@@ -610,7 +745,20 @@ def follow(n_frames: int, cuts: list[int], pick: str, pick_frame: int | None, ma
             raise ValueError(f"corrections: shot {number} is named, and the clip has {len(shots)} shot(s)")
     by_hand = {id(shots[int(number) - 1]) for number in corrections}   # tracked once, from the corrected seed
     result = Followed(shots)
-    if pick_frame is None:
+    given = list(gallery or [])
+    result.gallery_given = len(given)
+    if pick_frame is None and given:
+        entry = None
+        probes = [s.probe for s in shots]
+        step = max(int(stride), 1)
+        for f in probes + [f for f in range(0, int(n_frames), step) if f not in set(probes)]:
+            found, _ = detect(f)
+            which, best, second = clear_best(gallery_scores(found, f, given, sign))
+            result.pick_probes.append((int(f), int(found.shape[0]), best, second))
+            if which is not None:
+                entry = (int(f), which)
+                break
+    elif pick_frame is None:
         entry = main_subject(shots, pick, detect, sign, result.passed_over)
     else:
         if not 0 <= int(pick_frame) < int(n_frames):
@@ -643,22 +791,66 @@ def follow(n_frames: int, cuts: list[int], pick: str, pick_frame: int | None, ma
             return None
         return min(similarity(reference[k], relative(views[k], centres[k])) for k in use)
 
-    def look(shot: Shot, f: int) -> tuple[float, int | None, int]:
-        """Frame `f`'s best similarity, which detection has it and how many there have a head; the shot remembers its best."""
+    def judge(f: int) -> tuple[float, int | None, int, torch.Tensor]:
+        """Frame `f`'s best similarity, which detection has it, how many there have a head, and the detections."""
         found, _ = detect(f)
         sigs = [sign(f, m) for m in found]
         sims = [alike(v) for v in sigs]
         heads = sum(1 for v in sigs if _has_head(v))
-        shot.seen = max(shot.seen, len(sims))
         able = [k for k, v in enumerate(sims) if v is not None]
         if not able:
-            result.looks.append((shots.index(shot) + 1, f, len(sims), -1.0))
-            return -1.0, None, heads
+            return -1.0, None, heads, found
         i = max(able, key=lambda k: sims[k])
-        result.looks.append((shots.index(shot) + 1, f, len(sims), sims[i]))
-        if sims[i] > shot.best:
-            shot.best, shot.shown, shot.index, shot.candidates, shot.width = sims[i], f, i, len(sims), _width(found[i])
-        return sims[i], i, heads
+        return sims[i], i, heads, found
+
+    def look(shot: Shot, f: int) -> tuple[float, int | None, int]:
+        """`judge` on frame `f` for a shot being placed; the shot remembers its best."""
+        score, i, heads, found = judge(f)
+        shot.seen = max(shot.seen, int(found.shape[0]))
+        result.looks.append((shots.index(shot) + 1, f, int(found.shape[0]), score))
+        if i is not None and score > shot.best:
+            shot.best, shot.shown, shot.index = score, f, i
+            shot.candidates, shot.width = int(found.shape[0]), _width(found[i])
+        return score, i, heads
+
+    def regain(shot: Shot) -> None:
+        """Look again for a subject the track let go inside `shot`, and seed the track again where they are found.
+
+        A run of empty frames is probed from the side that is tracked: forward after a loss, backward into a
+        run the shot opens on. Each person on a probed frame is compared with the shot's gallery, the subject
+        as this shot's own track showed them; the first frame whose best person is at or above `REGAIN_SAME`
+        and `REGAIN_MARGIN` clear of the next person there is taken. What the shot's tile shows is not moved.
+        """
+        piece = result.pieces.get(shot.start)
+        if piece is None:
+            return
+        step, done, known = max(int(stride), 1), set(), None
+        while len(shot.regained) < REGAIN_MOST:
+            runs = [(a + shot.start, b + shot.start) for a, b in empty_runs(piece)
+                    if b - a >= REGAIN_MIN_RUN and a + shot.start not in done]
+            if not runs:
+                break
+            if known is None:
+                # what the track held before anything was seeded again, with whatever an earlier run handed in
+                if shot.picked and result.gallery:
+                    shot.gallery, own = list(result.gallery_frames), list(result.gallery)
+                else:
+                    shot.gallery = [f + shot.start for f in gallery_frames(piece)]
+                    own = [_views(sign(f, (piece[f - shot.start] > 0.5).to(torch.float32))) for f in shot.gallery]
+                known = given + own
+            a, b = runs[0]
+            done.add(a)
+            frames = range(a, b, step) if a > shot.start else range(b - 1, a - 1, -step)
+            for f in frames:
+                found, _ = detect(f)
+                which, best, second = clear_best(gallery_scores(found, f, known, sign))
+                shot.probes.append((f, int(found.shape[0]), best, second))
+                if which is not None:
+                    piece[a - shot.start:b - shot.start] = track(a, b, f, found[which])
+                    shot.regained.append((a, f, int(found.shape[0]), best, second))
+                    break
+            else:
+                shot.searched.append((a, b - 1))
 
     rest = [s for s in shots if not s.start <= frame0 < s.end]
     first = {id(s): look(s, s.probe) for s in rest}
@@ -672,7 +864,11 @@ def follow(n_frames: int, cuts: list[int], pick: str, pick_frame: int | None, ma
             shot.picked, shot.seed, shot.shown, shot.index = True, frame0, frame0, which
             shot.best, shot.candidates, shot.width = 1.0, int(masks0.shape[0]), result.pick_width
             if id(shot) not in by_hand:
-                result.pieces[shot.start] = track(shot.start, shot.end, frame0, picked)
+                piece = result.pieces[shot.start] = track(shot.start, shot.end, frame0, picked)
+                # the subject as this track shows them, for a loss later in the shot and for the run after this one
+                result.gallery_frames = [f + shot.start for f in gallery_frames(piece)]
+                result.gallery = [_views(sign(f, (piece[f - shot.start] > 0.5).to(torch.float32))) for f in result.gallery_frames]
+                regain(shot)
             continue
         taken = lone = None        # (similarity, frame, detection)
         later = [f for f in range(shot.start, shot.end, max(int(stride), 1)) if f != shot.probe]
@@ -695,6 +891,7 @@ def follow(n_frames: int, cuts: list[int], pick: str, pick_frame: int | None, ma
         shot.candidates, shot.width = int(seeds.shape[0]), _width(seeds[i])
         if id(shot) not in by_hand:
             result.pieces[shot.start] = track(shot.start, shot.end, seed, seeds[i])
+            regain(shot)
     _correct(result, corrections, detect, track)
     return result
 
@@ -736,6 +933,19 @@ def _state(shot: Shot) -> str:
     return "taken (only person)" if shot.lone else "taken"
 
 
+def _regained(shot: Shot) -> str:
+    """The report's words for a track seeded again inside its shot, and for the runs searched in vain; empty when neither."""
+    said = [f"let go on frame {a} and found again on frame {f} (similarity {score:.2f} to the shot's own track, "
+            + (f"the next person there {second:.2f}, " if second >= 0 else "") + f"{n} detection(s) there)"
+            for a, f, n, score, second in shot.regained]
+    if shot.searched:
+        best = max((p[2] for p in shot.probes), default=-1.0)
+        said.append("searched and not found on frames " + ", ".join(f"{a}-{b}" for a, b in shot.searched)
+                    + (f" (the best person on any frame looked at scored {best:.2f}; the line is {REGAIN_SAME:.2f})"
+                       if best >= 0 else " (no detection on any frame looked at)"))
+    return "".join("; " + text for text in said)
+
+
 def _framing(shot: Shot, found: Followed) -> str:
     """Words for a shot framed much closer or wider than the pick frame, where the top third is another part of a person."""
     if not shot.width or not found.pick_width:
@@ -756,11 +966,23 @@ def report(found: Followed, cuts: list[int], pick: str, phrase: str, named_frame
     lines = [f"{len(shots)} shot(s); cuts at frame(s) {cuts if cuts else 'none'}"]
     if cutting:
         lines.append(cutting)
-    if found.pick_frame is None:
+    if found.pick_frame is None and found.gallery_given:
+        best = max((p[2] for p in found.pick_probes), default=-1.0)
+        lines.append(f"nobody matching `{phrase}` on the {len(found.pick_probes)} frame(s) looked at is the subject an earlier run "
+                     f"handed in (the best scored {best:.2f}; the line is {REGAIN_SAME:.2f}): no subject, every mask is empty")
+    elif found.pick_frame is None:
         lines.append(f"nothing matched `{phrase}` to pick from: no subject, every mask is empty")
     else:
         how = "the frame named" if named_frame else "chosen automatically: the person that rule favours for most of the clip"
-        lines.append(f"subject: the {pick} `{phrase}` on frame {found.pick_frame} ({how})")
+        if found.gallery_given and not named_frame:
+            taken = next((p for p in found.pick_probes if p[0] == found.pick_frame), None)
+            passed = [p for p in found.pick_probes if p[0] != found.pick_frame]
+            how = (f"chosen as the subject an earlier run handed in: similarity {taken[2]:.2f} to its {found.gallery_given} "
+                   f"signature(s)" + (f", the next person there {taken[3]:.2f}" if taken[3] >= 0 else "")
+                   + (f"; {len(passed)} earlier frame(s) refused, the best of them {max(p[2] for p in passed):.2f}" if passed else ""))
+            lines.append(f"subject: the `{phrase}` on frame {found.pick_frame} ({how})")
+        else:
+            lines.append(f"subject: the {pick} `{phrase}` on frame {found.pick_frame} ({how})")
         if found.passed_over:
             lines.append("not counted for the pick, no head was found on them: the "
                          + f"{pick} `{phrase}` of " + ", ".join(f"shot {n} (frame {f})" for n, f in found.passed_over))
@@ -784,11 +1006,11 @@ def report(found: Followed, cuts: list[int], pick: str, phrase: str, named_frame
             lines.append(f"{span}: corrected by hand, {s.corrected} of the {s.candidates} detection(s) on frame {s.shown}"
                          if s.seed is not None else f"{span}: corrected by hand, nobody taken")
         elif s.picked:
-            lines.append(f"{span}: the picked shot, {s.candidates} detection(s) on frame {s.seed}")
+            lines.append(f"{span}: the picked shot, {s.candidates} detection(s) on frame {s.seed}{_regained(s)}")
         elif s.seed is not None:
             how = "as the only person there, " if s.lone else ""
             lines.append(f"{span}: taken on frame {s.seed}, {how}similarity {s.best:.2f}, "
-                         f"{s.candidates} detection(s) there{_framing(s, found) if s.lone else ''}")
+                         f"{s.candidates} detection(s) there{_framing(s, found) if s.lone else ''}{_regained(s)}")
         else:
             why = (f"best similarity {s.best:.2f} on frame {s.shown}{_framing(s, found)}" if s.best >= 0 else
                    "no detection" if not s.seen else f"up to {s.seen} detection(s), none that could be compared")
@@ -940,7 +1162,7 @@ class MiniMaxH3SubjectTrack(io.ComfyNode):
     #: hold on the head as well, and the lone person has to have a head. 7: a
     #: shot's favourite with no head is not counted for the automatic pick. 8:
     #: the cut score leaves a clip's flat borders out.
-    MASK_VERSION = 8
+    MASK_VERSION = 9
 
     @classmethod
     def define_schema(cls):
@@ -1007,6 +1229,13 @@ class MiniMaxH3SubjectTrack(io.ComfyNode):
                                 tooltip=("Fixes a shot the node got wrong, one per line. `shot 3: person 2` takes "
                                          "person 2 of shot 3; `shot 3: none` leaves shot 3 alone. The shot's "
                                          "number and each person's number are the ones on the preview.")),
+                # appended 2026-10-06
+                io.String.Input("subject_from", default="", multiline=False, optional=True,
+                                tooltip=("Optional. Follows the same person as an earlier run did: the `shot_table` "
+                                         "output of that run's Subject Track wired here, or the path of the "
+                                         "`..._shots.json` it saved.\n\nThe person is then picked by how they looked "
+                                         "in that run, not by `pick`; if nobody here looks like them, nothing is "
+                                         "picked.\n\nFor a long clip rendered in pieces. Leave empty otherwise.")),
             ],
             outputs=[
                 io.Mask.Output(display_name="mask", tooltip="One mask per frame at the frames' size; empty where the subject is absent."),
@@ -1021,7 +1250,7 @@ class MiniMaxH3SubjectTrack(io.ComfyNode):
     @classmethod
     def execute(cls, frames, segmenter, segmenter_clip, pick_on, match, cuts, subject_phrase=SUBJECT_PHRASE,
                 pick=PICK_LARGEST, detection_threshold=DETECTION_THRESHOLD, max_people=MAX_PEOPLE,
-                head_phrase=HEAD_PHRASE, corrections="") -> io.NodeOutput:
+                head_phrase=HEAD_PHRASE, corrections="", subject_from="") -> io.NodeOutput:
         if frames.ndim != 4:
             raise ValueError(f"frames must be [N, H, W, C]; got {tuple(frames.shape)}")
         where, pick_frame = _selection(pick_on, "pick_on", "pick_frame")
@@ -1043,11 +1272,13 @@ class MiniMaxH3SubjectTrack(io.ComfyNode):
         cut_at = float(cut_threshold) if named_cut else auto_cuts(steps)
         found_cuts = find_cuts(steps, cut_at)
         by_hand = parse_corrections(corrections, len(shot_ranges(n, found_cuts)))
+        handed = shot_table.gallery_from(subject_from) if str(subject_from or "").strip() else None
         detect, sign, track = _sam_callables(segmenter, segmenter_clip, frames, subject_phrase, detection_threshold,
                                              int(max_people), head_phrase)
         with torch.no_grad():
             found = follow(n, found_cuts, pick, int(pick_frame) if named_frame else None,
-                           float(match_threshold) if named_value else None, detect, sign, track, corrections=by_hand)
+                           float(match_threshold) if named_value else None, detect, sign, track, corrections=by_hand,
+                           gallery=handed)
         mask = assemble(n, h, w, found.pieces)
         text = report(found, found_cuts, pick, subject_phrase, named_frame, named_value, time.perf_counter() - began,
                       cutting="\n".join(filter(None, [cuts_line(steps, cut_at, named_cut), borders_line(seen, w, h)])))

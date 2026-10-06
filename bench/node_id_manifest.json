@@ -586,7 +586,8 @@
       "detection_threshold",
       "max_people",
       "head_phrase",
-      "corrections"
+      "corrections",
+      "subject_from"
     ],
     "node_id": "MiniMaxH3SubjectTrack",
     "outputs": [
