@@ -21,7 +21,12 @@ one:
                              continued on them, against `Llama2_.forward` on
                              the whole sequence. Two vision spans; a
                              label-only span ahead of a vision span; a
-                             one-token prompt. Not bit-equal at these sizes
+                             one-token prompt; a still's span ahead of a span
+                             shaped like a video reference, which core
+                             tokenizes as several vision blocks with a
+                             timestamp's text between them
+                             (`MiniMaxH3Tokenizer.tokenize_with_weights`).
+                             Not bit-equal at these sizes
                              (the last bits move with the shape, as on the
                              real encoder), so the bound is `SMALL_MODEL_TOL`
                              on the largest difference over the largest value.
@@ -125,13 +130,14 @@ def small_model_cases(enc, check):
 
     def run(span_lengths, blocks, prompt, shift=0):
         """`blocks[i]` is span i's vision block as (index in the span, grid h,
-        grid w) or None. Returns (largest difference over largest value per
-        part, tags equal)."""
+        grid w), a list of them for a span that holds several, or None.
+        Returns (largest difference over largest value per part, tags
+        equal)."""
         starts = [sum(span_lengths[:i]) for i in range(len(span_lengths))]
         total = sum(span_lengths) + prompt
         embeds = torch.randn(1, total, hidden)
-        local = [vision(*b) if b else None for b in blocks]
-        whole = [dict(v, index=v["index"] + st) for v, st in zip(local, starts) if v]
+        local = [[vision(*one) for one in (b if isinstance(b, list) else [b])] if b else [] for b in blocks]
+        whole = [dict(v, index=v["index"] + st) for per_span, st in zip(local, starts) for v in per_span]
         with torch.inference_mode():
             if whole:
                 position_ids, visual, deepstack = Qwen3VL.build_image_inputs(None, embeds, whole)
@@ -141,7 +147,7 @@ def small_model_cases(enc, check):
                       visual_pos_masks=visual, deepstack_embeds=deepstack, dtype=torch.float32)[0]
             spans, images = [], []
             for st, n, v in zip(starts, span_lengths, local):
-                span = enc._encode_span(Embedded(embeds[:, st:st + n].clone(), [v] if v else []),
+                span = enc._encode_span(Embedded(embeds[:, st:st + n].clone(), v),
                                         lm, [(0, 1.0)], f"s{st}", st, images, list(spans), device)
                 spans.append(span)
                 images = images + [dict(e, index=e["index"] + st) for e in span.images]
@@ -162,7 +168,11 @@ def small_model_cases(enc, check):
     for name, args in (
             ("two vision spans and a prompt", ([11, 11], [(4, 4, 6), (4, 6, 4)], 9)),
             ("a label-only span ahead of a vision span", ([5, 13], [None, (4, 4, 8)], 7)),
-            ("a one-token prompt", ([5, 13], [None, (4, 4, 8)], 1))):
+            ("a one-token prompt", ([5, 13], [None, (4, 4, 8)], 1)),
+            # the second span is a video reference's shape: label and timestamp text, then
+            # three vision blocks with text between them
+            ("a still's span, then a span of three vision blocks with text between, and a prompt",
+             ([11, 26], [(4, 4, 6), [(3, 4, 6), (11, 4, 6), (19, 4, 6)]], 9))):
         ratios, tags = run(*args)
         check(f"{name}: every span and the prompt within the bound, tags equal",
               max(ratios) < SMALL_MODEL_TOL and tags, f"largest {max(ratios):.1e}")
