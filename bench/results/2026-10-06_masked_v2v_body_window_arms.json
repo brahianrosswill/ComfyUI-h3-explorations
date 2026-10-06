@@ -1,0 +1,1750 @@
+{
+ "what": "The arms on one window of thrill_2160.mkv on 2026-10-06 (the lane's fourth clip): what each changed, what the song node printed, and four measurements beside them (a mask check, frame-to-frame change by zone, a three-way cache control, an island in the part model's labels). No prompt text, no subject text, nothing about what the clip shows.",
+ "record": "bench/results/2026-10-06_masked_v2v_body_window_arms.md",
+ "assembled_by": "mrop, from the run folder of the session that ran the arms (mrteal_jr, closed): the runner's rows, the saved reports of each prompt, their flicker and mask-check files, and the arm graphs; the cache control and the island were re-derived from the files on disk. The assembling scripts are under internal/claude/2026-10-06_mrop/record/ (untracked).",
+ "clip": {
+  "file": "thrill_2160.mkv",
+  "width": 2880,
+  "height": 2160,
+  "fps": 24,
+  "codec": "vp9"
+ },
+ "still": "f_img_outside_nomark.png",
+ "window": {
+  "name": "body",
+  "start_second": 67.0,
+  "pick": "largest, on named frame 12",
+  "load_160": {
+   "frames_loaded": 160,
+   "shots": 1,
+   "corrections": null
+  },
+  "load_360": {
+   "frames_loaded": 360,
+   "cuts_at_frames": [
+    237,
+    280,
+    347
+   ],
+   "corrections": [
+    "shot 2: person 3",
+    "shot 3: person 6"
+   ],
+   "note": "a correction's numbers belong to one load: another start, cap or width numbers people differently"
+  }
+ },
+ "seconds_are_soft": "other sessions' sweeps and builds ran on the processors during several arms, and arms after the first of a stretch read encodes kept from an earlier prompt (the `kept_from_an_earlier_prompt_lines` field); the lane's timing record is bench/results/2026-10-06_masked_render_time_breakdown.md",
+ "chains": {
+  "base": {
+   "name": "ref2va, undistilled",
+   "unet": "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
+   "evaluations": 12,
+   "evaluations_from": "h3_config.MASKED_MOTION_STEPS",
+   "graph": "workflows/daily/h3_mask_ref2va_motion_api.json"
+  },
+  "fast": {
+   "name": "fl2va with its PDD8 bake",
+   "unet": "minimax_h3_fl2va_pruned_int8_convrot_pdd8_baked_s1.safetensors",
+   "evaluations": 8,
+   "evaluations_from": "h3_config.PDD_STEPS",
+   "graph": "workflows/daily/h3_mask_pdd8_api.json"
+  }
+ },
+ "servers": [
+  {
+   "id": "armed_1130",
+   "started": "11:30:51",
+   "until": "12:48",
+   "code": "the tracker at MASK_VERSION 7, the song node at bbe80949",
+   "armed": "H3_TELEMETRY only"
+  },
+  {
+   "id": "unarmed_1248",
+   "started": "12:48:33",
+   "until": "14:58",
+   "code": "c0d1e520; the tracker at MASK_VERSION 8",
+   "armed": "no"
+  },
+  {
+   "id": "unarmed_1458",
+   "started": "14:58:25",
+   "until": null,
+   "code": "28dcb8d4 plus the then uncommitted frame cap and join change",
+   "armed": "no"
+  }
+ ],
+ "arms": [
+  {
+   "label": "choose_body_base",
+   "group": "141",
+   "one_change": "the base of the eight variations: margin 64, the subject a noun",
+   "control": null,
+   "chain": "base",
+   "window_frames": 141,
+   "frames_loaded": 160,
+   "canvas": "1024x768",
+   "replace": "whole subject",
+   "parts": null,
+   "grow_pixels": 64,
+   "motion_reference": "subject only",
+   "prompt": "the prompt node, a noun, picture_gives `what the Masked Source replaces`",
+   "reuse_windows": true,
+   "reuse_mask": true,
+   "seed": 730451892,
+   "server": "armed_1130",
+   "queued": "2026-10-06T12:34:39",
+   "rows_file": "internal/claude/2026-10-06_mrteal_jr/run/choose.jsonl",
+   "graph": "internal/claude/2026-10-06_mrteal_jr/graphs/motion_thrill.json",
+   "graph_sha256_16": "917abf3bde94cc0b",
+   "prompt_id": "fccfb7b3-f2da-4401-a52b-6b93c1e5d416",
+   "regenerate_percent": 31.8,
+   "composite_kept_percent": 84.0,
+   "frames_written": 141,
+   "kept_from_an_earlier_prompt_lines": 0,
+   "song_node_seconds": 132,
+   "stages": {
+    "sampling": 98.6,
+    "source encode": 14.5,
+    "conditioning": 7.1,
+    "decode": 5.4,
+    "composite": 4.7,
+    "write": 1.4,
+    "join and mux": 0.2,
+    "track encode": 0.1,
+    "window setup": 0.0
+   },
+   "runner_seconds": 139.2,
+   "sampling_seconds_per_evaluation": 8.22
+  },
+  {
+   "label": "diag_body_base_rerun",
+   "group": "141",
+   "one_change": "choose_body_base again on a later server and later code",
+   "control": "choose_body_base",
+   "chain": "base",
+   "window_frames": 141,
+   "frames_loaded": 160,
+   "canvas": "1024x768",
+   "replace": "whole subject",
+   "parts": null,
+   "grow_pixels": 64,
+   "motion_reference": "subject only",
+   "prompt": "the prompt node, a noun, picture_gives `what the Masked Source replaces`",
+   "reuse_windows": true,
+   "reuse_mask": true,
+   "seed": 730451892,
+   "server": "unarmed_1248",
+   "queued": "2026-10-06T13:05:05",
+   "rows_file": "internal/claude/2026-10-06_mrteal_jr/run/diag.jsonl",
+   "graph": "internal/claude/2026-10-06_mrteal_jr/graphs/motion_thrill.json",
+   "graph_sha256_16": "917abf3bde94cc0b",
+   "prompt_id": "182c0c49-d6d2-4fae-8b68-c61605d51c12",
+   "regenerate_percent": 31.8,
+   "composite_kept_percent": 84.0,
+   "frames_written": 141,
+   "kept_from_an_earlier_prompt_lines": 0,
+   "song_node_seconds": 131,
+   "stages": {
+    "sampling": 98.5,
+    "source encode": 14.4,
+    "conditioning": 6.1,
+    "decode": 5.3,
+    "composite": 4.4,
+    "write": 1.4,
+    "motion reference": 1.0,
+    "join and mux": 0.2,
+    "track encode": 0.1,
+    "window setup": 0.0
+   },
+   "runner_seconds": 150.2,
+   "sampling_seconds_per_evaluation": 8.21
+  },
+  {
+   "label": "diag_body_orig1344",
+   "group": "141",
+   "one_change": "the same window at the shipped 1344x768 canvas, the 4:3 source centre-cropped",
+   "control": "choose_body_base",
+   "chain": "base",
+   "window_frames": 141,
+   "frames_loaded": 160,
+   "canvas": "1344x768",
+   "replace": "whole subject",
+   "parts": null,
+   "grow_pixels": 64,
+   "motion_reference": "subject only",
+   "prompt": "the prompt node, a noun, picture_gives `what the Masked Source replaces`",
+   "reuse_windows": true,
+   "reuse_mask": true,
+   "seed": 730451892,
+   "server": "unarmed_1248",
+   "queued": "2026-10-06T13:02:35",
+   "rows_file": "internal/claude/2026-10-06_mrteal_jr/run/diag.jsonl",
+   "graph": "internal/claude/2026-10-06_mrteal_jr/graphs/motion_thrill.json",
+   "graph_sha256_16": "917abf3bde94cc0b",
+   "prompt_id": "4d974c75-e5f9-4042-b027-35a32abbf009",
+   "regenerate_percent": 31.1,
+   "composite_kept_percent": 88.0,
+   "frames_written": 141,
+   "kept_from_an_earlier_prompt_lines": 0,
+   "song_node_seconds": 179,
+   "stages": {
+    "sampling": 136.7,
+    "source encode": 20.0,
+    "decode": 7.3,
+    "conditioning": 6.6,
+    "composite": 5.4,
+    "write": 1.8,
+    "motion reference": 1.4,
+    "join and mux": 0.2,
+    "track encode": 0.1,
+    "window setup": 0.0
+   },
+   "runner_seconds": 205.1,
+   "sampling_seconds_per_evaluation": 11.39
+  },
+  {
+   "label": "body_p1",
+   "group": "141",
+   "one_change": "a typed text in place of the prompt node's",
+   "control": "choose_body_base",
+   "chain": "base",
+   "window_frames": 141,
+   "frames_loaded": 160,
+   "canvas": "1024x768",
+   "replace": "whole subject",
+   "parts": null,
+   "grow_pixels": 64,
+   "motion_reference": "subject only",
+   "prompt": "typed: p1_described.txt",
+   "reuse_windows": true,
+   "reuse_mask": true,
+   "seed": 730451892,
+   "server": "unarmed_1248",
+   "queued": "2026-10-06T13:12:26",
+   "rows_file": "internal/claude/2026-10-06_mrteal_jr/run/body_prompts.jsonl",
+   "graph": "internal/claude/2026-10-06_mrteal_jr/graphs/body_p1.json",
+   "graph_sha256_16": "81e74923a0ce0be3",
+   "prompt_id": "27801aec-8b9a-4213-b58b-13d0c18f63df",
+   "regenerate_percent": 31.8,
+   "composite_kept_percent": 84.0,
+   "frames_written": 141,
+   "kept_from_an_earlier_prompt_lines": 0,
+   "song_node_seconds": 131,
+   "stages": {
+    "sampling": 98.1,
+    "source encode": 14.4,
+    "conditioning": 6.0,
+    "decode": 5.4,
+    "composite": 4.4,
+    "write": 1.4,
+    "motion reference": 1.1,
+    "join and mux": 0.2,
+    "track encode": 0.1,
+    "window setup": 0.0
+   },
+   "runner_seconds": 135.8,
+   "sampling_seconds_per_evaluation": 8.17
+  },
+  {
+   "label": "body_p2",
+   "group": "141",
+   "one_change": "a typed text",
+   "control": "choose_body_base",
+   "chain": "base",
+   "window_frames": 141,
+   "frames_loaded": 160,
+   "canvas": "1024x768",
+   "replace": "whole subject",
+   "parts": null,
+   "grow_pixels": 64,
+   "motion_reference": "subject only",
+   "prompt": "typed: p2_described_rest_from_video.txt",
+   "reuse_windows": true,
+   "reuse_mask": true,
+   "seed": 730451892,
+   "server": "unarmed_1248",
+   "queued": "2026-10-06T13:16:26",
+   "rows_file": "internal/claude/2026-10-06_mrteal_jr/run/body_prompts.jsonl",
+   "graph": "internal/claude/2026-10-06_mrteal_jr/graphs/body_p2.json",
+   "graph_sha256_16": "2d89076ab42c90bf",
+   "prompt_id": "d48f62fa-83f5-4aee-9c53-a271f03f6f95",
+   "regenerate_percent": 31.8,
+   "composite_kept_percent": 84.0,
+   "frames_written": 141,
+   "kept_from_an_earlier_prompt_lines": 1,
+   "song_node_seconds": 119,
+   "stages": {
+    "sampling": 99.0,
+    "conditioning": 6.1,
+    "decode": 5.4,
+    "composite": 4.6,
+    "write": 1.5,
+    "motion reference": 1.2,
+    "source encode": 0.5,
+    "join and mux": 0.2,
+    "track encode": 0.1,
+    "window setup": 0.0
+   },
+   "runner_seconds": 239.4,
+   "sampling_seconds_per_evaluation": 8.25
+  },
+  {
+   "label": "body_p3",
+   "group": "141",
+   "one_change": "a typed text",
+   "control": "choose_body_base",
+   "chain": "base",
+   "window_frames": 141,
+   "frames_loaded": 160,
+   "canvas": "1024x768",
+   "replace": "whole subject",
+   "parts": null,
+   "grow_pixels": 64,
+   "motion_reference": "subject only",
+   "prompt": "typed: p3_partially_preserved_named.txt",
+   "reuse_windows": true,
+   "reuse_mask": true,
+   "seed": 730451892,
+   "server": "unarmed_1248",
+   "queued": "2026-10-06T13:18:25",
+   "rows_file": "internal/claude/2026-10-06_mrteal_jr/run/body_prompts.jsonl",
+   "graph": "internal/claude/2026-10-06_mrteal_jr/graphs/body_p3.json",
+   "graph_sha256_16": "47f47bc25f2c7031",
+   "prompt_id": "af7dba77-9e72-4bf1-a989-3f2936ca2020",
+   "regenerate_percent": 31.8,
+   "composite_kept_percent": 84.0,
+   "frames_written": 141,
+   "kept_from_an_earlier_prompt_lines": 1,
+   "song_node_seconds": 118,
+   "stages": {
+    "sampling": 98.8,
+    "conditioning": 6.1,
+    "decode": 5.4,
+    "composite": 4.5,
+    "write": 1.5,
+    "motion reference": 1.2,
+    "source encode": 0.5,
+    "join and mux": 0.2,
+    "track encode": 0.1,
+    "window setup": 0.0
+   },
+   "runner_seconds": 118.9,
+   "sampling_seconds_per_evaluation": 8.23
+  },
+  {
+   "label": "body_p4",
+   "group": "141",
+   "one_change": "a typed text, and the motion reference as the whole frame",
+   "control": "choose_body_base",
+   "chain": "base",
+   "window_frames": 141,
+   "frames_loaded": 160,
+   "canvas": "1024x768",
+   "replace": "whole subject",
+   "parts": null,
+   "grow_pixels": 64,
+   "motion_reference": "whole frame",
+   "prompt": "typed: p4_video_edit_whole_frame.txt",
+   "reuse_windows": true,
+   "reuse_mask": true,
+   "seed": 730451892,
+   "server": "unarmed_1248",
+   "queued": "2026-10-06T13:14:26",
+   "rows_file": "internal/claude/2026-10-06_mrteal_jr/run/body_prompts_p4.jsonl",
+   "graph": "internal/claude/2026-10-06_mrteal_jr/graphs/body_p4.json",
+   "graph_sha256_16": "0451def0de8359c6",
+   "prompt_id": "c98a5f63-5a5e-4142-a993-78e8d311083b",
+   "regenerate_percent": 31.8,
+   "composite_kept_percent": 84.0,
+   "frames_written": 141,
+   "kept_from_an_earlier_prompt_lines": 1,
+   "song_node_seconds": 118,
+   "stages": {
+    "sampling": 98.9,
+    "conditioning": 6.0,
+    "decode": 5.4,
+    "composite": 4.6,
+    "write": 1.5,
+    "motion reference": 0.6,
+    "source encode": 0.5,
+    "join and mux": 0.2,
+    "track encode": 0.1,
+    "window setup": 0.0
+   },
+   "runner_seconds": 224.2,
+   "sampling_seconds_per_evaluation": 8.24
+  },
+  {
+   "label": "body_p5",
+   "group": "141",
+   "one_change": "a typed text",
+   "control": "choose_body_base",
+   "chain": "base",
+   "window_frames": 141,
+   "frames_loaded": 160,
+   "canvas": "1024x768",
+   "replace": "whole subject",
+   "parts": null,
+   "grow_pixels": 64,
+   "motion_reference": "subject only",
+   "prompt": "typed: p5_fully_preserved_named.txt",
+   "reuse_windows": true,
+   "reuse_mask": true,
+   "seed": 730451892,
+   "server": "unarmed_1248",
+   "queued": "2026-10-06T13:26:28",
+   "rows_file": "internal/claude/2026-10-06_mrteal_jr/run/body_prompts_p56.jsonl",
+   "graph": "internal/claude/2026-10-06_mrteal_jr/graphs/body_p5.json",
+   "graph_sha256_16": "f975e213ba135db9",
+   "prompt_id": "02a32a0c-e9a5-4425-8c0b-50e534882d38",
+   "regenerate_percent": 31.8,
+   "composite_kept_percent": 84.0,
+   "frames_written": 141,
+   "kept_from_an_earlier_prompt_lines": 0,
+   "song_node_seconds": 134,
+   "stages": {
+    "sampling": 99.5,
+    "source encode": 14.5,
+    "conditioning": 6.7,
+    "decode": 5.4,
+    "composite": 4.6,
+    "write": 1.4,
+    "motion reference": 1.2,
+    "join and mux": 0.2,
+    "track encode": 0.1,
+    "window setup": 0.0
+   },
+   "runner_seconds": 138.9,
+   "sampling_seconds_per_evaluation": 8.29
+  },
+  {
+   "label": "body_p6",
+   "group": "141",
+   "one_change": "a typed text",
+   "control": "choose_body_base",
+   "chain": "base",
+   "window_frames": 141,
+   "frames_loaded": 160,
+   "canvas": "1024x768",
+   "replace": "whole subject",
+   "parts": null,
+   "grow_pixels": 64,
+   "motion_reference": "subject only",
+   "prompt": "typed: p6_named_whole_figure_proportions.txt",
+   "reuse_windows": true,
+   "reuse_mask": true,
+   "seed": 730451892,
+   "server": "unarmed_1248",
+   "queued": "2026-10-06T13:28:28",
+   "rows_file": "internal/claude/2026-10-06_mrteal_jr/run/body_prompts_p56.jsonl",
+   "graph": "internal/claude/2026-10-06_mrteal_jr/graphs/body_p6.json",
+   "graph_sha256_16": "244228737c7648be",
+   "prompt_id": "6e77d804-1e35-4f57-bc7f-f674982dd2c1",
+   "regenerate_percent": 31.8,
+   "composite_kept_percent": 84.0,
+   "frames_written": 141,
+   "kept_from_an_earlier_prompt_lines": 1,
+   "song_node_seconds": 119,
+   "stages": {
+    "sampling": 99.2,
+    "conditioning": 6.2,
+    "decode": 5.4,
+    "composite": 4.5,
+    "write": 1.4,
+    "motion reference": 1.1,
+    "source encode": 0.5,
+    "join and mux": 0.2,
+    "track encode": 0.1,
+    "window setup": 0.0
+   },
+   "runner_seconds": 119.4,
+   "sampling_seconds_per_evaluation": 8.27
+  },
+  {
+   "label": "body_pdd8",
+   "group": "141",
+   "one_change": "the fast chain as it ships: no motion reference",
+   "control": "choose_body_base",
+   "chain": "fast",
+   "window_frames": 141,
+   "frames_loaded": 160,
+   "canvas": "1024x768",
+   "replace": "whole subject",
+   "parts": null,
+   "grow_pixels": 64,
+   "motion_reference": "none",
+   "prompt": "the prompt node, a noun, picture_gives `what the Masked Source replaces`",
+   "reuse_windows": true,
+   "reuse_mask": true,
+   "seed": 730451892,
+   "server": "unarmed_1248",
+   "queued": "2026-10-06T13:31:29",
+   "rows_file": "internal/claude/2026-10-06_mrteal_jr/run/body_pdd8_p7.jsonl",
+   "graph": "workflows/daily/h3_mask_pdd8_api.json",
+   "graph_sha256_16": "c115b152296396bc",
+   "prompt_id": "1a7ff1da-c2aa-4936-bd2f-e57885d807ea",
+   "regenerate_percent": 31.8,
+   "composite_kept_percent": 87.0,
+   "frames_written": 141,
+   "kept_from_an_earlier_prompt_lines": 1,
+   "song_node_seconds": 82,
+   "stages": {
+    "sampling": 65.7,
+    "decode": 5.3,
+    "conditioning": 4.9,
+    "composite": 4.1,
+    "write": 1.4,
+    "source encode": 0.5,
+    "join and mux": 0.2,
+    "track encode": 0.1,
+    "window setup": 0.0
+   },
+   "runner_seconds": 84.5,
+   "sampling_seconds_per_evaluation": 8.21
+  },
+  {
+   "label": "body_p7",
+   "group": "141",
+   "one_change": "the part node's hair, face and neck, upper clothing and hands as the region, and a typed text for it",
+   "control": "choose_body_base",
+   "chain": "base",
+   "window_frames": 141,
+   "frames_loaded": 160,
+   "canvas": "1024x768",
+   "replace": "the wired parts",
+   "parts": [
+    "hair",
+    "face_and_neck",
+    "upper_clothing",
+    "hands"
+   ],
+   "grow_pixels": 64,
+   "motion_reference": "subject only",
+   "prompt": "typed: p7_upper_body_parts.txt",
+   "reuse_windows": true,
+   "reuse_mask": true,
+   "seed": 730451892,
+   "server": "unarmed_1248",
+   "queued": "2026-10-06T13:33:56",
+   "rows_file": "internal/claude/2026-10-06_mrteal_jr/run/body_pdd8_p7.jsonl",
+   "graph": "internal/claude/2026-10-06_mrteal_jr/graphs/body_p7.json",
+   "graph_sha256_16": "f221a2ec4fe291dc",
+   "prompt_id": "e771326f-510d-4186-8496-566e69c7a681",
+   "regenerate_percent": 28.6,
+   "composite_kept_percent": 81.0,
+   "frames_written": 141,
+   "kept_from_an_earlier_prompt_lines": 1,
+   "song_node_seconds": 119,
+   "stages": {
+    "sampling": 99.0,
+    "conditioning": 7.6,
+    "decode": 5.3,
+    "composite": 4.3,
+    "write": 1.5,
+    "motion reference": 1.0,
+    "source encode": 0.4,
+    "join and mux": 0.2,
+    "track encode": 0.1,
+    "window setup": 0.0
+   },
+   "runner_seconds": 146.8,
+   "sampling_seconds_per_evaluation": 8.25
+  },
+  {
+   "label": "body_345",
+   "group": "345",
+   "one_change": "the base chain as it ships at the full window",
+   "control": null,
+   "chain": "base",
+   "window_frames": 345,
+   "frames_loaded": 360,
+   "canvas": "1024x768",
+   "replace": "whole subject",
+   "parts": null,
+   "grow_pixels": 64,
+   "motion_reference": "subject only",
+   "prompt": "the prompt node, a noun, picture_gives `what the Masked Source replaces`",
+   "reuse_windows": true,
+   "reuse_mask": true,
+   "seed": 730451892,
+   "server": "unarmed_1248",
+   "queued": "2026-10-06T13:51:03",
+   "rows_file": "internal/claude/2026-10-06_mrteal_jr/run/body345_render.jsonl",
+   "graph": "internal/claude/2026-10-06_mrteal_jr/graphs/motion_thrill.json",
+   "graph_sha256_16": "917abf3bde94cc0b",
+   "prompt_id": "42c9042a-5df2-432b-96d9-09c4fc72881b",
+   "regenerate_percent": 35.7,
+   "composite_kept_percent": 84.0,
+   "frames_written": 345,
+   "kept_from_an_earlier_prompt_lines": 0,
+   "song_node_seconds": 391,
+   "stages": {
+    "sampling": 314.9,
+    "source encode": 33.5,
+    "decode": 12.9,
+    "conditioning": 12.8,
+    "composite": 10.6,
+    "write": 2.9,
+    "motion reference": 2.7,
+    "join and mux": 0.4,
+    "track encode": 0.2,
+    "window setup": 0.0
+   },
+   "runner_seconds": 392.2,
+   "sampling_seconds_per_evaluation": 26.24
+  },
+  {
+   "label": "body_345_p7",
+   "group": "345",
+   "one_change": "body_p7's recipe at the full window",
+   "control": "body_345",
+   "chain": "base",
+   "window_frames": 345,
+   "frames_loaded": 360,
+   "canvas": "1024x768",
+   "replace": "the wired parts",
+   "parts": [
+    "hair",
+    "face_and_neck",
+    "upper_clothing",
+    "hands"
+   ],
+   "grow_pixels": 64,
+   "motion_reference": "subject only",
+   "prompt": "typed: p7_upper_body_parts.txt",
+   "reuse_windows": true,
+   "reuse_mask": true,
+   "seed": 730451892,
+   "server": "unarmed_1248",
+   "queued": "2026-10-06T14:05:36",
+   "rows_file": "internal/claude/2026-10-06_mrteal_jr/run/body345_b.jsonl",
+   "graph": "internal/claude/2026-10-06_mrteal_jr/graphs/body_345_p7.json",
+   "graph_sha256_16": "8c73b16382ac3d72",
+   "prompt_id": "a4aac4d6-ed6e-4c61-8f34-69e595383a9c",
+   "regenerate_percent": 33.3,
+   "composite_kept_percent": 82.0,
+   "frames_written": 345,
+   "kept_from_an_earlier_prompt_lines": 1,
+   "song_node_seconds": 361,
+   "stages": {
+    "sampling": 316.4,
+    "decode": 13.0,
+    "conditioning": 12.3,
+    "composite": 11.7,
+    "write": 3.4,
+    "motion reference": 2.7,
+    "source encode": 1.1,
+    "join and mux": 0.4,
+    "track encode": 0.3,
+    "window setup": 0.0
+   },
+   "runner_seconds": 517.8,
+   "sampling_seconds_per_evaluation": 26.37
+  },
+  {
+   "label": "body_345_pdd8",
+   "group": "345",
+   "one_change": "the fast chain as it ships",
+   "control": "body_345",
+   "chain": "fast",
+   "window_frames": 345,
+   "frames_loaded": 360,
+   "canvas": "1024x768",
+   "replace": "whole subject",
+   "parts": null,
+   "grow_pixels": 64,
+   "motion_reference": "none",
+   "prompt": "the prompt node, a noun, picture_gives `what the Masked Source replaces`",
+   "reuse_windows": true,
+   "reuse_mask": true,
+   "seed": 730451892,
+   "server": "unarmed_1248",
+   "queued": "2026-10-06T13:54:53",
+   "rows_file": "internal/claude/2026-10-06_mrteal_jr/run/body345_render.jsonl",
+   "graph": "workflows/daily/h3_mask_pdd8_api.json",
+   "graph_sha256_16": "c115b152296396bc",
+   "prompt_id": "0e4e883c-1a67-4c87-a6c7-152b06f34d5c",
+   "regenerate_percent": 35.7,
+   "composite_kept_percent": 87.0,
+   "frames_written": 345,
+   "kept_from_an_earlier_prompt_lines": 1,
+   "song_node_seconds": 228,
+   "stages": {
+    "sampling": 193.9,
+    "decode": 13.0,
+    "composite": 11.7,
+    "conditioning": 3.9,
+    "write": 3.4,
+    "source encode": 1.1,
+    "join and mux": 0.4,
+    "track encode": 0.2,
+    "window setup": 0.0
+   },
+   "runner_seconds": 230.6,
+   "sampling_seconds_per_evaluation": 24.24
+  },
+  {
+   "label": "body_345_pdd8_grow32",
+   "group": "345",
+   "one_change": "margin 32",
+   "control": "body_345_pdd8",
+   "chain": "fast",
+   "window_frames": 345,
+   "frames_loaded": 360,
+   "canvas": "1024x768",
+   "replace": "whole subject",
+   "parts": null,
+   "grow_pixels": 32,
+   "motion_reference": "none",
+   "prompt": "the prompt node, a noun, picture_gives `what the Masked Source replaces`",
+   "reuse_windows": true,
+   "reuse_mask": true,
+   "seed": 730451892,
+   "server": "unarmed_1248",
+   "queued": "2026-10-06T13:58:34",
+   "rows_file": "internal/claude/2026-10-06_mrteal_jr/run/body345_render.jsonl",
+   "graph": "workflows/daily/h3_mask_pdd8_api.json",
+   "graph_sha256_16": "c115b152296396bc",
+   "prompt_id": "75ccfb9e-fa4d-4f95-bfa1-e5b7afd510b9",
+   "regenerate_percent": 26.6,
+   "composite_kept_percent": 90.0,
+   "frames_written": 345,
+   "kept_from_an_earlier_prompt_lines": 3,
+   "song_node_seconds": 218,
+   "stages": {
+    "sampling": 189.7,
+    "decode": 12.9,
+    "composite": 10.3,
+    "write": 3.0,
+    "source encode": 1.1,
+    "join and mux": 0.4,
+    "track encode": 0.2,
+    "conditioning": 0.0,
+    "window setup": 0.0
+   },
+   "runner_seconds": 220.4,
+   "sampling_seconds_per_evaluation": 23.71
+  },
+  {
+   "label": "body_345_pdd8_grow16",
+   "group": "345",
+   "one_change": "margin 16",
+   "control": "body_345_pdd8",
+   "chain": "fast",
+   "window_frames": 345,
+   "frames_loaded": 360,
+   "canvas": "1024x768",
+   "replace": "whole subject",
+   "parts": null,
+   "grow_pixels": 16,
+   "motion_reference": "none",
+   "prompt": "the prompt node, a noun, picture_gives `what the Masked Source replaces`",
+   "reuse_windows": true,
+   "reuse_mask": true,
+   "seed": 730451892,
+   "server": "unarmed_1248",
+   "queued": "2026-10-06T14:09:23",
+   "rows_file": "internal/claude/2026-10-06_mrteal_jr/run/body345_render.jsonl",
+   "graph": "workflows/daily/h3_mask_pdd8_api.json",
+   "graph_sha256_16": "c115b152296396bc",
+   "prompt_id": "bd972f0f-4f66-426f-92cc-4fa2210ba60c",
+   "regenerate_percent": 22.1,
+   "composite_kept_percent": 91.0,
+   "frames_written": 345,
+   "kept_from_an_earlier_prompt_lines": 3,
+   "song_node_seconds": 223,
+   "stages": {
+    "sampling": 194.1,
+    "decode": 12.8,
+    "composite": 11.3,
+    "write": 2.8,
+    "source encode": 1.1,
+    "join and mux": 0.4,
+    "track encode": 0.3,
+    "conditioning": 0.0,
+    "window setup": 0.0
+   },
+   "runner_seconds": 648.7,
+   "sampling_seconds_per_evaluation": 24.26
+  },
+  {
+   "label": "body_345_pdd8_motion",
+   "group": "345",
+   "one_change": "the motion reference on (subject only)",
+   "control": "body_345_pdd8",
+   "chain": "fast",
+   "window_frames": 345,
+   "frames_loaded": 360,
+   "canvas": "1024x768",
+   "replace": "whole subject",
+   "parts": null,
+   "grow_pixels": 64,
+   "motion_reference": "subject only",
+   "prompt": "the prompt node, a noun, picture_gives `what the Masked Source replaces`",
+   "reuse_windows": true,
+   "reuse_mask": true,
+   "seed": 730451892,
+   "server": "unarmed_1248",
+   "queued": "2026-10-06T14:18:21",
+   "rows_file": "internal/claude/2026-10-06_mrteal_jr/run/body345_b.jsonl",
+   "graph": "workflows/daily/h3_mask_pdd8_api.json",
+   "graph_sha256_16": "c115b152296396bc",
+   "prompt_id": "64fe11df-1fc0-4e67-a222-1950ab87dc00",
+   "regenerate_percent": 35.7,
+   "composite_kept_percent": 87.0,
+   "frames_written": 345,
+   "kept_from_an_earlier_prompt_lines": 1,
+   "song_node_seconds": 252,
+   "stages": {
+    "sampling": 210.4,
+    "decode": 12.9,
+    "composite": 10.9,
+    "conditioning": 10.5,
+    "write": 3.1,
+    "motion reference": 2.7,
+    "source encode": 1.1,
+    "join and mux": 0.4,
+    "track encode": 0.2,
+    "window setup": 0.0
+   },
+   "runner_seconds": 765.1,
+   "sampling_seconds_per_evaluation": 26.3
+  },
+  {
+   "label": "body_345_pdd8_parts",
+   "group": "345, ladder rung b",
+   "one_change": "body_345_p7's parts on the fast chain, its text without the <Video 1> lines",
+   "control": "body_345_pdd8",
+   "chain": "fast",
+   "window_frames": 345,
+   "frames_loaded": 360,
+   "canvas": "1024x768",
+   "replace": "the wired parts",
+   "parts": [
+    "hair",
+    "face_and_neck",
+    "upper_clothing",
+    "hands"
+   ],
+   "grow_pixels": 64,
+   "motion_reference": "none",
+   "prompt": "typed: p7_fast_upper_body_parts_no_video.txt",
+   "reuse_windows": true,
+   "reuse_mask": true,
+   "seed": 730451892,
+   "server": "unarmed_1248",
+   "queued": "2026-10-06T14:14:06",
+   "rows_file": "internal/claude/2026-10-06_mrteal_jr/run/ladder.jsonl",
+   "graph": "internal/claude/2026-10-06_mrteal_jr/graphs/body_345_pdd8_parts.json",
+   "graph_sha256_16": "b83c3794f554917a",
+   "prompt_id": "07aa43c6-a4b7-4bd0-a0b6-304397400f93",
+   "regenerate_percent": 33.3,
+   "composite_kept_percent": 85.0,
+   "frames_written": 345,
+   "kept_from_an_earlier_prompt_lines": 1,
+   "song_node_seconds": 226,
+   "stages": {
+    "sampling": 190.8,
+    "decode": 13.2,
+    "composite": 10.6,
+    "conditioning": 6.7,
+    "write": 3.0,
+    "source encode": 1.2,
+    "join and mux": 0.4,
+    "track encode": 0.2,
+    "window setup": 0.0
+   },
+   "runner_seconds": 904.7,
+   "sampling_seconds_per_evaluation": 23.85
+  },
+  {
+   "label": "body_345_pdd8_parts_motion",
+   "group": "345",
+   "one_change": "the motion reference on, and the text with its <Video 1> lines",
+   "control": "body_345_pdd8_parts",
+   "chain": "fast",
+   "window_frames": 345,
+   "frames_loaded": 360,
+   "canvas": "1024x768",
+   "replace": "the wired parts",
+   "parts": [
+    "hair",
+    "face_and_neck",
+    "upper_clothing",
+    "hands"
+   ],
+   "grow_pixels": 64,
+   "motion_reference": "subject only",
+   "prompt": "typed: p7_upper_body_parts.txt",
+   "reuse_windows": true,
+   "reuse_mask": true,
+   "seed": 730451892,
+   "server": "unarmed_1248",
+   "queued": "2026-10-06T14:42:05",
+   "rows_file": "internal/claude/2026-10-06_mrteal_jr/run/parts_motion.jsonl",
+   "graph": "internal/claude/2026-10-06_mrteal_jr/graphs/body_345_pdd8_parts_motion.json",
+   "graph_sha256_16": "e37ecd78ce38e0b0",
+   "prompt_id": "4f809c19-5bc0-4a38-bb99-f701d321f9ff",
+   "regenerate_percent": 33.3,
+   "composite_kept_percent": 85.0,
+   "frames_written": 345,
+   "kept_from_an_earlier_prompt_lines": 1,
+   "song_node_seconds": 252,
+   "stages": {
+    "sampling": 210.0,
+    "decode": 12.9,
+    "composite": 10.5,
+    "conditioning": 10.4,
+    "write": 3.3,
+    "motion reference": 2.8,
+    "source encode": 1.1,
+    "join and mux": 0.4,
+    "track encode": 0.2,
+    "window setup": 0.0
+   },
+   "runner_seconds": 440.4,
+   "sampling_seconds_per_evaluation": 26.25
+  },
+  {
+   "label": "ladder_a_head",
+   "group": "345, ladder rung a",
+   "one_change": "the region is hair, face and neck",
+   "control": "body_345_pdd8_parts",
+   "chain": "fast",
+   "window_frames": 345,
+   "frames_loaded": 360,
+   "canvas": "1024x768",
+   "replace": "the wired parts",
+   "parts": [
+    "hair",
+    "face_and_neck"
+   ],
+   "grow_pixels": 64,
+   "motion_reference": "none",
+   "prompt": "the prompt node, a described subject (text not kept here), picture_gives `the head and hair`",
+   "reuse_windows": true,
+   "reuse_mask": true,
+   "seed": 730451892,
+   "server": "unarmed_1248",
+   "queued": "2026-10-06T14:27:28",
+   "rows_file": "internal/claude/2026-10-06_mrteal_jr/run/ladder.jsonl",
+   "graph": "internal/claude/2026-10-06_mrteal_jr/graphs/ladder_a_head.json",
+   "graph_sha256_16": "497f5632437fd8e6",
+   "prompt_id": "e331672d-921a-4861-b9e1-62d1d3a81e3e",
+   "regenerate_percent": 16.0,
+   "composite_kept_percent": 73.0,
+   "frames_written": 345,
+   "kept_from_an_earlier_prompt_lines": 1,
+   "song_node_seconds": 225,
+   "stages": {
+    "sampling": 190.5,
+    "decode": 12.9,
+    "composite": 10.5,
+    "conditioning": 6.7,
+    "write": 3.1,
+    "source encode": 1.1,
+    "join and mux": 0.4,
+    "track encode": 0.2,
+    "window setup": 0.0
+   },
+   "runner_seconds": 801.9,
+   "sampling_seconds_per_evaluation": 23.81
+  },
+  {
+   "label": "ladder_c_to_ankles",
+   "group": "345, ladder rung c",
+   "one_change": "the region adds lower clothing",
+   "control": "body_345_pdd8_parts",
+   "chain": "fast",
+   "window_frames": 345,
+   "frames_loaded": 360,
+   "canvas": "1024x768",
+   "replace": "the wired parts",
+   "parts": [
+    "hair",
+    "face_and_neck",
+    "upper_clothing",
+    "lower_clothing",
+    "hands"
+   ],
+   "grow_pixels": 64,
+   "motion_reference": "none",
+   "prompt": "typed: p8_body_to_ankles_parts.txt",
+   "reuse_windows": true,
+   "reuse_mask": true,
+   "seed": 730451892,
+   "server": "unarmed_1248",
+   "queued": "2026-10-06T14:32:12",
+   "rows_file": "internal/claude/2026-10-06_mrteal_jr/run/ladder.jsonl",
+   "graph": "internal/claude/2026-10-06_mrteal_jr/graphs/ladder_c_to_ankles.json",
+   "graph_sha256_16": "fdd248979e826694",
+   "prompt_id": "f17c2b35-a053-4728-b7ec-03c29fbed0fe",
+   "regenerate_percent": 35.6,
+   "composite_kept_percent": 87.0,
+   "frames_written": 345,
+   "kept_from_an_earlier_prompt_lines": 1,
+   "song_node_seconds": 225,
+   "stages": {
+    "sampling": 191.1,
+    "decode": 12.9,
+    "composite": 10.3,
+    "conditioning": 5.4,
+    "write": 3.2,
+    "source encode": 1.1,
+    "join and mux": 0.4,
+    "track encode": 0.2,
+    "window setup": 0.0
+   },
+   "runner_seconds": 283.9,
+   "sampling_seconds_per_evaluation": 23.89
+  },
+  {
+   "label": "ladder_d_every_class",
+   "group": "345, ladder rung d",
+   "one_change": "the region is every class of the part model",
+   "control": "body_345_pdd8_parts",
+   "chain": "fast",
+   "window_frames": 345,
+   "frames_loaded": 360,
+   "canvas": "1024x768",
+   "replace": "the wired parts",
+   "parts": [
+    "hair",
+    "face_and_neck",
+    "upper_clothing",
+    "lower_clothing",
+    "hands",
+    "mouth",
+    "every other class by name"
+   ],
+   "grow_pixels": 64,
+   "motion_reference": "none",
+   "prompt": "the prompt node, a described subject (text not kept here), picture_gives `the whole person`",
+   "reuse_windows": true,
+   "reuse_mask": true,
+   "seed": 730451892,
+   "server": "unarmed_1248",
+   "queued": "2026-10-06T14:36:56",
+   "rows_file": "internal/claude/2026-10-06_mrteal_jr/run/ladder.jsonl",
+   "graph": "internal/claude/2026-10-06_mrteal_jr/graphs/ladder_d_every_class.json",
+   "graph_sha256_16": "752a682436127f86",
+   "prompt_id": "179776d1-b2c1-4ead-aad0-89144b2e2e26",
+   "regenerate_percent": 36.1,
+   "composite_kept_percent": 87.0,
+   "frames_written": 345,
+   "kept_from_an_earlier_prompt_lines": 1,
+   "song_node_seconds": 224,
+   "stages": {
+    "sampling": 189.8,
+    "decode": 13.2,
+    "composite": 10.5,
+    "conditioning": 5.3,
+    "write": 3.1,
+    "source encode": 1.1,
+    "join and mux": 0.4,
+    "track encode": 0.2,
+    "window setup": 0.0
+   },
+   "runner_seconds": 284.0,
+   "sampling_seconds_per_evaluation": 23.73
+  },
+  {
+   "label": "body_345_pdd8_grow32_nokeep",
+   "group": "345, control",
+   "one_change": "reuse_windows off: nothing kept from an earlier prompt is read",
+   "control": "body_345_pdd8_grow32",
+   "chain": "fast",
+   "window_frames": 345,
+   "frames_loaded": 360,
+   "canvas": "1024x768",
+   "replace": "whole subject",
+   "parts": null,
+   "grow_pixels": 32,
+   "motion_reference": "none",
+   "prompt": "the prompt node, a noun, picture_gives `what the Masked Source replaces`",
+   "reuse_windows": false,
+   "reuse_mask": true,
+   "seed": 730451892,
+   "server": "unarmed_1248",
+   "queued": "2026-10-06T14:22:40",
+   "rows_file": "internal/claude/2026-10-06_mrteal_jr/run/nokeep.jsonl",
+   "graph": "workflows/daily/h3_mask_pdd8_api.json",
+   "graph_sha256_16": "c115b152296396bc",
+   "prompt_id": "232c6568-2bf8-428b-af25-54b35b277f86",
+   "regenerate_percent": 26.6,
+   "composite_kept_percent": 90.0,
+   "frames_written": 345,
+   "kept_from_an_earlier_prompt_lines": 0,
+   "song_node_seconds": 256,
+   "stages": {
+    "sampling": 190.0,
+    "source encode": 33.5,
+    "decode": 12.9,
+    "composite": 10.6,
+    "conditioning": 5.6,
+    "write": 3.0,
+    "join and mux": 0.4,
+    "track encode": 0.2,
+    "window setup": 0.0
+   },
+   "runner_seconds": 756.5,
+   "sampling_seconds_per_evaluation": 23.75
+  },
+  {
+   "label": "body_345_pdd8_grow32_cold",
+   "group": "345, control",
+   "one_change": "reuse_windows and reuse_mask off, the first prompt on a restarted server",
+   "control": "body_345_pdd8_grow32",
+   "chain": "fast",
+   "window_frames": 345,
+   "frames_loaded": 360,
+   "canvas": "1024x768",
+   "replace": "whole subject",
+   "parts": null,
+   "grow_pixels": 32,
+   "motion_reference": "none",
+   "prompt": "the prompt node, a noun, picture_gives `what the Masked Source replaces`",
+   "reuse_windows": false,
+   "reuse_mask": false,
+   "seed": 730451892,
+   "server": "unarmed_1458",
+   "queued": "2026-10-06T15:04:19",
+   "rows_file": "internal/claude/2026-10-06_mrteal_jr/run/cold.jsonl",
+   "graph": "internal/claude/2026-10-06_mrteal_jr/graphs/pdd8_daily_c115b152.json",
+   "graph_sha256_16": "c115b152296396bc",
+   "prompt_id": "ae7e1c6f-ae40-4d2d-b67b-d29b62dd403d",
+   "regenerate_percent": 26.6,
+   "composite_kept_percent": 90.0,
+   "frames_written": 345,
+   "kept_from_an_earlier_prompt_lines": 0,
+   "song_node_seconds": 260,
+   "stages": {
+    "sampling": 192.0,
+    "source encode": 33.5,
+    "decode": 12.9,
+    "composite": 10.4,
+    "conditioning": 7.0,
+    "write": 3.2,
+    "join and mux": 0.4,
+    "track encode": 0.2,
+    "window setup": 0.0
+   },
+   "runner_seconds": 323.6,
+   "sampling_seconds_per_evaluation": 24.0
+  }
+ ],
+ "sampling_split": [
+  {
+   "a": "body_345",
+   "b": "body_345_pdd8",
+   "what": "the base chain with its reference against the fast chain without one",
+   "a_sampling_seconds": 314.9,
+   "b_sampling_seconds": 193.9,
+   "a_per_evaluation": 26.24,
+   "b_per_evaluation": 24.24
+  },
+  {
+   "a": "body_345",
+   "b": "body_345_pdd8_motion",
+   "what": "both chains with the motion reference, whole subject",
+   "a_sampling_seconds": 314.9,
+   "b_sampling_seconds": 210.4,
+   "a_per_evaluation": 26.24,
+   "b_per_evaluation": 26.3
+  },
+  {
+   "a": "body_345_p7",
+   "b": "body_345_pdd8_parts_motion",
+   "what": "both chains with the motion reference, the same parts",
+   "a_sampling_seconds": 316.4,
+   "b_sampling_seconds": 210.0,
+   "a_per_evaluation": 26.37,
+   "b_per_evaluation": 26.25
+  },
+  {
+   "a": "body_345_pdd8",
+   "b": "body_345_pdd8_motion",
+   "what": "the fast chain without and with the motion reference",
+   "a_sampling_seconds": 193.9,
+   "b_sampling_seconds": 210.4,
+   "a_per_evaluation": 24.24,
+   "b_per_evaluation": 26.3
+  },
+  {
+   "a": "body_345_pdd8_parts",
+   "b": "body_345_pdd8_parts_motion",
+   "what": "the fast chain's parts arm without and with the motion reference",
+   "a_sampling_seconds": 190.8,
+   "b_sampling_seconds": 210.0,
+   "a_per_evaluation": 23.85,
+   "b_per_evaluation": 26.25
+  }
+ ],
+ "flicker": {
+  "definition": "mean absolute change in luma between consecutive frames, in 8-bit levels, over a zone, in the render and in the source over the same pixels; `excess` is the render's less the source's. Zones from the mask the arm used and its margin: `mask`, `band` (the margin around it), `edge` (a ring 8 px wide on the region's outer boundary), `plate` (everything else). `excess_by_cycle_position` is the same by the frame's place in the video VAE's four-frame cycle. Frames whose source change is a cut's are left out. Script: internal/claude/2026-10-06_mrteal_jr/flicker.py (untracked).",
+  "arms": {
+   "body_345": {
+    "grow_pixels": 64,
+    "frames": 345,
+    "cuts_left_out": [
+     237,
+     280
+    ],
+    "zones": {
+     "mask": {
+      "render": 4.601,
+      "source": 4.809,
+      "excess": -0.207,
+      "excess_by_cycle_position": {
+       "0": -0.243,
+       "1": -0.182,
+       "2": -0.245,
+       "3": -0.16
+      }
+     },
+     "band": {
+      "render": 3.944,
+      "source": 4.527,
+      "excess": -0.582,
+      "excess_by_cycle_position": {
+       "0": -0.621,
+       "1": -0.574,
+       "2": -0.599,
+       "3": -0.536
+      }
+     },
+     "edge": {
+      "render": 3.418,
+      "source": 3.889,
+      "excess": -0.471,
+      "excess_by_cycle_position": {
+       "0": -0.527,
+       "1": -0.408,
+       "2": -0.408,
+       "3": -0.541
+      }
+     },
+     "plate": {
+      "render": 3.226,
+      "source": 3.329,
+      "excess": -0.103,
+      "excess_by_cycle_position": {
+       "0": -0.079,
+       "1": -0.102,
+       "2": -0.111,
+       "3": -0.121
+      }
+     }
+    }
+   },
+   "body_345_p7": {
+    "grow_pixels": 64,
+    "frames": 345,
+    "cuts_left_out": [
+     237,
+     280
+    ],
+    "zones": {
+     "mask": {
+      "render": 5.61,
+      "source": 5.723,
+      "excess": -0.113,
+      "excess_by_cycle_position": {
+       "0": -0.179,
+       "1": 0.022,
+       "2": -0.277,
+       "3": -0.016
+      }
+     },
+     "band": {
+      "render": 4.71,
+      "source": 4.694,
+      "excess": 0.016,
+      "excess_by_cycle_position": {
+       "0": -0.055,
+       "1": 0.099,
+       "2": -0.04,
+       "3": 0.06
+      }
+     },
+     "edge": {
+      "render": 3.491,
+      "source": 4.049,
+      "excess": -0.557,
+      "excess_by_cycle_position": {
+       "0": -0.631,
+       "1": -0.505,
+       "2": -0.506,
+       "3": -0.589
+      }
+     },
+     "plate": {
+      "render": 3.23,
+      "source": 3.333,
+      "excess": -0.103,
+      "excess_by_cycle_position": {
+       "0": -0.082,
+       "1": -0.104,
+       "2": -0.112,
+       "3": -0.112
+      }
+     }
+    }
+   },
+   "body_345_pdd8": {
+    "grow_pixels": 64,
+    "frames": 345,
+    "cuts_left_out": [
+     237,
+     280
+    ],
+    "zones": {
+     "mask": {
+      "render": 6.3,
+      "source": 4.809,
+      "excess": 1.491,
+      "excess_by_cycle_position": {
+       "0": 1.402,
+       "1": 1.469,
+       "2": 1.602,
+       "3": 1.489
+      }
+     },
+     "band": {
+      "render": 5.542,
+      "source": 4.527,
+      "excess": 1.015,
+      "excess_by_cycle_position": {
+       "0": 0.954,
+       "1": 1.046,
+       "2": 0.983,
+       "3": 1.078
+      }
+     },
+     "edge": {
+      "render": 4.089,
+      "source": 3.889,
+      "excess": 0.2,
+      "excess_by_cycle_position": {
+       "0": 0.107,
+       "1": 0.319,
+       "2": 0.244,
+       "3": 0.128
+      }
+     },
+     "plate": {
+      "render": 3.295,
+      "source": 3.329,
+      "excess": -0.034,
+      "excess_by_cycle_position": {
+       "0": -0.006,
+       "1": -0.047,
+       "2": -0.045,
+       "3": -0.037
+      }
+     }
+    }
+   },
+   "body_345_pdd8_grow32": {
+    "grow_pixels": 32,
+    "frames": 345,
+    "cuts_left_out": [
+     237,
+     280
+    ],
+    "zones": {
+     "mask": {
+      "render": 6.353,
+      "source": 4.809,
+      "excess": 1.544,
+      "excess_by_cycle_position": {
+       "0": 1.533,
+       "1": 1.471,
+       "2": 1.597,
+       "3": 1.577
+      }
+     },
+     "band": {
+      "render": 5.325,
+      "source": 4.728,
+      "excess": 0.597,
+      "excess_by_cycle_position": {
+       "0": 0.536,
+       "1": 0.581,
+       "2": 0.513,
+       "3": 0.76
+      }
+     },
+     "edge": {
+      "render": 4.472,
+      "source": 4.148,
+      "excess": 0.324,
+      "excess_by_cycle_position": {
+       "0": 0.348,
+       "1": 0.324,
+       "2": 0.249,
+       "3": 0.375
+      }
+     },
+     "plate": {
+      "render": 3.391,
+      "source": 3.434,
+      "excess": -0.044,
+      "excess_by_cycle_position": {
+       "0": -0.018,
+       "1": -0.048,
+       "2": -0.057,
+       "3": -0.051
+      }
+     }
+    }
+   },
+   "body_345_pdd8_grow16": {
+    "grow_pixels": 16,
+    "frames": 345,
+    "cuts_left_out": [
+     237,
+     280
+    ],
+    "zones": {
+     "mask": {
+      "render": 5.734,
+      "source": 4.809,
+      "excess": 0.925,
+      "excess_by_cycle_position": {
+       "0": 0.854,
+       "1": 0.944,
+       "2": 0.944,
+       "3": 0.959
+      }
+     },
+     "band": {
+      "render": 5.072,
+      "source": 5.065,
+      "excess": 0.007,
+      "excess_by_cycle_position": {
+       "0": -0.067,
+       "1": 0.062,
+       "2": -0.087,
+       "3": 0.12
+      }
+     },
+     "edge": {
+      "render": 4.408,
+      "source": 3.995,
+      "excess": 0.413,
+      "excess_by_cycle_position": {
+       "0": 0.372,
+       "1": 0.29,
+       "2": 0.359,
+       "3": 0.632
+      }
+     },
+     "plate": {
+      "render": 3.431,
+      "source": 3.487,
+      "excess": -0.056,
+      "excess_by_cycle_position": {
+       "0": -0.031,
+       "1": -0.063,
+       "2": -0.07,
+       "3": -0.061
+      }
+     }
+    }
+   }
+  }
+ },
+ "mask_check": {
+  "definition": "a fresh track with the stored mask not read and the node cache defeated, saved as a lossless mask video and compared with the stored mask frame by frame; `body` is the 160-frame load of this window, `stretch` the 1065-frame load from 56.0 s that the day's thirty-second render used",
+  "body": {
+   "file": "maskcheck_body_mask_maskcheck_body_00001.mkv",
+   "frames": 160,
+   "area_share_of_frame": {
+    "min": 0.058177947998046875,
+    "median": 0.07225354512532553,
+    "max": 0.11029561360677083
+   },
+   "empty_frames": {
+    "count": 0,
+    "first": null,
+    "last": null
+   },
+   "largest_area_jumps": [
+    {
+     "into_frame": 20,
+     "from": 0.0885,
+     "to": 0.08
+    },
+    {
+     "into_frame": 43,
+     "from": 0.0748,
+     "to": 0.0667
+    },
+    {
+     "into_frame": 51,
+     "from": 0.0616,
+     "to": 0.0692
+    },
+    {
+     "into_frame": 27,
+     "from": 0.0765,
+     "to": 0.0835
+    },
+    {
+     "into_frame": 75,
+     "from": 0.0724,
+     "to": 0.079
+    },
+    {
+     "into_frame": 74,
+     "from": 0.0658,
+     "to": 0.0724
+    }
+   ],
+   "largest_centre_moves": [
+    {
+     "into_frame": 68,
+     "share_of_frame": 0.0239
+    },
+    {
+     "into_frame": 25,
+     "share_of_frame": 0.0197
+    },
+    {
+     "into_frame": 22,
+     "share_of_frame": 0.0168
+    },
+    {
+     "into_frame": 49,
+     "share_of_frame": 0.0163
+    },
+    {
+     "into_frame": 6,
+     "share_of_frame": 0.0163
+    },
+    {
+     "into_frame": 52,
+     "share_of_frame": 0.0159
+    }
+   ],
+   "against_stored": {
+    "kept": "thrill-2160_514a28423a3a86a1af2fcdf302e3b0a2627423f9.npz",
+    "frames_compared": 160,
+    "identical": true,
+    "frames_that_differ": 0,
+    "largest_share_of_pixels_differing": 0.0
+   },
+   "prompt_id": "4c5291b7-57b2-40c8-b59e-62a5c5ad6e98",
+   "runner_seconds": 22.4
+  },
+  "stretch": {
+   "file": "maskcheck_stretch_mask_maskcheck_stretch_00001.mkv",
+   "frames": 1065,
+   "area_share_of_frame": {
+    "min": 0.0,
+    "median": 0.08723068237304688,
+    "max": 0.3985735575358073
+   },
+   "empty_frames": {
+    "count": 33,
+    "first": 611,
+    "last": 722
+   },
+   "largest_area_jumps": [
+    {
+     "into_frame": 501,
+     "from": 0.061,
+     "to": 0.3573
+    },
+    {
+     "into_frame": 544,
+     "from": 0.3124,
+     "to": 0.0719
+    },
+    {
+     "into_frame": 611,
+     "from": 0.0828,
+     "to": 0.0
+    },
+    {
+     "into_frame": 626,
+     "from": 0.0,
+     "to": 0.0803
+    }
+   ],
+   "largest_centre_moves": [
+    {
+     "into_frame": 544,
+     "share_of_frame": 0.2368
+    },
+    {
+     "into_frame": 501,
+     "share_of_frame": 0.1508
+    }
+   ],
+   "against_stored": {
+    "kept": "thrill-2160_fc2e91196b0bd46ac4363bcc10d296967cea4d73.npz",
+    "frames_compared": 1065,
+    "identical": true,
+    "frames_that_differ": 0,
+    "largest_share_of_pixels_differing": 0.0
+   },
+   "prompt_id": "6cdbd9f8-f3cb-41c6-9451-acd0e944a715",
+   "runner_seconds": 213.1
+  }
+ },
+ "cache_control": {
+  "definition": "three prompts of one graph and one mask: as first rendered (encodes kept from an earlier prompt), with reuse_windows off, and with reuse_windows and reuse_mask off as the first prompt on a restarted server; their stored window latents compared value for value and their joined videos decoded and hashed",
+  "arms": [
+   "body_345_pdd8_grow32",
+   "body_345_pdd8_grow32_nokeep",
+   "body_345_pdd8_grow32_cold"
+  ],
+  "streams": [
+   "stream_0",
+   "stream_1"
+  ],
+  "videos": {
+   "body_345_pdd8_grow32": {
+    "file": "body_345_pdd8_grow32_body_345_pdd8_grow32_00001.mp4",
+    "decoded_md5": "19bfdea608f75bcd6fbb7eec32087fb7",
+    "frames": 345
+   },
+   "body_345_pdd8_grow32_nokeep": {
+    "file": "body_345_pdd8_grow32_nokeep_body_345_pdd8_grow32_nokeep_00001.mp4",
+    "decoded_md5": "19bfdea608f75bcd6fbb7eec32087fb7",
+    "frames": 345
+   },
+   "body_345_pdd8_grow32_cold": {
+    "file": "body_345_pdd8_grow32_cold_body_345_pdd8_grow32_cold_00001.mp4",
+    "decoded_md5": "19bfdea608f75bcd6fbb7eec32087fb7",
+    "frames": 345
+   }
+  },
+  "against_first": {
+   "body_345_pdd8_grow32_nokeep": {
+    "streams": {
+     "stream_0": {
+      "shape": [
+       1,
+       24,
+       102,
+       48,
+       64
+      ],
+      "equal": true,
+      "largest_difference": 0.0
+     },
+     "stream_1": {
+      "shape": [
+       1,
+       32,
+       2,
+       575
+      ],
+      "equal": true,
+      "largest_difference": 0.0
+     }
+    },
+    "video_equal": true
+   },
+   "body_345_pdd8_grow32_cold": {
+    "streams": {
+     "stream_0": {
+      "shape": [
+       1,
+       24,
+       102,
+       48,
+       64
+      ],
+      "equal": true,
+      "largest_difference": 0.0
+     },
+     "stream_1": {
+      "shape": [
+       1,
+       32,
+       2,
+       575
+      ],
+      "equal": true,
+      "largest_difference": 0.0
+     }
+    },
+    "video_equal": true
+   }
+  },
+  "cold_prompt_seconds_by_node": {
+   "subject_track": 57.136,
+   "song_node": 260.196
+  },
+  "shot_tables": "equal on every key across the three (the closed session's comparison, not re-derived here)"
+ },
+ "island": {
+  "definition": "per frame, the pixels of a single-class pass's mask in pieces that do not touch the largest piece of the recipe arm's region mask and whose centre lies below three quarters of the height of the whole-subject mask, on the 1024x768 canvas",
+  "region_mask": "body_345_p7_usedmask_body_345_p7_00001.mkv",
+  "whole_subject_mask": "thrill-2160_78e24779148b9a20b6dae988de7dc494376c6825.npz",
+  "by_single_class_pass": {
+   "face_and_neck": {
+    "frames": 290,
+    "of_frames": 345,
+    "median_pixels": 341.0,
+    "largest_pixels": 1430,
+    "first_frame": 11,
+    "last_frame": 344
+   },
+   "mouth": {
+    "frames": 0,
+    "of_frames": 345,
+    "median_pixels": 0.0,
+    "largest_pixels": 0,
+    "first_frame": null,
+    "last_frame": null
+   },
+   "eyeglass": {
+    "frames": 0,
+    "of_frames": 345,
+    "median_pixels": 0.0,
+    "largest_pixels": 0,
+    "first_frame": null,
+    "last_frame": null
+   },
+   "hair": {
+    "frames": 0,
+    "of_frames": 345,
+    "median_pixels": 0.0,
+    "largest_pixels": 0,
+    "first_frame": null,
+    "last_frame": null
+   },
+   "hands": {
+    "frames": 9,
+    "of_frames": 345,
+    "median_pixels": 5.0,
+    "largest_pixels": 419,
+    "first_frame": 14,
+    "last_frame": 294
+   },
+   "upper_clothing": {
+    "frames": 250,
+    "of_frames": 345,
+    "median_pixels": 39.5,
+    "largest_pixels": 367,
+    "first_frame": 3,
+    "last_frame": 344
+   }
+  }
+ },
+ "code_neutral": {
+  "definition": "one arm rendered again on a later server and later code; both joined videos decoded and hashed",
+  "arms": [
+   "choose_body_base",
+   "diag_body_base_rerun"
+  ],
+  "frames_each": 141,
+  "decoded_md5": "3d4f2717a4ca85c34fffffb6d3d2e9d7",
+  "equal": true
+ }
+}
