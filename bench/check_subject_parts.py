@@ -40,6 +40,14 @@ is graded is everything around the forward pass and nothing in it.
    reads the working size from the folder's own file.
 10. **The preview and the report** come out for the frames kept, and the
    report names the frames held.
+11. **The report says how much of the subject the parts cover**, with
+   `part_coverage.py`'s figures: exact shares on hand-made masks; a frame
+   where the part covers nothing, one where it lies mostly off the subject
+   and one far under the clip's median are each named, and a clip with none
+   says so; the node's own figures are that function's on the masks it
+   returns, so a second caller cannot print another number. A part that
+   covers a sliver no longer reads as "found on every frame" and nothing
+   else.
 
 No model, no weights, no CUDA, no server.
 
@@ -402,6 +410,89 @@ def check_shown(problems):
         problems.append("ranges does not write runs of frames")
 
 
+def check_coverage(problems):
+    pc = sys.modules["_h3pack.part_coverage"]
+    subject = torch.zeros(6, 20, 20)
+    parts = torch.zeros(6, 20, 20)
+    subject[:5, 0:10, 0:10] = 1.0                              # 100 px on frames 0 to 4; frame 5 has no subject
+    parts[0:3, 0:9, 0:10] = 1.0                                # 90 of them covered
+    parts[3, 0:2, 0:10] = 1.0                                  # 20 covered: under a quarter of the median
+    parts[4, 12:14, 0:10] = 1.0                                # none covered, 20 px beside the subject
+    parts[2, 10:20, 0:10] = 1.0                                # frame 2 also holds 100 px off the subject
+    got = pc.coverage(subject, parts)
+    want_covered = [0.9, 0.9, 0.9, 0.2, 0.0, 0.0]
+    if not torch.allclose(got.covered, torch.tensor(want_covered, dtype=torch.float64)):
+        problems.append(f"covered is {got.covered.tolist()}, not {want_covered}")
+    if not torch.allclose(got.outside, torch.tensor([0.0, 0.0, 100 / 190, 0.0, 1.0, 0.0], dtype=torch.float64)):
+        problems.append(f"outside is {got.outside.tolist()}")
+    if got.present.tolist() != [True] * 5 + [False]:
+        problems.append("a frame with no subject is counted as one the subject is in")
+    told = pc.summarise(got)
+    if (told.nothing, told.low, told.outside, told.suspect) != ([4], [3], [2, 4], [2, 3, 4]):
+        problems.append(f"the frames in doubt are nothing {told.nothing}, low {told.low}, outside {told.outside}")
+    if abs(told.median - 0.9) > 1e-9 or told.lowest != 0.0 or told.lowest_frame != 4 or told.present != 5:
+        problems.append(f"the clip's figures are median {told.median}, lowest {told.lowest} on {told.lowest_frame}")
+    text = "\n".join(told.lines())
+    for said in ("median of 90%", "lowest 0% on frame 4", "no part on the subject at all on 1 frames: 4",
+                 "off the subject's mask on 2 frames", "under 0.25 of the median on 1 frames: 3"):
+        if said not in text:
+            problems.append(f"the coverage lines do not say `{said}`:\n{text}")
+    if told.warning() is None or "3 of 5 frames" not in told.warning():
+        problems.append(f"the line for a node downstream is {told.warning()!r}")
+    # the control for "low is against the clip's own median": the same frame is not low when every frame is as small
+    small = torch.zeros(3, 20, 20)
+    small[:, 0:2, 0:10] = 1.0
+    if pc.summarise(pc.coverage(subject[:3], small)).suspect:
+        problems.append("a part that is a fifth of the subject on every frame is in doubt: low must be against the median")
+    # a clip with nothing to doubt says so, and gives no warning; a sliver is printed as a sliver, not as 0%
+    fine = pc.summarise(pc.coverage(subject[:3], subject[:3]))
+    if fine.suspect or fine.warning() is not None or "no frame is empty" not in "\n".join(fine.lines()):
+        problems.append("a part that covers the subject on every frame is still in doubt, or the lines do not say it is not")
+    if pc._percent(0.004) != "0.4%" or pc._percent(0.0) != "0%" or pc._percent(0.94) != "94%":
+        problems.append("a sliver of coverage is printed as nothing")
+    if pc.summarise(pc.coverage(torch.zeros(2, 4, 4), torch.zeros(2, 4, 4))).present != 0:
+        problems.append("a clip the subject is never in was summarised as if they were")
+    # counted a chunk of frames at a time, with the same figures whatever the chunk
+    chunk = pc.CHUNK
+    pc.CHUNK = 4
+    try:
+        small_chunks = pc.coverage(subject, parts)
+    finally:
+        pc.CHUNK = chunk
+    if not (torch.equal(small_chunks.covered, got.covered) and torch.equal(small_chunks.outside, got.outside)
+            and torch.equal(small_chunks.present, got.present)) or pc.CHUNK < 6:
+        problems.append("the figures depend on how many frames are counted at a time, or the chunk is smaller than this "
+                        "case's clip so the comparison is of one path with itself")
+    for bad in (torch.zeros(6, 20, 21), torch.zeros(5, 20, 20)):
+        try:
+            pc.coverage(subject, bad)
+            problems.append(f"a part mask {tuple(bad.shape)} was accepted for a subject mask {tuple(subject.shape)}")
+        except ValueError:
+            pass
+    # the node: its figures are that function's on the masks it returns, labelled share included
+    frames, mask = scene(3)
+    person(frames[0], mask[0], LEFT)
+    person(frames[1], mask[1], LEFT + 10)
+    person(frames[2], mask[2], LEFT + 20, hair=False)
+    frames[2, TOP:TOP + 1, LEFT + 20:LEFT + 22] = RED          # two pixels of hair on the third frame
+    found = run(frames, mask, (HAIR,), use_matting=False)
+    again = pc.coverage(mask, found.parts)
+    if found.coverage is None or not (torch.equal(found.coverage.covered, again.covered)
+                                      and torch.equal(found.coverage.outside, again.outside)):
+        problems.append("the node's coverage is not coverage() of the subject mask and the part mask it returns")
+    if found.found.tolist() != [True, True, True] or found.held:
+        problems.append("the sliver frame is not a found frame, so this case does not hold the fault it is for")
+    text = sp.report(found, (HAIR,), MARGIN, 2, 8, True, SIZE, None)
+    if "under 0.25 of the median on 1 frames: 2" not in text:
+        problems.append(f"a part that covers two pixels of the subject on a frame is reported as found and nothing else:\n{text}")
+    if "labelled a median of" not in text:
+        problems.append("the report does not give the share the part model labelled as a person")
+    if abs(float(found.coverage.labelled[0]) - (TALL * WIDE) / float((sp.grow(mask[:1], 2) > 0.5).sum())) > 1e-9:
+        problems.append("the labelled share is not the labelled pixels over the widened subject")
+    if sp.ranges is not pc.ranges:
+        problems.append("the part node and the coverage module write frame runs with two functions")
+
+
 def _graded(check):
     def run():
         problems: list[str] = []
@@ -421,7 +512,8 @@ def main() -> int:
             ("a mask that is not the frames' is refused by name", check_refusals),
             ("the result does not depend on the batch size", check_batch),
             ("the loader lists a folder by its architecture", check_loader),
-            ("the preview and the report", check_shown)):
+            ("the preview and the report", check_shown),
+            ("the report says how much of the subject the parts cover", check_coverage)):
         case(name, _graded(check))
     return finish()
 

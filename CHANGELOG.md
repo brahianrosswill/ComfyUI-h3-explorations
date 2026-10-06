@@ -7,6 +7,15 @@ artifact.
 <!-- To add an entry: write a file in changelog.d/ (changelog.d/README.md has the three steps) and run
      bench/build_changelog.py. Do not type an entry in here: the newest entries below are generated. -->
 
+## 0.208.1
+<!-- changelog.d/mrhand-part-coverage-report.md -->
+
+### Changed
+
+- `MiniMaxH3SubjectParts`' report says how much of the tracked subject the taken parts cover. It called a part "found" on a frame when one pixel of a taken class lay on the subject, and counted frames; on a clip where the part lay off the subject for a stretch it read "found on every frame the subject is in" while the original stayed in the render there. A new module, `part_coverage.py`, counts per frame the share of the subject's own mask the parts cover and the share of the parts that lies off it, and names the frames to doubt for three reasons that do not depend on each other: no part on the subject, most of the part off the subject, and coverage under `LOW_OF_MEDIAN` of the clip's own median (against the median because a choice of the head alone is a small share by design). The report prints those lines, and the share of the subject the part model labelled as a person at all. The module imports torch only, so whatever holds a subject mask and a part mask can call the same function and print the same figures; nothing reads it but the part node yet. No mask changes and no input, output or default moves.
+- The two constants are measured on one arm of one clip, `bench/results/2026-10-06_part_coverage.md`: the function's counts on the two masks that arm saved equal the counts the session that ran it made, frame for frame. Not measured on a choice of the head alone, and the node has not run with this on the card.
+- `bench/check_subject_parts.py` item 11 holds the figures on hand-made masks, each reason by name, the control that "low" is against the median, and that the node's figures are the function's on the masks it returns.
+
 ## 0.208.0
 <!-- changelog.d/mrhow-mask-review.md -->
 

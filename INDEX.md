@@ -97,6 +97,7 @@ with none is a helper the others import.
 | [`mask_store.py`](mask_store.py) |  | Keep a subject mask on disk across runs, so a restart does not pay for the tracker again. |
 | [`nodes.py`](nodes.py) | `MiniMaxH3SageAttention` | MiniMax H3 SageAttention node. |
 | [`overlay_loader.py`](overlay_loader.py) | `MiniMaxH3OverlayLoader` | Load a research checkpoint as an overlay on the released one, a piece at a time. |
+| [`part_coverage.py`](part_coverage.py) |  | How much of a tracked subject a part mask covers, frame by frame, and which frames to doubt. |
 | [`pipeline_telemetry.py`](pipeline_telemetry.py) |  | What a ComfyUI prompt loaded, moved and spent, end to end, as one JSONL record. |
 | [`plate_restore.py`](plate_restore.py) | `MiniMaxH3RestorePlate` | Put the kept parts of a masked latent back between two samplers. |
 | [`preflight.py`](preflight.py) | `MiniMaxH3Preflight` | What this render will actually cost, before you queue it. |
@@ -136,7 +137,7 @@ with none is a helper the others import.
 | `.claude/` | 2 | [below](#claude) |
 | `archive/` | 21 | [below](#archive) |
 | `assets/` | 1 | [below](#assets) |
-| `bench/` | 1393 | [`bench/INDEX.md`](bench/INDEX.md) and [`bench/results/INDEX.md`](bench/results/INDEX.md) for the records |
+| `bench/` | 1395 | [`bench/INDEX.md`](bench/INDEX.md) and [`bench/results/INDEX.md`](bench/results/INDEX.md) for the records |
 | `changelog.d/` | | [`changelog.d/README.md`](changelog.d/README.md), one file per changelog entry; not listed and not counted |
 | `docs/` | 166 | [`docs/wiki/index.md`](docs/wiki/index.md), the hand-written router |
 | `prompt_bank/` | 167 | [`docs/prompt_bank.md`](docs/prompt_bank.md), the prompt catalogue |

@@ -39,8 +39,10 @@ of the mouth are the same map read with a different choice of classes.
    part into it would regenerate pixels of a shot they are not in.
 
 Nothing is temporal in the model, so a label map can flicker from frame to
-frame. The report says on how many frames each class was seen and which frames
-were held.
+frame. The report says on how many frames each class was seen, which frames
+were held, and how much of the subject the parts cover (`part_coverage.py`):
+"found" means one pixel, and a part that covers a sliver of the subject leaves
+the original in the render.
 
 **The class names** are not in the checkpoint: its config calls them
 `LABEL_0` to `LABEL_28`. `CLASS_NAMES` is upstream's table, and whether the
@@ -71,6 +73,7 @@ import torch.nn.functional as F
 from comfy_api.latest import io, ui
 from PIL import Image, ImageDraw, ImageFont
 
+from .part_coverage import Coverage, coverage, ranges, summarise
 from .video_mask import PART_MARGIN, grow
 
 logger = logging.getLogger(__name__)
@@ -274,6 +277,7 @@ class Found:
     held: list[int] = field(default_factory=list)       # frames given a neighbour's part
     boxes: dict[int, tuple] = field(default_factory=dict)        # the crop box of each frame run
     labels: dict[int, torch.Tensor] = field(default_factory=dict)  # the label map of each frame in `keep`
+    coverage: Coverage | None = None         # how much of the subject `parts` covers, per frame
     seconds: float = 0.0                     # the whole pass, both models
 
 
@@ -347,22 +351,14 @@ def subject_parts(frames: torch.Tensor, subject: torch.Tensor, classes: tuple[in
             out.parts[f] = hold(out.parts[g], src, dst, hard=True) * (on_subject > 0.5)
             out.matte[f] = hold(out.matte[g], src, dst, hard=False) * (on_subject > 0.5)
             out.held.append(f)
+    # of what is returned, after the hold. `seen` is counted on the widened subject, so the labelled share is too.
+    counts = out.seen.to(torch.float64)
+    out.coverage = coverage(subject, out.parts,
+                            labelled=counts[:, BACKGROUND + 1:].sum(dim=1) / counts.sum(dim=1).clamp(min=1.0))
     return out
 
 
 # -------------------------------------------------- the report and the preview
-
-def ranges(values: list[int], most: int = 12) -> str:
-    """Frame numbers as runs: [3, 4, 5, 9] is `3-5, 9`. Past `most` runs the rest is counted."""
-    runs: list[list[int]] = []
-    for v in sorted(values):
-        if runs and v == runs[-1][1] + 1:
-            runs[-1][1] = v
-        else:
-            runs.append([v, v])
-    text = ", ".join(str(a) if a == b else f"{a}-{b}" for a, b in runs[:most])
-    return text + (f", and {len(runs) - most} more runs" if len(runs) > most else "")
-
 
 def report(found: Found, classes: tuple[int, ...], crop_margin: int, subject_margin: int, matte_reach: int,
            hold_missing: bool, size: tuple[int, int], matting_name: str | None) -> str:
@@ -375,7 +371,8 @@ def report(found: Found, classes: tuple[int, ...], crop_margin: int, subject_mar
     if not present:
         lines.append("nothing to find: `subject_mask` is empty on every frame")
     elif not missed:
-        lines.append("found on every frame the subject is in")
+        lines.append("a taken class was found on every frame the subject is in (one pixel counts; the coverage "
+                     "lines say how much)")
     elif hold_missing:
         lines.append(f"not found on {len(missed)} frames, which took the nearest found frame's part: {ranges(found.held)}")
     else:
@@ -384,6 +381,8 @@ def report(found: Found, classes: tuple[int, ...], crop_margin: int, subject_mar
     seen = [f"{CLASS_NAMES[c]} {on_frames[c]}" for c in sorted(range(1, len(CLASS_NAMES)), key=lambda c: -on_frames[c])
             if on_frames[c]]
     lines.append("classes seen on the subject, by frames: " + (", ".join(seen) if seen else "none"))
+    if found.coverage is not None and present:
+        lines.extend(summarise(found.coverage).lines())
     if found.boxes:
         tall = [b[3] - b[1] for b in found.boxes.values()]
         lines.append(f"crop: margin {int(crop_margin)} px, {min(tall)} to {max(tall)} px tall before the resize to "
