@@ -459,7 +459,7 @@ Arm manifests and the like; a manifest's line is its own `what`.
 | [`subway_v2_arms.json`](subway_v2_arms.json) | The rewritten t2va_subway_chase (18bd00ca: two people, one path down, every action with an agent) on the undistilled base and the three distills as each is best built today, at the seed of the earlier subway renders. base = ... |
 | [`turbo_rung_arms.json`](turbo_rung_arms.json) | The turbo rung (docs/roadmap.md, 'Owner decisions, 2026-09-05 evening', item 3): two step-reduction distills that are not PDD, each under sage alone with Sol absent, on the five ladder scenes at two seeds, blinded per seed against the sage ... |
 | [`turbo_rung_floor_arms.json`](turbo_rung_floor_arms.json) | The sage 16-step floor at the turbo rung's second seed (730451894), so every pair at that seed is same-seed and same-regime. Same graph as the ladder's sage rows (workflows/bench/h3_text_to_video_stamped_api.json), same five scenes, ... |
-| [`turn_metric_eye_verdicts.json`](turn_metric_eye_verdicts.json) | By-eye verdicts the lane's metrics are calibrated against. A window is a stretch of a source clip, with what is known of where the clip came from and on whose word it is used; a set is one shot of a window, judged by a named reader on ... |
+| [`turn_metric_eye_verdicts.json`](turn_metric_eye_verdicts.json) | The masked lane's benchmark clips and the by-eye verdicts its metrics are calibrated against. A window is a stretch of a source clip, with what is known of where the clip came from and on whose word it is used, the still its renders take, ... |
 
 ## Subfolders
 
@@ -514,7 +514,7 @@ Arm manifests and the like; a manifest's line is its own `what`.
 
 ### results
 
-950 tracked files: [`results/INDEX.md`](results/INDEX.md).
+952 tracked files: [`results/INDEX.md`](results/INDEX.md).
 
 ### rubrics
 

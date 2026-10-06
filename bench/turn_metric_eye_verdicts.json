@@ -1,5 +1,5 @@
 {
- "what": "By-eye verdicts the lane's metrics are calibrated against. A window is a stretch of a source clip, with what is known of where the clip came from and on whose word it is used; a set is one shot of a window, judged by a named reader on named evidence. Per render: turn (does he end facing where the source faces), motion (does he move as the source moves) and look (is he still the person in the still). A field nobody judged is absent, never guessed.",
+ "what": "The masked lane's benchmark clips and the by-eye verdicts its metrics are calibrated against. A window is a stretch of a source clip, with what is known of where the clip came from and on whose word it is used, the still its renders take, and `tracking`: its real cuts and which shots the subject is in, read by a named reader, with what the Subject Track needs beyond `h3_config.SUBJECT_TRACK` to mask the subject on every shot they are in. A set is one shot of a window, judged by a named reader on named evidence. Per render: turn (does he end facing where the source faces), motion (does he move as the source moves) and look (is he still the person in the still). A field nobody judged is absent, never guessed.",
  "values": {
   "turn": [
    "yes",
@@ -14,6 +14,11 @@
   "look": [
    "kept",
    "drifted"
+  ],
+  "subject_in_shot": [
+   "yes",
+   "no",
+   "not known"
   ]
  },
  "windows": {
@@ -24,7 +29,72 @@
    "frames": 360,
    "provenance": "not stated in this repo by the owner; no session asserts it",
    "permission": "use for this lane's renders and the calibration of its metrics relayed by mryellow as the owner's word, 2026-10-05; not heard from the owner by the session that wrote this entry",
-   "poses": "bench/results/2026-10-05_subject_pose_band_turn.json"
+   "poses": "bench/results/2026-10-05_subject_pose_band_turn.json",
+   "still": {
+    "file": "f_img_outside_nomark.png",
+    "on": "named for this clip on the masking board's card build-lane-benchmark, 2026-10-05"
+   },
+   "tracking": {
+    "cuts": [
+     70,
+     186,
+     237,
+     280,
+     351
+    ],
+    "shots": [
+     {
+      "frames": [
+       0,
+       69
+      ],
+      "subject": "yes"
+     },
+     {
+      "frames": [
+       70,
+       185
+      ],
+      "subject": "yes",
+      "note": "the same room from a second angle"
+     },
+     {
+      "frames": [
+       186,
+       236
+      ],
+      "subject": "no"
+     },
+     {
+      "frames": [
+       237,
+       279
+      ],
+      "subject": "yes"
+     },
+     {
+      "frames": [
+       280,
+       350
+      ],
+      "subject": "no"
+     },
+     {
+      "frames": [
+       351,
+       359
+      ],
+      "subject": "not known",
+      "note": "a close-up below the shoulders; nobody's head is in frame"
+     }
+    ],
+    "subject_track": {},
+    "read": {
+     "by": "mrteal_jr",
+     "on": "consecutive frames of the window at 384 pixels wide for the cuts; the Subject Track's tile, the part node's preview and a sheet of the mask over the frames for the shots, 2026-10-06",
+     "record": "bench/results/2026-10-06_subject_track_defaults.md"
+    }
+   }
   },
   "solo_0s": {
    "file": "idontwannatalk.mp4",
@@ -56,7 +126,131 @@
    },
    "owner_record": "bench/results/2026-10-04_masked_v2v_first_run.md",
    "note": "The owner's words are about the picture as a whole: flicker, the edge, the composite. The owner gave no verdict on turn, motion or likeness for these, so none is written as the owner's. Only the first 345 frames of the three longer renders are read.",
-   "poses": "bench/results/2026-10-05_subject_pose_solo_first_window.json"
+   "poses": "bench/results/2026-10-05_subject_pose_solo_first_window.json",
+   "still": {
+    "file": "f_img_outside_nomark.png",
+    "on": "named for this clip on the masking board's card build-lane-benchmark, 2026-10-05"
+   },
+   "tracking": {
+    "cuts": [
+     164,
+     303
+    ],
+    "shots": [
+     {
+      "frames": [
+       0,
+       163
+      ],
+      "subject": "yes",
+      "note": "the stage is empty until about frame 40, when the subject walks in"
+     },
+     {
+      "frames": [
+       164,
+       302
+      ],
+      "subject": "yes"
+     },
+     {
+      "frames": [
+       303,
+       344
+      ],
+      "subject": "yes"
+     }
+    ],
+    "subject_track": {},
+    "read": {
+     "by": "mrteal_jr",
+     "on": "consecutive frames of the window at 384 pixels wide for the cuts; the Subject Track's tile, the part node's preview and a sheet of the mask over the frames for the shots, 2026-10-06",
+     "record": "bench/results/2026-10-06_subject_track_defaults.md"
+    }
+   }
+  },
+  "friday_0s": {
+   "file": "friday_chorus_14s.mp4",
+   "start_second": 0.0,
+   "rate": 24.0,
+   "frames": 345,
+   "provenance": "not stated in this repo by the owner; no session asserts it",
+   "permission": "named on the masking board's card build-lane-benchmark as cleared by the owner for this lane and its benchmark on 2026-10-05; not heard from the owner by the session that wrote this entry",
+   "still": {
+    "file": "20260504_152202_d12af9c7.jpeg",
+    "on": "named for this clip on the masking board's card build-lane-benchmark, 2026-10-05"
+   },
+   "tracking": {
+    "cuts": [
+     85,
+     122,
+     187,
+     217,
+     287,
+     326
+    ],
+    "shots": [
+     {
+      "frames": [
+       0,
+       84
+      ],
+      "subject": "yes",
+      "note": "frames 0 to about 22 are a dissolve from another shot of the subject"
+     },
+     {
+      "frames": [
+       85,
+       121
+      ],
+      "subject": "no"
+     },
+     {
+      "frames": [
+       122,
+       186
+      ],
+      "subject": "yes"
+     },
+     {
+      "frames": [
+       187,
+       216
+      ],
+      "subject": "not known",
+      "note": "a face half hidden at the left edge that the reader could not name"
+     },
+     {
+      "frames": [
+       217,
+       286
+      ],
+      "subject": "yes"
+     },
+     {
+      "frames": [
+       287,
+       325
+      ],
+      "subject": "no"
+     },
+     {
+      "frames": [
+       326,
+       344
+      ],
+      "subject": "yes"
+     }
+    ],
+    "subject_track": {
+     "corrections": "shot 1: person 4"
+    },
+    "read": {
+     "by": "mrteal_jr",
+     "on": "consecutive frames of the window at 384 pixels wide for the cuts; the Subject Track's tile, the part node's preview and a sheet of the mask over the frames for the shots, 2026-10-06",
+     "record": "bench/results/2026-10-06_subject_track_defaults.md"
+    }
+   },
+   "note": "No render of this window exists yet, so it has no pose record and no set."
   }
  },
  "sets": {

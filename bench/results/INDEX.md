@@ -16,6 +16,7 @@ replaces `docs/evidence.md`, which says what the records established.
 
 | date | lane | record | verdict |
 |---|---|---|---|
+| 2026-10-06 | masked | [The Subject Track and the part node at their defaults on the lane's three windows (2026-10-06)](2026-10-06_subject_track_defaults.md) | at defaults one window was masked on a microphone and one misses a shot; the first is fixed by a rule, the second by a correction; the part was found on every frame the subject is a person |
 | 2026-10-05 | masking | [A clean plate from VOID on the band clip's turn window: a first probe (2026-10-05)](2026-10-05_void_plate_turn.md) | tested and removed at the owner's word: "Not a single clip showed any improvement." No arm gave a plate on this clip |
 | 2026-10-05 | masking | [VOID pass 1 converted from upstream for core's loader (2026-10-05)](2026-10-05_void_checkpoint_conversion.md) | done and then removed with the VOID code; the upstream checkpoint is a pure rename away from the file core loads |
 | 2026-10-05 | masked | [The turn metric against the eye: thirteen renders of the band clip's turn shot (2026-10-05)](2026-10-05_subject_yaw_calibration.md) | accepted for "holds the turn or not"; it contradicted the one by-eye "partial", the frames sided with the metric, and the by-eye verdict was corrected to "no" |
@@ -50,7 +51,7 @@ replaces `docs/evidence.md`, which says what the records established.
 | 2026-10-01 | lora | [Where a LoRA at the call spends its time (2026-10-01)](2026-10-01_lora_branch_profile.md) |  |
 | 2026-10-01 | kitchen | [comfy-kitchen: h3-frontier merged to upstream main, 2026-10-01](2026-10-01_kitchen_merge_aade8d5.md) |  |
 
-Data files dated this month and not listed: 63.
+Data files dated this month and not listed: 64.
 
 ## 2026-09
 

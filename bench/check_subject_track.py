@@ -54,6 +54,13 @@ item drives the module's own functions on made-up frames and masks.
    the automatic result. A person the frame does not have, a shot the clip
    does not have, a shot named twice and a line that is not a correction are
    refused by name.
+8. **A thing does not win the automatic pick.** An opening shot that is the
+   longest and starts on a microphone alone, the shape of the one-person
+   clip's first window: the microphone has no head, so its shot does not
+   vote, the person is picked in another shot and taken in the opening from
+   where they come in, and the report names what was left out. Two controls:
+   with no head anywhere every favourite votes as before, and a frame the
+   user names is taken as named.
 
 What this cannot check: that SAM 3's features tell real people apart, that
 its tracker follows them, or that the text encoder loads. Those need the card;
@@ -400,13 +407,15 @@ def check_automatic(problems):
         problems.append("the report does not say that the plain similarity was used")
 
 
-def _solo_world():
+def _solo_world(layout=None):
     """One person, framed differently from shot to shot, and two things the detector takes for a person.
 
     Four shots of 8 frames. Shot 1: a microphone alone on frames 0-3, with the person on 4-5, the person alone
     on 6-7. Shot 2: the person, full length. Shot 3: the person in close-up. Shot 4: a lamp and nobody.
     The person in close-up scores 0.75 against the full-length pick, the microphone 0.70, the lamp 0.3.
     Each signature is two views, and only the person has the second, the head.
+
+    `layout(frame, full, close, mic, lamp)` puts the same four masks on other frames.
     """
     def unit(c: float, axis: int) -> torch.Tensor:
         v = torch.zeros(4); v[0] = c; v[axis] = (1 - c * c) ** 0.5
@@ -415,6 +424,7 @@ def _solo_world():
     mic, lamp = _box(0, 0, 10, 30), _box(110, 0, 125, 30)
     sigs = [(full, torch.tensor([1.0, 0, 0, 0])), (close, unit(0.75, 1)), (mic, unit(0.70, 2)), (lamp, unit(0.3, 3))]
     def present(f: int) -> list[torch.Tensor]:
+        if layout is not None: return layout(f, full, close, mic, lamp)
         if f < 4: return [mic]
         if f < 6: return [mic, close]
         if f < 8: return [close]
@@ -468,6 +478,44 @@ def check_alone(problems):
     if any(s.lone for s in got.shots) or [s.seed for s in got.shots] != [3, None, 20, 25]:
         problems.append(f"picked among other people, seeds {[s.seed for s in got.shots]} and lone {[s.lone for s in got.shots]}: "
                         "the lone rule applies only when the pick frame shows nobody else")
+
+
+def check_headless_vote(problems):
+    """Nothing named: a thing the detector takes for a person does not win the pick by owning the longest shot."""
+    # the shape of the one-person clip's first window (bench/results/2026-10-06_subject_track_defaults.md): the
+    # opening shot is the longest and starts on the microphone alone; the person walks in later. Shot 1 is frames
+    # 0-15, the microphone alone to frame 5, beside the person to 9, the person alone after; shot 2 the person
+    # full length; shot 3 the person in close-up.
+    def layout(f, full, close, mic, lamp):
+        if f < 6: return [mic]
+        if f < 10: return [mic, close]
+        if f < 16: return [close]
+        return [full] if f < 24 else [close]
+    detect, sign, track, tracked = _solo_world(layout)
+    got = st.follow(32, [16, 24], st.PICK_LARGEST, None, None, detect, sign, track, stride=2, offset=1)
+    want = [(0, 16, 6, "person"), (16, 24, 17, "person"), (24, 32, 25, "person")]
+    if tracked != want or got.pick_frame != 17:
+        problems.append(f"an opening shot that starts on a microphone alone and is the longest: picked on frame "
+                        f"{got.pick_frame}, tracked {tracked}, not {want}. The microphone has no head, so its shot's "
+                        "sixteen frames do not vote; the person is picked in shot 2 and taken in shot 1 from where "
+                        "they come in")
+    if getattr(got, "passed_over", None) != [(1, 1)]:
+        problems.append(f"passed over for the pick: {getattr(got, 'passed_over', None)}, not shot 1's detection on frame 1")
+    text = st.report(got, [16, 24], st.PICK_LARGEST, "person", False, False, 1.0)
+    if "not counted for the pick" not in text or "shot 1 (frame 1)" not in text:
+        problems.append(f"the report does not say whose vote was left out of the pick: {text!r}")
+    # the control: when nothing the rule favours has a head, the pick is made as before and the report says nothing
+    detect, sign, track, tracked = _solo_world(lambda f, full, close, mic, lamp: [mic] if f < 16 else [lamp])
+    got = st.follow(32, [16], st.PICK_LARGEST, None, None, detect, sign, track, stride=2, offset=1)
+    if got.pick_frame != 1 or getattr(got, "passed_over", None) != []:
+        problems.append(f"only things on screen: picked on frame {got.pick_frame} with {getattr(got, 'passed_over', None)} passed over; "
+                        "with no head anywhere every favourite votes, as before the rule")
+    # a frame the user names is theirs: the rule is about the automatic pick only
+    detect, sign, track, tracked = _solo_world(layout)
+    got = st.follow(32, [16, 24], st.PICK_LARGEST, 1, None, detect, sign, track, stride=2, offset=1)
+    if got.pick_frame != 1 or tracked[0] != (0, 16, 1, "thing") or getattr(got, "passed_over", None) != []:
+        problems.append(f"a named frame showing only the microphone: picked on {got.pick_frame}, tracked {tracked[:1]}; "
+                        "a named frame is taken as named")
 
 
 def check_two_places(problems):
@@ -614,7 +662,7 @@ def check_schema(problems):
 def main() -> int:
     problems: list[str] = []
     for check in (check_cuts, check_ranges, check_counted, check_choose, check_signature, check_follow, check_corrections,
-                  check_automatic, check_alone, check_two_places, check_empty, check_schema):
+                  check_automatic, check_alone, check_headless_vote, check_two_places, check_empty, check_schema):
         check(problems)
     for p in problems:
         print(f"FAIL  {p}")

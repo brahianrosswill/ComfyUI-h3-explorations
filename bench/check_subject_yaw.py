@@ -399,6 +399,19 @@ def the_verdicts_file_is_whole():
         for key in ("file", "start_second", "rate", "frames", "provenance", "permission"):
             assert window.get(key) not in (None, ""), f"window {name}: no {key}"
         assert "/" not in window["file"], f"window {name}: the source is a file name in the input folder, not a path"
+        if window.get("still"):
+            assert "/" not in window["still"]["file"] and window["still"].get("on"), f"window {name}: its still"
+        tracking = window.get("tracking")
+        if tracking:
+            # the reviewed shots are the real cuts' shots, every frame once, each with a verdict somebody signed
+            edges = [0] + list(tracking["cuts"]) + [window["frames"]]
+            assert edges == sorted(set(edges)), f"window {name}: cuts {tracking['cuts']} are not in order inside the window"
+            spans = [one["frames"] for one in tracking["shots"]]
+            assert spans == [[a, b - 1] for a, b in zip(edges, edges[1:])], f"window {name}: shots {spans} are not the cuts' shots"
+            for one in tracking["shots"]:
+                assert one["subject"] in allowed["subject_in_shot"], f"window {name}, frames {one['frames']}: {one['subject']!r}"
+            assert tracking["read"].get("by") and tracking["read"].get("on"), f"window {name}: who read its shots, and on what"
+            assert isinstance(tracking.get("subject_track"), dict), f"window {name}: no `subject_track` (an empty one says the defaults do)"
     board = L.build(spec)
     measured = [n for n, w in board["windows"].items() if not w.get("not_measured")]
     return f"{len(spec['windows'])} window(s), {len(spec['sets'])} set(s), {len(measured)} with a pose record"

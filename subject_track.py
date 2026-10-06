@@ -43,7 +43,14 @@ core's `initial_mask` path and has none of the three behaviours above.
    applies the rule there. Left automatic, it applies the rule on every
    shot's frame and takes the person the rule favours for the most frames of
    the clip: a lead is the largest person in the long shots, and a cutaway's
-   largest person is the largest only there.
+   largest person is the largest only there. A shot's favourite on whom no
+   head is found has no say while another shot's has one. The detector takes
+   things for people (step 7's microphone), and a thing alone in the longest
+   shot would otherwise be the subject: on the first window of the one-person
+   clip the opening shot is the longest and shows only the microphone where
+   it is judged, and the microphone was picked and masked for the whole shot
+   (`bench/results/2026-10-06_subject_track_defaults.md`). The report names
+   a favourite left out this way.
 4. Each other shot: its people are compared with the subject by the vision
    trunk's features pooled under the top third of each mask, the head and
    shoulders (`top_third`, `signature`). The other people on the pick frame
@@ -440,6 +447,7 @@ class Followed:
     looks: list[tuple[int, int, int, float]] = field(default_factory=list)   # (shot, frame, detections, best similarity)
     views: int = 1                   # places a person is compared: head and shoulders, and the head
     views_used: int = 1              # of those, how many the subject has on the pick frame
+    passed_over: list[tuple[int, int]] = field(default_factory=list)   # (shot, frame): a favourite with no head, not counted for the pick
 
 
 _CORRECTION = re.compile(r"^shot\s*(\d+)\s*[:=]?\s*(?:person\s*(\d+)|(none))$", re.IGNORECASE)
@@ -470,21 +478,33 @@ def parse_corrections(text: str, n_shots: int) -> dict[int, int | None]:
     return out
 
 
-def main_subject(shots: list[Shot], pick: str, detect, sign) -> tuple[int, int] | None:
+def main_subject(shots: list[Shot], pick: str, detect, sign,
+                 passed_over: list[tuple[int, int]] | None = None) -> tuple[int, int] | None:
     """The frame and detection to pick when no frame is named.
 
     The rule is applied on every shot's probe frame. The people it favours are
     grouped by plain similarity, and the group covering the most frames wins;
     within it, the frame showing the most people, then the earliest.
+
+    A favourite with no head is not counted while any favourite has one, the
+    rule a match already follows: with no head it is likelier a thing than a
+    person. Each one left out is appended to `passed_over` as (shot number,
+    frame). When no favourite has a head, all of them count.
     """
-    winners = []
+    winners, headed = [], []
     for shot in shots:
         masks, scores = detect(shot.probe)
         i = choose(masks, scores, pick)
         if i is not None:
-            winners.append((shot, i, _views(sign(shot.probe, masks[i]))[0], int(masks.shape[0])))
+            sig = sign(shot.probe, masks[i])
+            winners.append((shot, i, _views(sig)[0], int(masks.shape[0])))
+            headed.append(_has_head(sig))
     if not winners:
         return None
+    if any(headed) and not all(headed):
+        if passed_over is not None:
+            passed_over.extend((shots.index(w[0]) + 1, w[0].probe) for w, has in zip(winners, headed) if not has)
+        winners = [w for w, has in zip(winners, headed) if has]
 
     def same(a, b) -> bool:
         return a is b or similarity(a[2], b[2]) >= PLAIN_SAME
@@ -529,15 +549,15 @@ def follow(n_frames: int, cuts: list[int], pick: str, pick_frame: int | None, ma
         if not 1 <= int(number) <= len(shots):
             raise ValueError(f"corrections: shot {number} is named, and the clip has {len(shots)} shot(s)")
     by_hand = {id(shots[int(number) - 1]) for number in corrections}   # tracked once, from the corrected seed
+    result = Followed(shots)
     if pick_frame is None:
-        entry = main_subject(shots, pick, detect, sign)
+        entry = main_subject(shots, pick, detect, sign, result.passed_over)
     else:
         if not 0 <= int(pick_frame) < int(n_frames):
             raise ValueError(f"pick_frame {pick_frame} is outside the clip's {n_frames} frames")
         masks, scores = detect(int(pick_frame))
         which = choose(masks, scores, pick)
         entry = None if which is None else (int(pick_frame), which)
-    result = Followed(shots)
     if entry is None:
         _correct(result, corrections, detect, track)
         return result
@@ -681,6 +701,9 @@ def report(found: Followed, cuts: list[int], pick: str, phrase: str, named_frame
     else:
         how = "the frame named" if named_frame else "chosen automatically: the person that rule favours for most of the clip"
         lines.append(f"subject: the {pick} `{phrase}` on frame {found.pick_frame} ({how})")
+        if found.passed_over:
+            lines.append("not counted for the pick, no head was found on them: the "
+                         + f"{pick} `{phrase}` of " + ", ".join(f"shot {n} (frame {f})" for n, f in found.passed_over))
         if found.others:
             lines.append(f"similarity is relative to the {found.others} other(s) on that frame")
         else:
@@ -854,8 +877,9 @@ class MiniMaxH3SubjectTrack(io.ComfyNode):
     #: the automatic match, and each shot judged a few frames in. 5: the cut
     #: threshold from the clip's scores and inclusive, and a lone person taken
     #: under the line when the pick frame shows nobody else. 6: a match has to
-    #: hold on the head as well, and the lone person has to have a head.
-    MASK_VERSION = 6
+    #: hold on the head as well, and the lone person has to have a head. 7: a
+    #: shot's favourite with no head is not counted for the automatic pick.
+    MASK_VERSION = 7
 
     @classmethod
     def define_schema(cls):

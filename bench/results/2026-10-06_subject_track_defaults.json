@@ -1,0 +1,1627 @@
+{
+ "what": "The Subject Track at h3_config.SUBJECT_TRACK and the Subject Parts node at its own defaults on the masked lane's three benchmark windows, with nothing sampled. One entry per queued prompt.",
+ "record": "bench/results/2026-10-06_subject_track_defaults.md",
+ "windows": "bench/turn_metric_eye_verdicts.json (`windows`, with the real cuts and the shots the subject is in)",
+ "runner": "bench/run_graph_arms.py, one prompt at a time, per-node seconds from the websocket feed",
+ "state": "a server started from start.sh in default mode, alone on the card; one 24-frame prompt first, so the segmenter and the Sapiens2 model were resident; no DiT, encoder or VAE loaded",
+ "loader": {
+  "class_type": "VHS_LoadVideoFFmpeg",
+  "force_rate": 24.0,
+  "custom_width": 1344,
+  "custom_height": 0,
+  "format": "AnimateDiff"
+ },
+ "segmenter": "sam3.1_multiplex_fp32.safetensors",
+ "subject_track": {
+  "subject_phrase": "person",
+  "pick": "largest",
+  "pick_on": "automatic",
+  "match": "automatic",
+  "cuts": "automatic",
+  "detection_threshold": 0.5,
+  "max_people": 16,
+  "head_phrase": "head"
+ },
+ "subject_parts": {
+  "hair": true,
+  "face_and_neck": true,
+  "upper_clothing": false,
+  "lower_clothing": false,
+  "hands": false,
+  "mouth": false,
+  "other_classes": "",
+  "crop_margin": 32,
+  "subject_margin": 8,
+  "matte_reach": 8,
+  "hold_missing": true
+ },
+ "sapiens2": {
+  "segmentation": "facebook_sapiens2-seg-1b",
+  "matting": "none"
+ },
+ "readings": {
+  "right": "the mask is on the subject where they are on screen, or empty where they are not",
+  "missed": "the subject is on screen and the shot was left empty",
+  "wrong: a microphone": "the mask is on a hanging microphone and the subject is unmasked",
+  "not known": "the reader could not tell from the frames whether the subject is in the shot"
+ },
+ "read": "by mrteal_jr on each prompt's tile, the part node's preview and a sheet of the mask over the frames, 2026-10-06; stills, so nothing that has to hold over time is judged",
+ "arms": [
+  {
+   "arm": "band_112s",
+   "window": "band_112s",
+   "file": "thinkaboutthings_compressed.mp4",
+   "start_second": 112.0,
+   "frames": 360,
+   "tracker_mask_version": 6,
+   "beyond_defaults": {},
+   "cuts_found": [
+    186,
+    237,
+    280,
+    351
+   ],
+   "cuts_real": [
+    70,
+    186,
+    237,
+    280,
+    351
+   ],
+   "cuts_missed": [
+    70
+   ],
+   "cuts_extra": [],
+   "pick_frame": 241,
+   "match": 0.821,
+   "shots": [
+    {
+     "shot": 1,
+     "frames": [
+      0,
+      185
+     ],
+     "shown_frame": 4,
+     "people": 6,
+     "state": "taken",
+     "person": 2,
+     "similarity": 0.884,
+     "frames_with_subject": 186,
+     "corrected": "",
+     "why": "similarity 0.88 on frame 4, at or above the line 0.82",
+     "reading": "right"
+    },
+    {
+     "shot": 2,
+     "frames": [
+      186,
+      236
+     ],
+     "shown_frame": 198,
+     "people": 2,
+     "state": "absent",
+     "person": null,
+     "similarity": 0.759,
+     "frames_with_subject": 0,
+     "corrected": "",
+     "why": "best similarity 0.76 on frame 198, under the line 0.82",
+     "reading": "right"
+    },
+    {
+     "shot": 3,
+     "frames": [
+      237,
+      279
+     ],
+     "shown_frame": 241,
+     "people": 8,
+     "state": "picked",
+     "person": 5,
+     "similarity": null,
+     "frames_with_subject": 43,
+     "corrected": "",
+     "why": "the largest `person` on frame 241, chosen automatically",
+     "reading": "right"
+    },
+    {
+     "shot": 4,
+     "frames": [
+      280,
+      350
+     ],
+     "shown_frame": 280,
+     "people": 3,
+     "state": "absent",
+     "person": null,
+     "similarity": 0.744,
+     "frames_with_subject": 0,
+     "corrected": "",
+     "why": "best similarity 0.74 on frame 280, under the line 0.82",
+     "reading": "right"
+    },
+    {
+     "shot": 5,
+     "frames": [
+      351,
+      359
+     ],
+     "shown_frame": 355,
+     "people": 5,
+     "state": "absent",
+     "person": null,
+     "similarity": 0.354,
+     "frames_with_subject": 0,
+     "corrected": "",
+     "why": "best similarity 0.35 on frame 355, under the line 0.82",
+     "reading": "not known"
+    }
+   ],
+   "seconds": {
+    "load_video": 4.647,
+    "subject_track": 32.47,
+    "subject_parts": 34.776,
+    "total": 72.5
+   },
+   "parts": {
+    "subject_frames": 229,
+    "frames": 360,
+    "held_frames": 0,
+    "held": "",
+    "classes_taken": "Eyeglass, Face_Neck, Hair, Lower_Lip, Upper_Lip, Lower_Teeth, Upper_Teeth, Tongue"
+   },
+   "substrate": {
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "driver": "615.71.09",
+    "power_limit": "450.00 W",
+    "torch": "2.14.1+cu132",
+    "comfy_kitchen": "0.2.37+sol.6272371.up.be003b7"
+   }
+  },
+  {
+   "arm": "solo_0s",
+   "window": "solo_0s",
+   "file": "idontwannatalk.mp4",
+   "start_second": 0.0,
+   "frames": 345,
+   "tracker_mask_version": 6,
+   "beyond_defaults": {},
+   "cuts_found": [
+    164,
+    303
+   ],
+   "cuts_real": [
+    164,
+    303
+   ],
+   "cuts_missed": [],
+   "cuts_extra": [],
+   "pick_frame": 4,
+   "match": 0.91,
+   "shots": [
+    {
+     "shot": 1,
+     "frames": [
+      0,
+      163
+     ],
+     "shown_frame": 4,
+     "people": 1,
+     "state": "picked",
+     "person": 1,
+     "similarity": null,
+     "frames_with_subject": 164,
+     "corrected": "",
+     "why": "the largest `person` on frame 4, chosen automatically",
+     "reading": "wrong: a microphone"
+    },
+    {
+     "shot": 2,
+     "frames": [
+      164,
+      302
+     ],
+     "shown_frame": 284,
+     "people": 1,
+     "state": "taken (only person)",
+     "person": 1,
+     "similarity": 0.631,
+     "frames_with_subject": 139,
+     "corrected": "",
+     "why": "the only person on frame 284, taken whatever it scores (0.63)",
+     "reading": "right"
+    },
+    {
+     "shot": 3,
+     "frames": [
+      303,
+      344
+     ],
+     "shown_frame": 327,
+     "people": 1,
+     "state": "taken (only person)",
+     "person": 1,
+     "similarity": 0.43,
+     "frames_with_subject": 42,
+     "corrected": "",
+     "why": "the only person on frame 327, taken whatever it scores (0.43)",
+     "reading": "right"
+    }
+   ],
+   "seconds": {
+    "load_video": 5.106,
+    "subject_track": 32.677,
+    "subject_parts": 52.892,
+    "total": 91.1
+   },
+   "parts": {
+    "subject_frames": 345,
+    "frames": 345,
+    "held_frames": 33,
+    "held": "131-163",
+    "classes_taken": "Eyeglass, Face_Neck, Hair, Lower_Lip, Upper_Lip, Lower_Teeth, Upper_Teeth, Tongue"
+   },
+   "substrate": {
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "driver": "615.71.09",
+    "power_limit": "450.00 W",
+    "torch": "2.14.1+cu132",
+    "comfy_kitchen": "0.2.37+sol.6272371.up.be003b7"
+   }
+  },
+  {
+   "arm": "friday_0s",
+   "window": "friday_0s",
+   "file": "friday_chorus_14s.mp4",
+   "start_second": 0.0,
+   "frames": 345,
+   "tracker_mask_version": 6,
+   "beyond_defaults": {},
+   "cuts_found": [
+    85,
+    122,
+    187,
+    217,
+    287,
+    326
+   ],
+   "cuts_real": [
+    85,
+    122,
+    187,
+    217,
+    287,
+    326
+   ],
+   "cuts_missed": [],
+   "cuts_extra": [],
+   "pick_frame": 126,
+   "match": 0.8,
+   "shots": [
+    {
+     "shot": 1,
+     "frames": [
+      0,
+      84
+     ],
+     "shown_frame": 0,
+     "people": 6,
+     "state": "absent",
+     "person": null,
+     "similarity": 0.756,
+     "frames_with_subject": 0,
+     "corrected": "",
+     "why": "best similarity 0.76 on frame 0, under the line 0.80",
+     "reading": "missed"
+    },
+    {
+     "shot": 2,
+     "frames": [
+      85,
+      121
+     ],
+     "shown_frame": 109,
+     "people": 2,
+     "state": "absent",
+     "person": null,
+     "similarity": 0.756,
+     "frames_with_subject": 0,
+     "corrected": "",
+     "why": "best similarity 0.76 on frame 109, under the line 0.80",
+     "reading": "right"
+    },
+    {
+     "shot": 3,
+     "frames": [
+      122,
+      186
+     ],
+     "shown_frame": 126,
+     "people": 3,
+     "state": "picked",
+     "person": 2,
+     "similarity": null,
+     "frames_with_subject": 65,
+     "corrected": "",
+     "why": "the largest `person` on frame 126, chosen automatically",
+     "reading": "right"
+    },
+    {
+     "shot": 4,
+     "frames": [
+      187,
+      216
+     ],
+     "shown_frame": 211,
+     "people": 3,
+     "state": "absent",
+     "person": null,
+     "similarity": 0.741,
+     "frames_with_subject": 0,
+     "corrected": "",
+     "why": "best similarity 0.74 on frame 211, under the line 0.80",
+     "reading": "not known"
+    },
+    {
+     "shot": 5,
+     "frames": [
+      217,
+      286
+     ],
+     "shown_frame": 221,
+     "people": 3,
+     "state": "taken",
+     "person": 2,
+     "similarity": 0.887,
+     "frames_with_subject": 70,
+     "corrected": "",
+     "why": "similarity 0.89 on frame 221, at or above the line 0.80",
+     "reading": "right"
+    },
+    {
+     "shot": 6,
+     "frames": [
+      287,
+      325
+     ],
+     "shown_frame": 287,
+     "people": 3,
+     "state": "absent",
+     "person": null,
+     "similarity": 0.459,
+     "frames_with_subject": 0,
+     "corrected": "",
+     "why": "best similarity 0.46 on frame 287, under the line 0.80",
+     "reading": "right"
+    },
+    {
+     "shot": 7,
+     "frames": [
+      326,
+      344
+     ],
+     "shown_frame": 330,
+     "people": 3,
+     "state": "taken",
+     "person": 2,
+     "similarity": 0.863,
+     "frames_with_subject": 19,
+     "corrected": "",
+     "why": "similarity 0.86 on frame 330, at or above the line 0.80",
+     "reading": "right"
+    }
+   ],
+   "seconds": {
+    "load_video": 4.751,
+    "subject_track": 40.063,
+    "subject_parts": 23.615,
+    "total": 69.2
+   },
+   "parts": {
+    "subject_frames": 154,
+    "frames": 345,
+    "held_frames": 0,
+    "held": "",
+    "classes_taken": "Eyeglass, Face_Neck, Hair, Lower_Lip, Upper_Lip, Lower_Teeth, Upper_Teeth, Tongue"
+   },
+   "substrate": {
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "driver": "615.71.09",
+    "power_limit": "450.00 W",
+    "torch": "2.14.1+cu132",
+    "comfy_kitchen": "0.2.37+sol.6272371.up.be003b7"
+   }
+  },
+  {
+   "arm": "band_112s_ov",
+   "window": "band_112s",
+   "file": "thinkaboutthings_compressed.mp4",
+   "start_second": 112.0,
+   "frames": 360,
+   "tracker_mask_version": 6,
+   "beyond_defaults": {},
+   "cuts_found": [
+    186,
+    237,
+    280,
+    351
+   ],
+   "cuts_real": [
+    70,
+    186,
+    237,
+    280,
+    351
+   ],
+   "cuts_missed": [
+    70
+   ],
+   "cuts_extra": [],
+   "pick_frame": 241,
+   "match": 0.821,
+   "shots": [
+    {
+     "shot": 1,
+     "frames": [
+      0,
+      185
+     ],
+     "shown_frame": 4,
+     "people": 6,
+     "state": "taken",
+     "person": 2,
+     "similarity": 0.884,
+     "frames_with_subject": 186,
+     "corrected": "",
+     "why": "similarity 0.88 on frame 4, at or above the line 0.82",
+     "reading": "right"
+    },
+    {
+     "shot": 2,
+     "frames": [
+      186,
+      236
+     ],
+     "shown_frame": 198,
+     "people": 2,
+     "state": "absent",
+     "person": null,
+     "similarity": 0.759,
+     "frames_with_subject": 0,
+     "corrected": "",
+     "why": "best similarity 0.76 on frame 198, under the line 0.82",
+     "reading": "right"
+    },
+    {
+     "shot": 3,
+     "frames": [
+      237,
+      279
+     ],
+     "shown_frame": 241,
+     "people": 8,
+     "state": "picked",
+     "person": 5,
+     "similarity": null,
+     "frames_with_subject": 43,
+     "corrected": "",
+     "why": "the largest `person` on frame 241, chosen automatically",
+     "reading": "right"
+    },
+    {
+     "shot": 4,
+     "frames": [
+      280,
+      350
+     ],
+     "shown_frame": 280,
+     "people": 3,
+     "state": "absent",
+     "person": null,
+     "similarity": 0.744,
+     "frames_with_subject": 0,
+     "corrected": "",
+     "why": "best similarity 0.74 on frame 280, under the line 0.82",
+     "reading": "right"
+    },
+    {
+     "shot": 5,
+     "frames": [
+      351,
+      359
+     ],
+     "shown_frame": 355,
+     "people": 5,
+     "state": "absent",
+     "person": null,
+     "similarity": 0.354,
+     "frames_with_subject": 0,
+     "corrected": "",
+     "why": "best similarity 0.35 on frame 355, under the line 0.82",
+     "reading": "not known"
+    }
+   ],
+   "seconds": {
+    "load_video": 5.003,
+    "subject_track": 32.638,
+    "subject_parts": 34.673,
+    "total": 74.9
+   },
+   "parts": {
+    "subject_frames": 229,
+    "frames": 360,
+    "held_frames": 0,
+    "held": "",
+    "classes_taken": "Eyeglass, Face_Neck, Hair, Lower_Lip, Upper_Lip, Lower_Teeth, Upper_Teeth, Tongue"
+   },
+   "substrate": {
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "driver": "615.71.09",
+    "power_limit": "450.00 W",
+    "torch": "2.14.1+cu132",
+    "comfy_kitchen": "0.2.37+sol.6272371.up.be003b7"
+   }
+  },
+  {
+   "arm": "solo_0s_ov",
+   "window": "solo_0s",
+   "file": "idontwannatalk.mp4",
+   "start_second": 0.0,
+   "frames": 345,
+   "tracker_mask_version": 6,
+   "beyond_defaults": {},
+   "cuts_found": [
+    164,
+    303
+   ],
+   "cuts_real": [
+    164,
+    303
+   ],
+   "cuts_missed": [],
+   "cuts_extra": [],
+   "pick_frame": 4,
+   "match": 0.91,
+   "shots": [
+    {
+     "shot": 1,
+     "frames": [
+      0,
+      163
+     ],
+     "shown_frame": 4,
+     "people": 1,
+     "state": "picked",
+     "person": 1,
+     "similarity": null,
+     "frames_with_subject": 164,
+     "corrected": "",
+     "why": "the largest `person` on frame 4, chosen automatically",
+     "reading": "wrong: a microphone"
+    },
+    {
+     "shot": 2,
+     "frames": [
+      164,
+      302
+     ],
+     "shown_frame": 284,
+     "people": 1,
+     "state": "taken (only person)",
+     "person": 1,
+     "similarity": 0.631,
+     "frames_with_subject": 139,
+     "corrected": "",
+     "why": "the only person on frame 284, taken whatever it scores (0.63)",
+     "reading": "right"
+    },
+    {
+     "shot": 3,
+     "frames": [
+      303,
+      344
+     ],
+     "shown_frame": 327,
+     "people": 1,
+     "state": "taken (only person)",
+     "person": 1,
+     "similarity": 0.43,
+     "frames_with_subject": 42,
+     "corrected": "",
+     "why": "the only person on frame 327, taken whatever it scores (0.43)",
+     "reading": "right"
+    }
+   ],
+   "seconds": {
+    "load_video": 5.341,
+    "subject_track": 32.895,
+    "subject_parts": 52.966,
+    "total": 93.5
+   },
+   "parts": {
+    "subject_frames": 345,
+    "frames": 345,
+    "held_frames": 33,
+    "held": "131-163",
+    "classes_taken": "Eyeglass, Face_Neck, Hair, Lower_Lip, Upper_Lip, Lower_Teeth, Upper_Teeth, Tongue"
+   },
+   "substrate": {
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "driver": "615.71.09",
+    "power_limit": "450.00 W",
+    "torch": "2.14.1+cu132",
+    "comfy_kitchen": "0.2.37+sol.6272371.up.be003b7"
+   }
+  },
+  {
+   "arm": "solo_0s_pick200",
+   "window": "solo_0s",
+   "file": "idontwannatalk.mp4",
+   "start_second": 0.0,
+   "frames": 345,
+   "tracker_mask_version": 6,
+   "beyond_defaults": {
+    "pick_on": "a frame I name",
+    "pick_on.pick_frame": 200
+   },
+   "cuts_found": [
+    164,
+    303
+   ],
+   "cuts_real": [
+    164,
+    303
+   ],
+   "cuts_missed": [],
+   "cuts_extra": [],
+   "pick_frame": 200,
+   "match": 0.91,
+   "shots": [
+    {
+     "shot": 1,
+     "frames": [
+      0,
+      163
+     ],
+     "shown_frame": 72,
+     "people": 1,
+     "state": "taken (only person)",
+     "person": 1,
+     "similarity": 0.827,
+     "frames_with_subject": 127,
+     "corrected": "",
+     "why": "the only person on frame 72, taken whatever it scores (0.83)",
+     "reading": "right"
+    },
+    {
+     "shot": 2,
+     "frames": [
+      164,
+      302
+     ],
+     "shown_frame": 200,
+     "people": 1,
+     "state": "picked",
+     "person": 1,
+     "similarity": null,
+     "frames_with_subject": 139,
+     "corrected": "",
+     "why": "the largest `person` on frame 200, the frame named",
+     "reading": "right"
+    },
+    {
+     "shot": 3,
+     "frames": [
+      303,
+      344
+     ],
+     "shown_frame": 303,
+     "people": 1,
+     "state": "taken (only person)",
+     "person": 1,
+     "similarity": 0.72,
+     "frames_with_subject": 42,
+     "corrected": "",
+     "why": "the only person on frame 303, taken whatever it scores (0.72)",
+     "reading": "right"
+    }
+   ],
+   "seconds": {
+    "load_video": null,
+    "subject_track": 33.834,
+    "subject_parts": 46.38,
+    "total": 82.6
+   },
+   "parts": {
+    "subject_frames": 308,
+    "frames": 345,
+    "held_frames": 0,
+    "held": "",
+    "classes_taken": "Eyeglass, Face_Neck, Hair, Lower_Lip, Upper_Lip, Lower_Teeth, Upper_Teeth, Tongue"
+   },
+   "substrate": {
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "driver": "615.71.09",
+    "power_limit": "450.00 W",
+    "torch": "2.14.1+cu132",
+    "comfy_kitchen": "0.2.37+sol.6272371.up.be003b7"
+   }
+  },
+  {
+   "arm": "friday_0s_ov",
+   "window": "friday_0s",
+   "file": "friday_chorus_14s.mp4",
+   "start_second": 0.0,
+   "frames": 345,
+   "tracker_mask_version": 6,
+   "beyond_defaults": {},
+   "cuts_found": [
+    85,
+    122,
+    187,
+    217,
+    287,
+    326
+   ],
+   "cuts_real": [
+    85,
+    122,
+    187,
+    217,
+    287,
+    326
+   ],
+   "cuts_missed": [],
+   "cuts_extra": [],
+   "pick_frame": 126,
+   "match": 0.8,
+   "shots": [
+    {
+     "shot": 1,
+     "frames": [
+      0,
+      84
+     ],
+     "shown_frame": 0,
+     "people": 6,
+     "state": "absent",
+     "person": null,
+     "similarity": 0.756,
+     "frames_with_subject": 0,
+     "corrected": "",
+     "why": "best similarity 0.76 on frame 0, under the line 0.80",
+     "reading": "missed"
+    },
+    {
+     "shot": 2,
+     "frames": [
+      85,
+      121
+     ],
+     "shown_frame": 109,
+     "people": 2,
+     "state": "absent",
+     "person": null,
+     "similarity": 0.756,
+     "frames_with_subject": 0,
+     "corrected": "",
+     "why": "best similarity 0.76 on frame 109, under the line 0.80",
+     "reading": "right"
+    },
+    {
+     "shot": 3,
+     "frames": [
+      122,
+      186
+     ],
+     "shown_frame": 126,
+     "people": 3,
+     "state": "picked",
+     "person": 2,
+     "similarity": null,
+     "frames_with_subject": 65,
+     "corrected": "",
+     "why": "the largest `person` on frame 126, chosen automatically",
+     "reading": "right"
+    },
+    {
+     "shot": 4,
+     "frames": [
+      187,
+      216
+     ],
+     "shown_frame": 211,
+     "people": 3,
+     "state": "absent",
+     "person": null,
+     "similarity": 0.741,
+     "frames_with_subject": 0,
+     "corrected": "",
+     "why": "best similarity 0.74 on frame 211, under the line 0.80",
+     "reading": "not known"
+    },
+    {
+     "shot": 5,
+     "frames": [
+      217,
+      286
+     ],
+     "shown_frame": 221,
+     "people": 3,
+     "state": "taken",
+     "person": 2,
+     "similarity": 0.887,
+     "frames_with_subject": 70,
+     "corrected": "",
+     "why": "similarity 0.89 on frame 221, at or above the line 0.80",
+     "reading": "right"
+    },
+    {
+     "shot": 6,
+     "frames": [
+      287,
+      325
+     ],
+     "shown_frame": 287,
+     "people": 3,
+     "state": "absent",
+     "person": null,
+     "similarity": 0.459,
+     "frames_with_subject": 0,
+     "corrected": "",
+     "why": "best similarity 0.46 on frame 287, under the line 0.80",
+     "reading": "right"
+    },
+    {
+     "shot": 7,
+     "frames": [
+      326,
+      344
+     ],
+     "shown_frame": 330,
+     "people": 3,
+     "state": "taken",
+     "person": 2,
+     "similarity": 0.863,
+     "frames_with_subject": 19,
+     "corrected": "",
+     "why": "similarity 0.86 on frame 330, at or above the line 0.80",
+     "reading": "right"
+    }
+   ],
+   "seconds": {
+    "load_video": 5.072,
+    "subject_track": 42.544,
+    "subject_parts": 23.681,
+    "total": 73.8
+   },
+   "parts": {
+    "subject_frames": 154,
+    "frames": 345,
+    "held_frames": 0,
+    "held": "",
+    "classes_taken": "Eyeglass, Face_Neck, Hair, Lower_Lip, Upper_Lip, Lower_Teeth, Upper_Teeth, Tongue"
+   },
+   "substrate": {
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "driver": "615.71.09",
+    "power_limit": "450.00 W",
+    "torch": "2.14.1+cu132",
+    "comfy_kitchen": "0.2.37+sol.6272371.up.be003b7"
+   }
+  },
+  {
+   "arm": "friday_0s_fix1",
+   "window": "friday_0s",
+   "file": "friday_chorus_14s.mp4",
+   "start_second": 0.0,
+   "frames": 345,
+   "tracker_mask_version": 6,
+   "beyond_defaults": {
+    "corrections": "shot 1: person 4"
+   },
+   "cuts_found": [
+    85,
+    122,
+    187,
+    217,
+    287,
+    326
+   ],
+   "cuts_real": [
+    85,
+    122,
+    187,
+    217,
+    287,
+    326
+   ],
+   "cuts_missed": [],
+   "cuts_extra": [],
+   "pick_frame": 126,
+   "match": 0.8,
+   "shots": [
+    {
+     "shot": 1,
+     "frames": [
+      0,
+      84
+     ],
+     "shown_frame": 0,
+     "people": 6,
+     "state": "taken (corrected)",
+     "person": 4,
+     "similarity": 0.756,
+     "frames_with_subject": 85,
+     "corrected": "person 4",
+     "why": "corrected by hand: person 4 on frame 0",
+     "reading": "right"
+    },
+    {
+     "shot": 2,
+     "frames": [
+      85,
+      121
+     ],
+     "shown_frame": 109,
+     "people": 2,
+     "state": "absent",
+     "person": null,
+     "similarity": 0.756,
+     "frames_with_subject": 0,
+     "corrected": "",
+     "why": "best similarity 0.76 on frame 109, under the line 0.80",
+     "reading": "right"
+    },
+    {
+     "shot": 3,
+     "frames": [
+      122,
+      186
+     ],
+     "shown_frame": 126,
+     "people": 3,
+     "state": "picked",
+     "person": 2,
+     "similarity": null,
+     "frames_with_subject": 65,
+     "corrected": "",
+     "why": "the largest `person` on frame 126, chosen automatically",
+     "reading": "right"
+    },
+    {
+     "shot": 4,
+     "frames": [
+      187,
+      216
+     ],
+     "shown_frame": 211,
+     "people": 3,
+     "state": "absent",
+     "person": null,
+     "similarity": 0.741,
+     "frames_with_subject": 0,
+     "corrected": "",
+     "why": "best similarity 0.74 on frame 211, under the line 0.80",
+     "reading": "not known"
+    },
+    {
+     "shot": 5,
+     "frames": [
+      217,
+      286
+     ],
+     "shown_frame": 221,
+     "people": 3,
+     "state": "taken",
+     "person": 2,
+     "similarity": 0.887,
+     "frames_with_subject": 70,
+     "corrected": "",
+     "why": "similarity 0.89 on frame 221, at or above the line 0.80",
+     "reading": "right"
+    },
+    {
+     "shot": 6,
+     "frames": [
+      287,
+      325
+     ],
+     "shown_frame": 287,
+     "people": 3,
+     "state": "absent",
+     "person": null,
+     "similarity": 0.459,
+     "frames_with_subject": 0,
+     "corrected": "",
+     "why": "best similarity 0.46 on frame 287, under the line 0.80",
+     "reading": "right"
+    },
+    {
+     "shot": 7,
+     "frames": [
+      326,
+      344
+     ],
+     "shown_frame": 330,
+     "people": 3,
+     "state": "taken",
+     "person": 2,
+     "similarity": 0.863,
+     "frames_with_subject": 19,
+     "corrected": "",
+     "why": "similarity 0.86 on frame 330, at or above the line 0.80",
+     "reading": "right"
+    }
+   ],
+   "seconds": {
+    "load_video": null,
+    "subject_track": 45.921,
+    "subject_parts": 36.841,
+    "total": 85.7
+   },
+   "parts": {
+    "subject_frames": 239,
+    "frames": 345,
+    "held_frames": 4,
+    "held": "18-19, 21, 32",
+    "classes_taken": "Eyeglass, Face_Neck, Hair, Lower_Lip, Upper_Lip, Lower_Teeth, Upper_Teeth, Tongue"
+   },
+   "substrate": {
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "driver": "615.71.09",
+    "power_limit": "450.00 W",
+    "torch": "2.14.1+cu132",
+    "comfy_kitchen": "0.2.37+sol.6272371.up.be003b7"
+   }
+  },
+  {
+   "arm": "band_112s_v7",
+   "window": "band_112s",
+   "file": "thinkaboutthings_compressed.mp4",
+   "start_second": 112.0,
+   "frames": 360,
+   "tracker_mask_version": 7,
+   "beyond_defaults": {},
+   "cuts_found": [
+    186,
+    237,
+    280,
+    351
+   ],
+   "cuts_real": [
+    70,
+    186,
+    237,
+    280,
+    351
+   ],
+   "cuts_missed": [
+    70
+   ],
+   "cuts_extra": [],
+   "pick_frame": 241,
+   "match": 0.821,
+   "shots": [
+    {
+     "shot": 1,
+     "frames": [
+      0,
+      185
+     ],
+     "shown_frame": 4,
+     "people": 6,
+     "state": "taken",
+     "person": 2,
+     "similarity": 0.884,
+     "frames_with_subject": 186,
+     "corrected": "",
+     "why": "similarity 0.88 on frame 4, at or above the line 0.82",
+     "reading": "right"
+    },
+    {
+     "shot": 2,
+     "frames": [
+      186,
+      236
+     ],
+     "shown_frame": 198,
+     "people": 2,
+     "state": "absent",
+     "person": null,
+     "similarity": 0.759,
+     "frames_with_subject": 0,
+     "corrected": "",
+     "why": "best similarity 0.76 on frame 198, under the line 0.82",
+     "reading": "right"
+    },
+    {
+     "shot": 3,
+     "frames": [
+      237,
+      279
+     ],
+     "shown_frame": 241,
+     "people": 8,
+     "state": "picked",
+     "person": 5,
+     "similarity": null,
+     "frames_with_subject": 43,
+     "corrected": "",
+     "why": "the largest `person` on frame 241, chosen automatically",
+     "reading": "right"
+    },
+    {
+     "shot": 4,
+     "frames": [
+      280,
+      350
+     ],
+     "shown_frame": 280,
+     "people": 3,
+     "state": "absent",
+     "person": null,
+     "similarity": 0.744,
+     "frames_with_subject": 0,
+     "corrected": "",
+     "why": "best similarity 0.74 on frame 280, under the line 0.82",
+     "reading": "right"
+    },
+    {
+     "shot": 5,
+     "frames": [
+      351,
+      359
+     ],
+     "shown_frame": 355,
+     "people": 5,
+     "state": "absent",
+     "person": null,
+     "similarity": 0.354,
+     "frames_with_subject": 0,
+     "corrected": "",
+     "why": "best similarity 0.35 on frame 355, under the line 0.82",
+     "reading": "not known"
+    }
+   ],
+   "seconds": {
+    "load_video": 4.836,
+    "subject_track": 33.009,
+    "subject_parts": 35.065,
+    "total": 75.6
+   },
+   "parts": {
+    "subject_frames": 229,
+    "frames": 360,
+    "held_frames": 0,
+    "held": "",
+    "classes_taken": "Eyeglass, Face_Neck, Hair, Lower_Lip, Upper_Lip, Lower_Teeth, Upper_Teeth, Tongue"
+   },
+   "substrate": {
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "driver": "615.71.09",
+    "power_limit": "450.00 W",
+    "torch": "2.14.1+cu132",
+    "comfy_kitchen": "0.2.37+sol.6272371.up.be003b7"
+   }
+  },
+  {
+   "arm": "solo_0s_v7",
+   "window": "solo_0s",
+   "file": "idontwannatalk.mp4",
+   "start_second": 0.0,
+   "frames": 345,
+   "tracker_mask_version": 7,
+   "beyond_defaults": {},
+   "cuts_found": [
+    164,
+    303
+   ],
+   "cuts_real": [
+    164,
+    303
+   ],
+   "cuts_missed": [],
+   "cuts_extra": [],
+   "pick_frame": 168,
+   "match": 0.91,
+   "shots": [
+    {
+     "shot": 1,
+     "frames": [
+      0,
+      163
+     ],
+     "shown_frame": 144,
+     "people": 1,
+     "state": "taken (only person)",
+     "person": 1,
+     "similarity": 0.821,
+     "frames_with_subject": 127,
+     "corrected": "",
+     "why": "the only person on frame 144, taken whatever it scores (0.82)",
+     "reading": "right"
+    },
+    {
+     "shot": 2,
+     "frames": [
+      164,
+      302
+     ],
+     "shown_frame": 168,
+     "people": 1,
+     "state": "picked",
+     "person": 1,
+     "similarity": null,
+     "frames_with_subject": 139,
+     "corrected": "",
+     "why": "the largest `person` on frame 168, chosen automatically",
+     "reading": "right"
+    },
+    {
+     "shot": 3,
+     "frames": [
+      303,
+      344
+     ],
+     "shown_frame": 303,
+     "people": 1,
+     "state": "taken (only person)",
+     "person": 1,
+     "similarity": 0.735,
+     "frames_with_subject": 42,
+     "corrected": "",
+     "why": "the only person on frame 303, taken whatever it scores (0.74)",
+     "reading": "right"
+    }
+   ],
+   "seconds": {
+    "load_video": 6.143,
+    "subject_track": 33.509,
+    "subject_parts": 46.944,
+    "total": 89.0
+   },
+   "parts": {
+    "subject_frames": 308,
+    "frames": 345,
+    "held_frames": 0,
+    "held": "",
+    "classes_taken": "Eyeglass, Face_Neck, Hair, Lower_Lip, Upper_Lip, Lower_Teeth, Upper_Teeth, Tongue"
+   },
+   "substrate": {
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "driver": "615.71.09",
+    "power_limit": "450.00 W",
+    "torch": "2.14.1+cu132",
+    "comfy_kitchen": "0.2.37+sol.6272371.up.be003b7"
+   }
+  },
+  {
+   "arm": "friday_0s_v7",
+   "window": "friday_0s",
+   "file": "friday_chorus_14s.mp4",
+   "start_second": 0.0,
+   "frames": 345,
+   "tracker_mask_version": 7,
+   "beyond_defaults": {},
+   "cuts_found": [
+    85,
+    122,
+    187,
+    217,
+    287,
+    326
+   ],
+   "cuts_real": [
+    85,
+    122,
+    187,
+    217,
+    287,
+    326
+   ],
+   "cuts_missed": [],
+   "cuts_extra": [],
+   "pick_frame": 126,
+   "match": 0.8,
+   "shots": [
+    {
+     "shot": 1,
+     "frames": [
+      0,
+      84
+     ],
+     "shown_frame": 0,
+     "people": 6,
+     "state": "absent",
+     "person": null,
+     "similarity": 0.756,
+     "frames_with_subject": 0,
+     "corrected": "",
+     "why": "best similarity 0.76 on frame 0, under the line 0.80",
+     "reading": "missed"
+    },
+    {
+     "shot": 2,
+     "frames": [
+      85,
+      121
+     ],
+     "shown_frame": 109,
+     "people": 2,
+     "state": "absent",
+     "person": null,
+     "similarity": 0.756,
+     "frames_with_subject": 0,
+     "corrected": "",
+     "why": "best similarity 0.76 on frame 109, under the line 0.80",
+     "reading": "right"
+    },
+    {
+     "shot": 3,
+     "frames": [
+      122,
+      186
+     ],
+     "shown_frame": 126,
+     "people": 3,
+     "state": "picked",
+     "person": 2,
+     "similarity": null,
+     "frames_with_subject": 65,
+     "corrected": "",
+     "why": "the largest `person` on frame 126, chosen automatically",
+     "reading": "right"
+    },
+    {
+     "shot": 4,
+     "frames": [
+      187,
+      216
+     ],
+     "shown_frame": 211,
+     "people": 3,
+     "state": "absent",
+     "person": null,
+     "similarity": 0.741,
+     "frames_with_subject": 0,
+     "corrected": "",
+     "why": "best similarity 0.74 on frame 211, under the line 0.80",
+     "reading": "not known"
+    },
+    {
+     "shot": 5,
+     "frames": [
+      217,
+      286
+     ],
+     "shown_frame": 221,
+     "people": 3,
+     "state": "taken",
+     "person": 2,
+     "similarity": 0.887,
+     "frames_with_subject": 70,
+     "corrected": "",
+     "why": "similarity 0.89 on frame 221, at or above the line 0.80",
+     "reading": "right"
+    },
+    {
+     "shot": 6,
+     "frames": [
+      287,
+      325
+     ],
+     "shown_frame": 287,
+     "people": 3,
+     "state": "absent",
+     "person": null,
+     "similarity": 0.459,
+     "frames_with_subject": 0,
+     "corrected": "",
+     "why": "best similarity 0.46 on frame 287, under the line 0.80",
+     "reading": "right"
+    },
+    {
+     "shot": 7,
+     "frames": [
+      326,
+      344
+     ],
+     "shown_frame": 330,
+     "people": 3,
+     "state": "taken",
+     "person": 2,
+     "similarity": 0.863,
+     "frames_with_subject": 19,
+     "corrected": "",
+     "why": "similarity 0.86 on frame 330, at or above the line 0.80",
+     "reading": "right"
+    }
+   ],
+   "seconds": {
+    "load_video": 6.024,
+    "subject_track": 40.385,
+    "subject_parts": 23.665,
+    "total": 72.8
+   },
+   "parts": {
+    "subject_frames": 154,
+    "frames": 345,
+    "held_frames": 0,
+    "held": "",
+    "classes_taken": "Eyeglass, Face_Neck, Hair, Lower_Lip, Upper_Lip, Lower_Teeth, Upper_Teeth, Tongue"
+   },
+   "substrate": {
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "driver": "615.71.09",
+    "power_limit": "450.00 W",
+    "torch": "2.14.1+cu132",
+    "comfy_kitchen": "0.2.37+sol.6272371.up.be003b7"
+   }
+  },
+  {
+   "arm": "friday_0s_v7_fix1",
+   "window": "friday_0s",
+   "file": "friday_chorus_14s.mp4",
+   "start_second": 0.0,
+   "frames": 345,
+   "tracker_mask_version": 7,
+   "beyond_defaults": {
+    "corrections": "shot 1: person 4"
+   },
+   "cuts_found": [
+    85,
+    122,
+    187,
+    217,
+    287,
+    326
+   ],
+   "cuts_real": [
+    85,
+    122,
+    187,
+    217,
+    287,
+    326
+   ],
+   "cuts_missed": [],
+   "cuts_extra": [],
+   "pick_frame": 126,
+   "match": 0.8,
+   "shots": [
+    {
+     "shot": 1,
+     "frames": [
+      0,
+      84
+     ],
+     "shown_frame": 0,
+     "people": 6,
+     "state": "taken (corrected)",
+     "person": 4,
+     "similarity": 0.756,
+     "frames_with_subject": 85,
+     "corrected": "person 4",
+     "why": "corrected by hand: person 4 on frame 0",
+     "reading": "right"
+    },
+    {
+     "shot": 2,
+     "frames": [
+      85,
+      121
+     ],
+     "shown_frame": 109,
+     "people": 2,
+     "state": "absent",
+     "person": null,
+     "similarity": 0.756,
+     "frames_with_subject": 0,
+     "corrected": "",
+     "why": "best similarity 0.76 on frame 109, under the line 0.80",
+     "reading": "right"
+    },
+    {
+     "shot": 3,
+     "frames": [
+      122,
+      186
+     ],
+     "shown_frame": 126,
+     "people": 3,
+     "state": "picked",
+     "person": 2,
+     "similarity": null,
+     "frames_with_subject": 65,
+     "corrected": "",
+     "why": "the largest `person` on frame 126, chosen automatically",
+     "reading": "right"
+    },
+    {
+     "shot": 4,
+     "frames": [
+      187,
+      216
+     ],
+     "shown_frame": 211,
+     "people": 3,
+     "state": "absent",
+     "person": null,
+     "similarity": 0.741,
+     "frames_with_subject": 0,
+     "corrected": "",
+     "why": "best similarity 0.74 on frame 211, under the line 0.80",
+     "reading": "not known"
+    },
+    {
+     "shot": 5,
+     "frames": [
+      217,
+      286
+     ],
+     "shown_frame": 221,
+     "people": 3,
+     "state": "taken",
+     "person": 2,
+     "similarity": 0.887,
+     "frames_with_subject": 70,
+     "corrected": "",
+     "why": "similarity 0.89 on frame 221, at or above the line 0.80",
+     "reading": "right"
+    },
+    {
+     "shot": 6,
+     "frames": [
+      287,
+      325
+     ],
+     "shown_frame": 287,
+     "people": 3,
+     "state": "absent",
+     "person": null,
+     "similarity": 0.459,
+     "frames_with_subject": 0,
+     "corrected": "",
+     "why": "best similarity 0.46 on frame 287, under the line 0.80",
+     "reading": "right"
+    },
+    {
+     "shot": 7,
+     "frames": [
+      326,
+      344
+     ],
+     "shown_frame": 330,
+     "people": 3,
+     "state": "taken",
+     "person": 2,
+     "similarity": 0.863,
+     "frames_with_subject": 19,
+     "corrected": "",
+     "why": "similarity 0.86 on frame 330, at or above the line 0.80",
+     "reading": "right"
+    }
+   ],
+   "seconds": {
+    "load_video": null,
+    "subject_track": 45.363,
+    "subject_parts": 36.41,
+    "total": 84.5
+   },
+   "parts": {
+    "subject_frames": 239,
+    "frames": 345,
+    "held_frames": 4,
+    "held": "18-19, 21, 32",
+    "classes_taken": "Eyeglass, Face_Neck, Hair, Lower_Lip, Upper_Lip, Lower_Teeth, Upper_Teeth, Tongue"
+   },
+   "substrate": {
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "driver": "615.71.09",
+    "power_limit": "450.00 W",
+    "torch": "2.14.1+cu132",
+    "comfy_kitchen": "0.2.37+sol.6272371.up.be003b7"
+   }
+  }
+ ]
+}
