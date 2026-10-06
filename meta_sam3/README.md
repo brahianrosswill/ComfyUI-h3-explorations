@@ -101,4 +101,5 @@ server should not make. Each one becomes the caller's:
   hardware, and the copy leaves the builder's value as it is. It is an
   attribute of the built model, and a caller on a smaller card lowers it
   there. Where this pack has run the copy, that is the one setting that was
-  not Meta's default.
+  not Meta's default. The record of that run is
+  [`bench/results/2026-10-06_meta_sam3_card_run.md`](../bench/results/2026-10-06_meta_sam3_card_run.md).
