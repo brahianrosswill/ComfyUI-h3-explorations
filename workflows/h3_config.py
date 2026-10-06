@@ -1265,6 +1265,16 @@ MASKED_MOTION_STEPS = 12
 #: frames on grey as the encoder-only motion reference (the masking board's
 #: route 1, measured above), every other value `MASKED_SOURCE`'s.
 MASKED_MOTION_SOURCE = dict(MASKED_SOURCE, motion_reference="subject only")
+#: `MiniMaxH3MaskedPrompt` (`masked_prompt.py`), which writes the masked
+#: graphs' prompt from these choices and from the Masked Source wired into
+#: it. Equal to the node's defaults: a reference still of anybody, who is the
+#: voice on the track, with what the still provides read off the Masked
+#: Source's `replace`. **Reasoned**: a shipped graph holds a placeholder
+#: still, so its text cannot assume a man or a woman. The sentences and what
+#: each has rendered on are in `masked_prompt_text.py`.
+MASKED_PROMPT_NODE = "MiniMaxH3MaskedPrompt"
+MASKED_PROMPT = dict(subject="a person", voice="the main voice on the track",
+                     picture_gives="what the Masked Source replaces", extra="")
 
 # ---- FastH3 8-step V2 ------------------------------------------------------------
 #: **Inherited** from ComfyUI's own template, Comfy-Org/workflow_templates

@@ -162,13 +162,27 @@ Three t2va prompts written on 2026-09-12 for the shot-per-window chain
 
 | scene | mode | verdict | why |
 |---|---|---|---|
-| `ref2va_masked_subject_swap` | ref2va | **keep** (text only) | the shipped prompt of `h3_video_to_video_masked_song_pdd8`; grades clean and sits inside the reference word budget. It names no setting, shot or cut, which is against section 5.10's rule that a prompt fits its scene, and is so on purpose: the source video's own frames hold the framing and the cuts outside the mask, and one text has to serve every window of any clip. Whether that costs anything is the open pair with `ref2va_masked_stage_singer` (`bench/masked_v2v_arms.json`); rendered once on the owner's clip and not judged (`bench/results/2026-10-04_masked_v2v_first_run.md`) |
+| `ref2va_masked_subject_swap` | ref2va | **keep** (text only) | the shipped prompt of `h3_video_to_video_masked_song_pdd8` until 2026-10-06, when `ref2va_masked_person_swap` replaced it there (below); grades clean and sits inside the reference word budget. It names no setting, shot or cut, which is against section 5.10's rule that a prompt fits its scene, and is so on purpose: the source video's own frames hold the framing and the cuts outside the mask, and one text has to serve every window of any clip. Whether that costs anything is the open pair with `ref2va_masked_stage_singer` (`bench/masked_v2v_arms.json`); rendered once on the owner's clip and not judged (`bench/results/2026-10-04_masked_v2v_first_run.md`) |
 
 ### Verdicts added 2026-10-05, the motion reference
 
 | scene | mode | verdict | why |
 |---|---|---|---|
-| `ref2va_masked_subject_motion` | ref2va | **keep** (text only) | the shipped prompt of `h3_video_to_video_masked_song_ref2va_motion`: since the evening of 2026-10-05 the exact text the measured arms ran, mrhf's generic subject-swap text for a subject among other people (a first version grafted the lines onto `ref2va_masked_subject_swap` and did not turn him), with `<Video 1>` named as the source of the subject's motion and timing and nothing else (an `attribute_transfer` line, as the guide has for a reference that lends one attribute), and the shot sentence tying the subject's turns, facing and gestures to it. The label is emitted by the song node at run time from the Masked Source's motion reference, which `reference_order.motion_records` tells the static checks. Measured on the band clip's turn: `bench/results/2026-10-05_masked_v2v_motion_arms.md`. |
+| `ref2va_masked_subject_motion` | ref2va | **keep** (text only) | the shipped prompt of `h3_video_to_video_masked_song_ref2va_motion` until 2026-10-06, when the same text for "the person" replaced it there (`ref2va_masked_person_motion`, below); `bench/check_masked_prompt.py` holds the Masked Prompt node to this one. Since the evening of 2026-10-05 the exact text the measured arms ran, mrhf's generic subject-swap text for a subject among other people (a first version grafted the lines onto `ref2va_masked_subject_swap` and did not turn him), with `<Video 1>` named as the source of the subject's motion and timing and nothing else (an `attribute_transfer` line, as the guide has for a reference that lends one attribute), and the shot sentence tying the subject's turns, facing and gestures to it. The label is emitted by the song node at run time from the Masked Source's motion reference, which `reference_order.motion_records` tells the static checks. Measured on the band clip's turn: `bench/results/2026-10-05_masked_v2v_motion_arms.md`. |
+
+### Verdicts added 2026-10-06, the Masked Prompt node's texts
+
+Each is a copy of what `MiniMaxH3MaskedPrompt` writes for one combination of
+its choices (`masked_prompt_text.py`; `bench/check_masked_prompt.py` holds
+copy and node together). None names a setting, a shot, a cut or a camera,
+for the reason the 2026-10-04 row gives.
+
+| scene | mode | verdict | why |
+|---|---|---|---|
+| `ref2va_masked_person_swap` | ref2va | **keep** | the shipped prompt of `h3_video_to_video_masked_song_pdd8`: the node at its defaults. mrhf's generic swap text of 2026-10-04, which drops what `ref2va_masked_subject_swap` claimed about the clip (one performer, alone, standing, a fourteen-second static shot). Rendered once in that form, one window and one seed on the band clip, and not judged by the owner |
+| `ref2va_masked_person_motion` | ref2va | **keep** | the shipped prompt of `h3_video_to_video_masked_song_ref2va_motion`: the node with the Masked Source's motion reference on. `ref2va_masked_subject_motion` for "the person"; not rendered in this form |
+| `ref2va_masked_person_head` | ref2va | **keep** (text only) | the node when the Masked Source replaces head and hair: `ref2va_masked_head_swap` without its lead performer, its duration and its camera claim. Not rendered |
+| `ref2va_masked_person_silent` | ref2va | **keep** (text only) | the node with `voice` set to silent, for a replaced person who is not the voice on the track. Not rendered |
 
 ### Misalignments: one closed, one withdrawn, one open
 

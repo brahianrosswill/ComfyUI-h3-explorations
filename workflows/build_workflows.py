@@ -89,13 +89,14 @@ _OUR_NODES = {
 # names stay because the bench and the catalogue import them. Adopted
 # 2026-09-03 (owner): one source of truth for prompt text.
 from prompts import text as _bank_prompt  # noqa: E402
+import prompts as _prompts  # noqa: E402
 from h3_config import (  # noqa: E402
     DAILY_DIR, DAILY_GRAPHS, SINGLE_FRAME_DIR,
     CORE_LOADED_ENCODERS, IMAGE_VAE, DRAFT_VAE, STEP_SWITCH_PASS1_SIGMAS, STEP_SWITCH_PASS2_SIGMAS,
     STEP_SWITCH_REV, STEP_SWITCH_BASE, CANVAS, FPS, LENGTH, LONG_LENGTH, MODELS,
     SAMPLING, SAGE_NODE, DENSE_BACKEND_NODE, DENSE_CHAINS, DEFAULT_DENSE_CHAIN, SEED, SIGMA_SHIFT, SOL_CORE_NODE, SOL_CORE_DEFAULTS,
     REF_VIDEO_LOADER, REF_QWEN_SHORT_EDGE, SEGMENTER, SUBJECT_TRACK, MASKED_SOURCE,
-    MASKED_MOTION_STEPS, MASKED_MOTION_SOURCE,
+    MASKED_MOTION_STEPS, MASKED_MOTION_SOURCE, MASKED_PROMPT, MASKED_PROMPT_NODE,
     CACHE_NODE, CACHE_NODE_CLASS,
     DISTILL_SAMPLING,
     REF_VIDEO_BUDGET,
@@ -1347,6 +1348,12 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
               # no motion reference), `MASKED_MOTION_SOURCE` the ref2va motion
               # graph's. One dict, so a graph cannot half-override the node.
               masked_source: dict | None = None,
+              # The Masked Prompt node's widget values (`masked_prompt.py`,
+              # `h3_config.MASKED_PROMPT`): the song node's prompt is then that
+              # node's output, and `prompt` must be the text it writes for this
+              # graph, so the bank holds a copy of what every shipped graph
+              # renders. None leaves the prompt typed into the song node.
+              masked_prompt: dict | None = None,
               # Audio-only refinement after the pass (audio_refine.py,
               # h3_config.AUDIO_REFINE): the sampled latent's video frozen and
               # its audio reopened, then a partial-denoise pass on the model
@@ -2205,6 +2212,19 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
                                    "segmenter": ["100", 0], "segmenter_clip": ["100", 1],
                                    "shot_table": ["105", 3]}}
             g["74"]["inputs"]["source"] = ["104", 0]
+            if masked_prompt is not None:
+                # The prompt is written by the node from what the Masked Source
+                # does, and shown on it; id 106.
+                g["106"] = {"class_type": MASKED_PROMPT_NODE,
+                            "inputs": {**masked_prompt, "source": ["104", 0]}}
+                g["74"]["inputs"]["prompt"] = ["106", 0]
+                written = _prompts.carriers(g)
+                written = [c.text for c in written if c.node_id == "74"]
+                if written != [prompt]:
+                    raise SystemExit("masked_prompt: the Masked Prompt node would not write this graph's bank "
+                                     "text; rebuild the bank copy with bench/check_masked_prompt.py --write")
+        elif masked_prompt is not None:
+            raise SystemExit("masked_prompt needs freeze_song_source")
     elif freeze_song_refs or freeze_song_lists or freeze_song_source:
         raise SystemExit("freeze_song_refs, freeze_song_lists and freeze_song_source need freeze_song")
 
@@ -3710,13 +3730,19 @@ def main():
         # prompt for every window that names no shot, because the plate
         # already holds the framing and the cuts; a clip-specific prompt is
         # an arm (`bench/masked_v2v_arms.json`). Not judged yet.
+        # Since 2026-10-06 the prompt is written by the Masked Prompt node
+        # (`masked_prompt.py`) and the bank text is its copy: the generic
+        # swap text, which claims no count of people, duration, posture or
+        # camera, where `ref2va_masked_subject_swap` said one performer
+        # standing through a fourteen-second static shot.
         ("h3_video_to_video_masked_song_pdd8.json", "v2v-masked-song-pdd8", "t2v",
-         _bank_prompt("ref2va_masked_subject_swap"),
+         _bank_prompt("ref2va_masked_person_swap"),
          dict(pdd=True, sampler_name="euler",
               unet=MODELS["unet_fl2va_pdd8_baked"],
               lora=(PDD_FL2VA_STRIPPED_LORA, PDD_STRENGTH), steps=PDD_STEPS,
               freeze_song=True, freeze_song_seconds=30.0,
               freeze_song_refs=(PLACEHOLDER_IMAGE_A,), freeze_song_source=True,
+              masked_prompt=MASKED_PROMPT,
               freeze_mask=0.0, freeze_context=39, length=LONG_LENGTH,
               out_prefix="Video/h3_v2v_masked_song_pdd8"),
          "masked video to video: a source video's subject replaced from a reference still, audio kept"),
@@ -3727,12 +3753,18 @@ def main():
         # MASKED_MOTION_STEPS and loses it at 8, bake or not; fl2va never takes
         # the reference (bench/results/2026-10-05_masked_v2v_motion_arms.md).
         # Costs the step count over the PDD8 graph; not the default.
+        # The Masked Prompt node writes the <Video 1> lines because the
+        # Masked Source's motion reference is on. The measured text said
+        # "the man"; this graph holds a placeholder still, so it ships the
+        # same text for "the person" (`ref2va_masked_subject_motion` keeps
+        # the measured one, and `bench/check_masked_prompt.py` holds the node
+        # to it).
         ("h3_video_to_video_masked_song_ref2va_motion.json", "v2v-masked-song-ref2va-motion", "t2v",
-         _bank_prompt("ref2va_masked_subject_motion"),
+         _bank_prompt("ref2va_masked_person_motion"),
          dict(sampler_name="euler", unet=MODELS["unet_ref2va"], steps=MASKED_MOTION_STEPS,
               freeze_song=True, freeze_song_seconds=30.0,
               freeze_song_refs=(PLACEHOLDER_IMAGE_A,), freeze_song_source=True,
-              masked_source=MASKED_MOTION_SOURCE,
+              masked_source=MASKED_MOTION_SOURCE, masked_prompt=MASKED_PROMPT,
               freeze_mask=0.0, freeze_context=39, length=LONG_LENGTH,
               out_prefix="Video/h3_v2v_masked_song_ref2va_motion"),
          "masked video to video on ref2va: the subject replaced from a still and moving as the source's subject moved"),

@@ -50,6 +50,7 @@ from .subject_track import MiniMaxH3SubjectTrack
 from .sapiens2_parts import MiniMaxH3Sapiens2Loader, MiniMaxH3SubjectParts
 from .sam3d_body_vith import MiniMaxH3SAM3DBodyViTHLoader
 from .shot_table import MiniMaxH3SaveShotTable
+from .masked_prompt import MiniMaxH3MaskedPrompt
 from .step_x0_observer import MiniMaxH3StepX0Observer
 from .core_sparse_capture import MiniMaxH3CoreSparseCapture
 from .preflight import MiniMaxH3Preflight
@@ -366,7 +367,10 @@ class H3ExplorationsExtension(ComfyExtension):
                 MiniMaxH3SAM3DBodyViTHLoader,
                 # appended 2026-10-05, the Subject Track's shot table written out for
                 # review (shot_table.py)
-                MiniMaxH3SaveShotTable]
+                MiniMaxH3SaveShotTable,
+                # appended 2026-10-06, the masked lane's prompt written from a few choices
+                # (masked_prompt.py, masked_prompt_text.py)
+                MiniMaxH3MaskedPrompt]
 
 
 async def comfy_entrypoint() -> H3ExplorationsExtension:

@@ -1,6 +1,6 @@
 # Masked video to video: how it works, what it cannot do, where to go next
 
-last updated: 2026-10-05 (the ref2va motion graph; the Sapiens2 nodes named); 2026-10-04 (first written, after the Subject Track's third clip)
+last updated: 2026-10-06 (the prompt node); 2026-10-05 (the ref2va motion graph; the Sapiens2 nodes named); 2026-10-04 (first written, after the Subject Track's third clip)
 
 Written by hand. This is the lane's map for a reader who has not followed
 it: the pieces in the order a render meets them, the limits each one has
@@ -18,7 +18,8 @@ working notes are in [`../research/masking/`](../research/masking/README.md).
 Take a video with its own audio, keep everything outside one person, and
 replace that person from a reference still. The shipped graph is
 `workflows/h3_video_to_video_masked_song_pdd8_api.json`: a video loader, the
-SAM 3 checkpoint, two pack nodes, and the PDD8 song chain with Sol-Attn.
+SAM 3 checkpoint, three pack nodes (who, what happens to them, the prompt),
+and the PDD8 song chain with Sol-Attn.
 
 A second shipped graph, `workflows/h3_video_to_video_masked_song_ref2va_motion_api.json`
 (2026-10-05), is for a shot where the replaced person must move as the
@@ -103,7 +104,34 @@ where in core.
   for its `mask` input, so the tracker does not run. `MASK_KEY_SKIP` names
   the settings that do not change the mask.
 
-### 3. The song node (`audio_freeze_song.py`): the render
+### 3. `MiniMaxH3MaskedPrompt` (`masked_prompt.py`): the prompt
+
+The reference format is six sections of prose, and in this lane almost none
+of it depends on the clip, because the plate holds the setting, the framing
+and the cuts. The node writes the text from three choices: who the still
+shows (`subject`: a person, a man, a woman), whether they are the voice on
+the track (`voice`), and what the still provides (`picture_gives`). It reads
+the rest off the Masked Source wired into its `source`: what is replaced,
+and whether a motion reference is on, in which case it writes the
+`<Video 1>` lines. So the text and the Masked Source cannot disagree.
+`extra` adds sentences to the shot as written. The text is shown on the node
+on every run.
+
+- **Where the sentences live.** Constants in `masked_prompt_text.py`, whose
+  docstring says which have rendered and which have not. Changing one
+  changes every graph that wires the node; `bench/check_masked_prompt.py
+  --write` then rewrites the bank's copies.
+- **Writing a prompt by hand** is still possible: type it into the song
+  node's `prompt` and leave this node out.
+- **`the wired parts`** can be any part of the subject, so the node asks
+  for `picture_gives` to be set and writes nothing until it is.
+- **A `preview` run of the song node tracks the subject** when this node's
+  `source` is wired, the first time; the mask is kept and the render that
+  follows tracks nothing. `masked_prompt.py` says why.
+- **The graders read what the encoder reads**: `workflows/prompts.py::carriers`
+  resolves the node's text from the graph.
+
+### 4. The song node (`audio_freeze_song.py`): the render
 
 Each window starts from the source's frames over its span
 (`video_mask.window`), regenerates the masked tokens with the track's audio
@@ -234,7 +262,7 @@ wider set, with what each would buy and what is known about it.
 |---|---|
 | what a node input does | the node's `define_schema` tooltip |
 | why a default is what it is | the comment beside the constant, and `../../workflows/h3_config.py` (`SUBJECT_TRACK`, `MASKED_SOURCE`) |
-| what would go red | `bench/check_subject_track.py`, `bench/check_video_mask.py`, `bench/check_mask_store.py`, `bench/check_plate_restore.py`; [`../checks.md`](../checks.md) |
+| what would go red | `bench/check_subject_track.py`, `bench/check_video_mask.py`, `bench/check_mask_store.py`, `bench/check_masked_prompt.py`, `bench/check_plate_restore.py`; [`../checks.md`](../checks.md) |
 | what the owner said of a render | `../../bench/results/2026-10-04_masked_v2v_first_run.md`, `../../bench/results/2026-10-04_masked_v2v_band.md` |
-| how the prompts are written | `../../prompt_bank/` (`ref2va_masked_*`), [`../prompting.md`](../prompting.md) |
+| how the prompts are written | `../../masked_prompt_text.py` (the node's sentences), `../../prompt_bank/` (`ref2va_masked_*`), [`../prompting.md`](../prompting.md) |
 | what was measured on which clip | `../../bench/results/2026-10-04_subject_track_three_clips.md` |

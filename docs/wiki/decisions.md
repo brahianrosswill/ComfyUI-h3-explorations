@@ -15,6 +15,29 @@ Older history lives elsewhere and is not copied here:
   decisions" and forward-plan sections.
 - `bench/results/`: the verdict records, each with its conditions.
 
+## 2026-10-06
+
+- **The masked graphs' prompt is written by a node, and the fl2va PDD8 graph
+  ships the generic text** (owner, 2026-10-06: generalise the lane beyond one
+  clip, and a prompt that covers different scenarios without the long
+  reference-format text being retyped). `MiniMaxH3MaskedPrompt`
+  (`masked_prompt.py`) writes it from three choices and from the Masked
+  Source wired into it; the sentences are constants in
+  `masked_prompt_text.py`. What it replaced: both shipped masked graphs held
+  a typed text in the song node. The PDD8 graph's was
+  `ref2va_masked_subject_swap`, which says one performer, alone, standing
+  through a fourteen-second static shot; it now ships
+  `ref2va_masked_person_swap`, the text mrhf wrote on 2026-10-04 to claim
+  none of that. The motion graph's was `ref2va_masked_subject_motion`, which
+  says "the man"; it ships the same text for "the person"
+  (`ref2va_masked_person_motion`), a placeholder still being anybody. Against
+  what: the generic text for "the man" is what every arm of
+  `bench/results/2026-10-05_masked_v2v_motion_arms.md` ran, with and without
+  the motion lines; the "person" form was rendered once, one window and one
+  seed, without them (mrhf's note beside the texts under `internal/`, which
+  is not tracked). The person text with the motion lines has not been
+  rendered, and neither have the node's head-and-hair and silent texts.
+
 ## 2026-10-05
 
 - **Sol starts at 0.2 on every graph; the 2026-10-01 call that set 0.0 on

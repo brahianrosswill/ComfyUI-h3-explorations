@@ -8,7 +8,7 @@ this file is only a way to find a script by what it says it does.
 
 | group | scripts |
 |---|---|
-| [`check_*`](#check) | 89 |
+| [`check_*`](#check) | 90 |
 | [`measure_*`](#measure) | 38 |
 | [`analyze_*`](#analyze) | 23 |
 | [`grade_*`](#grade) | 21 |
@@ -57,6 +57,7 @@ this file is only a way to find a script by what it says it does.
 | [`check_marker_arms.py`](check_marker_arms.py) | A marker-corpus arm that was declared and not applied must go red. |
 | [`check_marker_corpus.py`](check_marker_corpus.py) | Hold the compiled marker corpus to the assertions its brief names. |
 | [`check_mask_store.py`](check_mask_store.py) | A kept subject mask is found when nothing that decides it has changed, and never otherwise. |
+| [`check_masked_prompt.py`](check_masked_prompt.py) | The masked lane's prompt node: what it writes, and that the graders read the same text. |
 | [`check_model_contents.py`](check_model_contents.py) | What is INSIDE each shipped model file, asserted against a committed baseline. |
 | [`check_model_files.py`](check_model_files.py) | No graph or constant may name a model file its real loader cannot use. |
 | [`check_mutant_parity.py`](check_mutant_parity.py) | The standalone `H3ExactLoRA` node computes what this pack's two nodes compute. |

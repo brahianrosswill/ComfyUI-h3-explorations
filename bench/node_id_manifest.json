@@ -285,6 +285,19 @@
       "model"
     ]
   },
+  "MiniMaxH3MaskedPrompt": {
+    "inputs": [
+      "subject",
+      "voice",
+      "picture_gives",
+      "extra",
+      "source"
+    ],
+    "node_id": "MiniMaxH3MaskedPrompt",
+    "outputs": [
+      "prompt"
+    ]
+  },
   "MiniMaxH3MaskedSource": {
     "inputs": [
       "frames",

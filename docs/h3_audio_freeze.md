@@ -353,7 +353,8 @@ clips (`bench/results/2026-10-04_masked_v2v_first_run.md`,
 The graph is `workflows/h3_video_to_video_masked_song_pdd8_api.json`, on the
 placeholder clip and still, with a prompt that names no setting or shot
 (`prompt_bank/ref2va_masked_subject_swap.txt`) so one text serves every
-window of any clip. The first renders, on the owner's clip, are the arms in
+window of any clip. (Since 2026-10-06 the graph's prompt is written by the
+Masked Prompt node, `masked_prompt.py`, and is `ref2va_masked_person_swap`.) The first renders, on the owner's clip, are the arms in
 `bench/masked_v2v_arms.json`; their record and what the owner made of them
 are in `bench/results/2026-10-04_masked_v2v_first_run.md`.
 A second graph, `workflows/h3_video_to_video_masked_song_ref2va_motion_api.json`

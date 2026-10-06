@@ -117,8 +117,9 @@ def describe(graph: dict) -> dict:
         if not isinstance(node, dict):
             continue
         ct, inputs = node.get("class_type"), node.get("inputs") or {}
-        if ct in _cfg.PROMPT_INPUTS and isinstance(inputs.get(_cfg.PROMPT_INPUTS[ct]), str):
-            t = inputs[_cfg.PROMPT_INPUTS[ct]]
+        # followed through a link, so a prompt a Masked Prompt node writes is identified too
+        t = _follow(inputs.get(_cfg.PROMPT_INPUTS[ct]), graph)[0] if ct in _cfg.PROMPT_INPUTS else None
+        if isinstance(t, str):
             out["prompt_sha256"] = sha256(t.rstrip())
             out["prompt_id"] = identify(t)
         elif ct == "MiniMaxH3Resolution":
@@ -212,6 +213,35 @@ class Carrier:
     unused: tuple[str, ...] = ()
 
 
+@lru_cache(maxsize=1)
+def _masked_text():
+    """`masked_prompt_text.py` from the repo root, loaded by path: it is the
+    one place the masked lane's sentences live, and it imports nothing."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("masked_prompt_text", REPO / "masked_prompt_text.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _assembled(ins: dict, graph: dict) -> str | None:
+    """What a Masked Prompt node (`masked_prompt.py`) writes: its widget values,
+    and `replace` and `motion_reference` read off the Masked Source wired into
+    its `source`, as the node reads them at run time. None when a value is
+    itself a link, or the combination is one the node refuses."""
+    m = _masked_text()
+    link = ins.get("source")
+    wired = isinstance(link, list) and len(link) == 2 and str(link[0]) in graph
+    up = (graph[str(link[0])].get("inputs", {}) or {}) if wired else None
+    try:
+        return m.assemble(ins.get("subject", m.SUBJECT_PERSON), ins.get("voice", m.VOICE_MAIN),
+                          ins.get("picture_gives", m.GIVES_FOLLOW), ins.get("extra", ""),
+                          up.get("replace", m.REPLACE_WHOLE) if wired else None,
+                          up.get("motion_reference", m.MOTION_NONE) if wired else None)
+    except (ValueError, TypeError):
+        return None
+
+
 def _follow(value, graph: dict, *, hops: int = 8):
     """Follow a two-item link from a prompt input to the node that supplies it.
     Returns (text, source node dict or None)."""
@@ -225,8 +255,11 @@ def _follow(value, graph: dict, *, hops: int = 8):
         source = graph[sid]
         ins = source.get("inputs", {}) or {}
         # a frontend string primitive carries the text as `value`; Fill Prompt
-        # Lists carries the template as `prompt`
-        value = ins.get("value", ins.get("text", ins.get("prompt")))
+        # Lists carries the template as `prompt`; a Masked Prompt node writes it
+        if source.get("class_type") == _cfg.MASKED_PROMPT_NODE:
+            value = _assembled(ins, graph)
+        else:
+            value = ins.get("value", ins.get("text", ins.get("prompt")))
         hops -= 1
     return (value, source) if isinstance(value, str) else (None, None)
 

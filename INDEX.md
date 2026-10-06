@@ -41,6 +41,13 @@ with none is a helper the others import.
 | [`loop_plan.py`](loop_plan.py) |  | Where a loop's windows fall on its track, and which text each window renders. |
 | [`loop_resume.py`](loop_resume.py) |  | Resume a frozen-audio loop from the first window that changed. |
 
+### masked_*
+
+| module | nodes it defines | what it says it does |
+|---|---|---|
+| [`masked_prompt.py`](masked_prompt.py) | `MiniMaxH3MaskedPrompt` | The node that writes the masked video-to-video prompt. |
+| [`masked_prompt_text.py`](masked_prompt_text.py) |  | The masked video-to-video prompt, assembled from a few choices. |
+
 ### pdd_*
 
 | module | nodes it defines | what it says it does |
@@ -128,10 +135,10 @@ with none is a helper the others import.
 | `.claude/` | 2 | [below](#claude) |
 | `archive/` | 21 | [below](#archive) |
 | `assets/` | 1 | [below](#assets) |
-| `bench/` | 1371 | [`bench/INDEX.md`](bench/INDEX.md) and [`bench/results/INDEX.md`](bench/results/INDEX.md) for the records |
+| `bench/` | 1372 | [`bench/INDEX.md`](bench/INDEX.md) and [`bench/results/INDEX.md`](bench/results/INDEX.md) for the records |
 | `changelog.d/` | | [`changelog.d/README.md`](changelog.d/README.md), one file per changelog entry; not listed and not counted |
 | `docs/` | 165 | [`docs/wiki/index.md`](docs/wiki/index.md), the hand-written router |
-| `prompt_bank/` | 163 | [`docs/prompt_bank.md`](docs/prompt_bank.md), the prompt catalogue |
+| `prompt_bank/` | 167 | [`docs/prompt_bank.md`](docs/prompt_bank.md), the prompt catalogue |
 | `sparse_tables/` | 1 | [below](#sparse_tables) |
 | `standalone/` | 25 | [below](#standalone) |
 | `vendor/` | 6 | [below](#vendor) |

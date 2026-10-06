@@ -915,7 +915,8 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                               "motion_vae": bool(motion_vae),
                               "start_from": start_from, "start_top": float(start_top),
                               "start_blur": int(start_blur), "start_knots": int(start_knots),
-                              "shot_table": table},
+                              # read by the prompt node (`masked_prompt.py`), which describes what is replaced
+                              "shot_table": table, "replace": replace},
                              mask.to(torch.float32),
                              preview_strip(frames, mask, int(grow_pixels), motion_reference,
                                            int(motion_short_edge), int(grow_pixels) // 2))
