@@ -92,6 +92,14 @@ HEADER_LINES = 15
 # listed inside the root index; a larger one gets, or already has, its own.
 SMALL_DIRECTORY = 30
 
+#: Top-level directories that gain a file with every commit. Neither their
+#: files nor their count go in the index: an index that every commit by every
+#: session has to regenerate is the shared file the fragments were made to
+#: get rid of. Value: (the file that explains the directory, what to say).
+GROWS_WITH_EVERY_COMMIT = {
+    "changelog.d": ("changelog.d/README.md", "one file per changelog entry; not listed and not counted"),
+}
+
 #: Top-level directories whose index already exists and is not written here.
 INDEXED_ELSEWHERE = {
     "docs": ("docs/wiki/index.md", "the hand-written router"),
@@ -339,6 +347,10 @@ def build_root() -> str:
     out += ["## Directories", "", "| directory | tracked files | where its index is |", "|---|---|---|"]
     small = []
     for d in sorted(tops):
+        if d in GROWS_WITH_EVERY_COMMIT:
+            target, what = GROWS_WITH_EVERY_COMMIT[d]
+            out.append(f"| `{d}/` | | [`{target}`]({target}), {what} |")
+            continue
         if d in INDEXED_ELSEWHERE:
             target, what = INDEXED_ELSEWHERE[d]
             where = f"[`{target}`]({target}), {what}"

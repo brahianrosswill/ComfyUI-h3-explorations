@@ -8,12 +8,12 @@ this file is only a way to find a script by what it says it does.
 
 | group | scripts |
 |---|---|
-| [`check_*`](#check) | 88 |
+| [`check_*`](#check) | 89 |
 | [`measure_*`](#measure) | 38 |
 | [`analyze_*`](#analyze) | 23 |
 | [`grade_*`](#grade) | 21 |
 | [`compare_*`](#compare) | 18 |
-| [`build_*`](#build) | 16 |
+| [`build_*`](#build) | 17 |
 | [`probe_*`](#probe) | 11 |
 | [the rest](#the-rest) | 116 |
 
@@ -30,6 +30,7 @@ this file is only a way to find a script by what it says it does.
 | [`check_camera_vocabulary.py`](check_camera_vocabulary.py) | Camera motion in every shipped prompt comes from base_en 4.3's closed sets. |
 | [`check_capture_manifest.py`](check_capture_manifest.py) | Check that activation captures contain valid, conforming manifest.json files. |
 | [`check_capture_manifest_controls.py`](check_capture_manifest_controls.py) | Red controls for the capture-manifest contract: each case is a fixture built to violate one rule, and the run is green only when every violation is caught and the two legitimate fixtures pass. |
+| [`check_changelog.py`](check_changelog.py) | `CHANGELOG.md`'s top is what the fragments in `changelog.d/` make, and the builder cannot lose an entry. |
 | [`check_channel_balance.py`](check_channel_balance.py) | Check `MiniMaxH3ChannelBalance`: the fold is exact, RoPE-safe, off by default, and picks the blocks the shipped checkpoint's weights say it should. |
 | [`check_checkpoint_overlay.py`](check_checkpoint_overlay.py) | An overlay plus its base is the target, tensor for tensor, and the pieces select what they name. |
 | [`check_clone_v_wiring.py`](check_clone_v_wiring.py) | Check that `clone_v` reaches the forward, and only on modes that earn it. |
@@ -236,6 +237,7 @@ this file is only a way to find a script by what it says it does.
 |---|---|
 | [`build_adaln_blend.py`](build_adaln_blend.py) | Blend two checkpoints' timestep conditioning at a strength α, exactly. CPU only. |
 | [`build_adaln_swap.py`](build_adaln_swap.py) | Swap the timestep-conditioning set between two pruned H3 checkpoints. CPU only. |
+| [`build_changelog.py`](build_changelog.py) | Build the top of `CHANGELOG.md` from one fragment file per entry, and number the entries when it is built. |
 | [`build_checkpoint_overlay.py`](build_checkpoint_overlay.py) | Write an exact overlay of one int8 H3 checkpoint on another, piece by piece. |
 | [`build_gate_transplant.py`](build_gate_transplant.py) | Add FastH3's VSA gates to a checkpoint, or take them out. CPU only. |
 | [`build_h3_calibration_pool.py`](build_h3_calibration_pool.py) | Build the deterministic candidate pool for AWQ v2 calibration and holdout. |
