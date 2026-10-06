@@ -3,6 +3,7 @@
 
     <comfy venv python> bench/run_checks.py
     <comfy venv python> bench/run_checks.py --only sol --logs /tmp/sweep
+    <comfy venv python> bench/run_checks.py --changed
 
 One row per check: its exit code, its wall time, and the line that explains a
 result that is not green. Then a verdict against `bench/checks_baseline.json`.
@@ -24,6 +25,24 @@ one line each. **This script exits 1 only when a check is red and the baseline
 does not name it**, so a sweep before a commit has one answer. A baseline entry
 that is no longer red is printed as STALE and does not change the exit code;
 delete the entry, because a stale one would cover the next real red.
+
+## The targeted sweep
+
+`--changed` runs the checks that the files changed in the working tree can
+turn red, and says which and why. `--since <commit>` adds the files changed
+since that commit. The rule:
+
+- **A node file changed: every check runs.** A node file is a module at the
+  repo root, the shared constants, the generator, a generated graph, a
+  vendored config or this harness (`is_node_file`). The owner's rule is the
+  full sweep before a schema, default or loader commit, and nothing short
+  of reading the diff can say a root module's change is not one.
+- **Otherwise:** a changed check itself, every check whose source names a
+  changed file (by its module name for a script, by its file name for
+  anything else), and `ALWAYS`, the checks that read the whole tree.
+
+It is a way to be quick on a bench tool or a record, never a substitute for
+the full sweep where the rule above asks for one; it prints which it was.
 
 ## What a sweep is not allowed to do
 
@@ -64,6 +83,16 @@ TIMEOUT_S = 600
 
 GREEN, NOT_GRADED = 0, 2
 
+# reasoned: these read the whole tree (the indexes, every doc's links, every
+# text file's paths, every skill's routes, every check's way of finding
+# graphs), so a change anywhere can turn one red.
+ALWAYS = ("check_doc_inventory", "check_doc_links", "check_no_owner_paths",
+          "check_graph_discovery", "check_skill_routes")
+# reasoned: beside the root modules, the files whose change is a change to
+# what every node or graph does, or to how every check runs.
+NODE_PREFIXES = ("workflows/", "vendor_config/", "bench/_lib/", "vendor/")
+NODE_FILES = ("bench/run_checks.py", "bench/checks_baseline.json")
+
 
 def discover(only: str | None) -> list[Path]:
     """Every `check_*.py` directly under `bench/`, by name."""
@@ -71,6 +100,47 @@ def discover(only: str | None) -> list[Path]:
     if only:
         paths = [p for p in paths if only in p.stem]
     return paths
+
+
+def changed_files(since: str | None) -> list[str]:
+    """Repo-relative paths changed in the working tree (untracked included), and since `since` when given."""
+    def git(*args: str) -> list[str]:
+        done = subprocess.run(["git", *args], cwd=str(REPO), capture_output=True, text=True)
+        if done.returncode != 0:
+            raise SystemExit(f"git {' '.join(args)} failed: {done.stderr.strip()[-200:]}")
+        return [ln for ln in done.stdout.splitlines() if ln.strip()]
+    # porcelain v1: two status letters, a space, the path; a rename shows "old -> new"
+    paths = {ln[3:].split(" -> ")[-1].strip('"') for ln in git("status", "--porcelain", "--untracked-files=all")}
+    if since:
+        paths.update(git("diff", "--name-only", f"{since}..HEAD"))
+    return sorted(paths)
+
+
+def is_node_file(path: str) -> bool:
+    """A file whose change asks for the full sweep."""
+    if "/" not in path:
+        return path.endswith(".py")
+    return path.startswith(NODE_PREFIXES) or path in NODE_FILES
+
+
+def select_for(changed: list[str], checks: list[Path]) -> tuple[list[Path], dict[str, str], str | None]:
+    """(the checks to run, {check: why}, the node file that asked for everything or None)."""
+    for path in changed:
+        if is_node_file(path):
+            return checks, {}, path
+    why: dict[str, str] = {name: "reads the whole tree" for name in ALWAYS}
+    # what a check would have to name to depend on a changed file
+    names = {(Path(p).stem if p.endswith(".py") else Path(p).name): p for p in changed}
+    for check in checks:
+        if f"bench/{check.name}" in changed:
+            why[check.stem] = "changed"
+            continue
+        text = check.read_text(errors="replace")
+        for name, path in names.items():
+            if name and name in text:
+                why.setdefault(check.stem, f"names {path}")
+                break
+    return [c for c in checks if c.stem in why], why, None
 
 
 def explain(code: int, output: str) -> str:
@@ -121,12 +191,35 @@ def main() -> int:
     parser.add_argument("--logs", type=Path,
                         help="keep one log per check and a summary.tsv in this directory")
     parser.add_argument("--baseline", type=Path, default=BASELINE)
+    parser.add_argument("--changed", action="store_true",
+                        help="run the checks the working tree's changed files can turn red; "
+                             "every check when a node file is among them")
+    parser.add_argument("--since", metavar="COMMIT",
+                        help="with --changed: also count the files changed since this commit")
     args = parser.parse_args()
+    if args.since and not args.changed:
+        parser.error("--since goes with --changed")
 
     checks = discover(args.only)
     if not checks:
         print("nothing graded: no check_*.py matched")
         return NOT_GRADED
+    targeted = False
+    if args.changed:
+        changed = changed_files(args.since)
+        if not changed:
+            print("nothing graded: no file is changed" + (f" since {args.since}" if args.since else ""))
+            return NOT_GRADED
+        checks, why, node_file = select_for(changed, checks)
+        if node_file:
+            print(f"FULL sweep: {node_file} is a node file ({len(changed)} file(s) changed)\n")
+        else:
+            targeted = True
+            print(f"TARGETED sweep, {len(checks)} check(s) for {len(changed)} changed file(s); "
+                  "not the full sweep a schema, default or loader change asks for")
+            for check in checks:
+                print(f"  {check.stem}: {why[check.stem]}")
+            print()
     expected = load_baseline(args.baseline)
 
     env = dict(os.environ)
@@ -176,6 +269,7 @@ def main() -> int:
     stale = sorted(n for n in expected if n in ran and n not in red)
     unknown = sorted(n for n in expected
                      if not (BENCH / f"{n}.py").is_file())
+    scope = "of the targeted set " if targeted else ""
 
     for name in known:
         print(f"expected red  {name}: {expected[name]}")
@@ -196,7 +290,7 @@ def main() -> int:
         if not keep:
             print("\nre-run with --logs DIR to keep the full logs")
         return 1
-    print("\nok    no check is red that the baseline does not name"
+    print(f"\nok    no check {scope}is red that the baseline does not name"
           + (f"; logs in {keep}" if keep else ""))
     return 0
 

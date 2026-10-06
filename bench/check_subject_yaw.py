@@ -36,7 +36,9 @@ plain mean of them says 0, facing the camera.
                                 motion scores 1, the same motion late scores
                                 less and is found again at its shift, the
                                 same motion from another stance scores 1 with
-                                the stance as its offset, and a subject who
+                                the stance as its offset, the same motion at
+                                half the size is half followed and fully in
+                                step, and a subject who
                                 never moves scores 0 AT EVERY SHIFT and IN
                                 ANY POSE, the middle of the source's range
                                 included (the two controls: the first forms
@@ -56,6 +58,26 @@ plain mean of them says 0, facing the camera.
                                 not count, and a render that ends outside
                                 never locks.
 
+  a_window_is_read_shot_by_shot a pose record of two shots is read one shot
+                                at a time: a frozen render holds the shot
+                                where nobody turns and fails the one with
+                                the turn, and a shot where the source is
+                                still is not graded for motion. The head's
+                                facing and the chin's lift are read from the
+                                ears and the nose.
+  the_scoreboard_says_what_the_eye_said
+                                `bench/run_lane_benchmark.py`: a verdict
+                                nobody gave stays empty, one verdict from
+                                the eye is "nothing to order" and not
+                                agreement, and a metric verdict against the
+                                eye's is named.
+  the_verdicts_file_is_whole    `bench/turn_metric_eye_verdicts.json`: every
+                                set names a window that exists, a shot
+                                inside it, who judged and on what; every
+                                window says where its clip came from and
+                                what it may be used for; every verdict is
+                                one of the allowed words.
+
 No model, no CUDA, no server.
 
     CUDA_VISIBLE_DEVICES= <comfy venv python> bench/check_subject_yaw.py
@@ -74,9 +96,12 @@ sys.path.insert(0, str(HERE))
 
 from _lib import case, finish  # noqa: E402
 
+import json  # noqa: E402
+
 import measure_step_yaw as S  # noqa: E402
 import measure_subject_motion as M  # noqa: E402
 import measure_subject_yaw as Y  # noqa: E402
+import run_lane_benchmark as L  # noqa: E402
 
 
 def _keypoints(left, right):
@@ -227,6 +252,12 @@ def motion_follows_or_does_not():
     stance = M.score(src, apart, "in_body", 2)
     assert stance["followed"] == 1.0, f"a constant difference in stance cost {1 - stance['followed']}"
     assert abs(stance["joints"]["left_wrist"]["offset"] - math.hypot(0.3, 0.2)) < 1e-3, stance["joints"]["left_wrist"]["offset"]
+    # the same motion at half the size: half followed, and fully in step
+    half = [{"in_body": {j: [v[0] * 0.5, v[1], v[2] * 0.5] for j, v in _swing(i * 0.2).items()}} for i in range(20)]
+    small = M.score(src, half, "in_body", 2)
+    assert small["followed"] == 0.5 and small["in_step"] == 1.0, (small["followed"], small["in_step"])
+    assert got["same"]["in_step"] == 1.0 and got["still"]["in_step"] == 0.0, "in step: the same is not 1 or still is not 0"
+    assert small["parts"]["hands"]["in_step"] == 1.0 and small["parts"]["head"]["in_step"] is None
     # and a subject frozen in the MIDDLE of the source's range earns nothing either
     frozen_mid = M.score(src, [{"in_body": _swing(1.9)} for i in range(20)], "in_body", 2)
     assert frozen_mid["followed"] == 0.0 and frozen_mid["followed_at_best_shift"] == 0.0, frozen_mid["followed"]
@@ -271,11 +302,114 @@ def a_still_shot_is_not_graded():
     assert gone["verdict"] == "not measured" and gone["followed"] is None
 
 
+def _window() -> dict:
+    """A made-up pose record of two shots: the source holds still in the first and turns its arms in the second."""
+    frames = list(range(0, 80, 2))
+    def rows(poses, yaws):
+        return [{"yaw": y, "hip_yaw": y, "in_body": p, "in_box": p} for p, y in zip(poses, yaws)]
+    still, moving = [_swing(0.0)] * 20, [_swing(i * 0.2) for i in range(20)]
+    source_yaw = [0.0] * 20 + [min(180.0, i * 12.0) for i in range(20)]
+    return {
+        "frames": frames, "shot": [0, 79], "shots": [[0, 39], [40, 79]],
+        "source": {"curve": rows(still + moving, source_yaw)},
+        "clips": {
+            "follows": {"curve": rows(still + moving, source_yaw)},
+            "frozen": {"curve": rows(still + still, [0.0] * 40)},
+        },
+    }
+
+
+def a_window_is_read_shot_by_shot():
+    record = _window()
+    assert Y.shots_to_read(record, None) == [[0, 39], [40, 79]]
+    assert Y.shots_to_read(record, [10, 20]) == [[10, 20]], "a shot asked for is not the one read"
+    assert Y.shots_to_read(record, None, {"shot": [40, 79]}) == [[40, 79]], "the eye set's shot is not the one read"
+    assert Y.rows_in(record, [40, 79]) == list(range(20, 40))
+    # the head beside the shoulders: a head turned 90 degrees on square shoulders, chin lifted 45
+    turned = {"in_body": {**_swing(0.0), "left_ear": [0.0, 1.5, 0.1], "right_ear": [0.0, 1.5, -0.1], "nose": [0.1, 1.4, 0.0]}}
+    assert Y.head_yaw(turned) == 90.0 and Y.head_lift(turned) == 45.0, (Y.head_yaw(turned), Y.head_lift(turned))
+    assert Y.head_yaw({"head_yaw": 12.5, "in_body": turned["in_body"]}) == 12.5, "a stored head yaw is not the one used"
+    assert Y.head_yaw({"in_body": None}) is None and Y.head_lift({}) is None
+    first, second = (Y.judge(record, shot, {}, 45.0) for shot in record["shots"])
+    # the frozen render holds the first shot, where nobody turns, and fails the second
+    assert first["clips"]["frozen"]["verdict"] == "holds" and second["clips"]["frozen"]["verdict"] == "fails"
+    assert second["clips"]["follows"]["verdict"] == "holds" and second["source"]["largest_turn"] == 180.0
+    moved = M.read_shot(record, [40, 79], {}, curves=False, say=lambda *_a: None)["clips"]
+    held = M.read_shot(record, [0, 39], {}, curves=False, say=lambda *_a: None)["clips"]
+    assert moved["follows"]["verdict"] == "follows" and moved["frozen"]["verdict"] == "does not follow"
+    assert held["frozen"]["verdict"] == "too still to grade", "a shot where the source is still was graded"
+    # joints out of the picture: a close-up whose box runs off the bottom of a 100-high frame loses its feet,
+    # and a motion the model invents down there is not scored
+    def close_up(pose, i):
+        on_screen = {j: [0.5, 0.2] for j in M.JOINTS} | {j: [0.5, 1.6] for j in M.PARTS["feet"]}
+        return {"in_body": pose, "in_box": on_screen, "box": [10, 20, 60, 70], "yaw": 0.0}
+    feet = ("left_ankle", "right_ankle")
+    src = [close_up(_swing(i * 0.2, feet), i) for i in range(20)]
+    seen = [Y.in_frame(row, [100, 100]) for row in src]
+    assert "left_ankle" not in seen[0]["in_body"] and "nose" in seen[0]["in_body"]
+    assert Y.in_frame({"in_body": _swing(0.0)}, [100, 100])["in_body"] == _swing(0.0), "a reading with no box was changed"
+    blind = M.score(seen, seen, "in_body", 2, curves=False)
+    assert blind["unseen_joints"] == list(feet) and blind["verdict"] == "too still to grade", blind["unseen_joints"]
+    assert M.score(src, src, "in_body", 2, curves=False)["verdict"] == "follows", "the control: unfiltered, the feet are scored"
+    # the whole window read as one shot is a different, worse question: the control for reading by shot
+    whole = M.read_shot(record, [0, 79], {}, curves=False, say=lambda *_a: None)["clips"]
+    assert whole["frozen"]["in_body"]["followed"] == 0.0 and whole["frozen"]["verdict"] == "does not follow"
+
+
+def the_scoreboard_says_what_the_eye_said():
+    record = _window()
+    judged = {"shot": [40, 79], "judged": {"by": "nobody", "on": "a made-up body"},
+              "clips": {"follows": {"turn": "yes", "motion": "yes", "look": "kept"}, "frozen": {"turn": "no"}}}
+    shot = L.read_shot(record, [40, 79], judged)
+    rows = shot["rows"]
+    assert rows["follows"]["turn"]["eye"] == "yes" and rows["follows"]["look"] == {"eye": "kept"}
+    assert "eye" not in rows["frozen"]["motion"] and rows["frozen"]["look"] == {}, "a verdict nobody gave was filled in"
+    turn, motion = shot["against_the_eye"]["turn"], shot["against_the_eye"]["motion"]
+    assert turn["orders_as_the_eye"] is True and (turn["verdicts_matching"], turn["of_yes_or_no"]) == (2, 2)
+    # one verdict from the eye orders nothing, and that is said rather than counted as agreement
+    assert motion["orders_as_the_eye"] is None and (motion["verdicts_matching"], motion["of_yes_or_no"]) == (1, 1)
+    # the eye against the metric: a "yes" on the frozen render is named as not matching
+    judged["clips"]["frozen"]["motion"] = "yes"
+    wrong = L.read_shot(record, [40, 79], judged)["against_the_eye"]["motion"]
+    assert wrong["verdicts_not_matching"] == ["frozen"], wrong
+    # a shot nobody judged is still measured
+    assert L.read_shot(record, [0, 39], None)["against_the_eye"] == {"turn": None, "motion": None}
+    assert "frozen" in L.as_markdown({"tolerance_degrees": 45.0, "follows_at": M.FOLLOWS, "windows": {"w": {
+        "file": "x.mp4", "start_second": 0.0, "provenance": "p", "permission": "q", "poses": "r.json",
+        "subject_box": "made up", "shots": [shot]}}}, "t")
+
+
+def the_verdicts_file_is_whole():
+    spec = json.loads(L.VERDICTS.read_text())
+    allowed = spec["values"]
+    assert spec["sets"], "no set"
+    for name, one in spec["sets"].items():
+        window = spec["windows"].get(one.get("window"))
+        assert window, f"{name}: its window {one.get('window')!r} is not in `windows`"
+        assert len(one["shot"]) == 2 and one["shot"][0] <= one["shot"][1] < window["frames"], f"{name}: shot {one['shot']}"
+        assert one["judged"].get("by") and one["judged"].get("on"), f"{name}: who judged, and on what, is not said"
+        for label, row in one["clips"].items():
+            for field, value in row.items():
+                if field in allowed:
+                    assert value in allowed[field], f"{name}/{label}: {field} is {value!r}"
+        for field in ("turn", "motion"):
+            eye, _spec = Y.eye_set(L.VERDICTS, name, field)
+            assert set(eye) == {label for label, row in one["clips"].items() if row.get(field)}
+    for name, window in spec["windows"].items():
+        for key in ("file", "start_second", "rate", "frames", "provenance", "permission"):
+            assert window.get(key) not in (None, ""), f"window {name}: no {key}"
+        assert "/" not in window["file"], f"window {name}: the source is a file name in the input folder, not a path"
+    board = L.build(spec)
+    measured = [n for n, w in board["windows"].items() if not w.get("not_measured")]
+    return f"{len(spec['windows'])} window(s), {len(spec['sets'])} set(s), {len(measured)} with a pose record"
+
+
 def main() -> int:
     for fn in (yaw_reads_the_shoulder_line, the_seam_is_two_degrees_wide, a_held_turn_holds,
                a_gap_is_not_a_reading, order_matches_or_says_where, a_slice_lines_up_with_frames,
                the_lock_is_the_last_entry, joints_are_measured_on_the_body, motion_follows_or_does_not,
-               a_clip_is_graded_on_the_joints_its_source_moves, a_still_shot_is_not_graded):
+               a_clip_is_graded_on_the_joints_its_source_moves, a_still_shot_is_not_graded,
+               a_window_is_read_shot_by_shot, the_scoreboard_says_what_the_eye_said, the_verdicts_file_is_whole):
         case(fn.__name__, fn)
     return finish()
 

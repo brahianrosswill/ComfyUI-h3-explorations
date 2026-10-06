@@ -4,6 +4,53 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+## 0.198.0
+
+### Added
+
+- **`bench/run_lane_benchmark.py`, the masked lane's scoreboard.** One row
+  per render per shot: the turn and motion metrics beside what a person
+  said, with who judged and on what. It reads the pose records and
+  `bench/turn_metric_eye_verdicts.json` and runs no model. First board:
+  `bench/results/2026-10-05_lane_scoreboard.md`, two clips.
+- **The pose pass reads a window with no kept mask and more than one
+  shot.** `bench/measure_subject_yaw.py` takes `--mask-video` (a mask saved
+  as a video) or `--find-box` (the body model's own box, one-person clips
+  only), finds the source's cuts with the Subject Track's cut finder, and
+  compares per shot. `--reanalyse` and the motion metric take `--shot`.
+- **The head beside the shoulders.** Each comparison carries the head's
+  facing, from the ears, and the chin's lift. The verdict stays the
+  shoulders'.
+- **`in_step` beside `followed`** in `bench/measure_subject_motion.py`:
+  the same motion at any size. It gives no verdict.
+- **`bench/run_checks.py --changed`**: the checks the working tree's
+  changed files can turn red, and every check when a node file is among
+  them. `docs/checks.md` "Running them" carries the rule that a sweep
+  runs in the background, is read, and the commit is a separate step.
+
+### Changed
+
+- **`bench/turn_metric_eye_verdicts.json` holds many clips.** `windows`
+  say what is known of a clip's provenance and on whose word it is used,
+  and name the pose record; `sets` are one shot of a window with `turn`,
+  `motion` and `look` as separate fields, each present only where somebody
+  judged it. It held one clip's turn verdicts.
+- **The motion metric leaves out joints that are outside the picture.** A
+  close-up was being scored on knees and feet the body model placed
+  below the frame.
+
+### Measured
+
+- **The metrics on a second clip**
+  (`bench/results/2026-10-05_metrics_on_a_second_clip.md`). On the solo
+  clip's first window the turn verdict passes every render and the motion
+  verdict fails every render, and neither says what the eye said. The
+  figures under them do separate the renders: the head and the shoulders
+  give opposite orders on two shots of three, and `in_step` orders the
+  gesture shot as the eye did. The owner has not judged turn or motion on
+  this clip; the by-eye column is a session's, from stills, written before
+  the numbers. The third clip has no render and was not measured.
+
 ## 0.197.2
 
 ### Fixed

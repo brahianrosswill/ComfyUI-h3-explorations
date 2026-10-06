@@ -40,6 +40,17 @@ joint that never moves, below 0 for one that moves another way;
 `render_travel`, the same spread for the render's own joint; and `offset`,
 the distance between the two mean positions.
 
+**A second reading, `in_step`.** `followed` asks for the source's motion at
+the source's size: a render that makes the same gesture half as wide earns
+half. `in_step` asks only whether the two motions have the same shape: the
+cosine between them over every frame, axis and moved joint, 1 at any
+amplitude, 0 unrelated or not moving. It is reported for the clip, each
+part and each joint. It was added when `followed` put every render of a
+gesture shot at zero while one wrist's height plainly rose and fell with
+the source's (the solo clip, 2026-10-05). It gives no verdict: on the two
+clips read so far it orders renders as the eye did, and its scale differs
+by shot, so no one line is supported.
+
 **Which joints count.** A joint the source moves less than `MOVED_FLOOR` is
 held, not moved: its `followed` is not computed, because a ratio against
 nearly nothing is noise. A dart throw moves an arm and holds the rest, and
@@ -64,13 +75,21 @@ the floor. `stray` and the best shift are reported beside it and do not
 change it. `FOLLOWS` was set from one clip's calibration and says so where
 it is defined.
 
-**What it cannot tell apart.** Joints out of frame or hidden are the body
-model's guess on both sides. A render that does the source's motion with
+**Joints out of the picture are not scored.** The body model places every
+joint whether or not it sees it: a close-up still has knees and feet, and
+they move. A joint outside the frame on either side is left out of that
+frame, and a joint in frame for less than half the shot is `unseen` and
+not scored at all (`measure_subject_yaw.py::in_frame`). A pose record from
+before the subject's box was kept has no way to tell, and every joint
+counts.
+
+**What it cannot tell apart.** Joints inside the frame and hidden behind
+the body are the body model's guess on both sides. A render that does the source's motion with
 the other arm reads as not following. Fingers, the face and the mouth are
 not read. `in_box` cannot tell a different build from a different pose.
 
     <python> bench/measure_subject_motion.py <measure_subject_yaw record with joints> \\
-        [--eye bench/turn_metric_eye_verdicts.json] --out <record.json>
+        [--eye bench/turn_metric_eye_verdicts.json --eye-set <name>] --out <record.json>
 """
 
 from __future__ import annotations
@@ -153,18 +172,23 @@ def joint_numbers(src: list, clip: list, joint: str, shift: int = 0) -> dict:
     render frozen in the middle of the source's range score above zero.
     """
     pairs = _pairs(len(src), shift)
-    # only frames where both have a reading, so the two means are over the same frames
-    both = [(src[i], clip[j]) for i, j in pairs if src[i] and clip[j]]
-    slots = [bool(src[i] and clip[j]) for i, j in pairs]
+    # only frames where both have this joint, so the two means are over the same frames
+    slots = [bool(src[i] and clip[j] and joint in src[i] and joint in clip[j]) for i, j in pairs]
+    both = [(src[i], clip[j]) for (i, j), has in zip(pairs, slots) if has]
     centre_src, centre_clip = _centre([a for a, _b in both], joint), _centre([b for _a, b in both], joint)
     if centre_src is None:
         return {"curve": [None] * len(pairs), "distance": None, "source_travel": None, "render_travel": None,
-                "offset": None, "frames": 0}
+                "offset": None, "frames": 0, "dot": 0.0, "source_square": 0.0, "render_square": 0.0}
     cs, cc = centre_src[joint], centre_clip[joint]
-    moved = iter([math.dist([p - q for p, q in zip(a[joint], cs)], [p - q for p, q in zip(b[joint], cc)])
-                  for a, b in both])
+    src_moves = [[p - q for p, q in zip(a[joint], cs)] for a, _b in both]
+    clip_moves = [[p - q for p, q in zip(b[joint], cc)] for _a, b in both]
+    moved = iter([math.dist(s, c) for s, c in zip(src_moves, clip_moves)])
     curve = [next(moved) if has else None for has in slots]
     return {
+        # for `in_step`: the two motions' product and each one's size, summed over frames and axes
+        "dot": sum(p * q for s, c in zip(src_moves, clip_moves) for p, q in zip(s, c)),
+        "source_square": sum(p * p for s in src_moves for p in s),
+        "render_square": sum(q * q for c in clip_moves for q in c),
         "curve": curve,
         "distance": _mean(curve),
         "source_travel": _mean(math.dist(a[joint], cs) for a, _b in both),
@@ -184,6 +208,27 @@ def followed_over(numbers: dict[str, dict], joints, floor: float) -> tuple[float
     return round(1.0 - sum(numbers[j]["distance"] for j in moved) / travel, 3), moved
 
 
+def in_step_over(numbers: dict[str, dict], joints, floor: float) -> float | None:
+    """How alike the two motions are in shape whatever their size, over the moved joints among `joints`.
+
+    The cosine between the source's motion and the render's, taken over
+    every frame, axis and moved joint at once: 1 when the render's joints
+    go where the source's go at any amplitude, 0 when the two are unrelated,
+    below 0 when they go opposite ways. A render's joint that travels less
+    than the floor counts as not moving, so a frozen render scores exactly
+    0 and its jitter is not read as a direction.
+    """
+    moved = [j for j in joints if numbers[j]["source_travel"] is not None and numbers[j]["source_travel"] >= floor]
+    if not moved:
+        return None
+    alive = [j for j in moved if (numbers[j]["render_travel"] or 0.0) >= floor]
+    source = sum(numbers[j]["source_square"] for j in moved)
+    render = sum(numbers[j]["render_square"] for j in alive)
+    if source <= 0 or render <= 0:
+        return 0.0
+    return round(sum(numbers[j]["dot"] for j in alive) / math.sqrt(source * render), 3)
+
+
 def stray_over(numbers: dict[str, dict], joints, floor: float) -> float | None:
     """On the joints the source holds: how much further the render's travel than the source's, on average."""
     held = [j for j in joints if numbers[j]["source_travel"] is not None and numbers[j]["source_travel"] < floor
@@ -199,11 +244,18 @@ def score(source_rows: list[dict], clip_rows: list[dict], space: str, every: int
     clip = [r.get(space) for r in clip_rows]
     floor = MOVED_FLOOR[space]
     numbers = {j: joint_numbers(src, clip, j) for j in JOINTS}
+    # a joint both have in frame for less than half the shot is not scored: what is left is too short to be a motion
+    readings = sum(bool(a and b) for a, b in zip(src, clip))
+    unseen = [j for j in JOINTS if readings and numbers[j]["frames"] < max(1, readings // 2)]
+    for j in unseen:
+        numbers[j] = joint_numbers([None] * len(src), [None] * len(clip), j)
     whole, moved = followed_over(numbers, JOINTS, floor)
     out = {
         "followed": whole,
+        "in_step": in_step_over(numbers, JOINTS, floor),
         "moved_joints": moved,
         "held_joints": [j for j in JOINTS if j not in moved and numbers[j]["source_travel"] is not None],
+        "unseen_joints": unseen,
         "stray": stray_over(numbers, JOINTS, floor),
         "frames": max((numbers[j]["frames"] for j in JOINTS), default=0),
         "parts": {},
@@ -211,7 +263,8 @@ def score(source_rows: list[dict], clip_rows: list[dict], space: str, every: int
     }
     for part, joints in PARTS.items():
         f, part_moved = followed_over(numbers, joints, floor)
-        out["parts"][part] = {"followed": f, "moved": bool(part_moved), "stray": stray_over(numbers, joints, floor)}
+        out["parts"][part] = {"followed": f, "in_step": in_step_over(numbers, joints, floor), "moved": bool(part_moved),
+                              "stray": stray_over(numbers, joints, floor)}
     for j in JOINTS:
         n = numbers[j]
         is_moved = j in moved
@@ -222,6 +275,7 @@ def score(source_rows: list[dict], clip_rows: list[dict], space: str, every: int
             "distance": None if n["distance"] is None else round(n["distance"], 4),
             "offset": None if n["offset"] is None else round(n["offset"], 4),
             "followed": (round(1.0 - n["distance"] / n["source_travel"], 3) if is_moved else None),
+            "in_step": in_step_over(numbers, (j,), floor),
         }
         if curves:
             entry["curve"] = [None if v is None else round(v, 4) for v in n["curve"]]
@@ -253,11 +307,47 @@ def score(source_rows: list[dict], clip_rows: list[dict], space: str, every: int
     return out
 
 
+def read_shot(record: dict, shot: list[int], eye: dict[str, str], curves: bool = True, say=print) -> dict:
+    """Every clip of a pose record against its source over one shot."""
+    frames = record["frames"]
+    every = frames[1] - frames[0] if len(frames) > 1 else 1
+    source_rows = record["source"]["curve"]
+    at = Y.rows_in(record, shot)
+    source_size, render_size = Y.frame_sizes(record)
+    seen_source = [Y.in_frame(source_rows[i], source_size) for i in at]
+    one = {"shot": list(shot), "frames": [frames[i] for i in at], "clips": {}}
+    for label, clip in record["clips"].items():
+        seen_clip = [Y.in_frame(clip["curve"][i], render_size) for i in at]
+        entry = {space: score(seen_source, seen_clip, space, every, curves=curves) for space in SPACES}
+        entry["verdict"] = entry["in_body"]["verdict"]
+        if label in eye:
+            entry["eye"] = eye[label]
+        one["clips"][label] = entry
+        body = entry["in_body"]
+        say(f"shot {shot[0]}-{shot[1]} {label}: followed {body['followed']} on {len(body['moved_joints'])} "
+            f"moved joint(s) (best shift {body.get('best_shift_frames')} frames: "
+            f"{body.get('followed_at_best_shift')}), stray {body['stray']}, {entry['verdict']}"
+            + (f" (eye: {eye[label]})" if label in eye else ""))
+    if eye:
+        # smaller is better for the order check, so it is given what was NOT followed
+        measured = {label: (None if c["in_body"]["followed"] is None else round(1.0 - c["in_body"]["followed"], 3))
+                    for label, c in one["clips"].items()}
+        against = Y.ranks_as_the_eye(measured, eye)
+        against["note"] = "the figures here are one minus `followed`, so smaller is closer to the source"
+        one["against_the_eye"] = against
+        say(json.dumps({k: against[k] for k in ("clips_compared", "same_order", "disagreements")}, indent=1))
+    return one
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
     ap.add_argument("record", type=Path, help="a measure_subject_yaw output whose rows carry the joints")
-    ap.add_argument("--eye", type=Path, help="by-eye verdicts; a clip's `motion` is used, else its `turn`")
+    ap.add_argument("--eye", type=Path, help="by-eye verdicts; each clip's `motion` field is used")
+    ap.add_argument("--eye-set", help="which set of the verdicts file; not needed when it holds one")
     ap.add_argument("--no-curves", action="store_true", help="leave the per-frame curves out of the output")
+    ap.add_argument("--shot", type=int, nargs=2, metavar=("FIRST", "LAST"),
+                    help="the one shot to read, frames inclusive; left out, the eye set's shot, "
+                         "else every shot the pose record holds, each on its own")
     ap.add_argument("--out", required=True, type=Path)
     args = ap.parse_args()
 
@@ -266,37 +356,21 @@ def main() -> int:
     if not any(r.get("in_body") for r in source_rows):
         raise SystemExit(f"{args.record.name} carries no joints: it was written before the pose pass kept them. "
                          "Run bench/measure_subject_yaw.py again.")
-    frames = record["frames"]
-    every = frames[1] - frames[0] if len(frames) > 1 else 1
-    eye = {}
+    eye, spec = {}, None
     if args.eye:
-        eye = {label: row.get("motion", row["turn"]) for label, row in json.loads(args.eye.read_text())["clips"].items()}
+        eye, spec = Y.eye_set(args.eye, args.eye_set, "motion")
 
     out = {
         "script": "bench/measure_subject_motion.py", "poses_from": args.record.name,
-        "shot": record["shot"], "frames": frames, "follows_at": FOLLOWS, "moved_floor": MOVED_FLOOR,
+        "follows_at": FOLLOWS, "moved_floor": MOVED_FLOOR,
         "followed": "1 moving as the source's joints do in every frame, 0 for a subject who never moves, below 0 moving another way; over the joints the source moves, each from its own mean position",
         "stray": "on the joints the source holds, how much further the render's go than the source's; units of the space",
-        "clips": {},
     }
-    for label, clip in record["clips"].items():
-        entry = {space: score(source_rows, clip["curve"], space, every, curves=not args.no_curves) for space in SPACES}
-        entry["verdict"] = entry["in_body"]["verdict"]
-        if label in eye:
-            entry["eye"] = eye[label]
-        out["clips"][label] = entry
-        body = entry["in_body"]
-        print(f"{label}: followed {body['followed']} on {len(body['moved_joints'])} moved joint(s) "
-              f"(best shift {body.get('best_shift_frames')} frames: {body.get('followed_at_best_shift')}), "
-              f"stray {body['stray']}, {entry['verdict']}" + (f" (eye: {eye[label]})" if label in eye else ""))
-    if eye:
-        # smaller is better for the order check, so it is given what was NOT followed
-        measured = {label: (None if c["in_body"]["followed"] is None else round(1.0 - c["in_body"]["followed"], 3))
-                    for label, c in out["clips"].items()}
-        against = Y.ranks_as_the_eye(measured, eye)
-        against["note"] = "the figures here are one minus `followed`, so smaller is closer to the source"
-        out["against_the_eye"] = against
-        print(json.dumps({k: against[k] for k in ("clips_compared", "same_order", "disagreements")}, indent=1))
+    shots = [read_shot(record, shot, eye, curves=not args.no_curves) for shot in Y.shots_to_read(record, args.shot, spec)]
+    if len(shots) == 1:
+        out.update(shots[0])            # one shot: its reading is the record
+    else:
+        out["by_shot"] = shots
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(out, indent=1) + "\n")
     print(f"wrote {args.out.name}")

@@ -1,21 +1,268 @@
 {
- "what": "The by-eye verdicts on the band clip's turn shot that bench/measure_subject_yaw.py is calibrated against: one per rendered arm, transcribed from the record below. turn is yes, partial or no.",
- "source_record": "bench/results/2026-10-05_masked_v2v_motion_arms.md",
- "judged_on": "contact sheets of frames 237, 247, 257, 267 and 277 of each render, by mryellow, 2026-10-05",
- "clip_pattern": "masked_v2v_{label}_*.mp4",
- "clips": {
-  "motion_s1": {"turn": "no", "eye": "faces the camera through the turn shot"},
-  "motion_s2": {"turn": "no", "eye": "faces the camera through the turn shot"},
-  "control_s2": {"turn": "no", "eye": "faces the camera through the turn"},
-  "fl2va_base_s1": {"turn": "no", "eye": "faces the camera through the whole turn shot"},
-  "ref2va_base_s1": {"turn": "yes", "eye": "back to camera from about frame 267"},
-  "ref2va_base_s2": {"turn": "yes", "eye": "back to camera from about frame 257"},
-  "ref2va_base12_s1": {"turn": "yes", "eye": "back to camera from about frame 257, as at sixteen"},
-  "ref2va_pdd8_s1": {"turn": "no", "eye": "faces the camera; opens his hands from frame 257"},
-  "ref2va_pdd6_s1": {"turn": "no", "eye": "faces the camera, arms at his sides"},
-  "ref2va_base8_s1": {"turn": "no", "eye": "faces the camera, hands lifted a little from frame 257"},
-  "ref2va_base12_noref_s1": {"turn": "no", "eye": "faces the camera through the shot"},
-  "ship_ref2va_motion_s1": {"turn": "no", "eye": "a head turn and a lean, then square to the camera", "was": "partial until its author corrected it the same day: the first reading (side-on by 257, three-quarter back by 267) was a misread of the contact sheet, found when the yaw metric disagreed"},
-  "ref2va_pdd8mid_s1": {"turn": "no", "eye": "no turn, no gesture either"}
+ "what": "By-eye verdicts the lane's metrics are calibrated against. A window is a stretch of a source clip, with what is known of where the clip came from and on whose word it is used; a set is one shot of a window, judged by a named reader on named evidence. Per render: turn (does he end facing where the source faces), motion (does he move as the source moves) and look (is he still the person in the still). A field nobody judged is absent, never guessed.",
+ "values": {
+  "turn": [
+   "yes",
+   "partial",
+   "no"
+  ],
+  "motion": [
+   "yes",
+   "partial",
+   "no"
+  ],
+  "look": [
+   "kept",
+   "drifted"
+  ]
+ },
+ "windows": {
+  "band_112s": {
+   "file": "thinkaboutthings_compressed.mp4",
+   "start_second": 112.0,
+   "rate": 24.0,
+   "frames": 360,
+   "provenance": "not stated in this repo by the owner; no session asserts it",
+   "permission": "use for this lane's renders and the calibration of its metrics relayed by mryellow as the owner's word, 2026-10-05; not heard from the owner by the session that wrote this entry",
+   "poses": "bench/results/2026-10-05_subject_pose_band_turn.json"
+  },
+  "solo_0s": {
+   "file": "idontwannatalk.mp4",
+   "start_second": 0.0,
+   "rate": 24.0,
+   "frames": 345,
+   "provenance": "not stated in this repo by the owner; no session asserts it",
+   "permission": "use for this lane's renders and the calibration of its metrics relayed by mryellow as the owner's word, 2026-10-05; not heard from the owner by the session that wrote this entry",
+   "renders": {
+    "generic_w1": {
+     "file": "Video/mrpink/masked_v2v_generic_w1_generic_w1_00001.mp4",
+     "owner": "\"pretty good\" (of the three first clips together)"
+    },
+    "specific_w1": {
+     "file": "Video/mrpink/masked_v2v_specific_w1_specific_w1_00001.mp4",
+     "owner": "\"pretty good\" (of the three first clips together)"
+    },
+    "generic_30s": {
+     "file": "Video/mrpink/masked_v2v_generic_30s_generic_30s_00001.mp4",
+     "owner": "\"pretty good\" (of the three first clips together); flicker beside the subject near twenty seconds and \"the person is only partially there\" in the last second, both after this window"
+    },
+    "generic_paint_out": {
+     "file": "Video/mrpink/masked_v2v_generic_paint_out_00001.mp4",
+     "owner": "on its second window, after this one: \"tons of flicker ... cut off hat, black lines appearing to the left of the man every time he moves - much worse than before\""
+    },
+    "generic_changed": {
+     "file": "Video/mrpink/masked_v2v_generic_changed_00001.mp4"
+    }
+   },
+   "owner_record": "bench/results/2026-10-04_masked_v2v_first_run.md",
+   "note": "The owner's words are about the picture as a whole: flicker, the edge, the composite. The owner gave no verdict on turn, motion or likeness for these, so none is written as the owner's. Only the first 345 frames of the three longer renders are read.",
+   "poses": "bench/results/2026-10-05_subject_pose_solo_first_window.json"
+  }
+ },
+ "sets": {
+  "band_turn": {
+   "window": "band_112s",
+   "shot": [
+    237,
+    279
+   ],
+   "judged": {
+    "by": "mryellow",
+    "on": "contact sheets of frames 237, 247, 257, 267 and 277 of each render, 2026-10-05",
+    "record": "bench/results/2026-10-05_masked_v2v_motion_arms.md",
+    "note": "motion is the turn's verdict: on this shot the turn is the motion. look is the record's look column."
+   },
+   "clip_pattern": "masked_v2v_{label}_*.mp4",
+   "clips": {
+    "motion_s1": {
+     "turn": "no",
+     "motion": "no",
+     "look": "kept",
+     "eye": "faces the camera through the turn shot"
+    },
+    "motion_s2": {
+     "turn": "no",
+     "motion": "no",
+     "look": "drifted",
+     "eye": "faces the camera through the turn shot",
+     "look_eye": "no cap, longer hair"
+    },
+    "control_s2": {
+     "turn": "no",
+     "motion": "no",
+     "look": "drifted",
+     "eye": "faces the camera through the turn",
+     "look_eye": "the same drift as motion_s2, with no reference wired"
+    },
+    "fl2va_base_s1": {
+     "turn": "no",
+     "motion": "no",
+     "look": "kept",
+     "eye": "faces the camera through the whole turn shot"
+    },
+    "ref2va_base_s1": {
+     "turn": "yes",
+     "motion": "yes",
+     "look": "kept",
+     "eye": "back to camera from about frame 267"
+    },
+    "ref2va_base_s2": {
+     "turn": "yes",
+     "motion": "yes",
+     "look": "kept",
+     "eye": "back to camera from about frame 257"
+    },
+    "ref2va_base12_s1": {
+     "turn": "yes",
+     "motion": "yes",
+     "look": "kept",
+     "eye": "back to camera from about frame 257, as at sixteen"
+    },
+    "ref2va_pdd8_s1": {
+     "turn": "no",
+     "motion": "no",
+     "look": "kept",
+     "eye": "faces the camera; opens his hands from frame 257"
+    },
+    "ref2va_pdd6_s1": {
+     "turn": "no",
+     "motion": "no",
+     "look": "kept",
+     "eye": "faces the camera, arms at his sides"
+    },
+    "ref2va_base8_s1": {
+     "turn": "no",
+     "motion": "no",
+     "look": "kept",
+     "eye": "faces the camera, hands lifted a little from frame 257"
+    },
+    "ref2va_base12_noref_s1": {
+     "turn": "no",
+     "motion": "no",
+     "look": "kept",
+     "eye": "faces the camera through the shot"
+    },
+    "ship_ref2va_motion_s1": {
+     "turn": "no",
+     "motion": "no",
+     "look": "kept",
+     "eye": "a head turn and a lean, then square to the camera",
+     "was": "partial until its author corrected it the same day: the first reading (side-on by 257, three-quarter back by 267) was a misread of the contact sheet, found when the yaw metric disagreed"
+    },
+    "ref2va_pdd8mid_s1": {
+     "turn": "no",
+     "motion": "no",
+     "look": "kept",
+     "eye": "no turn, no gesture either"
+    }
+   }
+  },
+  "solo_walk_in": {
+   "window": "solo_0s",
+   "shot": [
+    0,
+    163
+   ],
+   "what_happens": "medium shot; he walks in from the left at three quarters, turns to profile and lifts his chin",
+   "judged": {
+    "by": "mrteal",
+    "on": "contact sheets of eight frames a shot at thumbnail size, source above the five renders, 2026-10-05",
+    "blind": "written into the session notes before any metric number for this clip was read",
+    "note": "motion could not be told apart at this size and is not judged. look is mrpink's reading in the owner_record (the man from the still, cap and T-shirt, in every shot); the two later arms were not read for it"
+   },
+   "clips": {
+    "generic_w1": {
+     "turn": "partial",
+     "look": "kept"
+    },
+    "specific_w1": {
+     "turn": "yes",
+     "look": "kept"
+    },
+    "generic_30s": {
+     "turn": "partial",
+     "look": "kept"
+    },
+    "generic_paint_out": {
+     "turn": "partial"
+    },
+    "generic_changed": {
+     "turn": "partial"
+    }
+   }
+  },
+  "solo_full_length": {
+   "window": "solo_0s",
+   "shot": [
+    164,
+    302
+   ],
+   "what_happens": "full length, in profile; the forearms go out, come down and go out again",
+   "judged": {
+    "by": "mrteal",
+    "on": "contact sheets of eight frames a shot at thumbnail size, source above the five renders, 2026-10-05",
+    "blind": "written into the session notes before any metric number for this clip was read",
+    "note": "look is mrpink's reading in the owner_record (the man from the still, cap and T-shirt, in every shot); the two later arms were not read for it"
+   },
+   "clips": {
+    "generic_w1": {
+     "turn": "yes",
+     "motion": "yes",
+     "look": "kept"
+    },
+    "specific_w1": {
+     "turn": "yes",
+     "motion": "partial",
+     "look": "kept"
+    },
+    "generic_30s": {
+     "turn": "yes",
+     "motion": "yes",
+     "look": "kept"
+    },
+    "generic_paint_out": {
+     "turn": "yes",
+     "motion": "yes"
+    },
+    "generic_changed": {
+     "turn": "yes",
+     "motion": "yes"
+    }
+   }
+  },
+  "solo_close_up": {
+   "window": "solo_0s",
+   "shot": [
+    303,
+    344
+   ],
+   "what_happens": "close-up at three quarters, head back and chin up, swinging toward the microphone at the end",
+   "judged": {
+    "by": "mrteal",
+    "on": "contact sheets of eight frames a shot at thumbnail size, source above the five renders, 2026-10-05",
+    "blind": "written into the session notes before any metric number for this clip was read",
+    "note": "motion is the head's alone here and is not judged. mrpink's reading of the same shot in the owner_record agrees in direction: specific_w1 in profile to the microphone with the chin lifted, generic_w1 looking toward the lens. look is mrpink's reading in the owner_record (the man from the still, cap and T-shirt, in every shot); the two later arms were not read for it"
+   },
+   "clips": {
+    "generic_w1": {
+     "turn": "partial",
+     "look": "kept"
+    },
+    "specific_w1": {
+     "turn": "yes",
+     "look": "kept"
+    },
+    "generic_30s": {
+     "turn": "partial",
+     "look": "kept"
+    },
+    "generic_paint_out": {
+     "turn": "partial"
+    },
+    "generic_changed": {
+     "turn": "partial"
+    }
+   }
+  }
  }
 }
