@@ -59,6 +59,14 @@ under what conditions they were taken:
   id, the prompt's hash, length, canvas and seed. That is the block a pointer
   from prose relies on, so a record without it is the copy-with-a-different-
   extension case below.
+  **A data file beside a record belongs when the record names it.** What
+  does not belong is a dump of every point: a `.json` of every frame's
+  mask count or every step's tensor statistics tracks nothing a reader
+  will cite and makes the repository large for no value. The data file
+  holds what the record's numbers are built from, at the grain the record
+  cites (per probe, per arm, per window); the full dump, when one is
+  needed, stays on the share beside the run's outputs and the record names
+  its path. A data file nothing names is removed. (Owner, 2026-10-06.)
 - `CHANGELOG.md`, session logs, postmortems -- past tense, per version or per
   date.
 - Files the inventory skips as records: `RECORD_PATTERNS` in
