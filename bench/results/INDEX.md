@@ -16,6 +16,7 @@ replaces `docs/evidence.md`, which says what the records established.
 
 | date | lane | record | verdict |
 |---|---|---|---|
+| 2026-10-06 | masked | [The window keep on the card: one window rendered twice, the second on a kept latent and conditioning (2026-10-06)](2026-10-06_window_keep_matched_pair.md) | accepted: the second run's stored window latent equals the first's on both streams and its videos are the same bytes; the source encode and the conditioning are gone from its stage seconds; one short window, one seed, one stretch |
 | 2026-10-06 | masked | [The Subject Track and the part node at their defaults on the lane's three windows (2026-10-06)](2026-10-06_subject_track_defaults.md) | at defaults one window was masked on a microphone and one misses a shot; the first is fixed by a rule, the second by a correction; the part was found on every frame the subject is a person |
 | 2026-10-06 | masked | [The shipped motion graph with "a person" and with "a man" in its text: two renders on the band window (2026-10-06)](2026-10-06_masked_v2v_person_text.md) | one seed: with "a person" he still turns and ends where the source ends, and starts later than with "a man"; the shipped graph on the measured text reproduces the 2026-10-05 arm frame for frame; neither clip watched |
 | 2026-10-06 | masked | [Where a masked song render's time goes: two renders of one stretch, by node and by stage (2026-10-06)](2026-10-06_masked_render_time_breakdown.md) | sampling is four fifths of a render at both canvases; the plate's VAE encode is the largest stage after it and with the conditioning makes about an eighth of what a repeat run pays without needing to; the loader's working copy and the still's span across windows cannot win; the composite runs on the processors |
@@ -55,7 +56,7 @@ replaces `docs/evidence.md`, which says what the records established.
 | 2026-10-01 | lora | [Where a LoRA at the call spends its time (2026-10-01)](2026-10-01_lora_branch_profile.md) |  |
 | 2026-10-01 | kitchen | [comfy-kitchen: h3-frontier merged to upstream main, 2026-10-01](2026-10-01_kitchen_merge_aade8d5.md) |  |
 
-Data files dated this month and not listed: 69.
+Data files dated this month and not listed: 70.
 
 ## 2026-09
 

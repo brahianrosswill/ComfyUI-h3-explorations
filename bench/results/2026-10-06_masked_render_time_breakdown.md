@@ -395,7 +395,10 @@ agrees between windows 1 and 2 to within two tenths on both renders.
 ## Not established
 
 - What a run with the latents and the conditioning kept actually takes: the
-  repeat figures are sums of stages, not a timed run.
+  repeat figures are sums of stages, not a timed run. (Later the same day one
+  short window was run twice with both kept:
+  [`2026-10-06_window_keep_matched_pair.md`](2026-10-06_window_keep_matched_pair.md).
+  A full three-window run on kept values is still not timed.)
 - Why the VAE's encode is 2.6 times its decode.
 - What the first window's write waits on.
 - What the frame cap's extra frames cost the tracker.
