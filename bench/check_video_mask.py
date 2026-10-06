@@ -475,6 +475,184 @@ def check_motion_reference(problems):
         _fail(problems, "a Masked Source with no motion reference must add nothing to the static label plan")
 
 
+def check_motion_zoom(problems):
+    """`subject only, zoomed in`: the box is one a shot, around the TRACKED subject, on the token grid; and the
+    four things `zoom_plan` promises of the picture, each with a case that would fail without it."""
+    vm = _load()
+    from comfy_extras.nodes_minimax_h3 import CANVAS_MULTIPLE as M
+    torch.manual_seed(0)
+    H, W, SHORT = 256, 384, 128                 # the whole-frame reference of these frames is 128x192
+    pixels = torch.rand(6, H, W, 3)
+
+    def subject(*boxes):
+        m = torch.zeros(len(boxes), H, W)
+        for i, b in enumerate(boxes):
+            if b is not None:
+                m[i, b[1]:b[3], b[0]:b[2]] = 1.0
+        return m
+
+    # ---- the boxes: one a shot, a union, on the grid, in the frame, changing only at a cut
+    small = [(200, 100, 230, 150), (210, 100, 240, 150), (220, 110, 250, 160)]          # a subject that travels
+    mask = subject(*small, None, (40, 40, 100, 200), (40, 40, 100, 200))
+    rows = vm._tracked_boxes(mask)
+    if rows.tolist()[0] != [200, 100, 230, 150] or rows.tolist()[3] != [-1, -1, -1, -1]:
+        _fail(problems, f"zoom: the subject's box per frame is (x0, y0, x1, y1), far side exclusive, -1 when absent; got {rows.tolist()[:4]}")
+    per_shot = vm.shot_boxes(rows, [(0, 2), (3, 5)], W, H)
+    first, second = per_shot[0].tolist(), per_shot[4].tolist()
+    if not (per_shot[:3] == per_shot[0]).all() or not (per_shot[3:] == per_shot[3]).all() or first == second:
+        _fail(problems, "zoom: a shot's frames must share one box, and two shots must not share theirs")
+    for label, box, members in (("first", first, small), ("second", second, [(40, 40, 100, 200)])):
+        if any(v % M for v in box) or box[0] < 0 or box[1] < 0 or box[2] > W or box[3] > H:
+            _fail(problems, f"zoom: the {label} shot's box {box} is off the canvas multiple or outside the frame")
+        if any(b[0] < box[0] or b[1] < box[1] or b[2] > box[2] or b[3] > box[3] for b in members):
+            _fail(problems, f"zoom: the {label} shot's box {box} does not hold the subject on every one of its frames")
+        if any(b[0] - box[0] < min(vm.MOTION_BOX_ROOM, b[0]) for b in members):
+            _fail(problems, f"zoom: the {label} shot's box {box} leaves less than the room asked on its near side")
+    if vm.shot_boxes(rows, [], W, H)[0].tolist() != vm.shot_boxes(rows, [(0, 5)], W, H)[0].tolist():
+        _fail(problems, "zoom: with no shot table the frames are one shot")
+    if vm.shot_boxes(rows[3:4], [(0, 0)], W, H).tolist() != [[-1, -1, -1, -1]]:
+        _fail(problems, "zoom: a shot the subject is never in must have no box")
+    # a window later in the clip counts the table's frames from its own first frame
+    late = vm.shot_boxes(rows[2:], [(0, 2), (3, 5)], W, H, first_frame=2)
+    if late[0].tolist() == late[2].tolist() or late[1].tolist() != [-1, -1, -1, -1] and late[1].tolist() != late[2].tolist():
+        _fail(problems, f"zoom: a window that starts inside a shot must cut where the table cuts; got {late.tolist()}")
+
+    # ---- the boxes on the canvas agree with the mask on the canvas
+    wide = torch.zeros(2, 96, 256); wide[0, 20:70, 30:90] = 1.0; wide[1, 5:90, 200:250] = 1.0
+    for cw, ch in ((128, 96), (256, 96), (128, 48)):
+        fitted = vm.fit_boxes(vm._tracked_boxes(wide), 256, 96, cw, ch)
+        own = vm._tracked_boxes(vm.fit_mask(wide, cw, ch))
+        for f, o in zip(fitted.tolist(), own.tolist()):
+            if o[0] < 0:
+                continue
+            if f[0] > o[0] or f[1] > o[1] or f[2] < o[2] or f[3] < o[3] or max(abs(a - b) for a, b in zip(f, o)) > 1:
+                _fail(problems, f"zoom: a box fitted to {cw}x{ch} is {f} and the fitted mask's own box is {o}")
+
+    # ---- the four promises
+    full = torch.tensor([[0, 0, W, H]] * 6)
+    today = vm.motion_reference(pixels, mask, vm.MOTION_SUBJECT, SHORT, 4)
+    budget = int(today.shape[1]) * int(today.shape[2])
+    floor = min(int(today.shape[1]) / H, int(today.shape[2]) / W)
+    layouts = {
+        "one small box": per_shot[:3].repeat(2, 1),
+        "two shots": per_shot,
+        "a wide box and a tall one": torch.tensor([[0, 96, W, 160]] * 3 + [[160, 0, 224, H]] * 3),
+        "the whole frame and a small box": torch.tensor([[0, 0, W, H]] * 3 + [[192, 96, 256, 160]] * 3),
+        "a tall box that is most of the frame": torch.tensor([[0, 0, 352, H]] * 6),
+    }
+    for name, boxes in layouts.items():
+        got = vm.motion_reference(pixels, mask, vm.MOTION_ZOOM, SHORT, 4, boxes)
+        if int(got.shape[1]) * int(got.shape[2]) > budget:
+            _fail(problems, f"zoom, {name}: the picture is {tuple(got.shape[1:3])}, more pixels than the whole-frame reference's {tuple(today.shape[1:3])}")
+        if int(got.shape[1]) % M or int(got.shape[2]) % M or int(got.shape[0]) != 6:
+            _fail(problems, f"zoom, {name}: the picture {tuple(got.shape)} is off the canvas multiple or drops frames")
+        plan = vm.zoom_plan(boxes, H, W, SHORT)
+        for _a, _z, box, scale, size in (plan[2] if plan else ()):
+            if scale < floor - 1e-9:
+                _fail(problems, f"zoom, {name}: the box {box} is shown at {scale:.3f}, smaller than the whole frame's {floor:.3f}")
+            if scale > 1.0 + 1e-9 or size[0] > box[3] - box[1] or size[1] > box[2] - box[0]:
+                _fail(problems, f"zoom, {name}: the box {box} is enlarged past the canvas's own pixels (scale {scale:.3f})")
+    if not torch.equal(vm.motion_reference(pixels, mask, vm.MOTION_ZOOM, SHORT, 4, full), today):
+        _fail(problems, "zoom: a box that is the whole frame must give `subject only`'s picture, value for value")
+    if not torch.equal(vm.motion_reference(pixels, subject(*[None] * 6), vm.MOTION_ZOOM, SHORT, 4, torch.full((6, 4), -1)),
+                       vm.motion_reference(pixels, subject(*[None] * 6), vm.MOTION_SUBJECT, SHORT, 4)):
+        _fail(problems, "zoom: with the subject in no frame the picture must be `subject only`'s")
+    # the same boxes always give the same picture: the window keep's key holds the boxes, not the picture
+    for name, boxes in layouts.items():
+        again = vm.zoom_plan(boxes.clone(), H, W, SHORT)
+        if again != vm.zoom_plan(boxes, H, W, SHORT) or not torch.equal(
+                vm.motion_reference(pixels, mask, vm.MOTION_ZOOM, SHORT, 4, boxes),
+                vm.motion_reference(pixels.clone(), mask.clone(), vm.MOTION_ZOOM, SHORT, 4, boxes.clone())):
+            _fail(problems, f"zoom, {name}: the same boxes gave two pictures")
+    tall = vm.zoom_plan(torch.tensor([[160, 0, 256, H]] * 6), H, W, SHORT)
+    if tall is None or tall[0] <= tall[1] or tall[2][0][3] <= floor + 1e-9:
+        _fail(problems, f"zoom: a tall box must get a tall picture and be shown larger than the whole frame shows it; got {tall}")
+    if vm.zoom_plan(per_shot, H, W, 4 * H) is not None:
+        _fail(problems, "zoom: a short edge past the frame's own leaves nothing to zoom; the plan must be None")
+
+    # a small box is shown at the canvas's own pixels: the crop, value for value, with grey outside the subject
+    one = per_shot[:3]
+    got = vm.motion_reference(pixels[:3], mask[:3], vm.MOTION_ZOOM, SHORT, 0, one)
+    x0, y0, x1, y1 = one[0].tolist()
+    if tuple(got.shape[1:3]) != (y1 - y0, x1 - x0):
+        _fail(problems, f"zoom: a box under the budget must be shown at its own size {(y1 - y0, x1 - x0)}, got {tuple(got.shape[1:3])}")
+    else:
+        sx0, sy0, sx1, sy1 = small[1]
+        if not torch.equal(got[1, sy0 - y0:sy1 - y0, sx0 - x0:sx1 - x0], pixels[1, sy0:sy1, sx0:sx1]):
+            _fail(problems, "zoom: the subject's own pixels changed inside its box")
+        outside = got[1].clone(); outside[sy0 - y0:sy1 - y0, sx0 - x0:sx1 - x0] = 0.5
+        if not torch.allclose(outside, torch.full_like(outside, 0.5)):
+            _fail(problems, "zoom: everything in the box that is not the subject must be mid grey")
+        # the box holds still, so the subject's travel is still travel: ten columns between frames 0 and 1
+        cols = [int((got[i] != 0.5).any(dim=-1).any(dim=0).nonzero()[0]) for i in (0, 1)]
+        if cols[1] - cols[0] != small[1][0] - small[0][0]:
+            _fail(problems, f"zoom: the subject moved {small[1][0] - small[0][0]} columns in the frame and {cols[1] - cols[0]} in its box")
+    # two shots of different size share one picture: the smaller sits centred on grey
+    both = vm.motion_reference(pixels, mask, vm.MOTION_ZOOM, SHORT, 0, per_shot)
+    plan = vm.zoom_plan(per_shot, H, W, SHORT)
+    if plan is None or len(plan[2]) != 2:
+        _fail(problems, "zoom: two shots with their own boxes must be two runs of one plan")
+    else:
+        (_a, _z, _box, _s, (sh, sw)) = min(plan[2], key=lambda r: r[4][0] * r[4][1])
+        top, left = (plan[0] - sh) // 2, (plan[1] - sw) // 2
+        frame = both[0] if plan[2][0][4] == (sh, sw) else both[4]
+        border = frame.clone(); border[top:top + sh, left:left + sw] = 0.5
+        if not torch.allclose(border, torch.full_like(border, 0.5)):
+            _fail(problems, "zoom: a shot smaller than the picture must sit centred on grey")
+        # and the subject is where a centred box puts it: the first shot is at the canvas's own scale here
+        (_a, _z, (bx0, by0, _bx1, _by1), scale, (fh, fw)) = plan[2][0]
+        sx0, sy0, sx1, sy1 = small[0]
+        at_top, at_left = (plan[0] - fh) // 2 + sy0 - by0, (plan[1] - fw) // 2 + sx0 - bx0
+        if scale != 1.0 or (plan[0] - fh) // 2 == 0 or not torch.equal(
+                both[0, at_top:at_top + sy1 - sy0, at_left:at_left + sx1 - sx0], pixels[0, sy0:sy1, sx0:sx1]):
+            _fail(problems, f"zoom: the first shot's box must sit in the middle of a taller picture with the subject's pixels in place; plan {plan}")
+    for bad in (None, per_shot[:2]):
+        try:
+            vm.motion_reference(pixels, mask, vm.MOTION_ZOOM, SHORT, 4, bad)
+            _fail(problems, "zoom: a window with no box per frame was accepted")
+        except ValueError:
+            pass
+
+    # ---- the node: the record carries the TRACKED subject's boxes, whatever is replaced, and the window reads them
+    frames = torch.full((6, H, W, 3), 0.3)      # flat, so the outline is the only cyan on the plate
+    parts = torch.zeros(6, H, W); parts[:, 100:120, 205:225] = 1.0; parts[3:, 60:90, 50:90] = 1.0
+    table = json.dumps({"shots": [{"first_frame": 0, "last_frame": 2}, {"first_frame": 3, "last_frame": 5}]})
+    out = vm.MiniMaxH3MaskedSource.execute(frames, mask, replace=vm.REPLACE_PARTS, parts=parts, part_margin=0, reuse_mask=False,
+                                           motion_reference=vm.MOTION_ZOOM, motion_short_edge=SHORT, shot_table=table)
+    out = getattr(out, "args", out)
+    record = out[0]
+    if not torch.equal(record["subject_boxes"], rows):
+        _fail(problems, "zoom: the source record's `subject_boxes` must be the tracker's mask's boxes, not the replaced part's")
+    if vm.shot_ranges(record) != [(0, 2), (3, 5)] or vm.shot_ranges({"shot_table": ""}) != [] or vm.shot_ranges({"shot_table": "{"}) != []:
+        _fail(problems, "zoom: the cuts must be read from the record's shot table, and an empty or unreadable one is no cuts")
+    win = vm.window_boxes(record, 0, 6, W, H)
+    if win is None or not torch.equal(win, per_shot):
+        _fail(problems, "zoom: a window's boxes on a canvas the size of the frames must be the shots' boxes")
+    held = vm.window_boxes(record, 4, 6, W, H)
+    if held is None or held[0].tolist() != per_shot[4].tolist() or not (held == held[0]).all():
+        _fail(problems, f"zoom: frames past the source's end carry their shot's box; got {None if held is None else held.tolist()}")
+    if vm.window_boxes({"frames": frames}, 0, 6, W, H) is not None:
+        _fail(problems, "zoom: a source with no boxes must say so with None")
+    plain = getattr(vm.MiniMaxH3MaskedSource.execute(frames, mask, reuse_mask=False, motion_reference=vm.MOTION_SUBJECT,
+                                                     motion_short_edge=SHORT), "args", None)
+    plate_w = int(round(W * vm.PREVIEW_HEIGHT / H))
+    if int(out[2].shape[1]) != int(plain[2].shape[1]) or int(out[2].shape[2]) <= plate_w:
+        _fail(problems, "zoom: the preview strip must show the zoomed picture beside each plate")
+    if int(out[2].shape[2]) == int(plain[2].shape[2]):
+        _fail(problems, "zoom: the picture beside the plate must be the zoomed one, which on these boxes is not the whole frame's shape")
+    cyan = (out[2][0, :, :plate_w, 1] - out[2][0, :, :plate_w, 0]) > 0.3
+    if not bool(cyan.any()) or bool(((plain[2][0, :, :plate_w, 1] - plain[2][0, :, :plate_w, 0]) > 0.3).any()):
+        _fail(problems, "zoom: the preview's plate must carry the box as an outline, and only when zoomed in")
+    if "box" not in vm.zoom_note(per_shot, H, W, SHORT) or "whole frame" not in vm.zoom_note(full, H, W, SHORT):
+        _fail(problems, "zoom: the report's clause must say the boxes, or that the whole frame is shown")
+    if vm.MOTION_ZOOM not in vm.MOTIONS or len(set(vm.MOTIONS)) != 4:
+        _fail(problems, "zoom: MOTIONS must list the four choices once each")
+    song = (REPO / "audio_freeze_song.py").read_text(encoding="utf-8")
+    if "video_mask.window_boxes(source, int(round(w.start * FPS)), w.frames, width, height)" not in song \
+            or 'int(source["motion_short_edge"]), int(source["grow_pixels"]) // 2, boxes)' not in song:
+        _fail(problems, "zoom: the song node no longer builds the window's boxes and hands them to the motion reference")
+
+
 def check_late_start(problems):
     """`start_from`: `noise` changes nothing; the softened start greys only the subject in the frames to encode and
     empties only the body's tokens, leaving the top share, the margin and every kept token; off by default."""
@@ -798,7 +976,7 @@ def check_graphs(problems):
 
 def main() -> int:
     problems: list[str] = []
-    for check in (check_temporal, check_token_grid, check_feather, check_composite, check_window, check_fit, check_paint_out, check_part, check_changed_alpha, check_motion_reference, check_late_start, check_mask_review, check_graphs):
+    for check in (check_temporal, check_token_grid, check_feather, check_composite, check_window, check_fit, check_paint_out, check_part, check_changed_alpha, check_motion_reference, check_motion_zoom, check_late_start, check_mask_review, check_graphs):
         check(problems)
     for p in problems:
         print(f"FAIL  {p}")

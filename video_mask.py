@@ -107,6 +107,18 @@ builds it per window from the source it already holds (`window_frames`,
 prompt names the relationship, never the action: the masking board's route
 1, `docs/research/masking/2026-10-05_mryellow.md` section 7.
 
+**Zoomed in on the subject** (`subject only, zoomed in`, 2026-10-06). `subject
+only` scales the whole frame down and greys the rest, so a subject that is
+small in the frame is a handful of the encoder's tokens and most of the
+picture is grey. This choice shows the same pixels in a box around the
+subject: one fixed box per shot, so the subject still travels and moves
+against a frame that holds still, and the framing changes only where the
+source cuts. The box is taken from the TRACKED subject, not from what is
+replaced: the source record now carries the subject's box per frame
+(`subject_boxes`, from the tracker's mask before it is cut to a part),
+because on a parts graph nothing downstream of this node knew where the whole
+subject was. `motion_reference` states the rule that bounds the picture.
+
 **The mask is kept across runs** (`reuse_mask`; owner, 2026-10-04: "save the
 mask"). Tracking the subject, and finding the part for `head and hair`, cost
 more than a window of sampling after every restart, and a clip's mask does
@@ -241,6 +253,17 @@ START_KNOTS = 1
 MOTION_NONE = "none"
 MOTION_SUBJECT = "subject only"
 MOTION_FRAME = "whole frame"
+#: The subject alone, in a box around it and not in the whole frame, so the
+#: encoder's tokens are spent on the subject. Owner, 2026-10-06, after a small
+#: subject on a 16:9 canvas did not have its movement followed: zoom in.
+#: `motion_reference` has the rule.
+MOTION_ZOOM = "subject only, zoomed in"
+MOTIONS = (MOTION_NONE, MOTION_SUBJECT, MOTION_ZOOM, MOTION_FRAME)
+#: Room left around the subject's box on each side, in canvas pixels, before
+#: it is taken out to the canvas multiple. Reasoned: one of the encoder's
+#: merged tokens (patch 16 by merge 2), so a limb at the edge of the box is
+#: not at the edge of the picture. Not rendered yet.
+MOTION_BOX_ROOM = 32
 #: Shorter side of that reference, in pixels. Reasoned, 2026-10-05: core never
 #: enlarges a reference video, so this sets its pixel area; with the VAE copy
 #: on, a 384 short edge costs a quarter of the 768 canvas's rows
@@ -272,6 +295,18 @@ def fit_frames(frames: torch.Tensor, width: int, height: int) -> torch.Tensor:
     return out.movedim(1, -1)
 
 
+def _fit_crop(old_w: int, old_h: int, width: int, height: int) -> tuple[int, int]:
+    """The columns and rows `comfy.utils.common_upscale`'s centre crop takes off each side of an
+    `old_w` by `old_h` picture on its way to `width` by `height`. `fit_mask` says why it is restated."""
+    old_aspect, new_aspect = old_w / old_h, width / height
+    x = y = 0
+    if old_aspect > new_aspect:
+        x = round((old_w - old_w * (new_aspect / old_aspect)) / 2)
+    elif old_aspect < new_aspect:
+        y = round((old_h - old_h * (old_aspect / new_aspect)) / 2)
+    return x, y
+
+
 def fit_mask(mask: torch.Tensor, width: int, height: int) -> torch.Tensor:
     """[N, h, w] to [N, height, width] through the crop `fit_frames` makes.
 
@@ -284,12 +319,7 @@ def fit_mask(mask: torch.Tensor, width: int, height: int) -> torch.Tensor:
     """
     width, height = int(width), int(height)
     old_h, old_w = int(mask.shape[-2]), int(mask.shape[-1])
-    old_aspect, new_aspect = old_w / old_h, width / height
-    x = y = 0
-    if old_aspect > new_aspect:
-        x = round((old_w - old_w * (new_aspect / old_aspect)) / 2)
-    elif old_aspect < new_aspect:
-        y = round((old_h - old_h * (old_aspect / new_aspect)) / 2)
+    x, y = _fit_crop(old_w, old_h, width, height)
     m = mask.to(torch.float32).narrow(-2, y, old_h - y * 2).narrow(-1, x, old_w - x * 2).unsqueeze(1)
     if m.shape[-2] >= height and m.shape[-1] >= width:
         return F.adaptive_max_pool2d(m, (height, width))[:, 0]
@@ -722,7 +752,168 @@ def window_frames(source: dict, first_frame: int, frames: int, width: int, heigh
     return pixels, mask, short
 
 
-def motion_reference(pixels: torch.Tensor, mask: torch.Tensor, mode: str, short_edge: int, margin: int):
+def _tracked_boxes(mask: torch.Tensor) -> torch.Tensor:
+    """The subject's box on each frame of a [N, H, W] mask: [N, 4] long, (x0, y0, x1, y1) with the far side
+    exclusive, a row of -1 where the mask is empty. The pack's one box function, `sapiens2_parts.mask_boxes`.
+
+    Kept as one function on purpose. The shot table is to carry the subject's box per frame (it lands with
+    the kept mask's removal); that day this reads the table and computes nothing, and nothing else changes.
+    """
+    from .sapiens2_parts import mask_boxes   # imported here: that module imports this one at load
+    return mask_boxes(mask)
+
+
+def fit_boxes(boxes: torch.Tensor, old_w: int, old_h: int, width: int, height: int) -> torch.Tensor:
+    """Boxes on `old_w` by `old_h` frames, on the render canvas, through the crop `fit_frames` makes.
+
+    Never inside the fitted mask's own box: a near edge rounds down and a far edge up. A box the crop leaves
+    nothing of, like a frame with no subject, is a row of -1.
+    """
+    old_w, old_h, width, height = int(old_w), int(old_h), int(width), int(height)
+    x, y = _fit_crop(old_w, old_h, width, height)
+    sx, sy = width / (old_w - 2 * x), height / (old_h - 2 * y)
+    b = boxes.to(torch.float64)
+    out = torch.stack([torch.floor((b[:, 0] - x) * sx).clamp(0, width), torch.floor((b[:, 1] - y) * sy).clamp(0, height),
+                       torch.ceil((b[:, 2] - x) * sx).clamp(0, width), torch.ceil((b[:, 3] - y) * sy).clamp(0, height)],
+                      dim=1).to(torch.long)
+    out[(boxes[:, 0] < 0) | (out[:, 2] <= out[:, 0]) | (out[:, 3] <= out[:, 1])] = -1
+    return out
+
+
+def shot_ranges(source: dict) -> list[tuple[int, int]]:
+    """(first frame, last frame) of each shot in the table a source carries, in order; empty with no table."""
+    text = str(source.get("shot_table") or "")
+    if not text:
+        return []
+    import json   # here, not at the top: the one use
+    try:
+        return [(int(s["first_frame"]), int(s["last_frame"])) for s in json.loads(text)["shots"]]
+    except (ValueError, KeyError, TypeError):
+        logger.warning("[h3] the source's shot table could not be read for its cuts; the zoom takes one box for the window")
+        return []
+
+
+def shot_boxes(boxes: torch.Tensor, ranges: list[tuple[int, int]], width: int, height: int,
+               room: int = MOTION_BOX_ROOM, first_frame: int = 0) -> torch.Tensor:
+    """One fixed box per shot: [N, 4] long, every frame carrying its shot's box, -1 through a shot the subject is never in.
+
+    `boxes` are the subject's own, one a frame, for frames `first_frame` onwards of the clip `ranges` counts
+    in. A shot's box is the union of the subject's boxes over those of its frames that are here, widened by
+    `room` and then outward to the canvas multiple, inside the frame. A union, so a subject that is covered
+    and uncovered inside a shot does not move the box; fixed, so the subject's travel is still travel. With no
+    ranges the frames are one shot. Frames no range covers take the shot before them.
+    """
+    from comfy_extras.nodes_minimax_h3 import CANVAS_MULTIPLE as multiple   # core's constant, as `motion_reference`
+    n, width, height = int(boxes.shape[0]), int(width), int(height)
+    out = torch.full((n, 4), -1, dtype=torch.long)
+    starts = sorted({min(max(int(a) - int(first_frame), 0), n) for a, _b in ranges} | {0})
+    for a, b in zip(starts, starts[1:] + [n]):
+        rows = boxes[a:b]
+        rows = rows[rows[:, 0] >= 0]
+        if not int(rows.shape[0]):
+            continue
+        x0, y0 = int(rows[:, 0].min()) - int(room), int(rows[:, 1].min()) - int(room)
+        x1, y1 = int(rows[:, 2].max()) + int(room), int(rows[:, 3].max()) + int(room)
+        x0, y0 = max(x0 // multiple * multiple, 0), max(y0 // multiple * multiple, 0)
+        x1, y1 = min(-(-x1 // multiple) * multiple, width), min(-(-y1 // multiple) * multiple, height)
+        out[a:b] = torch.tensor([x0, y0, x1, y1], dtype=torch.long)
+    return out
+
+
+def window_boxes(source: dict, first_frame: int, frames: int, width: int, height: int) -> torch.Tensor | None:
+    """`shot_boxes` for one window of a source, on the render canvas; None when the source carries no boxes.
+
+    The box of a shot is taken over the window's own frames of it, so a subject that shrinks through a long
+    shot is framed for this window and not for the whole shot. Frames past the source's end, which
+    `window_frames` fills with the last one unmasked, have no subject of their own: they carry their shot's
+    box like any frame the subject is off, and show grey in it.
+    """
+    rows = source.get("subject_boxes")
+    if rows is None:
+        return None
+    first_frame, frames = int(first_frame), int(frames)
+    part = rows[first_frame:first_frame + frames]
+    short = frames - int(part.shape[0])
+    if short > 0:
+        part = torch.cat([part, torch.full((short, 4), -1, dtype=part.dtype)], dim=0)
+    fitted = fit_boxes(part, int(source["frames"].shape[2]), int(source["frames"].shape[1]), width, height)
+    return shot_boxes(fitted, shot_ranges(source), width, height, first_frame=first_frame)
+
+
+def _reference_size(h: int, w: int, short_edge: int) -> tuple[int, int]:
+    """(height, width) of the whole frame as a reference: the shorter side `short_edge`, rounded to the canvas multiple."""
+    from comfy_extras.nodes_minimax_h3 import CANVAS_MULTIPLE  # core's constant; imported here so a check needs no server
+    scale = float(short_edge) / float(min(h, w))
+    return (max(CANVAS_MULTIPLE, int(round(h * scale / CANVAS_MULTIPLE)) * CANVAS_MULTIPLE),
+            max(CANVAS_MULTIPLE, int(round(w * scale / CANVAS_MULTIPLE)) * CANVAS_MULTIPLE))
+
+
+def zoom_plan(boxes: torch.Tensor, h: int, w: int, short_edge: int):
+    """How `subject only, zoomed in` lays out a window of `h` by `w` frames: (height, width, runs), or None.
+
+    `boxes` is `shot_boxes`' result for the window. Each run is (first frame, stop, box, scale, (height,
+    width) of the box once scaled) for a stretch of frames that share a box; frames in no run have no subject
+    and are grey. None means "show the whole frame, as `subject only` does": every box is the whole frame, no
+    frame has a subject, or nothing finer than the whole frame fits the budget.
+
+    The rule, as four things that are always true of a plan (`bench/check_video_mask.py` holds each):
+    1. the picture holds at most the pixels the whole-frame reference at `short_edge` holds, so the zoom
+       never costs more than `subject only`, with no widget of its own;
+    2. every shot is shown at a scale at least the whole frame's, so the subject is never smaller than in
+       `subject only`;
+    3. a box that is the whole frame gives `subject only`'s picture, value for value (the None above);
+    4. no shot is enlarged past the canvas's own pixels, as the reference compiler never enlarges a video.
+    A video has one size, so a window's shots share one picture and each box is fitted inside it at its own
+    scale, centred on grey. The picture's shape is chosen among those inside the budget, on the canvas
+    multiple: the one that shows the window's frames largest, with no shot under the whole frame's scale.
+    The whole-frame reference's own shape is always among them, so there is always a plan or a None.
+    """
+    from comfy_extras.nodes_minimax_h3 import CANVAS_MULTIPLE as multiple
+    h, w, n = int(h), int(w), int(boxes.shape[0])
+    th, tw = _reference_size(h, w, short_edge)
+    budget, floor = th * tw, min(th / h, tw / w)
+    runs, start = [], 0
+    for i in range(1, n + 1):
+        if i == n or not torch.equal(boxes[i], boxes[start]):
+            box = tuple(int(v) for v in boxes[start])
+            if box[0] >= 0:
+                runs.append((start, i, box))
+            start = i
+    if not runs or floor >= 1.0 or all(box == (0, 0, w, h) for _a, _z, box in runs):
+        return None
+    import math   # here, not at the top: the one use
+    best = None
+    for out_h in range(multiple, budget // multiple + 1, multiple):
+        for out_w in range(multiple, budget // out_h // multiple * multiple + 1, multiple):
+            scales = [min(1.0, out_h / (y1 - y0), out_w / (x1 - x0)) for _a, _z, (x0, y0, x1, y1) in runs]
+            if min(scales) < floor - 1e-12:
+                continue
+            # how large the window's frames are shown: the mean of log scale over frames, so a shot counts by
+            # its length and doubling one shot weighs what doubling another does; then the smaller picture
+            shown = sum(math.log(s) * (z - a) for (a, z, _box), s in zip(runs, scales))
+            key = (round(shown, 9), -out_h * out_w, -out_h)
+            if best is None or key > best[0]:
+                best = (key, out_h, out_w, scales)
+    if best is None:
+        return None
+    _key, out_h, out_w, scales = best
+    return out_h, out_w, [(a, z, box, s, (max(1, int((box[3] - box[1]) * s + 1e-9)), max(1, int((box[2] - box[0]) * s + 1e-9))))
+                          for (a, z, box), s in zip(runs, scales)]
+
+
+def zoom_note(boxes: torch.Tensor, h: int, w: int, short_edge: int) -> str:
+    """One clause for a report: what `zoom_plan` made of a window's boxes."""
+    plan = zoom_plan(boxes, h, w, short_edge)
+    if plan is None:
+        return "the whole frame is shown, as `subject only`: the subject's box is the frame, is absent, or cannot be shown larger"
+    out_h, out_w, runs = plan
+    return (f"{len(runs)} box(es) on the canvas, "
+            + ", ".join(f"{x1 - x0}x{y1 - y0} at {scale:.2f} of canvas scale" for _a, _z, (x0, y0, x1, y1), scale, _size in runs)
+            + f"; the picture is {out_w}x{out_h}")
+
+
+def motion_reference(pixels: torch.Tensor, mask: torch.Tensor, mode: str, short_edge: int, margin: int,
+                     boxes: torch.Tensor | None = None):
     """The window as the model is shown it as a video reference, [F, h, w, 3], or None for `none`.
 
     `subject only` keeps the pixels under the mask widened by `margin` and sets
@@ -731,17 +922,42 @@ def motion_reference(pixels: torch.Tensor, mask: torch.Tensor, mode: str, short_
     window as it is. Either is scaled so its shorter side is `short_edge`,
     rounded to the canvas multiple with the aspect kept; the reference
     compiler never enlarges a video, so this is what sets its cost.
+
+    `subject only, zoomed in` is `subject only` shown in `boxes` (`window_boxes`:
+    one fixed box per shot, around the tracked subject) and not in the whole
+    frame. `zoom_plan` lays it out and states the rule: never more pixels than
+    `subject only` at this `short_edge`, never a smaller subject, the same
+    picture when the box is the frame, never enlarged past the canvas.
     """
     if mode == MOTION_NONE:
         return None
-    if mode not in (MOTION_SUBJECT, MOTION_FRAME):
-        raise ValueError(f"unknown motion_reference {mode!r}; one of {[MOTION_NONE, MOTION_SUBJECT, MOTION_FRAME]}")
-    from comfy_extras.nodes_minimax_h3 import CANVAS_MULTIPLE  # core's constant; imported here so a check needs no server
+    if mode not in MOTIONS:
+        raise ValueError(f"unknown motion_reference {mode!r}; one of {list(MOTIONS)}")
     n, h, w = int(pixels.shape[0]), int(pixels.shape[1]), int(pixels.shape[2])
-    scale = float(short_edge) / float(min(h, w))
-    th = max(CANVAS_MULTIPLE, int(round(h * scale / CANVAS_MULTIPLE)) * CANVAS_MULTIPLE)
-    tw = max(CANVAS_MULTIPLE, int(round(w * scale / CANVAS_MULTIPLE)) * CANVAS_MULTIPLE)
-    keep = grow(mask.to(torch.float32), int(margin)) if mode == MOTION_SUBJECT else None
+    th, tw = _reference_size(h, w, short_edge)
+    keep = grow(mask.to(torch.float32), int(margin)) if mode in (MOTION_SUBJECT, MOTION_ZOOM) else None
+    plan = None
+    if mode == MOTION_ZOOM:
+        if boxes is None or int(boxes.shape[0]) != n:
+            raise ValueError(
+                f"motion_reference `{MOTION_ZOOM}` needs the subject's box on each of the window's {n} frames "
+                "(`window_boxes`); the source record carries them as `subject_boxes`")
+        plan = zoom_plan(boxes, h, w, short_edge)
+    if plan is not None:
+        out_h, out_w, runs = plan
+        shown = torch.full((n, out_h, out_w, 3), 0.5, dtype=torch.float32, device=pixels.device)
+        for first, stop, (x0, y0, x1, y1), _scale, (sh, sw) in runs:
+            top, left = (out_h - sh) // 2, (out_w - sw) // 2
+            for i in range(first, stop, CHUNK):
+                j = min(i + CHUNK, stop)
+                chunk = pixels[i:j, y0:y1, x0:x1, :3].to(torch.float32)
+                m = (keep[i:j, y0:y1, x0:x1] > 0.5).to(chunk.dtype).unsqueeze(-1)
+                chunk = chunk * m + 0.5 * (1.0 - m)
+                if (sh, sw) != (y1 - y0, x1 - x0):
+                    chunk = F.interpolate(chunk.movedim(-1, 1), size=(sh, sw), mode="bilinear",
+                                          align_corners=False, antialias=True).movedim(1, -1)
+                shown[i:j, top:top + sh, left:left + sw] = chunk.clamp(0.0, 1.0)
+        return shown
     out = []
     for i in range(0, n, CHUNK):
         chunk = pixels[i:i + CHUNK, ..., :3].to(torch.float32)
@@ -761,18 +977,33 @@ PREVIEW_HEIGHT = 192
 
 
 def preview_strip(frames: torch.Tensor, mask: torch.Tensor, grow_pixels: int, motion: str, short_edge: int,
-                  margin: int) -> torch.Tensor:
+                  margin: int, boxes: torch.Tensor | None = None) -> torch.Tensor:
     """[1, H, W, 3]: sampled frames down the strip, the regenerated region tinted red on the plate, and, when a
     motion reference is on, what the encoder is shown beside each. The dry-run review looks at this and the
-    tracker's tiles before anything samples."""
+    tracker's tiles before anything samples.
+
+    With `boxes` (the zoomed reference's box on every frame of the clip) each plate also carries its box as an
+    outline, so the picture beside it can be found on the frame. The boxes here are each shot's over the whole
+    clip; a window takes its own from its own frames (`window_boxes`), which is never larger."""
     n = int(frames.shape[0])
     idx = torch.linspace(0, n - 1, steps=min(PREVIEW_ROWS, n)).round().long()
     f = frames[idx, ..., :3].to(torch.float32)
     region = (grow(mask[idx].to(torch.float32), int(grow_pixels)) > 0.5).unsqueeze(-1).to(f.dtype)
     red = torch.tensor([1.0, 0.0, 0.0], dtype=f.dtype, device=f.device)
     plate = f * (1.0 - region) + (0.5 * f + 0.5 * red) * region
+    shown = None if boxes is None else boxes[idx]
+    if shown is not None:
+        cyan = torch.tensor([0.0, 1.0, 1.0], dtype=f.dtype, device=f.device)
+        line = max(2, int(f.shape[1]) // 128)                      # an outline that survives the tile's scale-down
+        for row, (x0, y0, x1, y1) in enumerate(shown.tolist()):
+            if x0 < 0:
+                continue
+            plate[row, y0:y0 + line, x0:x1] = cyan
+            plate[row, max(y1 - line, y0):y1, x0:x1] = cyan
+            plate[row, y0:y1, x0:x0 + line] = cyan
+            plate[row, y0:y1, max(x1 - line, x0):x1] = cyan
     tiles = [plate]
-    ref = motion_reference(frames[idx], mask[idx], motion, short_edge, margin)
+    ref = motion_reference(frames[idx], mask[idx], motion, short_edge, margin, shown)
     if ref is not None:
         tiles.append(ref.to(f.dtype).to(f.device))
     h = PREVIEW_HEIGHT
@@ -871,7 +1102,7 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                 # defaults are the shipped render as it was; `subject only` with the
                 # VAE copy off is the arm the masking board calls route 1. Read by
                 # the song node, which builds the reference per window.
-                io.Combo.Input("motion_reference", options=[MOTION_NONE, MOTION_SUBJECT, MOTION_FRAME],
+                io.Combo.Input("motion_reference", options=list(MOTIONS),
                                default=MOTION_NONE, optional=True,
                                tooltip=("Also show the model the original's movement, as a video reference the "
                                         "prompt names as <Video 1>.\n\n"
@@ -879,6 +1110,13 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                                         "subject only: the source window with everything outside the subject "
                                         "grey, so the model sees how the subject moves and nothing of the "
                                         "scene.\n\n"
+                                        "subject only, zoomed in: the same, shown in a box around the subject "
+                                        "and not in the whole frame, so a subject that is small in the frame "
+                                        "is seen larger for the same cost or less. The box holds still through "
+                                        "a shot and changes only where the video cuts; when a window holds "
+                                        "shots framed differently, each sits in the middle of one shared "
+                                        "picture on grey. Use it when the model does not follow a small "
+                                        "subject's movement.\n\n"
                                         "whole frame: the source window as it is.\n\n"
                                         "The prompt has to say what the video provides, for example that the "
                                         "subject's motion and timing come from <Video 1>. Costs text-encoder "
@@ -887,7 +1125,9 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                 io.Int.Input("motion_short_edge", default=MOTION_SHORT_EDGE, min=32, max=1024, step=32, optional=True,
                              tooltip=("Shorter side, in pixels, of the motion reference the model is shown, "
                                       "rounded to 32. Smaller is cheaper; raise it if the model cannot make "
-                                      "out the subject.")),
+                                      "out the subject. Zoomed in, it is the most the picture may cost: the "
+                                      "zoomed picture never holds more pixels than the whole frame at this "
+                                      "short edge would.")),
                 io.Boolean.Input("motion_vae", default=False, optional=True,
                                  tooltip=("Off (default): the motion reference reaches the model through the "
                                           "text encoder only, at two frames per second. Cheap.\n\n"
@@ -1036,8 +1276,8 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                 "soften: turn one of the two off")
         if composite not in (COMPOSITE_REGION, COMPOSITE_CHANGED):
             raise ValueError(f"unknown composite {composite!r}; one of {[COMPOSITE_REGION, COMPOSITE_CHANGED]}")
-        if motion_reference not in (MOTION_NONE, MOTION_SUBJECT, MOTION_FRAME):
-            raise ValueError(f"unknown motion_reference {motion_reference!r}; one of {[MOTION_NONE, MOTION_SUBJECT, MOTION_FRAME]}")
+        if motion_reference not in MOTIONS:
+            raise ValueError(f"unknown motion_reference {motion_reference!r}; one of {list(MOTIONS)}")
         key = cls._mask_key(frames, reuse_mask)
         kept = None
         if key is not None:
@@ -1046,6 +1286,11 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
         table = str(shot_table or "")
         if kept is not None:
             mask, note = kept, ", mask kept from an earlier run (nothing tracked)"
+            # The tracker did not run, so the subject's boxes are the kept REGION's. This branch goes with
+            # the kept mask's removal (`reuse_mask`, `mask_store`): delete it with them.
+            boxes = _tracked_boxes(mask)
+            if motion_reference == MOTION_ZOOM and replace != REPLACE_WHOLE:
+                note += ", the zoom framed on the kept region and not the whole subject"
             if table:
                 # the tracker ran for its table alone: the kept file had none (kept before the
                 # table existed, or by a graph that did not wire it). Keep it for the next run.
@@ -1060,8 +1305,12 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                 raise ValueError(
                     "the mask kept for this video could not be read and has been removed: queue the "
                     "workflow again and it will be tracked afresh")
+            tracked = mask          # the tracker's own mask, before it is cut to a part below
             mask, note = cls._settle_mask(frames, mask, replace, segmenter, segmenter_clip, part_phrases,
                                           part_threshold, part_margin, parts)
+            # The whole subject's box per frame, from the tracker's mask and not from the part it was just
+            # cut to: on a parts graph nothing after this node knows where the subject is otherwise.
+            boxes = _tracked_boxes(tracked[..., 0] if tracked.ndim == 4 else tracked)
             if key is not None:
                 seconds = mask_store.save(key, mask, table)
                 note += f", mask kept for the next run ({seconds:.0f} s to write)"
@@ -1073,6 +1322,15 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
         if motion_reference != MOTION_NONE:
             logger.info("[h3] MiniMaxH3MaskedSource: motion reference %s at a %d short edge, %s", motion_reference,
                         int(motion_short_edge), "with the video model's copy" if motion_vae else "text encoder only")
+        zoomed = None
+        if motion_reference == MOTION_ZOOM:
+            # for the preview and the log: each shot's box over the whole clip, at the frames' own size
+            zoomed = shot_boxes(boxes, shot_ranges({"shot_table": table}), int(frames.shape[2]), int(frames.shape[1]))
+            sizes = sorted({(x1 - x0, y1 - y0) for x0, y0, x1, y1 in zoomed.tolist() if x0 >= 0})
+            logger.info("[h3] MiniMaxH3MaskedSource: zoomed in on the tracked subject, one box a shot, %s on %dx%d "
+                        "frames over the clip; each window takes its own from its own frames",
+                        ", ".join(f"{bw}x{bh}" for bw, bh in sizes) or "no box (the subject is in no frame)",
+                        int(frames.shape[2]), int(frames.shape[1]))
         return io.NodeOutput({"frames": frames, "mask": mask, "grow_pixels": int(grow_pixels),
                               "feather_pixels": int(feather_pixels), "paint_out": bool(paint_out),
                               "composite": composite, "change_threshold": float(change_threshold),
@@ -1080,11 +1338,14 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                               "motion_vae": bool(motion_vae),
                               "start_from": start_from, "start_top": float(start_top),
                               "start_blur": int(start_blur), "start_knots": int(start_knots),
+                              # [N, 4] long, (x0, y0, x1, y1) on these frames with the far side exclusive, a
+                              # row of -1 where the subject is absent: the TRACKED subject, whatever is replaced
+                              "subject_boxes": boxes,
                               # read by the prompt node (`masked_prompt.py`), which describes what is replaced
                               "shot_table": table, "replace": replace},
                              mask.to(torch.float32),
                              preview_strip(frames, mask, int(grow_pixels), motion_reference,
-                                           int(motion_short_edge), int(grow_pixels) // 2))
+                                           int(motion_short_edge), int(grow_pixels) // 2, zoomed))
 
     @classmethod
     def _settle_mask(cls, frames, mask, replace, segmenter, segmenter_clip, part_phrases, part_threshold,

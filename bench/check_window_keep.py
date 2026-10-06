@@ -301,6 +301,24 @@ def main() -> int:
         assert not hits(wk.cond_key(*args(source())), base), "a motion reference turned on still hit"
     case("with a motion reference the conditioning key holds the window's frames, mask and settings", cond_key_motion)
 
+    def cond_key_zoom():
+        clip, vae, still = Clip(), Vae(), Thing()
+        boxes = torch.tensor([[2, 1, 6, 7]] * 6)
+        table = '{"shots": [{"first_frame": 0, "last_frame": 5}]}'
+        src = source(motion_reference=wk.MOTION_ZOOM, subject_boxes=boxes, shot_table=table)
+        args = lambda s: (clip, "a prompt", 6, 64, 32, (still,), vae, None, s, 0)
+        base = wk.cond_key(*args(src))
+        assert hits(base, wk.cond_key(*args(dict(src, subject_boxes=boxes.clone())))), "the same boxes in another tensor missed"
+        moved = boxes.clone(); moved[3, 2] = 7
+        assert not hits(base, wk.cond_key(*args(dict(src, subject_boxes=moved)))), "a moved box still hit"
+        cut = '{"shots": [{"first_frame": 0, "last_frame": 2}, {"first_frame": 3, "last_frame": 5}]}'
+        assert not hits(base, wk.cond_key(*args(dict(src, shot_table=cut)))), "another cut still hit"
+        assert not hits(base, wk.cond_key(*args(dict(src, motion_reference="subject only")))), "the zoom turned off still hit"
+        plain = source(motion_reference="subject only")
+        assert hits(wk.cond_key(*args(plain)), wk.cond_key(*args(dict(plain, subject_boxes=moved)))), \
+            "boxes moved a key that does not read them"
+    case("zoomed in, the conditioning key holds the window's boxes and the shot table: a changed box misses, an unchanged one hits", cond_key_zoom)
+
     def cond_key_no_source():
         # a song graph with no Masked Source, and one with no references either
         clip, vae = Clip(), Vae()
@@ -315,9 +333,9 @@ def main() -> int:
     # ------------------------------------------------------ restated constants
     def constants():
         vm = load("video_mask")
-        assert wk.START_NOISE == vm.START_NOISE and wk.MOTION_NONE == vm.MOTION_NONE
-        return f"{wk.START_NOISE!r}, {wk.MOTION_NONE!r}"
-    case("START_NOISE and MOTION_NONE are video_mask.py's", constants)
+        assert wk.START_NOISE == vm.START_NOISE and wk.MOTION_NONE == vm.MOTION_NONE and wk.MOTION_ZOOM == vm.MOTION_ZOOM
+        return f"{wk.START_NOISE!r}, {wk.MOTION_NONE!r}, {wk.MOTION_ZOOM!r}"
+    case("START_NOISE, MOTION_NONE and MOTION_ZOOM are video_mask.py's", constants)
 
     def song_node_reads_under_the_switch():
         # Read from the node's source: its execute needs a sampler and a model to run. Every

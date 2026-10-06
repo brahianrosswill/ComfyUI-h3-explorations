@@ -214,10 +214,11 @@ class Keep:
 LATENTS = Keep("source latent", LATENT_BYTES)
 CONDS = Keep("conditioning", COND_BYTES)
 
-#: `video_mask.START_NOISE` and `video_mask.MOTION_NONE`, restated so this module imports
-#: nothing from the pack at load; `bench/check_window_keep.py` holds them to the originals.
+#: `video_mask.START_NOISE`, `video_mask.MOTION_NONE` and `video_mask.MOTION_ZOOM`, restated so this
+#: module imports nothing from the pack at load; `bench/check_window_keep.py` holds them to the originals.
 START_NOISE = "noise"
 MOTION_NONE = "none"
+MOTION_ZOOM = "subject only, zoomed in"
 
 
 def _vae_dtypes(vae) -> tuple:
@@ -252,13 +253,21 @@ def cond_key(clip, text: str, frames: int, width: int, height: int, references, 
     The encoder is in it by identity and by what is patched onto it. Each reference record
     is in it by identity (a tuple cannot be weakly referenced; its frozen records can). With
     a motion reference the window's own frames and mask go in too, since
-    `video_mask.motion_reference` is built from them.
+    `video_mask.motion_reference` is built from them. Zoomed in, so does what frames it: the
+    subject's box on each of the window's frames and the shot table's text, which between them
+    decide `video_mask.window_boxes`.
     """
     records = tuple(references or ())
     moving, with_source = None, ()
     if source is not None and source.get("motion_reference", MOTION_NONE) != MOTION_NONE:
+        framed = None
+        if source["motion_reference"] == MOTION_ZOOM:
+            rows = source.get("subject_boxes")
+            framed = (None if rows is None
+                      else tuple(rows[int(first_frame):int(first_frame) + int(frames)].flatten().tolist()),
+                      str(source.get("shot_table") or ""))
         moving = (source["motion_reference"], int(source["motion_short_edge"]), int(source["grow_pixels"]) // 2,
-                  bool(source.get("motion_vae", False)), int(first_frame))
+                  bool(source.get("motion_vae", False)), int(first_frame), framed)
         with_source = (source["frames"], source["mask"])
     static = ("cond", str(text), int(frames), int(width), int(height),
               str(clip.patcher.patches_uuid), clip.layer_idx, len(records),

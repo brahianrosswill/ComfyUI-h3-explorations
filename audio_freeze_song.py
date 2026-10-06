@@ -517,9 +517,15 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                 if motion != video_mask.MOTION_NONE:
                     pixels, mask, _held = video_mask.window_frames(
                         source, int(round(w.start * FPS)), w.frames, width, height)
+                    # zoomed in, the window's own box per shot, around the tracked subject (`video_mask.window_boxes`)
+                    boxes = (video_mask.window_boxes(source, int(round(w.start * FPS)), w.frames, width, height)
+                             if motion == video_mask.MOTION_ZOOM else None)
                     ref_frames = video_mask.motion_reference(
-                        pixels, mask, motion, int(source["motion_short_edge"]), int(source["grow_pixels"]) // 2)
-                    del pixels, mask
+                        pixels, mask, motion, int(source["motion_short_edge"]), int(source["grow_pixels"]) // 2, boxes)
+                    if boxes is not None:
+                        reports.append(f"[{w.number}] motion reference zoomed in: "
+                                       + video_mask.zoom_note(boxes, height, width, int(source["motion_short_edge"])))
+                    del pixels, mask, boxes
                     refs_w = tuple(references or ()) + (RuntimeVideoReference(
                         frames=ref_frames, loaded_fps=float(FPS), soundtrack=None,
                         use_vae=bool(source.get("motion_vae", False))),)

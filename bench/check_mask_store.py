@@ -282,8 +282,15 @@ def check_node(problems):
             vm.detect_part = real
         if not torch.equal(kept[1], tracked[1]) or not torch.equal(kept[0]["mask"], tracked[0]["mask"]):
             problems.append(f"{replace}: the run on a kept mask does not return the tracked run's mask")
-        if {k: v for k, v in kept[0].items() if k not in ("frames", "mask")} != {k: v for k, v in tracked[0].items() if k not in ("frames", "mask")}:
+        tensors = ("frames", "mask", "subject_boxes")
+        if {k: v for k, v in kept[0].items() if k not in tensors} != {k: v for k, v in tracked[0].items() if k not in tensors}:
             problems.append(f"{replace}: the source bundle differs between a kept and a tracked run")
+        # the subject's boxes: the tracker's on a tracked run; on a kept run the tracker did not run, so they
+        # are the kept region's, which is the same thing only when the whole subject is replaced
+        if not torch.equal(tracked[0]["subject_boxes"], vm._tracked_boxes(mask)):
+            problems.append(f"{replace}: a tracked run's `subject_boxes` are not the tracker's mask's")
+        if not torch.equal(kept[0]["subject_boxes"], vm._tracked_boxes(kept[0]["mask"])):
+            problems.append(f"{replace}: a kept run's `subject_boxes` are not the kept region's")
         # a setting that acts after the mask keeps the hit; one that changes it does not
         later = dict(settings, grow_pixels=64, composite=vm.COMPOSITE_CHANGED)
         p2 = copy.deepcopy(prompt)
