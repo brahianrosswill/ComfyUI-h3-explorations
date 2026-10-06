@@ -261,10 +261,15 @@ def frames_kept(covered: int, track_seconds: float) -> int:
     return min(int(covered), int(math.ceil(float(track_seconds) * FPS)))
 
 
-def frames_written(lengths: list[int], context_frames: int, kept: int) -> list[int]:
+def frames_written(lengths: list[int], context_frames: int, kept: int, head: int = 0) -> list[int]:
     """What each window of a run writes to its file, in order: its length less the context it
     shares with the window before, and for the last, less the frames past `kept`
-    (`frames_kept`). The sum is `kept`.
+    (`frames_kept`). The sum is `kept`, less `head`.
+
+    `head` is for a run that continues from another run's last window (the song node's
+    `continue_from`): its first `head` frames are that window's context, so its first window
+    writes its length less them, as every later window does. `kept` and the frames covered
+    still count from the first frame of the run's own track, context included.
 
     The song node cuts a window to this, stores the count with it and reuses a stored window
     only when its file holds this many, so the join copies whole files. A cut that reached
@@ -275,6 +280,9 @@ def frames_written(lengths: list[int], context_frames: int, kept: int) -> list[i
     writes = [int(n) - (int(context_frames) if i else 0) for i, n in enumerate(lengths)]
     if not writes:
         return writes
+    if not 0 <= int(head) < writes[0]:
+        raise ValueError(f"a head of {head} frames does not fit the {writes[0]} the first window of {list(lengths)} holds")
+    writes[0] -= int(head)
     cut = frames_covered(lengths, context_frames) - int(kept)
     if not 0 <= cut < writes[-1]:
         raise ValueError(f"windows {list(lengths)} with {context_frames} of context cover "

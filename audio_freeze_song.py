@@ -313,6 +313,15 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                                  tooltip=("Also saves the render stacked over a view of what was regenerated: "
                                           "the mask the source carries, what else regenerates around it, and "
                                           "what was kept from the render. Needs a Masked Source on `source`.")),
+                # appended 2026-10-06: a clip too long to load whole, rendered as consecutive runs
+                io.String.Input("continue_from", default="", optional=True,
+                                tooltip=("Continues another run: the path of that run's last stored window, the "
+                                         ".safetensors beside its video in its _windows folder. This run's first "
+                                         "window then takes that window's last frames as its context, as each "
+                                         "window takes the one before it. This run's track and video must start "
+                                         "context_frames frames before its first new frame; those frames are not "
+                                         "written. To sample as one long run would, set seed to that run's seed "
+                                         "plus the windows it rendered. Empty starts cold.")),
             ],
             outputs=[
                 io.String.Output(display_name="path"),
@@ -334,7 +343,8 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
     def execute(cls, model, clip, vae, audio_vae, audio, sampler, sigmas, prompt, timeline, preview,
                 width, height, window_frames, context_frames, extent, seed, audio_mask, level,
                 filename_prefix, crf, save_metadata_png=True, keep_windows=True, references=None,
-                reuse_windows=True, lists=None, source=None, save_mask_review=True) -> io.NodeOutput:
+                reuse_windows=True, lists=None, source=None, save_mask_review=True,
+                continue_from="") -> io.NodeOutput:
         import folder_paths
         # A DynamicCombo arrives as one nested dict (the selection under its own
         # id, the option's inputs beside it) or, from an API prompt that sets
@@ -373,15 +383,21 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                                         skip=loop_resume.SONG_PER_WINDOW),
             loop_resume.track_hash(waveform, rate))
         keys, reused = [], []
+        # A run that continues another's: its first window is keyed on the stored window it takes its
+        # context from, as window two is keyed on window one, and writes its length less that context.
+        # `head` is those frames; the run's track starts on the first of them.
+        continue_from = str(continue_from or "").strip()
+        continued_key = loop_resume.stored_key(continue_from) if continue_from else None
+        head = context_frames if continue_from else 0
         if root is not None:
             for w in windows:
                 keys.append(loop_resume.window_key(root, w.number, w.text, w.frames, w.start,
-                                                   int(seed) + w.number - 1, keys[-1] if keys else None))
+                                                   int(seed) + w.number - 1, keys[-1] if keys else continued_key))
         total = loop_plan.frames_covered([w.frames for w in windows], context_frames)
         # what is written of that: every frame, or as far as the track runs when it ends first;
         # the frames past it come off the last window's tail before it is encoded
         kept_frames = loop_plan.frames_kept(total, track_seconds)
-        writes = loop_plan.frames_written([w.frames for w in windows], context_frames, kept_frames)
+        writes = loop_plan.frames_written([w.frames for w in windows], context_frames, kept_frames, head)
         again = None
         if reuse_windows and root is not None:
             for w in windows:
@@ -402,6 +418,9 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
         lines = [f"{n_windows} windows {[w.frames for w in windows]} with {context_frames}-frame context, "
                  f"{total} frames ({total / FPS:.2f}s) over {seconds:.2f}s of track"
                  + (f"; {kept_frames} are written, the track ends first" if kept_frames < total else "")]
+        if continue_from:
+            lines.append(f"continues from {os.path.basename(continue_from)}: the first {head} frames of this run's "
+                         f"track are that window's context and are not written; {kept_frames - head} frames are")
         # A run that cannot cover what it was asked for says so here, second line of the report,
         # and in the log: it is not refused (`loop_plan.extent_shortfall`). On a masked graph the
         # usual cause is the loader's frame cap left under a raised extent; the two are separate
@@ -564,6 +583,9 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
         files = [s["video"] for s in reused]
         stored_latents = [s["latent"] for s in reused]
         prev = loop_resume.load_window_latent(reused[-1]["latent"]) if reused and first < n_windows else None
+        if prev is None and continue_from and first < n_windows:
+            # no window of this run is reused: its first takes its context from the run it continues
+            prev = loop_resume.load_window_latent(continue_from)
         for w in windows[first:]:
             i = w.number - 1
             comfy.model_management.throw_exception_if_processing_interrupted()
@@ -578,7 +600,7 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                     source, int(round(w.start * FPS)), w.frames, width, height, *empty_video.shape[2:])
                 if held:
                     # of the frames the source cannot give, those past the track are sampled on and dropped
-                    past = min(int(held), w.frames - (context_frames if i else 0) - writes[i])
+                    past = min(int(held), w.frames - (context_frames if i or head else 0) - writes[i])
                     reports.append(f"[{w.number}] the source ends {held} frames before this window does; "
                                    "its last frame is held, unmasked"
                                    + (f" ({past} of them are past the track's end and are not written)" if past else ""))
@@ -720,7 +742,9 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
         # join, and mux the whole track cut to the video
         out_path = os.path.join(full_out, stem + ".mp4")
         clock[0] = time.perf_counter()
-        join_and_mux(files, waveform, rate, out_path, work_dir, stem, kept_frames)
+        # a continued run's file starts on its first new frame: the track from there, and that many frames
+        heard = waveform[..., int(round(head / FPS * rate)):]
+        join_and_mux(files, heard, rate, out_path, work_dir, stem, kept_frames - head)
         mark("join and mux")
         review_files: list[str] = []
         if review:
@@ -751,7 +775,7 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                         del pixels, tokens, mask
                         restacked.append(rw.number)
                     review_files.append(path)
-                join_and_mux(review_files, waveform, rate, review_out, work_dir, stem + "_with_mask", kept_frames)
+                join_and_mux(review_files, heard, rate, review_out, work_dir, stem + "_with_mask", kept_frames - head)
             # A failure here, or a window's review missing because its own write failed, is a line of the
             # report; the render above is already joined, and its metadata, shot table and outputs follow
             # as they would with the switch off. A half-written joined review is removed. The next run

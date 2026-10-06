@@ -853,10 +853,12 @@ def check_mask_review(problems):
     tree = ast.parse((REPO / "audio_freeze_song.py").read_text(encoding="utf-8"))
     schema = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "define_schema")
     inputs = next(k.value for c in ast.walk(schema) if isinstance(c, ast.Call) for k in c.keywords if k.arg == "inputs")
-    last = inputs.elts[-1]
-    kw = {k.arg: getattr(k.value, "value", None) for k in last.keywords}
-    if getattr(last.args[0], "value", None) != "save_mask_review" or kw.get("default") is not True or kw.get("optional") is not True:
-        problems.append("mask review: `save_mask_review` is not the song node's last input, optional and on by default")
+    names = [getattr(e.args[0], "value", None) if getattr(e, "args", None) else None for e in inputs.elts]
+    at = names.index("save_mask_review") if "save_mask_review" in names else -1
+    kw = {k.arg: getattr(k.value, "value", None) for k in inputs.elts[at].keywords} if at >= 0 else {}
+    # appended after `source`, so a saved workflow's widget values keep their places (inputs after it are later appends)
+    if at < 0 or "source" not in names or at < names.index("source") or kw.get("default") is not True or kw.get("optional") is not True:
+        problems.append("mask review: `save_mask_review` is not appended after the song node's `source`, optional and on by default")
     if "save_mask_review" not in _load("loop_resume").SONG_PER_WINDOW:
         problems.append("mask review: turning `save_mask_review` on or off would re-render every stored window")
     check_review_robust(problems, song_text)

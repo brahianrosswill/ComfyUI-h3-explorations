@@ -57,7 +57,7 @@ import comfy.utils
 #: Reasoned, from `MiniMaxH3AudioFreezeSong.execute`.
 SONG_PER_WINDOW = ("prompt", "timeline", "preview", "extent", "extent.seconds", "window_frames", "seed",
                    "filename_prefix", "save_metadata_png", "keep_windows", "reuse_windows", "lists",
-                   "save_mask_review")
+                   "save_mask_review", "continue_from")
 
 
 def _is_link(value) -> bool:
@@ -163,6 +163,24 @@ def read_window(work_dir: str, filename: str, number: int) -> dict | None:
                 "video": video_path, "latent": latent_path}
     except Exception:  # noqa: BLE001 -- an unreadable store is a store to render over, not an error
         return None
+
+
+def stored_key(latent_path: str) -> str:
+    """The key a stored window's latent was saved under, for a run that continues from it.
+
+    That run's first window is keyed on it as a window is keyed on the one before it in its own
+    run, so where the continued file sits does not matter (`continue_from` is in
+    `SONG_PER_WINDOW`) and what it holds does: a first stretch rendered again changes the key and
+    the stretch after it renders again. Refused when the file is not a window this pack stored.
+    """
+    try:
+        from safetensors import safe_open
+        with safe_open(latent_path, framework="pt") as f:
+            meta = f.metadata() or {}
+        return str(meta["key"])
+    except Exception as exc:  # noqa: BLE001 -- a missing file, another kind of file, a store with no key
+        raise ValueError(f"{latent_path} is not a stored window's latent (the `.safetensors` beside a window's video "
+                         f"in a run's _windows folder): {type(exc).__name__}: {exc}") from exc
 
 
 def stored_frames(stored: dict, frames: int) -> int:

@@ -691,6 +691,82 @@ def check_join_stretches(problems):
                 _fail(problems, f"join stretches: a missing window was refused without naming the gap: {str(exc)[:120]}")
 
 
+def check_continue(problems, song_source):
+    """A run that continues another run's last window (`continue_from`): the arithmetic of the stretches.
+
+    Held here, on the planner and the store: a continued run writes each window's length less the
+    context, its first included; two stretches laid as the rule says (the second's track starting
+    `context` frames before the first one's end) write exactly the frames of one run over both,
+    with no frame twice and none missing, for a spread of stretch lengths; a run without the input
+    writes what it wrote before; and the first window is keyed on the window it continues, so a
+    first stretch rendered again renders the second again and a moved folder does not.
+    NOT held, and it cannot be without a render: that the seam is invisible.
+    """
+    import os
+    import tempfile
+    import loop_plan as lp
+    import loop_resume as lr
+    ctx = 39
+    if lp.frames_written([345, 345, 141], ctx, 753, ctx) != [306, 306, 102] or lp.frames_written([141], ctx, 141, ctx) != [102] \
+            or lp.frames_written([345, 345, 141], ctx, 720, ctx) != [306, 306, 69]:
+        _fail(problems, "continue: a continued run does not write each window's length less the context")
+    if lp.frames_written([345, 345, 141], ctx, 753, 0) != lp.frames_written([345, 345, 141], ctx, 753):
+        _fail(problems, "continue: a run that continues nothing no longer writes what it wrote")
+    for lengths, head in (([141], 141), ([345, 141], 345), ([141], -1)):
+        try:
+            lp.frames_written(lengths, ctx, lp.frames_covered(lengths, ctx), head)
+        except ValueError:
+            continue
+        _fail(problems, f"continue: a head of {head} frames on windows {lengths} was not refused")
+    # two stretches against one run: stretch one cold over `first` frames, stretch two continued, its
+    # track starting at frame `covered_one - ctx` of the span and running to the span's end
+    for window in (141, 345):
+        for first in range(window, 1200, 37):
+            one = [n for _e, each in lp.plan_windows(first, window, ctx, ()) for n in each]
+            covered_one = lp.frames_covered(one, ctx)
+            wrote_one = lp.frames_written(one, ctx, covered_one)
+            for more in range(window, 1200, 53):
+                two = [n for _e, each in lp.plan_windows(more, window, ctx, ()) for n in each]
+                covered_two = lp.frames_covered(two, ctx)          # from the second track's own frame zero, context included
+                wrote_two = lp.frames_written(two, ctx, covered_two, ctx)
+                starts_at = covered_one - ctx                       # where the second run's loader starts, in span frames
+                first_new = starts_at + ctx                         # the first frame it writes
+                if first_new != sum(wrote_one) or sum(wrote_two) != covered_two - ctx or min(wrote_two) < 1 \
+                        or wrote_two[1:] != lp.frames_written(two, ctx, covered_two)[1:]:
+                    _fail(problems, f"continue: stretches {one} then {two}: the second writes from span frame {first_new}, "
+                                    f"the first ends at {sum(wrote_one)}; it writes {sum(wrote_two)} of {covered_two - ctx}")
+                    break
+    # the key chain: window one of a continued run is keyed on the stored window it continues
+    with tempfile.TemporaryDirectory() as d:
+        path = lr.save_window(d, "one", 3, "key-of-stretch-one", torch.zeros(1, 4, 3, 2, 2), 39, 30.0, 102)
+        if lr.stored_key(path) != "key-of-stretch-one":
+            _fail(problems, "continue: a stored window's key does not read back for the run that continues it")
+        keyless = os.path.join(d, "keyless.safetensors")        # a latent some other node saved: no key in it
+        comfy.utils.save_torch_file({"stream_0": torch.zeros(1, 4, 3, 2, 2)}, keyless, metadata={"trim": "39"})
+        for bad in (os.path.join(d, "absent.safetensors"), __file__, keyless):
+            try:
+                lr.stored_key(bad)
+                _fail(problems, f"continue: {os.path.basename(bad)} was taken for a stored window")
+            except ValueError:
+                pass
+    root = lr.root_key("sig", lr.track_hash(torch.zeros(1, 2, 10), 44100))
+    cold = lr.window_key(root, 1, "t", 345, 0.0, 5, None)
+    if lr.window_key(root, 1, "t", 345, 0.0, 5, "key-of-stretch-one") == cold \
+            or lr.window_key(root, 1, "t", 345, 0.0, 5, "key-of-stretch-one") == lr.window_key(root, 1, "t", 345, 0.0, 5, "another"):
+        _fail(problems, "continue: a continued first window's key ignores what it continues")
+    if "continue_from" not in lr.SONG_PER_WINDOW:
+        _fail(problems, "continue: moving the continued file would re-render the run that continues it")
+    # the node's side, from its source
+    for text, what in (("keys[-1] if keys else continued_key", "key its first window on the window it continues"),
+                       ("prev = loop_resume.load_window_latent(continue_from)", "seed its first window from the continued latent"),
+                       ("heard = waveform[..., int(round(head / FPS * rate)):]", "start its file's audio on its first new frame"),
+                       ("head = context_frames if continue_from else 0", "count the context as not written")):
+        if text not in song_source:
+            _fail(problems, f"continue: the song node does not {what}")
+    if "if prev is None and continue_from and first < n_windows:" not in song_source:
+        _fail(problems, "continue: a continued run that reuses its own windows would be seeded from the other run's")
+
+
 def check_song_plan(problems):
     import math
     import loop_plan as lp
@@ -871,10 +947,11 @@ def check_song_plan(problems):
             or lr.stored_frames(before[-1], 141) != lp.frames_written([345, 345, 141], ctx, 753)[-1]:
         _fail(problems, "frames written: a window stored with the frames this run writes would not be reused")
     song_source = (REPO / "audio_freeze_song.py").read_text(encoding="utf-8")
-    if "join_and_mux(files, waveform, rate, out_path, work_dir, stem, kept_frames)" not in song_source \
+    if "join_and_mux(files, heard, rate, out_path, work_dir, stem, kept_frames - head)" not in song_source \
             or "images = images[:writes[i]]" not in song_source \
-            or "writes = loop_plan.frames_written([w.frames for w in windows], context_frames, kept_frames)" not in song_source:
+            or "writes = loop_plan.frames_written([w.frames for w in windows], context_frames, kept_frames, head)" not in song_source:
         _fail(problems, "frames kept: the song node no longer cuts the last window at the frames and joins that many")
+    check_continue(problems, song_source)
     if "if holds != writes[w.number - 1]:" not in song_source or "trim, next_start, written))" not in song_source:
         _fail(problems, "frames written: the song node no longer stores a window's frame count or refuses one that differs")
     if "loop_plan.extent_shortfall(" not in song_source or "logger.warning(\"[h3] MiniMaxH3AudioFreezeSong: %s\", shortfall)" not in song_source:

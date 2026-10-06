@@ -15,7 +15,7 @@ this file is only a way to find a script by what it says it does.
 | [`compare_*`](#compare) | 18 |
 | [`build_*`](#build) | 17 |
 | [`probe_*`](#probe) | 11 |
-| [the rest](#the-rest) | 117 |
+| [the rest](#the-rest) | 118 |
 
 ## check
 
@@ -324,6 +324,7 @@ this file is only a way to find a script by what it says it does.
 | [`hwinfo.py`](hwinfo.py) | The host this repo's numbers were measured on, printed rather than written down. |
 | [`instrument_render_occupancy.py`](instrument_render_occupancy.py) | Phase-resolved GPU occupancy of one render, bracketed per node. |
 | [`join_panel_verdicts.py`](join_panel_verdicts.py) | Join a scored blind PANEL with its sealed key, and apply the panel's stop rules. |
+| [`join_stretches.py`](join_stretches.py) | Join the windows of several song-node runs over consecutive stretches of one clip into one file. |
 | [`latent_path_distance.py`](latent_path_distance.py) | How far saved latents sit from a reference latent, per latent frame. No decode. |
 | [`list_prose_measurements.py`](list_prose_measurements.py) | Inventory the measurements that live in prose, so they can be moved out. |
 | [`make_attention_defaults_json.py`](make_attention_defaults_json.py) | Emit `2026-08-18_attention_defaults.json` from the raw arm results. |
