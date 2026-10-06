@@ -7,6 +7,16 @@ artifact.
 <!-- To add an entry: write a file in changelog.d/ (changelog.d/README.md has the three steps) and run
      bench/build_changelog.py. Do not type an entry in here: the newest entries below are generated. -->
 
+## 0.209.2
+<!-- changelog.d/mrhand-part-model-shown-subject-alone.md -->
+
+### Changed
+
+- `MiniMaxH3SubjectParts` shows its models the tracked subject alone. Before the crop is taken, the picture further than `sapiens2_parts.ALONE_MARGIN` from the subject's mask (never less than `subject_margin`) is replaced by the colour that is zero to the model, so nobody else is in the picture to label. The part model is trained on one person in a frame, and on a clip with people in front of the subject it labelled them and left the subject background, so the part mask covered a sliver of the subject and the render kept the original there. What is kept is unchanged: a label still counts only on the subject's mask widened by `subject_margin`. No input is added; the report says the models were shown the subject alone and how far the picture was kept. **This changes the mask** on a subject with people in front or beside, so `MASK_VERSION` moves to 2.
+- Tested on the real model before it was applied, on one window of each of two clips, with the change stood in for by core nodes in front of the unchanged node: `bench/results/2026-10-06_part_model_shown_subject_alone.md`. Counted, on the clip that showed the fault the parts cover the subject from the window's first frame with it and lie off the subject through the opening without it; on a clip where the parts were already on the subject, coverage is the same to within a few points and the part fills more of the margin at the subject's edge, which is why a mask kept from before differs. One margin; the fill in the test is the nearest 8-bit colour to the model's mean and its grown edge is tapered where the node's is square.
+- Not tested: the matte with a flat surround (no matting model was loaded, and the masked graphs wire `parts`, not `matte`), and a render.
+- `bench/check_subject_parts.py` item 12 reads what the stand-in models are handed: the picture within the margin and the fill elsewhere, a second person beside the subject in the label map without the change and not with it, both models handed one crop, and the mask unchanged where nobody overlaps the subject. The stand-in labels by colour, so it cannot show the fault the change is for.
+
 ## 0.209.1
 <!-- changelog.d/mrhand-part-warning-downstream.md -->
 

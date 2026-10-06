@@ -48,6 +48,15 @@ is graded is everything around the forward pass and nothing in it.
    returns, so a second caller cannot print another number. A part that
    covers a sliver no longer reads as "found on every frame" and nothing
    else.
+12. **The models are shown the subject alone.** What reaches the stand-in
+   model is the picture within `ALONE_MARGIN` of the subject's mask and the
+   fill colour everywhere else, on the crop's surroundings too; a second
+   person beside the subject, in the taken class's colour, is in the label
+   map without it (the control) and is not with it; where nobody overlaps
+   the subject, the mask and the matte are the same with and without; the
+   margin is never under `subject_margin`, so a label that counts was read
+   from the picture; both models are handed the same crop; and the frames
+   given are not written to.
 
 No model, no weights, no CUDA, no server.
 
@@ -493,6 +502,72 @@ def check_coverage(problems):
         problems.append("the part node and the coverage module write frame runs with two functions")
 
 
+def check_alone(problems):
+    frames, mask = scene()
+    person(frames[0], mask[0], LEFT)
+    # a second person, 12 pixels to the right of the subject: inside the crop, past every margin used here
+    there = LEFT + WIDE + 12
+    frames[0, TOP:TOP + 12, there:there + 6] = RED
+    theirs = torch.zeros(H, W, dtype=torch.bool)
+    theirs[TOP:TOP + 12, there:there + 6] = True
+    box = sp.crop_box(sp.mask_boxes(mask)[0], 24, (96, 80))
+    if (box[2] - box[0], box[3] - box[1]) != (80, 96) or not (box[0] <= there and there + 6 <= box[2]):
+        problems.append("the scene's crop is resampled or does not hold the second person, so item 12 checks nothing")
+    before = frames.clone()
+    given = {}
+
+    def seg_seen(crops):
+        given["seg"] = crops.clone()
+        return seg(crops)
+
+    def matting_seen(crops):
+        given["matting"] = crops.clone()
+        return matting(crops)
+
+    def parts(**kwargs):
+        return sp.subject_parts(frames, mask, (HAIR,), seg_seen, matting_seen, mean=MEAN, std=STD, size=(96, 80),
+                                crop_margin=24, subject_margin=2, keep=(0,), **kwargs)
+
+    plain = parts(show_alone=False)
+    shown_plain = given["seg"][0].movedim(0, -1)
+    if int(plain.labels[0][theirs].eq(HAIR).sum()) != int(theirs.sum()):
+        problems.append("control failed: shown the picture as it is, the second person is not in the label map")
+    got = parts()
+    shown = given["seg"][0].movedim(0, -1)                     # the crop as the model was handed it, [h, w, 3]
+    if not torch.equal(given["seg"], given["matting"]):
+        problems.append("the two models were handed different crops")
+    if bool((got.labels[0][theirs] != sp.BACKGROUND).any()):
+        problems.append("a second person beside the subject is still in the label map: the model was shown them")
+    reach = max(sp.ALONE_MARGIN, 2)
+    near = sp.grow(mask, reach)[0] > 0.5
+    crop_near = near[box[1]:box[3], box[0]:box[2]]
+    if not torch.equal(shown[crop_near], shown_plain[crop_near]):
+        problems.append("within the margin of the subject's mask the model was not shown the picture")
+    fill = torch.tensor(MEAN)
+    if not bool((shown[~crop_near] == fill).all()):
+        problems.append("further than the margin from the subject the model was shown something other than the fill colour")
+    if not (torch.equal(got.parts, plain.parts) and torch.equal(got.matte, plain.matte)):
+        problems.append("with nobody overlapping the subject, showing them alone changed the mask or the matte")
+    # asked of the function itself: the node hands it a copy of the batch's frames, which would hide a write
+    sp.alone(frames, mask, reach, MEAN)
+    if not torch.equal(frames, before):
+        problems.append("the frames given were written to")
+    # a label counts out to subject_margin, so the picture is kept at least that far
+    wide = sp.subject_parts(frames, mask, (HAIR,), seg_seen, None, mean=MEAN, std=STD, size=(96, 80),
+                            crop_margin=24, subject_margin=sp.ALONE_MARGIN + 6)
+    counted = (sp.grow(mask, sp.ALONE_MARGIN + 6)[0] > 0.5)[box[1]:box[3], box[0]:box[2]]
+    if not torch.equal(given["seg"][0].movedim(0, -1)[counted], shown_plain[counted]):
+        problems.append("with a subject_margin wider than ALONE_MARGIN, a pixel whose label counts was replaced")
+    if not bool(wide.found[0]):
+        problems.append("with a wide subject_margin the subject's own part was not found")
+    text = sp.report(got, (HAIR,), 24, 2, 8, True, (96, 80), None)
+    if "shown the subject alone" not in text or f"{reach} px" not in text:
+        problems.append(f"the report does not say the models were shown the subject alone, and how far:\n{text}")
+    schema = sp.MiniMaxH3SubjectParts.define_schema()
+    if any("alone" in i.id for i in schema.inputs):
+        problems.append("showing the subject alone became an input of the node; it is how the node works")
+
+
 def _graded(check):
     def run():
         problems: list[str] = []
@@ -513,7 +588,8 @@ def main() -> int:
             ("the result does not depend on the batch size", check_batch),
             ("the loader lists a folder by its architecture", check_loader),
             ("the preview and the report", check_shown),
-            ("the report says how much of the subject the parts cover", check_coverage)):
+            ("the report says how much of the subject the parts cover", check_coverage),
+            ("the models are shown the subject alone", check_alone)):
         case(name, _graded(check))
     return finish()
 

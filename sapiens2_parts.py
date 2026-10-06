@@ -11,6 +11,20 @@ of the mouth are the same map read with a different choice of classes.
 
 **The steps** (`subject_parts`), per frame the subject is in:
 
+0. The subject alone (`alone`): before the crop is taken, every pixel further
+   than `ALONE_MARGIN` from the tracked subject's mask is replaced by the
+   colour the crop is filled with off the frame, which is zero to the model.
+   The model is trained on one person in a frame; in a crowd it can label a
+   neighbour in front of the subject and leave the subject background, and
+   the cut in step 3 then keeps almost nothing. It is done on the frame, so
+   the crop's surroundings are flat too. Both models are run on that one
+   crop: the matte's alpha is then of the same person the labels are. The
+   margin is never less than `subject_margin`, so nothing this node returns
+   was computed on a replaced pixel. This changes what the model is shown
+   and not the rule about what is kept: step 3 is as it was. **Open**: what
+   the matting model does at the person's edge with a flat surround a few
+   pixels outside it is not measured; the masked graphs wire `parts`, not
+   `matte`, so no render has depended on it.
 1. The crop (`mask_boxes`, `crop_box`, `take_crops`): the box of the tracked
    subject's mask, widened by `crop_margin`, then widened on its short side to
    the model's own shape so the person is not squashed, and resized to the
@@ -139,6 +153,17 @@ SUBJECT_MARGIN = PART_MARGIN
 #: The default of `matte_reach`, in pixels of the source frame. Reasoned, not
 #: measured: a soft edge is a few pixels wide at this lane's frame sizes.
 MATTE_REACH = 8
+#: How far past the tracked subject's mask the part model still sees the
+#: picture, in pixels of the source frame; further out it is shown flat
+#: colour. **Tested at this value and no other, on one window of each of
+#: two clips** (`bench/results/2026-10-06_part_model_shown_subject_alone.md`):
+#: on one, the parts cover the subject from the window's first frame where
+#: without it they lay off the subject for a stretch; on the other, where
+#: the parts were already on the subject, the coverage is the same to within
+#: a few points and the part fills more of this margin. **Reasoned floor**:
+#: `subject_parts` never uses less than `subject_margin`, since a label
+#: counts out to there.
+ALONE_MARGIN = 8
 #: Crops per forward pass. Reasoned, not measured: the head's last layers hold
 #: the working size at tens of channels per crop, which is small next to the
 #: weights, and a larger batch buys little on one card.
@@ -238,6 +263,14 @@ def take_crops(frames: torch.Tensor, boxes, size: tuple[int, int], fill) -> torc
     return torch.stack(out, dim=0)
 
 
+def alone(frames: torch.Tensor, subject: torch.Tensor, margin: int, fill) -> torch.Tensor:
+    """Frames with everything further than `margin` from the subject's mask replaced by `fill`: [n, H, W, C] and
+    [n, H, W] in, [n, H, W, 3] out. A copy; the frames given are not written to."""
+    seen = (grow(subject.to(torch.float32), int(margin)) > 0.5).unsqueeze(-1)
+    colour = torch.as_tensor(fill, dtype=torch.float32).view(1, 1, 1, 3)
+    return torch.where(seen, frames[..., :3].to(torch.float32), colour)
+
+
 def paste_back(crop: torch.Tensor, box, height: int, width: int) -> torch.Tensor:
     """A [bh, bw] map made on a box, laid on an empty [height, width] frame; what lies off the frame is dropped."""
     out = torch.zeros((height, width), dtype=crop.dtype)
@@ -285,11 +318,13 @@ def subject_parts(frames: torch.Tensor, subject: torch.Tensor, classes: tuple[in
                   seg: Callable[[torch.Tensor], torch.Tensor], matting: Callable[[torch.Tensor], torch.Tensor] | None,
                   *, size: tuple[int, int], mean, std, crop_margin: int = CROP_MARGIN,
                   subject_margin: int = SUBJECT_MARGIN, matte_reach: int = MATTE_REACH, hold_missing: bool = True,
-                  batch: int = BATCH, keep: tuple[int, ...] = ()) -> Found:
+                  batch: int = BATCH, keep: tuple[int, ...] = (), show_alone: bool = True) -> Found:
     """The chosen classes on the tracked subject, per frame. The module docstring has the steps.
 
     `seg` takes normalised crops [B, 3, h, w] and returns logits [B, classes, h', w']; `matting` returns alpha
     [B, 1, h', w'] in 0..1, or is None. Both are callables so a check can stand in for the models.
+    `show_alone` is step 0. It is not an input of the node: off, the models are shown the picture as it is,
+    which is what the node did until 2026-10-06 and what a check needs as its control.
     """
     n, height, width = int(frames.shape[0]), int(frames.shape[1]), int(frames.shape[2])
     mean_t = torch.as_tensor(mean, dtype=torch.float32).view(1, 3, 1, 1)
@@ -305,7 +340,9 @@ def subject_parts(frames: torch.Tensor, subject: torch.Tensor, classes: tuple[in
     for i in range(0, len(where), int(batch)):
         index = where[i:i + int(batch)]
         boxes = [crop_box(tight[f], crop_margin, size) for f in index]
-        crops = (take_crops(frames[index], boxes, size, mean) - mean_t) / std_t
+        shown = (alone(frames[index], subject[index], max(ALONE_MARGIN, int(subject_margin)), mean)
+                 if show_alone else frames[index])
+        crops = (take_crops(shown, boxes, size, mean) - mean_t) / std_t
         logits = seg(crops)
         alphas = matting(crops) if matting is not None else None
         wide = grow(subject[index].to(torch.float32), int(subject_margin)) > 0.5
@@ -367,6 +404,9 @@ def report(found: Found, classes: tuple[int, ...], crop_margin: int, subject_mar
     lines = [f"Sapiens2 parts: the subject is on {present} of {n} frames"
              + (f", {found.seconds / present:.2f} s per frame" if present else "")]
     lines.append("classes taken: " + ", ".join(CLASS_NAMES[c] for c in classes))
+    lines.append(f"the models were shown the subject alone: the picture further than "
+                 f"{max(ALONE_MARGIN, int(subject_margin))} px from the tracked subject's mask was replaced by flat "
+                 "colour, so nobody else is there to label")
     missed = (found.present & ~found.found).nonzero().flatten().tolist()
     if not present:
         lines.append("nothing to find: `subject_mask` is empty on every frame")
@@ -579,7 +619,7 @@ class MiniMaxH3SubjectParts(io.ComfyNode):
     #: Source (`mask_store.mask_versions`). Raise it when the same inputs and
     #: settings would give a different mask: the crop, the map back, the cut to
     #: the subject, the menu's classes, the matte's region, how a frame is held.
-    MASK_VERSION = 1
+    MASK_VERSION = 2
 
     @classmethod
     def define_schema(cls):
