@@ -62,14 +62,19 @@ own below the rule.
 - Owed, lower: the original subject's shadow stays in the plate; the source
   is resampled twice on its way to the canvas (the loader, then the fit); the
   margin as a share of the subject's size and not a pixel count.
-- **The frozen-row cache on a masked window: written, not yet run on one.**
+- **The frozen-row cache on a masked window: in one probe graph, not yet
+  run on a window.**
   `MiniMaxH3FrozenVideoCache` takes a partly masked video since 2026-10-06
   (`frozen_video_cache.py::_gate` says which calls it takes and which it
-  leaves stock, with the reason). It is in no masked graph. What a cached
+  leaves stock, with the reason). The generator's `masked_cache` argument
+  puts it on the song node's model, and one graph carries it:
+  `../../workflows/h3_probe_v2v_masked_song_ref2va_motion_cache_api.json`,
+  the ref2va motion graph with the cache and nothing else changed. No
+  shipped or daily graph does. What a cached
   step costs with nothing live is measured, on the refine pass, and what
   that would save a masked window is modelled from it:
   `../../bench/results/2026-10-06_frozen_cache_stage_split.md`. Owed, in
-  order: a generator argument that puts it on a masked graph as an arm; one
+  order: one
   matched pair on the band window with `verify` on, read for the regenerated
   rows next to kept ones first and for the log's rebuild reasons; then the
   owner's eye. A cadence for `refresh` and a width for `halo` come from that

@@ -61,6 +61,12 @@ All four are in `workflows/daily/` too, as `h3_mask_pdd8_api.json`,
 `h3_mask_ref2va_motion_api.json`, `h3_mask_review_api.json` and
 `h3_mask_parts_pdd8_api.json` (`h3_config.DAILY_GRAPHS`).
 
+One more generated graph wires a Masked Source and is not part of the lane
+as shipped: `workflows/h3_probe_v2v_masked_song_ref2va_motion_cache_api.json`
+is a probe, the ref2va motion graph with the frozen video cache on the song
+node's model (`frozen_video_cache.py`), there to time and grade the cache on
+a masked window. It is not in `workflows/daily/`.
+
 It is not a trained task. The release trains t2va, fl2va and ref2va; a
 spatial mask on a base checkpoint is an inference-time method. The mechanism
 is core's: a latent noise mask on H3 is a per-token timestep

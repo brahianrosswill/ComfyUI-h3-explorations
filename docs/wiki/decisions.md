@@ -17,6 +17,18 @@ Older history lives elsewhere and is not copied here:
 
 ## 2026-10-06
 
+- **Prose corrected: the frozen video cache had run on the card, and is in
+  one masked graph.** The comment on `h3_config.FROZEN_VIDEO_CACHE` ended
+  "Not yet run on the card"; the refine pass ran through it on the card on
+  2026-09-25 and again on 2026-10-06
+  (`bench/results/2026-09-25_frozen_cache_s1.md`,
+  `bench/results/2026-10-06_frozen_cache_stage_split.md`), and the comment
+  now points at the later record. `docs/wiki/next_steps.md` said of the
+  cache "It is in no masked graph"; the generator's `masked_cache` argument
+  now writes one probe graph with it
+  (`workflows/h3_probe_v2v_masked_song_ref2va_motion_cache_api.json`), and
+  no shipped or daily graph carries it. No masked window has run through it.
+
 - **Prose corrected: the frozen-row cache takes a partly masked video.**
   `docs/wiki/next_steps.md` listed "a frozen-row cache for a partly masked
   video (`frozen_video_cache.py::_gate` takes a wholly frozen one only)" as
