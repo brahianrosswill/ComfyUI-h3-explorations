@@ -8,7 +8,7 @@ this file is only a way to find a script by what it says it does.
 
 | group | scripts |
 |---|---|
-| [`check_*`](#check) | 90 |
+| [`check_*`](#check) | 91 |
 | [`measure_*`](#measure) | 38 |
 | [`analyze_*`](#analyze) | 23 |
 | [`grade_*`](#grade) | 21 |
@@ -74,6 +74,7 @@ this file is only a way to find a script by what it says it does.
 | [`check_pipeline_telemetry.py`](check_pipeline_telemetry.py) | Controls for `pipeline_telemetry.py` and `bench/telemetry_report.py`. |
 | [`check_plate_restore.py`](check_plate_restore.py) | A masked render split across two samplers ends on the clean plate, and resumes where it stopped. |
 | [`check_pool_media_integrity.py`](check_pool_media_integrity.py) | Hold the candidate pool's media verification to a standard it can fail. |
+| [`check_prompt_bank.py`](check_prompt_bank.py) | The prompt bank's gate, where the sweep can see it. |
 | [`check_prompt_docs_sync.py`](check_prompt_docs_sync.py) | Fail when a prompt DOCUMENT drifts from the source that owns what it quotes. |
 | [`check_prompt_guide_conformance.py`](check_prompt_guide_conformance.py) | Check every shipped ref prompt against the OFFICIAL guide, not against us. |
 | [`check_prompt_lists.py`](check_prompt_lists.py) | The prompt list contract, and the controls that show each rule can fail. |
