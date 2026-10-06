@@ -87,7 +87,8 @@
       "references",
       "reuse_windows",
       "lists",
-      "source"
+      "source",
+      "save_mask_review"
     ],
     "node_id": "MiniMaxH3AudioFreezeSong",
     "outputs": [

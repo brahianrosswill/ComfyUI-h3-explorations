@@ -139,6 +139,8 @@ Nothing here patches core.
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
+from typing import Callable
 
 import torch
 import torch.nn.functional as F
@@ -414,6 +416,168 @@ def composite(images: torch.Tensor, source: torch.Tensor, alpha: torch.Tensor) -
         a = alpha[i:i + CHUNK].unsqueeze(-1).to(images.device, images.dtype)
         out[i:i + CHUNK] = images[i:i + CHUNK] * a + source[i:i + CHUNK].to(images.device, images.dtype) * (1.0 - a)
     return out
+
+
+@dataclass(frozen=True)
+class OverlayLayer:
+    """One thing the mask view draws over the source, and one entry of its legend.
+
+    `frames(at, end)` returns the layer's mask for frames `at` to `end` of the window, [n, H, W], true
+    where it is drawn; a function and not a tensor so a layer that is cheap to make a piece at a time
+    (the token region) never exists whole. `outline` draws the mask's edge and leaves its inside alone.
+    The list is the design (2026-10-06): today's layers are the tracked subject, what else regenerates
+    and what the composite kept; a part node's classes or a tracker's other people are more layers,
+    each with its name and colour, and the legend is built from whatever the list holds.
+    """
+
+    name: str
+    colour: tuple[float, float, float]
+    frames: Callable[[int, int], torch.Tensor]
+    strength: float = 0.5
+    outline: bool = False
+
+
+#: The mask view's colours and strengths. The owner's first look was a throwaway overlay in this red
+#: and this cyan; kept so the two read alike.
+OVERLAY_SUBJECT = ((1.0, 0.16, 0.16), 0.5)
+#: What the view calls the mask it draws in that colour, by the Masked Source's `replace`. The mask
+#: is the tracked subject only for the whole subject; for the other two it is a part of them, and
+#: the two can sit in different places: on 2026-10-06 the tracker held the subject on every frame of
+#: a clip while the wired parts' mask lay on other people for its first seconds. A legend that
+#: called that mask "the tracked subject" would have said the opposite of what the render did.
+OVERLAY_MASK_NAMES = {REPLACE_WHOLE: "the tracked subject", REPLACE_PART: "the head and hair",
+                      REPLACE_PARTS: "the parts taken"}
+OVERLAY_REGION = ((0.0, 0.78, 1.0), 0.4)
+OVERLAY_KEPT = (1.0, 1.0, 1.0)
+#: An outline's width in pixels. Reasoned: visible at the canvas's size, thin enough to read what is under it.
+OVERLAY_OUTLINE = 2
+#: The legend's text height as a share of the frame's, and its floor in pixels. Reasoned: small and out of
+#: the centre, still legible on a phone.
+LEGEND_SHARE = 0.022
+LEGEND_MIN = 11
+
+
+def token_region(tokens: torch.Tensor, height: int, width: int) -> Callable[[int, int], torch.Tensor]:
+    """The regenerated region as an `OverlayLayer.frames`: the token mask the sampler was given, brought
+    back to pixels with no feather, for a piece that starts and ends on whole cycles of `FRAME_PER_TOKEN`."""
+    cycle, per = len(FRAME_PER_TOKEN), sum(FRAME_PER_TOKEN)
+
+    def frames(at: int, end: int) -> torch.Tensor:
+        if at % per:
+            raise ValueError(f"a piece of the token region must start on a cycle of {per} frames; got frame {at}")
+        steps = tokens[at // per * cycle:-(-end // per) * cycle]
+        return (pixel_alpha(steps, int(height), int(width), 0) > 0.5)[:end - at]
+    return frames
+
+
+def mask_layer_name(replace: str) -> str:
+    """The legend's name for the mask a source carries, from its `replace` (`OVERLAY_MASK_NAMES`). A value
+    this does not know is refused: a wrong name here is a picture that misleads."""
+    if replace not in OVERLAY_MASK_NAMES:
+        raise ValueError(f"no name for the mask of replace {replace!r}; one of {list(OVERLAY_MASK_NAMES)}")
+    return OVERLAY_MASK_NAMES[replace]
+
+
+def window_layers(mask: torch.Tensor, tokens: torch.Tensor, height: int, width: int, replace: str,
+                  alpha: torch.Tensor | None = None) -> list[OverlayLayer]:
+    """What a masked window's view shows today, most specific first: the mask the source carries, named for
+    what it is by the source's `replace` (`mask_layer_name`); what else regenerates; and with `alpha` (the
+    composite's weight under `only what changed`) what was kept from the render, as an outline."""
+    layers = [OverlayLayer(mask_layer_name(replace), OVERLAY_SUBJECT[0], lambda at, end: mask[at:end] > 0.5, OVERLAY_SUBJECT[1]),
+              OverlayLayer("what else regenerates", OVERLAY_REGION[0], token_region(tokens, height, width), OVERLAY_REGION[1])]
+    if alpha is not None:
+        layers.append(OverlayLayer("what the render kept", OVERLAY_KEPT, lambda at, end: alpha[at:end] > 0.5, 1.0, outline=True))
+    return layers
+
+
+def overlay_legend(layers: list[OverlayLayer], height: int, width: int, note: str = "") -> tuple[torch.Tensor, float]:
+    """The legend as a patch, [h, w, 3], and its opacity, for the bottom-left corner of a frame.
+
+    One line saying what each colour is, built from the layers in the order given, because the file is
+    opened cold, away from the graph and its log. A filled swatch for a filled layer, an empty one for an
+    outline, then `note` (the window's regenerated share, from the song node). Drawn once per window with
+    Pillow's own font; what does not fit the frame's width is cut off.
+    """
+    from PIL import Image, ImageDraw, ImageFont
+
+    size = max(LEGEND_MIN, int(round(int(height) * LEGEND_SHARE)))
+    font = ImageFont.load_default(size=size)
+    pad, gap = size // 2, size
+    widths = [int(font.getlength(layer.name)) for layer in layers]
+    tail = (gap + int(font.getlength(note))) if note else 0
+    w = min(int(width), pad + sum(size + pad // 2 + n for n in widths) + gap * max(len(layers) - 1, 0) + tail + pad)
+    h = size + 2 * pad
+    patch = Image.new("RGB", (w, h), (0, 0, 0))
+    draw, x = ImageDraw.Draw(patch), pad
+    for layer, n in zip(layers, widths):
+        rgb = tuple(int(round(255 * c)) for c in layer.colour)
+        draw.rectangle([x, pad, x + size - 1, pad + size - 1], fill=None if layer.outline else rgb, outline=rgb, width=2)
+        draw.text((x + size + pad // 2, pad - 1), layer.name, fill=(255, 255, 255), font=font)
+        x += size + pad // 2 + n + gap
+    if note:
+        draw.text((x, pad - 1), note, fill=(200, 200, 200), font=font)
+    colour = torch.frombuffer(bytearray(patch.tobytes()), dtype=torch.uint8).reshape(h, w, 3).to(torch.float32) / 255.0
+    return colour, 0.75
+
+
+def overlay_pieces(pixels: torch.Tensor, layers: list[OverlayLayer], latent_t: int, start: int = 0, note: str = ""):
+    """The frames of a window's mask view, [n, H, W, 3] a cycle of latent steps at a time, from frame `start`.
+
+    `pixels` are the window's source frames at the canvas (`window`). Each pixel is tinted by the first
+    filled layer in the list that covers it and by no other, so tints never mix: a list is given most
+    specific first (a subject before the region around it, a part before the person it is on). Outlines go
+    over the fills; the legend, with `note` after it, goes in the bottom-left corner of every frame. Nothing here is the size of the window: a piece is one cycle of
+    `FRAME_PER_TOKEN`, cut where `changed_alpha_on` cuts, and a window of `latent_t` steps has
+    `sum(run_lengths(latent_t))` frames.
+    """
+    height, width = int(pixels.shape[1]), int(pixels.shape[2])
+    legend, opacity = overlay_legend(layers, height, width, note)
+    lh, lw = int(legend.shape[0]), int(legend.shape[1])
+    cycle, runs, at, k = len(FRAME_PER_TOKEN), run_lengths(latent_t), 0, int(OVERLAY_OUTLINE)
+    for i in range(0, int(latent_t), cycle):
+        end = at + sum(runs[i:i + cycle])
+        if end > int(start):
+            px = pixels[at:end, ..., :3].to(torch.float32).clone()
+            taken = torch.zeros(px.shape[:3], dtype=torch.bool)
+            for layer in (x for x in layers if not x.outline):
+                where = layer.frames(at, end) & ~taken      # a pixel takes the first layer that covers it, and only that tint
+                tint = torch.tensor(layer.colour, dtype=px.dtype)
+                px = torch.where(where.unsqueeze(-1), px * (1.0 - layer.strength) + tint * layer.strength, px)
+                taken |= where
+            for layer in (x for x in layers if x.outline):
+                inside = layer.frames(at, end).to(torch.float32).unsqueeze(1)
+                eroded = 1.0 - F.max_pool2d(1.0 - inside, 2 * k + 1, stride=1, padding=k)
+                edge = (inside - eroded)[:, 0] > 0.5
+                px = torch.where(edge.unsqueeze(-1), torch.tensor(layer.colour, dtype=px.dtype), px)
+            px[:, height - lh:, :lw] = px[:, height - lh:, :lw] * (1.0 - opacity) + legend * opacity
+            yield px[max(int(start) - at, 0):].clamp(0.0, 1.0)
+        at = end
+
+
+def first_frames(pieces, count: int):
+    """`pieces` cut off after `count` frames: a last window's view stops where its video does when the
+    track ends first (`loop_plan.frames_kept`)."""
+    left = int(count)
+    for piece in pieces:
+        if left <= 0:
+            return
+        yield piece[:left]
+        left -= int(piece.shape[0])
+
+
+def render_over(images: torch.Tensor, pieces):
+    """Each piece of a mask view with the same frames of the render above it, [n, 2H, W, 3]: the mask review's
+    picture. `images` are the window's frames as written (after the trim, and without a tail past the track),
+    so the pieces must start where they do; the view stops where the render does."""
+    yield from (torch.cat([images[at:at + int(piece.shape[0]), ..., :3].to(piece.dtype), piece], dim=1)
+                for at, piece in _placed(first_frames(pieces, int(images.shape[0]))))
+
+
+def _placed(pieces):
+    at = 0
+    for piece in pieces:
+        yield at, piece
+        at += int(piece.shape[0])
 
 
 def _push_pull(image: torch.Tensor, weight: torch.Tensor) -> torch.Tensor:

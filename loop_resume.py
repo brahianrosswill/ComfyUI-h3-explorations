@@ -56,7 +56,8 @@ import comfy.utils
 #: `preview` renders nothing, so a preview and the render after it share keys.
 #: Reasoned, from `MiniMaxH3AudioFreezeSong.execute`.
 SONG_PER_WINDOW = ("prompt", "timeline", "preview", "extent", "extent.seconds", "window_frames", "seed",
-                   "filename_prefix", "save_metadata_png", "keep_windows", "reuse_windows", "lists")
+                   "filename_prefix", "save_metadata_png", "keep_windows", "reuse_windows", "lists",
+                   "save_mask_review")
 
 
 def _is_link(value) -> bool:
@@ -123,6 +124,11 @@ def window_paths(work_dir: str, filename: str, number: int) -> tuple[str, str]:
     """(video, latent) for window `number`, counted from 1."""
     base = os.path.join(work_dir, f"{filename}_window_{int(number)}")
     return base + ".mp4", base + ".safetensors"
+
+
+def review_path(work_dir: str, filename: str, number: int) -> str:
+    """Window `number`'s mask review, beside its video: the render stacked over what was regenerated."""
+    return window_paths(work_dir, filename, number)[0][:-len(".mp4")] + "_with_mask.mp4"
 
 
 def save_window(work_dir: str, filename: str, number: int, key: str, samples, trim: int,

@@ -183,6 +183,16 @@ Each window starts from the source's frames over its span
 frozen, and composites. A window whose mask is empty is written from the
 source without sampling. One sampler per window is what carries the mask.
 
+Beside the render it writes a **mask review**, `<prefix>_NNNNN_with_mask.mp4`
+(`save_mask_review` on the song node, on by default): the render on top and,
+below it, the source with what was regenerated coloured in, the same frames
+under the same track. The lower row is drawn from the token mask the sampler
+was given, so the grow and the snap to tokens are in the picture; its legend
+names the mask for what the Masked Source's `replace` makes it (the tracked
+subject, the head and hair, or the parts taken), since on a parts graph the
+mask and the tracked subject are not the same thing. `video_mask.overlay_pieces`
+and `window_layers` own the picture; `bench/check_video_mask.py` item 12 holds it.
+
 ## Known limits
 
 Each line names where the evidence is. "Seen" means on a render or a tile.

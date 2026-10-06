@@ -58,6 +58,17 @@ that could happen.
 10. **Every graph that wires a Masked Source wires it whole**: into a song
    node's `source`, its mask tracked over the same frames it carries, and the
    song node's track taken from the same loader as those frames.
+12. **The mask review shows what regenerates, and nothing else is touched.**
+   `overlay_pieces` over a window with a known subject: every frame from the
+   trim on, a pixel of the subject in the subject's colour and only that, a
+   pixel of the regenerated margin in the region's, a pixel far outside the
+   source's own; the region is the token mask the sampler was given, piece
+   for piece; an outline only with the composite's weight; the legend names
+   every layer and sits in the bottom-left corner; a layer added to the list
+   is drawn and named with no other change; and `render_over` puts the same
+   frames of the render above. The song node's `save_mask_review` is its last
+   input, optional and on, is left out of a stored window's key, and every
+   shipped graph that wires a source writes it.
 11. **The loader loads the frames the song node's plan reads, and no more.**
    The tracker works on every frame the loader hands it, so a cap past what
    the plan reads for the graph's extent, window and context is tracking
@@ -93,6 +104,13 @@ comfy.cli_args.args.cpu = True  # no CUDA context for a shape check; the sibling
 import comfy.utils  # noqa: E402
 from comfy.ldm.minimax.model import FRAME_PER_TOKEN, mask_row_values  # noqa: E402
 import h3_config  # noqa: E402
+
+
+def _fail(problems, text: str) -> None:
+    """Record a failed case. `check_motion_reference` called this from 0.190.7 on with nothing
+    defining it here, so a failing case there was a NameError that ended the run before the checks
+    after it (found by mrop, 2026-10-06, when a control went red by that crash)."""
+    problems.append(text)
 
 
 def _load(name: str = "video_mask"):
@@ -522,6 +540,193 @@ def check_late_start(problems):
             problems.append(f"`{name}` is not in MASK_KEY_SKIP: changing it would track the subject afresh")
 
 
+def check_mask_review(problems):
+    """Item 12. Each case was seen red against a deliberate break of the view (2026-10-06, thirteen
+    breaks in a scratch copy), and each fails on a line below. Three of the breaks make the view
+    raise where the others make it draw wrongly, and those are caught and named here so a red says
+    what it is: an unknown `replace` that is no longer refused, a token region cut on the wrong
+    cycle, and a view not stopped where a cut render stops. That last one would raise in a real
+    render too (`render_over`'s concatenation refuses the mismatch); it would not misdraw.
+    """
+    grow_px = 32
+    subject = torch.zeros(FRAMES, H, W)
+    subject[:, 48:80, 80:112] = 1.0
+    tokens = vm.token_mask(vm.grow(subject, grow_px), LATENT_T, LAT_H, LAT_W)
+    source = torch.rand(FRAMES, H, W, 3) * 0.2 + 0.4
+    render = source.clone()
+    render[:, 40:88, 72:120] = 0.9
+    alpha = vm.changed_alpha(render, source, tokens, subject, 8, grow_px // 2, vm.CHANGE_THRESHOLD)
+    region = vm.pixel_alpha(tokens, H, W, 0) > 0.5
+    reg = vm.token_region(tokens, H, W)
+    per = sum(vm.FRAME_PER_TOKEN)
+    for at in range(0, FRAMES, per):
+        end = min(at + per, FRAMES)
+        try:
+            piece = reg(at, end)
+        except Exception as exc:  # noqa: BLE001 -- a region that cannot be drawn is the finding; everything below draws it
+            problems.append(f"mask review: the token region for frames {at}-{end} could not be drawn "
+                            f"({type(exc).__name__}: {exc}): it is not cut on the cycle the sampler's tokens are")
+            return
+        if not torch.equal(piece, region[at:end]):
+            problems.append(f"mask review: the token region for frames {at}-{end} is not the region the sampler was given")
+    # The first layer is named for what the source's mask is, by its `replace`: only the whole
+    # subject's mask is "the tracked subject" (2026-10-06, a parts mask that lay off the subject).
+    for value, name in ((vm.REPLACE_WHOLE, "the tracked subject"), (vm.REPLACE_PART, "the head and hair"),
+                        (vm.REPLACE_PARTS, "the parts taken")):
+        got = vm.window_layers(subject, tokens, H, W, value)
+        if got[0].name != name or [layer.name for layer in got[1:]] != ["what else regenerates"]:
+            problems.append(f"mask review: with replace {value!r} the layers are {[layer.name for layer in got]}")
+    try:
+        vm.window_layers(subject, tokens, H, W, "something else")
+        problems.append("mask review: a replace the view has no name for was drawn under some name")
+    except ValueError:
+        pass
+    except Exception as exc:  # noqa: BLE001 -- any other failure is not the refusal that names the choices
+        problems.append(f"mask review: a replace the view has no name for raised {type(exc).__name__}, "
+                        "not the refusal that lists the choices")
+    song_text = (REPO / "audio_freeze_song.py").read_text(encoding="utf-8")
+    if song_text.count('source["replace"]') < 2 or "window_layers(src_mask, src_tokens, height, width, source[\"replace\"], kept)" not in song_text:
+        problems.append("mask review: the song node does not name the mask's layer from the source's `replace`")
+    layers = vm.window_layers(subject, tokens, H, W, vm.REPLACE_WHOLE, alpha)
+    if [layer.name for layer in layers] != ["the tracked subject", "what else regenerates", "what the render kept"] \
+            or [layer.outline for layer in layers] != [False, False, True]:
+        problems.append(f"mask review: today's layers are {[(l.name, l.outline) for l in layers]}")
+    legend, _opacity = vm.overlay_legend(layers, H, W, "12% of this window regenerates")
+    lh = int(legend.shape[0])
+    trim = 5
+    out = torch.cat(list(vm.overlay_pieces(source, layers, LATENT_T, trim, "12% of this window regenerates")))
+    if tuple(out.shape) != (FRAMES - trim, H, W, 3):
+        problems.append(f"mask review: {tuple(out.shape)} for a {FRAMES}-frame window trimmed by {trim}")
+        return
+    f = 3                                               # a frame of the output; frame f + trim of the window
+    src = source[f + trim]
+
+    def tinted(colour, strength, y, x):
+        want = src[y, x] * (1.0 - strength) + torch.tensor(colour) * strength
+        return bool(torch.allclose(out[f, y, x], want, atol=1e-5))
+    kept_edge = (alpha[f + trim] > 0.5)
+    if not tinted(*vm.OVERLAY_SUBJECT, 60, 96):
+        problems.append("mask review: a pixel of the tracked subject is not in the subject's colour alone")
+    white = (out[f] == torch.tensor(vm.OVERLAY_KEPT)).all(dim=-1)
+    white[H - lh:] = False                              # the legend's rows have their own white
+    if not bool(white.any()) or not bool(kept_edge[white].all()):
+        problems.append("mask review: no outline of what the render kept, or one drawn outside it")
+    above = torch.zeros(H, W, dtype=torch.bool)
+    above[:H - lh] = True                               # everything but the legend's rows
+    margin = (region[f + trim] & ~(subject[f + trim] > 0.5) & ~white & above).nonzero()
+    far = (~region[f + trim] & above).nonzero()
+    if not margin.numel() or not all(tinted(*vm.OVERLAY_REGION, y, x) for y, x in margin[::7].tolist()):
+        problems.append("mask review: the regenerated margin is not in the region's colour")
+    if not far.numel() or not all(bool(torch.equal(out[f, y, x], src[y, x])) for y, x in far[::37].tolist()):
+        problems.append("mask review: a pixel outside the regenerated region is not the source's")
+    plain = torch.cat(list(vm.overlay_pieces(source, vm.window_layers(subject, tokens, H, W, vm.REPLACE_WHOLE), LATENT_T)))
+    gone = (plain[f + trim] == torch.tensor(vm.OVERLAY_KEPT)).all(dim=-1)
+    gone[H - lh:] = False
+    if bool(gone.any()):
+        problems.append("mask review: an outline was drawn with no composite weight given")
+    if bool(torch.equal(plain[0, H - lh:, :8], source[0, H - lh:, :8])):
+        problems.append("mask review: no legend in the bottom-left corner")
+    extra = layers + [vm.OverlayLayer("a class", (0.2, 0.9, 0.3), lambda at, end: torch.zeros(end - at, H, W, dtype=torch.bool)
+                                      .index_fill_(2, torch.arange(0, 8), True))]
+    more = torch.cat(list(vm.overlay_pieces(source, extra, LATENT_T, trim)))
+    want = src[8, 4] * 0.5 + torch.tensor((0.2, 0.9, 0.3)) * 0.5
+    if not bool(torch.allclose(more[f, 8, 4], want, atol=1e-5)) or not tinted(*vm.OVERLAY_SUBJECT, 60, 96):
+        problems.append("mask review: a layer added to the list is not drawn, or changed the layers above it")
+    if int(vm.overlay_legend(extra, H, 4000)[0].shape[1]) <= int(vm.overlay_legend(layers, H, 4000)[0].shape[1]):
+        problems.append("mask review: the legend did not grow with a layer added")
+    stacked = torch.cat(list(vm.render_over(render[trim:], vm.overlay_pieces(source, layers, LATENT_T, trim))))
+    if tuple(stacked.shape) != (FRAMES - trim, 2 * H, W, 3) or not torch.equal(stacked[:, :H], render[trim:]) \
+            or not torch.equal(stacked[:, H:], torch.cat(list(vm.overlay_pieces(source, layers, LATENT_T, trim)))):
+        problems.append("mask review: the stacked picture is not the render's frames over the view's")
+    # a last window whose tail lies past the track: the view stops where the render does
+    try:
+        short = torch.cat(list(vm.render_over(render[trim:FRAMES - 3], vm.overlay_pieces(source, layers, LATENT_T, trim))))
+    except RuntimeError as exc:
+        problems.append("mask review: with the render's tail cut the view runs past the render and cannot be "
+                        f"stacked on it ({str(exc)[:80]})")
+        short = None
+    if short is not None and (int(short.shape[0]) != FRAMES - 3 - trim or not torch.equal(short, stacked[:FRAMES - 3 - trim])):
+        problems.append("mask review: with the render's tail cut the stacked picture does not stop with the render")
+    if sum(int(x.shape[0]) for x in vm.first_frames(vm.overlay_pieces(source, layers, LATENT_T, trim), 9)) != 9:
+        problems.append("mask review: `first_frames` did not stop at the count asked")
+    # the song node's switch, read from its source: appended last, optional, on; and out of a stored window's key
+    import ast
+    tree = ast.parse((REPO / "audio_freeze_song.py").read_text(encoding="utf-8"))
+    schema = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "define_schema")
+    inputs = next(k.value for c in ast.walk(schema) if isinstance(c, ast.Call) for k in c.keywords if k.arg == "inputs")
+    last = inputs.elts[-1]
+    kw = {k.arg: getattr(k.value, "value", None) for k in last.keywords}
+    if getattr(last.args[0], "value", None) != "save_mask_review" or kw.get("default") is not True or kw.get("optional") is not True:
+        problems.append("mask review: `save_mask_review` is not the song node's last input, optional and on by default")
+    if "save_mask_review" not in _load("loop_resume").SONG_PER_WINDOW:
+        problems.append("mask review: turning `save_mask_review` on or off would re-render every stored window")
+    check_review_robust(problems, song_text)
+
+
+def check_review_robust(problems, song_text):
+    """A long render must not be cost by its review, nor join a review that is not of its windows.
+
+    The writer and the wrapper run for real here (ffmpeg, a few small frames); the song node's use of
+    them is read from its source, since nothing here can run the node: its windows need the models.
+    What that leaves unrun is the node's own lines between the two.
+    """
+    import importlib
+    import os
+    import tempfile
+    import comfy.model_management as mm
+    song = importlib.import_module("_h3pack.audio_freeze_song")
+    frames = torch.rand(5, 96, 160, 3)
+    with tempfile.TemporaryDirectory() as tmp:
+        path = str(Path(tmp) / "w_1_with_mask.mp4")
+        if song._write_review_mp4(path, iter([frames]), 160, 96, 19) != 5 or os.listdir(tmp) != ["w_1_with_mask.mp4"]:
+            problems.append(f"mask review: a review written whole is not one file under its final name: {os.listdir(tmp)}")
+        os.remove(path)
+
+        def cut_short():
+            yield frames
+            raise RuntimeError("the encode was cut short")
+        try:
+            song._write_review_mp4(path, cut_short(), 160, 96, 19)
+            problems.append("mask review: a review whose frames stopped part way did not raise")
+        except RuntimeError:
+            pass
+        if os.listdir(tmp):
+            problems.append(f"mask review: a review cut short left {os.listdir(tmp)} behind; a file under the final "
+                            "name would be joined by the next run as if it were whole")
+
+    def breaks():
+        raise RuntimeError("no room left")
+    why = song._review_or_reason(breaks, "a test")
+    if not why or "RuntimeError" not in why or "no room left" not in why:
+        problems.append(f"mask review: a review that failed was reported as {why!r}, not as what went wrong")
+    if song._review_or_reason(lambda: None, "a test") is not None:
+        problems.append("mask review: a review that worked was reported as a failure")
+
+    def stopped():
+        raise mm.InterruptProcessingException()
+    try:
+        song._review_or_reason(stopped, "a test")
+        problems.append("mask review: an interrupt during a review was swallowed; the run would go on")
+    except mm.InterruptProcessingException:
+        pass
+    # The node's side, from its source. Both writes go through the whole-or-absent writer and both
+    # run under the wrapper; a window that renders removes its old review with its old latent; and
+    # what a render owes whether or not the review worked comes after the wrapped join, not inside it.
+    if "_write_pieces_mp4(loop_resume.review_path" in song_text or "_write_pieces_mp4(path, video_mask.first_frames" in song_text \
+            or song_text.count("_write_review_mp4(") != 3:
+        problems.append("mask review: the song node writes a review straight to its final name")
+    if "why = _review_or_reason(window_review, f\"window {w.number}\")" not in song_text \
+            or "why = _review_or_reason(joined_review, \"the run\")" not in song_text:
+        problems.append("mask review: a failure in a review would fail the render")
+    if "for stale in (latent_path, loop_resume.review_path(work_dir, filename, w.number)):" not in song_text:
+        problems.append("mask review: a window that renders again keeps its old review for a later run to join")
+    at = song_text.find("why = _review_or_reason(joined_review")
+    owed = [song_text.find(mark, at) for mark in ("write_metadata_png(os.path.join(full_out", "shot_table.write_beside(source",
+                                                   "return io.NodeOutput(")]
+    if at < 0 or min(owed) < 0 or owed != sorted(owed):
+        problems.append("mask review: the render's metadata, shot table or outputs no longer follow the review's join")
+
+
 def check_loader_cap(problems, path, graph, loader_id, song, plan):
     """Item 11: the source loader's cap against what the song node's plan reads."""
     import math
@@ -579,6 +784,8 @@ def check_graphs(problems):
                     problems.append(f"{path.name}: the Subject Track's preview or report is wired, which defeats the kept mask")
             for song in users:
                 check_loader_cap(problems, path, graph, frames_from, song, plan)
+                if song["inputs"].get("save_mask_review") is not True:
+                    problems.append(f"{path.name}: a graph that wires a Masked Source does not write `save_mask_review`")
                 if song["inputs"].get("audio", [None])[0] != frames_from:
                     problems.append(f"{path.name}: the song node's track is not the audio of the source video")
                 if "segmenter" not in ins or "segmenter_clip" not in ins:
@@ -591,7 +798,7 @@ def check_graphs(problems):
 
 def main() -> int:
     problems: list[str] = []
-    for check in (check_temporal, check_token_grid, check_feather, check_composite, check_window, check_fit, check_paint_out, check_part, check_changed_alpha, check_motion_reference, check_late_start, check_graphs):
+    for check in (check_temporal, check_token_grid, check_feather, check_composite, check_window, check_fit, check_paint_out, check_part, check_changed_alpha, check_motion_reference, check_late_start, check_mask_review, check_graphs):
         check(problems)
     for p in problems:
         print(f"FAIL  {p}")
@@ -599,7 +806,7 @@ def main() -> int:
         print("ok    the masked source keeps every subject frame, sits on core's token grid, feathers off the "
               "subject, composites exactly, holds a short source, crops the mask as the frames, paints out only "
               "inside the regenerated tokens, takes a part only from the subject, restores the margin under "
-              "`only what changed`, builds a motion reference on grey or whole at the short edge asked, softens only the subject and empties only its body's tokens for a late start, is wired whole in every graph, and its loader loads the frames the plan reads")
+              "`only what changed`, builds a motion reference on grey or whole at the short edge asked, softens only the subject and empties only its body's tokens for a late start, is wired whole in every graph, its loader loads the frames the plan reads, and the mask review shows what regenerates")
     return 1 if problems else 0
 
 

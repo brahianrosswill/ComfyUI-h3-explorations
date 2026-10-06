@@ -2264,6 +2264,9 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
                                    "segmenter": ["100", 0], "segmenter_clip": ["100", 1],
                                    "shot_table": ["105", 3]}}
             g["74"]["inputs"]["source"] = ["104", 0]
+            # the render stacked over what was regenerated, beside the render (2026-10-06, at the
+            # owner's ask). Written only here: the input does nothing without a source.
+            g["74"]["inputs"]["save_mask_review"] = True
             if masked_parts:
                 # ids 107 and 108. The part node runs on the tracker's mask and
                 # only when the Masked Source asks for `parts`, which it does

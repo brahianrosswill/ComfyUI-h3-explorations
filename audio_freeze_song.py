@@ -75,6 +75,12 @@ in place by the next run of the graph. A run reuses the stored windows whose
 inputs have not changed, in order, and renders from the first that has
 (`reuse_windows`); `loop_resume.py` says what a window's key covers and what it
 cannot see. The seed holds after each queue so a re-queue can reuse.
+With a `source` wired, each window also gets a **mask review**
+(`save_mask_review`, 2026-10-06): its render stacked over a view of what was
+regenerated (`video_mask.overlay_pieces`), kept beside the window's video as
+`..._with_mask.mp4` and joined into `<prefix>_NNNNN_with_mask.mp4` as the
+windows are joined, so the pair plays in step with one track. A reused window
+stored without one is stacked from its stored video.
 A window that does render again, because its seed, the sampler or the
 schedule changed, reuses two things an earlier run in this server session
 made, under the same switch: its source latent and its conditioning
@@ -127,26 +133,79 @@ logger = logging.getLogger(__name__)
 LAZY = ("model", "clip", "vae", "audio_vae", "sampler", "sigmas", "references", "source")
 
 
-def _write_frames_mp4(path: str, images: torch.Tensor, crf: int) -> int:
-    """[T, H, W, 3] float in [0, 1] to an H.264 mp4 through ffmpeg's rawvideo pipe."""
-    t, h, w, _ = images.shape
-    cmd = [_ffmpeg(), "-y", "-v", "error", "-f", "rawvideo", "-pix_fmt", "rgb24",
-           "-s", f"{w}x{h}", "-r", str(FPS), "-i", "-",
-           "-c:v", "libx264", "-preset", "medium", "-crf", str(int(crf)), "-pix_fmt", "yuv420p",
-           *CLEAN_OUTPUT_ARGS, path]
+def _write_pieces_mp4(path: str, pieces, width: int, height: int, crf: int, under: str | None = None) -> int:
+    """Float frames in [0, 1], [n, height, width, 3] a piece at a time, to an H.264 mp4 through ffmpeg's
+    rawvideo pipe. Frames written.
+
+    With `under`, the piped frames are stacked below that video's, frame for frame, in one picture of
+    twice the height: a stored window's video over a view drawn now.
+    """
+    cmd = [_ffmpeg(), "-y", "-v", "error"] + (["-i", under] if under else []) + [
+        "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{int(width)}x{int(height)}", "-r", str(FPS), "-i", "-"]
+    if under:
+        cmd += ["-filter_complex", "[0:v][1:v]vstack=inputs=2:shortest=1[v]", "-map", "[v]", "-r", str(FPS)]
+    cmd += ["-c:v", "libx264", "-preset", "medium", "-crf", str(int(crf)), "-pix_fmt", "yuv420p",
+            *CLEAN_OUTPUT_ARGS, path]
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
     assert proc.stdin is not None and proc.stderr is not None
+    written = 0
     try:
-        for i in range(0, t, 24):
-            chunk = (images[i:i + 24].clamp(0, 1) * 255.0).round().to(torch.uint8).cpu().numpy().tobytes()
-            proc.stdin.write(chunk)
+        for piece in pieces:
+            for i in range(0, int(piece.shape[0]), 24):
+                part = piece[i:i + 24]
+                proc.stdin.write((part.clamp(0, 1) * 255.0).round().to(torch.uint8).cpu().numpy().tobytes())
+                written += int(part.shape[0])
     finally:
         proc.stdin.close()
         err = proc.stderr.read()
         proc.wait()
     if proc.returncode != 0:
         raise RuntimeError(f"ffmpeg failed writing {path}: {err.decode(errors='replace')[-400:]}")
-    return int(t)
+    return written
+
+
+def _write_frames_mp4(path: str, images: torch.Tensor, crf: int) -> int:
+    """[T, H, W, 3] float in [0, 1] to an H.264 mp4 through ffmpeg's rawvideo pipe."""
+    t, h, w, _ = images.shape
+    return _write_pieces_mp4(path, [images], w, h, crf)
+
+
+def _write_review_mp4(path: str, pieces, width: int, height: int, crf: int, under: str | None = None) -> int:
+    """A mask review at `path`, whole or not at all: written under a temporary name beside it and renamed
+    when ffmpeg has finished.
+
+    A window's review is reused whenever its file exists, and nothing else marks it finished (a window's
+    video has its latent, written last). So a file under the final name must never be a partial one: a
+    run that died inside this encode would otherwise leave every later run to fail at the review's join,
+    after all its windows had sampled.
+    """
+    part = path[:-len(".mp4")] + ".part.mp4"
+    try:
+        written = _write_pieces_mp4(part, pieces, width, height, crf, under)
+        os.replace(part, path)
+        return written
+    finally:
+        with contextlib.suppress(FileNotFoundError):
+            os.remove(part)
+
+
+def _review_or_reason(make, what: str) -> str | None:
+    """Run `make`, which writes a mask review, and return None, or why it failed.
+
+    The review is a picture for the eye and never costs the render: a failure in it becomes a line of
+    the report and a warning in the log, and the run goes on to its metadata, its shot table and its
+    outputs exactly as it would with the switch off. Core's interrupt is not an `Exception`, so stopping
+    a run during a review stops it.
+    """
+    try:
+        make()
+    except Exception as exc:  # noqa: BLE001 -- see above: anything the review can raise, the render outlives
+        logger.warning("[h3] MiniMaxH3AudioFreezeSong: the mask review of %s failed; the render is unaffected: "
+                       "%s: %s", what, type(exc).__name__, exc)
+        return f"{type(exc).__name__}: {str(exc)[:300]}"
+    return None
+
+
 
 
 class MiniMaxH3AudioFreezeSong(io.ComfyNode):
@@ -249,6 +308,11 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                     tooltip=("A Masked Source node: the track's own video and a mask over one subject. Each "
                              "window then keeps the source outside the mask and regenerates the subject, "
                              "from the references and the prompt.")),
+                # appended 2026-10-06, at the owner's ask: a render that shows what it regenerated
+                io.Boolean.Input("save_mask_review", default=True, optional=True,
+                                 tooltip=("Also saves the render stacked over a view of what was regenerated: "
+                                          "the mask the source carries, what else regenerates around it, and "
+                                          "what was kept from the render. Needs a Masked Source on `source`.")),
             ],
             outputs=[
                 io.String.Output(display_name="path"),
@@ -270,7 +334,7 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
     def execute(cls, model, clip, vae, audio_vae, audio, sampler, sigmas, prompt, timeline, preview,
                 width, height, window_frames, context_frames, extent, seed, audio_mask, level,
                 filename_prefix, crf, save_metadata_png=True, keep_windows=True, references=None,
-                reuse_windows=True, lists=None, source=None) -> io.NodeOutput:
+                reuse_windows=True, lists=None, source=None, save_mask_review=True) -> io.NodeOutput:
         import folder_paths
         # A DynamicCombo arrives as one nested dict (the selection under its own
         # id, the option's inputs beside it) or, from an API prompt that sets
@@ -395,6 +459,8 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                              f"{100.0 * float(source['start_top']):.0f}% of the subject from the original blurred by "
                              f"{int(source['start_blur'])} px, the rest of it from nothing")
                             if source.get("start_from", video_mask.START_NOISE) != video_mask.START_NOISE else ""))
+        # the mask review needs a source to show; without one the switch does nothing
+        review = bool(save_mask_review) and source is not None
         # Every rendering window's conditioning before any window samples; see
         # the module docstring for why the key is the text (and, with
         # references, the frame count) and nothing else.
@@ -494,7 +560,7 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
             lap.clear()
             clock[0] = time.perf_counter()
             latent, _count = _empty_av_latent(width, height, w.frames)
-            src_pixels = src_tokens = src_mask = None
+            src_pixels = src_tokens = src_mask = kept = None
             if source is not None:
                 # this window starts from the source's own frames over its span
                 empty_video, empty_audio = latent["samples"].unbind()
@@ -597,6 +663,10 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                 else:
                     alpha = video_mask.pixel_alpha(src_tokens, height, width, source["feather_pixels"])
                 images = video_mask.composite(images, src_pixels, alpha)
+                # under `only what changed` the weight is also what the mask review outlines: it is held
+                # through the window's write for that, and freed after the review, where it used to be
+                # freed here
+                kept = alpha if source.get("composite") == video_mask.COMPOSITE_CHANGED else None
                 del alpha
                 mark("composite")
             images = images[int(trim):]
@@ -607,18 +677,34 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                 reports.append(f"[{w.number}] the track ends {overrun} frames before this window "
                                "does; they are not written")
             video_path, latent_path = loop_resume.window_paths(work_dir, filename, w.number)
-            # the old latent goes first: a latent on disk must mean its video finished
-            with contextlib.suppress(FileNotFoundError):
-                os.remove(latent_path)
+            # the old latent goes first: a latent on disk must mean its video finished. Its old mask
+            # review goes with it: a review on disk must be of the video beside it, and a run with the
+            # switch off would otherwise leave the last render's review for a later run to join
+            for stale in (latent_path, loop_resume.review_path(work_dir, filename, w.number)):
+                with contextlib.suppress(FileNotFoundError):
+                    os.remove(stale)
             written = _write_frames_mp4(video_path, images, crf)
             files.append(video_path)
             if root is not None:
                 stored_latents.append(loop_resume.save_window(work_dir, filename, w.number, keys[i], samples,
                                                               trim, next_start, written))
             reports.append(f"[{w.number}] wrote {written} frames to {os.path.basename(video_path)}")
-            del images
             comfy.model_management.soft_empty_cache()
             mark("write")
+            if review and src_pixels is not None:
+                # The render over what was regenerated, in one picture (`video_mask.overlay_pieces`): built and
+                # piped a cycle of frames at a time, so nothing the size of the window is held a second time.
+                def window_review():
+                    layers = video_mask.window_layers(src_mask, src_tokens, height, width, source["replace"], kept)
+                    rows = video_mask.overlay_pieces(src_pixels, layers, int(src_tokens.shape[0]), int(trim),
+                                                     f"{100.0 * float(src_tokens.mean()):.0f}% of this window regenerates")
+                    _write_review_mp4(loop_resume.review_path(work_dir, filename, w.number),
+                                      video_mask.render_over(images, rows), width, 2 * height, crf)
+                why = _review_or_reason(window_review, f"window {w.number}")
+                if why:
+                    reports.append(f"[{w.number}] mask review FAILED; the window's video is unaffected: {why}")
+                mark("mask review")
+            del images, kept
             reports.append(f"[{w.number}] seconds: " + ", ".join(f"{name} {took:.1f}" for name, took in lap.items()))
 
         # join, and mux the whole track cut to the video
@@ -626,6 +712,50 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
         clock[0] = time.perf_counter()
         join_and_mux(files, waveform, rate, out_path, work_dir, stem, kept_frames)
         mark("join and mux")
+        review_files: list[str] = []
+        if review:
+            # One file beside the render: `<stem>_with_mask.mp4`, the windows' reviews joined as the windows
+            # are. A reused window stored without one (before 2026-10-06, or with the switch off) has no
+            # render in memory: its stored video is stacked over a view drawn now, with no outline, since
+            # what the composite kept was never stored.
+            restacked = []
+            review_out = os.path.join(full_out, stem + "_with_mask.mp4")
+
+            def joined_review():
+                for rw in windows:
+                    path = loop_resume.review_path(work_dir, filename, rw.number)
+                    if rw.number <= first and not os.path.isfile(path):
+                        stored = reused[rw.number - 1]
+                        shape = _empty_av_latent(width, height, rw.frames)[0]["samples"].unbind()[0].shape[2:]
+                        pixels, _encode, tokens, mask, _held = video_mask.window(
+                            source, int(round(rw.start * FPS)), rw.frames, width, height, *shape)
+                        del _encode
+                        rows = video_mask.overlay_pieces(
+                            pixels, video_mask.window_layers(mask, tokens, height, width, source["replace"]),
+                            int(tokens.shape[0]),
+                            int(stored["trim"]), f"{100.0 * float(tokens.mean()):.0f}% of this window regenerates")
+                        # as many frames as the stored video holds, which is what this run writes of the
+                        # window or it would not have been reused (`loop_resume.stored_frames`)
+                        _write_review_mp4(path, video_mask.first_frames(rows, writes[rw.number - 1]), width, height,
+                                          crf, under=stored["video"])
+                        del pixels, tokens, mask
+                        restacked.append(rw.number)
+                    review_files.append(path)
+                join_and_mux(review_files, waveform, rate, review_out, work_dir, stem + "_with_mask", kept_frames)
+            # A failure here, or a window's review missing because its own write failed, is a line of the
+            # report; the render above is already joined, and its metadata, shot table and outputs follow
+            # as they would with the switch off. A half-written joined review is removed. The next run
+            # reuses the windows and stacks whichever reviews are missing from their stored videos.
+            why = _review_or_reason(joined_review, "the run")
+            if why:
+                with contextlib.suppress(FileNotFoundError):
+                    os.remove(review_out)
+            mark("mask review")
+            reports.append(f"mask review FAILED; the render is complete and unaffected: {why}" if why else
+                           f"mask review written beside the video: {os.path.basename(review_out)}, the render over "
+                           "what was regenerated"
+                           + (f"; window(s) {restacked} were stacked from their stored video, with no outline of "
+                              "what the render kept" if restacked else ""))
         if spent:
             reports.append(f"seconds by stage, {sum(spent.values()):.0f} in all: "
                            + ", ".join(f"{name} {took:.1f}" for name, took in sorted(spent.items(), key=lambda kv: -kv[1])))
@@ -637,7 +767,7 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
         if table_files:
             reports.append("shot table written beside the video: " + ", ".join(table_files))
         if not keep_windows:
-            for p in files + stored_latents:
+            for p in files + stored_latents + review_files:
                 with contextlib.suppress(FileNotFoundError):
                     os.remove(p)
             try:
