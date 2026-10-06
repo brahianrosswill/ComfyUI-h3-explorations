@@ -901,7 +901,7 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                 seconds = mask_store.save(key, mask, table)
                 note += f", mask kept for the next run ({seconds:.0f} s to write)"
         covered = float((mask > 0.5).any(dim=0).float().mean())
-        logger.info("[h3] MiniMaxH3MaskedSource: %d frames, replacing the %s%s, the mask touches %.1f%% of the "
+        logger.info("[h3] MiniMaxH3MaskedSource: %d frames, replace `%s`%s, the mask touches %.1f%% of the "
                     "frame over the clip, grow %d px, feather %d px%s, composite keeps the %s", int(frames.shape[0]),
                     replace, note, 100.0 * covered, int(grow_pixels), int(feather_pixels),
                     ", subject painted out before the encode" if paint_out else "", composite)

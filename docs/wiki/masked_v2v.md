@@ -1,6 +1,6 @@
 # Masked video to video: how it works, what it cannot do, where to go next
 
-last updated: 2026-10-06 (the prompt node); 2026-10-05 (the ref2va motion graph; the Sapiens2 nodes named); 2026-10-04 (first written, after the Subject Track's third clip)
+last updated: 2026-10-06 (the prompt node; the review and parts graphs); 2026-10-05 (the ref2va motion graph; the Sapiens2 nodes named); 2026-10-04 (first written, after the Subject Track's third clip)
 
 Written by hand. This is the lane's map for a reader who has not followed
 it: the pieces in the order a render meets them, the limits each one has
@@ -32,8 +32,28 @@ Why ref2va and why that count is measured, not reasoned:
 reference at any step count, distilled or not; ref2va loses it at eight). It
 costs the step count over the PDD8 graph, which stays the default for a
 shot that needs no movement from the source.
-Both graphs are in `workflows/daily/` too, as `h3_mask_pdd8_api.json` and
-`h3_mask_ref2va_motion_api.json` (`h3_config.DAILY_GRAPHS`).
+Two more graphs since 2026-10-06, neither rendered yet:
+
+- `workflows/h3_video_to_video_masked_review_api.json` is the look before a
+  render. It is the default graph with the song node on `preview`, so
+  nothing samples and no model loads, and with what the render graphs leave
+  unwired: the tracker's numbered tiles and shot table are saved, the Masked
+  Source's preview shows the region, and the prompt node shows the text. A
+  wrong shot is corrected here, in the Subject Track's `corrections`, and the
+  mask it tracks is kept for the render graphs.
+- `workflows/h3_video_to_video_masked_parts_song_pdd8_api.json` replaces a
+  part of the subject that Sapiens2 finds: `MiniMaxH3Sapiens2Loader` and
+  `MiniMaxH3SubjectParts` feed the Masked Source's `parts`, and `replace` is
+  `the wired parts`. At the part node's own ticks that is hair, face and
+  neck, on the original's body and clothes, so the body's movement is the
+  source's. Ticking another part changes the region, and the prompt node's
+  `picture_gives` then has to say what the still provides; a clothing text
+  is not written yet. What the part node was seen to find, on which clips:
+  `../../bench/results/2026-10-05_sapiens2_first_frame.md`.
+
+All four are in `workflows/daily/` too, as `h3_mask_pdd8_api.json`,
+`h3_mask_ref2va_motion_api.json`, `h3_mask_review_api.json` and
+`h3_mask_parts_pdd8_api.json` (`h3_config.DAILY_GRAPHS`).
 
 It is not a trained task. The release trains t2va, fl2va and ref2va; a
 spatial mask on a base checkpoint is an inference-time method. The mechanism
@@ -247,8 +267,9 @@ wider set, with what each would buy and what is known about it.
   VOID was tested for it on 2026-10-05 and removed:
   `../../bench/results/2026-10-05_void_plate_turn.md`.
 - **A soft edge instead of a hard one**: a matting model on the subject.
-  The nodes for it exist (`sapiens2_parts.py`, `MiniMaxH3SubjectParts`) and
-  are in no shipped graph. What was read of the model:
+  The nodes for it exist (`sapiens2_parts.py`, `MiniMaxH3SubjectParts`); the
+  parts graph wires the part mask and not the matte, which is in no graph.
+  (Said until 2026-10-06 that the nodes were in no shipped graph.) What was read of the model:
   `../research/masking/2026-10-04_mrhf.md`, "Matting".
 
 **The render**

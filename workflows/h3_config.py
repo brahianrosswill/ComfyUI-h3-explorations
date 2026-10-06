@@ -1273,6 +1273,24 @@ MASKED_MOTION_SOURCE = dict(MASKED_SOURCE, motion_reference="subject only")
 #: still, so its text cannot assume a man or a woman. The sentences and what
 #: each has rendered on are in `masked_prompt_text.py`.
 MASKED_PROMPT_NODE = "MiniMaxH3MaskedPrompt"
+#: The Sapiens2 route to a part of the subject (`sapiens2_parts.py`): the
+#: loader's two folders under `models/sapiens2/`, and `MiniMaxH3SubjectParts`
+#: at its own defaults, which tick hair and face-and-neck, the region the
+#: Masked Source's `head and hair` asks SAM 3 for. No matting model: the
+#: Masked Source reads the `parts` mask, not the matte, so loading one would
+#: cost a pass per frame for nothing. **Measured** on one shot of one clip
+#: (`bench/results/2026-10-05_sapiens2_first_frame.md`): hair found on every
+#: frame, where the SAM phrase landed on a neighbour on a few.
+SAPIENS2 = dict(segmentation="facebook_sapiens2-seg-1b", matting="none")
+SUBJECT_PARTS = dict(hair=True, face_and_neck=True, upper_clothing=False, lower_clothing=False,
+                     hands=False, mouth=False, other_classes="", crop_margin=32, subject_margin=8,
+                     matte_reach=8, hold_missing=True)
+#: The parts graph's Masked Source and prompt: the region is the part node's
+#: mask, and since that can be any part, the prompt node is told what the
+#: still provides (`masked_prompt_text.resolve_gives` refuses to guess).
+MASKED_PARTS_SOURCE = dict(MASKED_SOURCE, replace="the wired parts")
+MASKED_PARTS_PROMPT = dict(subject="a person", voice="the main voice on the track",
+                           picture_gives="the head and hair", extra="")
 MASKED_PROMPT = dict(subject="a person", voice="the main voice on the track",
                      picture_gives="what the Masked Source replaces", extra="")
 
@@ -2015,6 +2033,10 @@ DAILY_GRAPHS: dict[str, str] = {
     # from shipped root graphs, not probes; both stay at the root as well.
     "h3_mask_pdd8": "h3_video_to_video_masked_song_pdd8.json",
     "h3_mask_ref2va_motion": "h3_video_to_video_masked_song_ref2va_motion.json",
+    # 2026-10-06: the part of the subject Sapiens2 finds, and the look before
+    # a render (tiles, shot table, the region and the prompt, no sampling).
+    "h3_mask_parts_pdd8": "h3_video_to_video_masked_parts_song_pdd8.json",
+    "h3_mask_review": "h3_video_to_video_masked_review.json",
 }
 GRAPH_DIRS: tuple[str, ...] = ("", "distill_experiments", DAILY_DIR)
 

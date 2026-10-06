@@ -97,6 +97,7 @@ from h3_config import (  # noqa: E402
     SAMPLING, SAGE_NODE, DENSE_BACKEND_NODE, DENSE_CHAINS, DEFAULT_DENSE_CHAIN, SEED, SIGMA_SHIFT, SOL_CORE_NODE, SOL_CORE_DEFAULTS,
     REF_VIDEO_LOADER, REF_QWEN_SHORT_EDGE, SEGMENTER, SUBJECT_TRACK, MASKED_SOURCE,
     MASKED_MOTION_STEPS, MASKED_MOTION_SOURCE, MASKED_PROMPT, MASKED_PROMPT_NODE,
+    SAPIENS2, SUBJECT_PARTS, MASKED_PARTS_SOURCE, MASKED_PARTS_PROMPT,
     CACHE_NODE, CACHE_NODE_CLASS,
     DISTILL_SAMPLING,
     REF_VIDEO_BUDGET,
@@ -1354,6 +1355,16 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
               # graph, so the bank holds a copy of what every shipped graph
               # renders. None leaves the prompt typed into the song node.
               masked_prompt: dict | None = None,
+              # Sapiens2's part mask into the Masked Source's `parts`
+              # (`sapiens2_parts.py`, `h3_config.SAPIENS2` and
+              # `SUBJECT_PARTS`); `masked_source` then has to choose
+              # `the wired parts`.
+              masked_parts: bool = False,
+              # The look before a render: the song node on `preview`, which
+              # samples nothing and loads no model, with the tracker's tiles
+              # and shot table saved and the Masked Source's preview shown.
+              # The mask it tracks is kept, so the render graphs reuse it.
+              masked_review: bool = False,
               # Audio-only refinement after the pass (audio_refine.py,
               # h3_config.AUDIO_REFINE): the sampled latent's video frozen and
               # its audio reopened, then a partial-denoise pass on the model
@@ -2212,6 +2223,25 @@ def build_api(task: str, *, sage: bool = True, prompt: str | None = None,
                                    "segmenter": ["100", 0], "segmenter_clip": ["100", 1],
                                    "shot_table": ["105", 3]}}
             g["74"]["inputs"]["source"] = ["104", 0]
+            if masked_parts:
+                # ids 107 and 108. The part node runs on the tracker's mask and
+                # only when the Masked Source asks for `parts`, which it does
+                # not when a kept mask matches.
+                if g["104"]["inputs"]["replace"] != "the wired parts":
+                    raise SystemExit("masked_parts needs a masked_source whose replace is `the wired parts`")
+                g["107"] = {"class_type": "MiniMaxH3Sapiens2Loader", "inputs": dict(SAPIENS2)}
+                g["108"] = {"class_type": "MiniMaxH3SubjectParts",
+                            "inputs": {"sapiens2": ["107", 0], "frames": ["28", 0], "subject_mask": ["105", 0],
+                                       **SUBJECT_PARTS}}
+                g["104"]["inputs"]["parts"] = ["108", 0]
+            if masked_review:
+                # ids 109 and 110, in a review graph only: a consumer of the
+                # tracker's tiles runs the tracker on every queue.
+                g["74"]["inputs"]["preview"] = True
+                g["109"] = {"class_type": "MiniMaxH3SaveShotTable",
+                            "inputs": {"shot_table": ["105", 3], "preview": ["105", 1],
+                                       "filename_prefix": (out_prefix or "Video/h3_song") + "_shots"}}
+                g["110"] = {"class_type": "PreviewImage", "inputs": {"images": ["104", 2]}}
             if masked_prompt is not None:
                 # The prompt is written by the node from what the Masked Source
                 # does, and shown on it; id 106.
@@ -3746,6 +3776,42 @@ def main():
               freeze_mask=0.0, freeze_context=39, length=LONG_LENGTH,
               out_prefix="Video/h3_v2v_masked_song_pdd8"),
          "masked video to video: a source video's subject replaced from a reference still, audio kept"),
+        # A part of the subject through Sapiens2 (2026-10-06): the part node
+        # labels the tracked subject and its mask is the region, in place of
+        # the SAM phrases `head and hair` asks for. At the part node's
+        # defaults that is hair, face and neck, on the original's body and
+        # clothes, so the body's movement is the source's own and the fast
+        # chain serves. Ticking another part on the node changes the region;
+        # the prompt node's `picture_gives` then has to say what the still
+        # provides. Not rendered.
+        ("h3_video_to_video_masked_parts_song_pdd8.json", "v2v-masked-parts-song-pdd8", "t2v",
+         _bank_prompt("ref2va_masked_person_head"),
+         dict(pdd=True, sampler_name="euler",
+              unet=MODELS["unet_fl2va_pdd8_baked"],
+              lora=(PDD_FL2VA_STRIPPED_LORA, PDD_STRENGTH), steps=PDD_STEPS,
+              freeze_song=True, freeze_song_seconds=30.0,
+              freeze_song_refs=(PLACEHOLDER_IMAGE_A,), freeze_song_source=True,
+              masked_source=MASKED_PARTS_SOURCE, masked_parts=True, masked_prompt=MASKED_PARTS_PROMPT,
+              freeze_mask=0.0, freeze_context=39, length=LONG_LENGTH,
+              out_prefix="Video/h3_v2v_masked_parts_song_pdd8"),
+         "masked video to video, a part of the subject: head and hair found by Sapiens2 and replaced from a still"),
+        # The look before a masked render (2026-10-06, the masking board's
+        # dry run): the default masked graph with the song node on `preview`,
+        # so nothing samples and no model loads, and with what the render
+        # graphs leave unwired: the tracker's numbered tiles and shot table
+        # saved, the Masked Source's region shown. The prompt node shows the
+        # text. The mask is kept for the render graphs.
+        ("h3_video_to_video_masked_review.json", "v2v-masked-review", "t2v",
+         _bank_prompt("ref2va_masked_person_swap"),
+         dict(pdd=True, sampler_name="euler",
+              unet=MODELS["unet_fl2va_pdd8_baked"],
+              lora=(PDD_FL2VA_STRIPPED_LORA, PDD_STRENGTH), steps=PDD_STEPS,
+              freeze_song=True, freeze_song_seconds=30.0,
+              freeze_song_refs=(PLACEHOLDER_IMAGE_A,), freeze_song_source=True,
+              masked_prompt=MASKED_PROMPT, masked_review=True,
+              freeze_mask=0.0, freeze_context=39, length=LONG_LENGTH,
+              out_prefix="Video/h3_v2v_masked_review"),
+         "masked video to video, the look before a render: who was tracked in each shot, the region and the prompt, nothing sampled"),
         # The same lane on the ref2va base for a shot that needs the original's
         # movement (owner, 2026-10-05, on the masking board): the subject's own
         # frames on grey reach the encoder as <Video 1> and the prompt ties the

@@ -21,6 +21,13 @@ own below the rule.
   late start), the Sapiens2 part menu wired into the Masked Source, click
   corrections per shot and the per-shot table are the four items the owner
   set running on 2026-10-05; the masking board carries them.
+- **2026-10-06, generalising the lane** (the owner's direction: beyond one
+  clip and one shot). The prompt is written by a node
+  (`../../masked_prompt.py`), a review graph shows the tracker's picks
+  before a render, and a parts graph wires Sapiens2 in; none of the three
+  has rendered. Owed, in order: a first render on the node's text; a
+  clothing text for the parts graph; several stills of one subject.
+  `decisions.md`, 2026-10-06.
 - How it works, its limits and the wider set of directions:
   [`masked_v2v.md`](masked_v2v.md). The dated account:
   [`../h3_audio_freeze.md`](../h3_audio_freeze.md) section 4. What was

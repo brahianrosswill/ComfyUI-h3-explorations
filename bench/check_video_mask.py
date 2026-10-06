@@ -541,8 +541,11 @@ def check_graphs(problems):
                 tracked_from = mask_node["inputs"].get("frames", [None])[0]
             if tracked_from != frames_from:
                 problems.append(f"{path.name}: the mask of Masked Source {nid} was not tracked over its own frames")
+            # A review graph is the one place the tiles are wired: its song node is on `preview`,
+            # so it samples nothing and there is no render whose kept mask could be defeated.
+            reviewing = all(n["inputs"].get("preview") is True for n in users)
             for out in (1, 2):  # a consumer of the tracker's preview or report runs it on every queue
-                if mask_node.get("class_type") == "MiniMaxH3SubjectTrack" and any(
+                if not reviewing and mask_node.get("class_type") == "MiniMaxH3SubjectTrack" and any(
                         v == [ins["mask"][0], out] for n in graph.values() if isinstance(n, dict)
                         for v in n.get("inputs", {}).values()):
                     problems.append(f"{path.name}: the Subject Track's preview or report is wired, which defeats the kept mask")

@@ -135,6 +135,26 @@ IDENTITY = {
 #: one, and 76 graphs at the default went red. The KIND claim is graded, not
 #: trusted, and it caught its author four times in one sitting.
 DECLARED: dict[tuple[str, str], tuple] = {
+    ("MiniMaxH3MaskedSource", "replace"):
+        ("ARM", "'the wired parts' on the parts graphs "
+                "(`h3_video_to_video_masked_parts_song_pdd8` and its daily "
+                "copy), against the node default 'whole subject': the region "
+                "is the mask MiniMaxH3SubjectParts makes from Sapiens2's "
+                "labels, which is what those graphs exist to wire. Every "
+                "other masked graph is at the default. Not rendered."),
+    ("MiniMaxH3MaskedPrompt", "picture_gives"):
+        ("ARM", "'the head and hair' on the parts graphs, against the node "
+                "default, which reads it off the Masked Source: `the wired "
+                "parts` can be any part, so the node refuses to guess and "
+                "the graph says what its default ticks (hair, face and neck) "
+                "make the still provide."),
+    ("MiniMaxH3AudioFreezeSong", "preview"):
+        ("ARM", "True on the review graphs "
+                "(`h3_video_to_video_masked_review` and its daily copy), "
+                "against the node default False: the graph is the look "
+                "before a render, so the song node plans and stops, nothing "
+                "samples and no model loads. Every graph that renders is at "
+                "the default."),
     ("MiniMaxH3MaskedSource", "motion_reference"):
         ("ARM", "'subject only' on the ref2va motion graphs "
                 "(`h3_video_to_video_masked_song_ref2va_motion` and its daily "
