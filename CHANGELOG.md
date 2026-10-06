@@ -4,6 +4,19 @@ Semantic versioning. Nothing here has been tagged or published, so every
 version below describes the state of the working repo rather than a release
 artifact.
 
+<!-- To add an entry: write a file in changelog.d/ (changelog.d/README.md has the three steps) and run
+     bench/build_changelog.py. Do not type an entry in here: the newest entries below are generated. -->
+
+## 0.198.2
+<!-- changelog.d/mrteal-changelog-top-note.md -->
+
+### Changed
+
+- `CHANGELOG.md` says at its top, in a comment, that an entry is added as
+  a file in `changelog.d/`. The marker line that says so sits below the
+  generated entries, where somebody adding one at the top by habit would
+  not see it.
+
 ## 0.198.1
 <!-- changelog.d/mrteal-changelog-fragments.md -->
 
