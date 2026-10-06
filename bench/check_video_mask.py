@@ -369,6 +369,27 @@ def check_part(problems):
     region = out_parts[0]["mask"]
     if not bool((region[:, 4:8, 6:10] > 0.5).all()) or bool((region[:, 0:2, 0:2] > 0.5).any()) or bool((region[:, 10:14] > 0.5).any()):
         problems.append("`the wired parts` must regenerate the part where it lies on the subject and nothing else")
+    # the part mask's coverage of the tracked subject travels in the record (`part_coverage.py`): a line when
+    # frames are in doubt, None when they are not and on every other `replace`. Counted on the tracker's mask
+    # and the part mask as wired, before the part replaces the mask.
+    pc = sys.modules["_h3pack.part_coverage"]
+    key = pc.RECORD_KEY
+    if key not in out_parts[0] or out_parts[0][key] is not None:
+        problems.append(f"a part that covers the same share of the subject on every frame is in doubt: {out_parts[0].get(key)!r}")
+    doubted = torch.zeros(3, 16, 16); doubted[:2, 2:14, 4:12] = 1.0; doubted[2, 2:3, 4:5] = 1.0   # a sliver on the last frame
+    record = vm.MiniMaxH3MaskedSource.execute(frames, subject, replace=vm.REPLACE_PARTS, parts=doubted, part_margin=0)
+    record = getattr(record, "args", record)[0]
+    want = pc.summarise(pc.coverage(subject, doubted)).warning()
+    if want is None or record.get(key) != want or "1 of 3 frames" not in str(record.get(key)):
+        problems.append(f"the record's warning for a part that is a sliver on one frame is {record.get(key)!r}, not {want!r}")
+    if pc.record_line(record) != f"the Masked Source warns: {want}" or pc.record_line(out_parts[0]) is not None or pc.record_line(None) is not None:
+        problems.append("record_line does not give one line for a record with a warning and None for one without, or for no record")
+    whole = getattr(vm.MiniMaxH3MaskedSource.execute(frames, subject), "args", None)[0]
+    if key not in whole or whole[key] is not None:
+        problems.append("a Masked Source with no part wired carries a part warning, or does not carry the key at all")
+    song_source = (REPO / "audio_freeze_song.py").read_text()
+    if song_source.count("part_coverage.record_line(source)") < 2 or "lines.append(part_coverage.record_line(source))" not in song_source:
+        problems.append("the song node's report no longer shows the Masked Source's part warning in its source block")
     try:
         vm.MiniMaxH3MaskedSource.execute(frames, subject, replace=vm.REPLACE_PARTS)
         problems.append("`the wired parts` with nothing on `parts` was accepted")

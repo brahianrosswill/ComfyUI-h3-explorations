@@ -57,6 +57,23 @@ LOW_OF_MEDIAN = 0.25
 OUTSIDE_MOST = 0.5
 
 
+#: The key under which the Masked Source's record carries `Summary.warning()`
+#: for the part mask wired into it: a line of text, or None when no frame is
+#: in doubt, when the node was not wired a part mask, and when its mask was
+#: kept from an earlier run so no part mask arrived to count. One name for
+#: the node that writes it and the two that show it.
+RECORD_KEY = "part_warning"
+
+
+def record_line(source) -> str | None:
+    """What a node holding the Masked Source's record shows about the part mask: one line, or None.
+
+    The song node's report and the prompt node's summary both call this, so the two read alike.
+    """
+    warned = source.get(RECORD_KEY) if isinstance(source, dict) else None
+    return f"the Masked Source warns: {warned}" if warned else None
+
+
 #: Frames counted at a time. **Reasoned**: the count needs three bool masks of
 #: the frames it is looking at, and a clip can be thousands of frames long;
 #: this many keeps that to megabytes and changes no figure.

@@ -119,7 +119,7 @@ from comfy_extras.nodes_minimax_h3 import FPS, _empty_av_latent
 
 from .audio_freeze import MiniMaxH3EncodeTrack, MiniMaxH3FreezeAudioWindow, _ffmpeg, _stereo
 from .conditioning import MiniMaxH3Conditioning
-from . import loop_plan, loop_resume, shot_table
+from . import loop_plan, loop_resume, part_coverage, shot_table
 from .prompt_lists import H3PromptLists, fill_windows
 from .loop_output import CLEAN_OUTPUT_ARGS, join_and_mux, saved_outputs, window_dir, write_metadata_png
 from .reference_conditioning import H3References, MiniMaxH3ReferenceConditioning, RuntimeVideoReference, _order_records
@@ -459,6 +459,10 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                              f"{100.0 * float(source['start_top']):.0f}% of the subject from the original blurred by "
                              f"{int(source['start_blur'])} px, the rest of it from nothing")
                             if source.get("start_from", video_mask.START_NOISE) != video_mask.START_NOISE else ""))
+            # the part mask's coverage of the tracked subject, when the Masked Source found it in doubt. A
+            # render shows it here, above the first window; a preview has no source and cannot.
+            if part_coverage.record_line(source):
+                lines.append(part_coverage.record_line(source))
         # the mask review needs a source to show; without one the switch does nothing
         review = bool(save_mask_review) and source is not None
         # Every rendering window's conditioning before any window samples; see

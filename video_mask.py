@@ -119,6 +119,22 @@ replaced: the source record now carries the subject's box per frame
 because on a parts graph nothing downstream of this node knew where the whole
 subject was. `motion_reference` states the rule that bounds the picture.
 
+**What the wired parts cover** (`part_warning`, 2026-10-06). With `replace`
+on `the wired parts` the region is the part node's mask, and a part model
+that labelled someone else leaves a sliver of it on the subject: the original
+then stays in the render and nothing said so. Before the part replaces the
+mask, the node counts how much of the tracker's mask the part covers
+(`part_coverage.py`), logs the figures, and puts the one-line warning in the
+source record under `part_warning`, None when no frame is in doubt. The song
+node's report and the prompt node's summary show it. It is a report: nothing
+is refused and no mask changes. A mask kept from an earlier run arrives
+without the part mask, so the key is None there.
+
+The record this node returns, by key, beyond the node's own inputs: `frames`
+and `mask` (the frames and the region used), `shot_table` and `replace` (read
+by the prompt node), `subject_boxes` (the tracked subject's box per frame),
+and `part_warning`.
+
 **The mask is kept across runs** (`reuse_mask`; owner, 2026-10-04: "save the
 mask"). Tracking the subject, and finding the part for `head and hair`, cost
 more than a window of sampling after every restart, and a clip's mask does
@@ -160,6 +176,9 @@ from comfy_api.latest import io
 
 import comfy.utils
 from comfy.ldm.minimax.model import FRAME_PER_TOKEN
+
+from .part_coverage import RECORD_KEY as PART_WARNING
+from .part_coverage import coverage, summarise
 
 logger = logging.getLogger(__name__)
 
@@ -1284,6 +1303,7 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
             from . import mask_store
             kept = mask_store.load(key, tuple(frames.shape[:3]))
         table = str(shot_table or "")
+        part_warning = None     # a kept mask arrives without the part mask, so there is nothing to count
         if kept is not None:
             mask, note = kept, ", mask kept from an earlier run (nothing tracked)"
             # The tracker did not run, so the subject's boxes are the kept REGION's. This branch goes with
@@ -1306,8 +1326,8 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                     "the mask kept for this video could not be read and has been removed: queue the "
                     "workflow again and it will be tracked afresh")
             tracked = mask          # the tracker's own mask, before it is cut to a part below
-            mask, note = cls._settle_mask(frames, mask, replace, segmenter, segmenter_clip, part_phrases,
-                                          part_threshold, part_margin, parts)
+            mask, note, part_warning = cls._settle_mask(frames, mask, replace, segmenter, segmenter_clip,
+                                                        part_phrases, part_threshold, part_margin, parts)
             # The whole subject's box per frame, from the tracker's mask and not from the part it was just
             # cut to: on a parts graph nothing after this node knows where the subject is otherwise.
             boxes = _tracked_boxes(tracked[..., 0] if tracked.ndim == 4 else tracked)
@@ -1336,6 +1356,9 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                               "composite": composite, "change_threshold": float(change_threshold),
                               "motion_reference": motion_reference, "motion_short_edge": int(motion_short_edge),
                               "motion_vae": bool(motion_vae),
+                              # the part mask's coverage of the tracked subject, when it is in doubt
+                              # (`part_coverage.py`); shown by the song node and the prompt node
+                              PART_WARNING: part_warning,
                               "start_from": start_from, "start_top": float(start_top),
                               "start_blur": int(start_blur), "start_knots": int(start_knots),
                               # [N, 4] long, (x0, y0, x1, y1) on these frames with the far side exclusive, a
@@ -1351,7 +1374,8 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
     def _settle_mask(cls, frames, mask, replace, segmenter, segmenter_clip, part_phrases, part_threshold,
                      part_margin, parts=None):
         """The mask this node uses, from the tracked one: checked against the frames, and cut to the part for
-        `head and hair`. Returns it with what the log line says about it."""
+        `head and hair`. Returns it with what the log line says about it, and with the part mask's coverage
+        warning (`part_coverage.Summary.warning`): a line when the wired parts leave frames in doubt, else None."""
         if mask.ndim == 4 and int(mask.shape[-1]) == 1:
             mask = mask[..., 0]
         if mask.ndim != 3:
@@ -1366,6 +1390,7 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                 f"{int(frames.shape[2])}x{int(frames.shape[1])}: each is cropped to the canvas by its own "
                 "shape, so a mask of another shape would land shifted. Track the mask on these frames")
         note = ""
+        warning = None
         if replace == REPLACE_PART:
             phrases = tuple(p.strip() for p in str(part_phrases).split(",") if p.strip())
             if not phrases:
@@ -1401,6 +1426,13 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
                 raise ValueError(
                     f"`parts` is {tuple(parts.shape)} and the mask {tuple(mask.shape)}: the part node must run "
                     "on the same frames and the same subject mask this node takes")
+            # How much of the tracked subject the part covers, counted before the part replaces the mask:
+            # a part model that labelled someone else leaves a sliver here and the original in the render.
+            # A report: nothing is refused and no mask changes.
+            told = summarise(coverage(mask, parts.to(mask.device)))
+            for line in told.lines():
+                logger.info("[h3] MiniMaxH3MaskedSource: the wired parts: %s", line)
+            warning = told.warning()
             where = (mask > 0.5).flatten(1).any(dim=1).nonzero().flatten()
             region = torch.zeros_like(mask, dtype=torch.float32)
             found_on = 0
@@ -1418,4 +1450,4 @@ class MiniMaxH3MaskedSource(io.ComfyNode):
             note = (f", from the wired parts, present on {found_on} of the {int(where.numel())} frames the "
                     "subject is in")
             mask = region
-        return mask, note
+        return mask, note, warning

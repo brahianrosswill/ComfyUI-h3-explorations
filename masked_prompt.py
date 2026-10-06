@@ -39,6 +39,7 @@ import logging
 from comfy_api.latest import io, ui
 
 from . import masked_prompt_text as text
+from .part_coverage import record_line
 from .video_mask import H3MaskedSource
 
 logger = logging.getLogger(__name__)
@@ -97,5 +98,10 @@ class MiniMaxH3MaskedPrompt(io.ComfyNode):
         motion = source.get("motion_reference") if source is not None else None
         prompt = text.assemble(subject, voice, picture_gives, add_to_shot, replace, motion)
         did = text.summary(subject, voice, picture_gives, add_to_shot, replace, motion)
+        # The Masked Source's warning about the part mask, shown and logged here because a preview runs this
+        # node and not the song node's source. It is not part of the prompt: `prompt` is the same with it.
+        warned = record_line(source)
+        if warned:
+            did = f"{did}\n{warned}"
         logger.info("[h3] MiniMaxH3MaskedPrompt: %s", did.replace("\n", "; "))
         return io.NodeOutput(prompt, ui=ui.PreviewText(f"{did}\n\n{prompt}"))

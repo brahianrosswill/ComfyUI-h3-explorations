@@ -245,6 +245,15 @@ def node_reads_the_source():
     assert node.execute().args[0] == m.assemble()
     assert node.execute(source=dict(plain, replace=vm.REPLACE_PART)).args[0] == m.assemble(replace=m.REPLACE_PART)
     assert node.execute(source=plain, subject="man in a red cap").args[0] == m.assemble(subject="man in a red cap")
+    # the Masked Source's warning about the part mask is shown above the prompt and never enters it
+    pc = importlib.import_module("_h3pack.part_coverage")
+    warned = dict(plain, **{pc.RECORD_KEY: "the part mask is in doubt on 3 of 9 frames"})
+    quiet, loud = node.execute(source=plain), node.execute(source=warned)
+    assert loud.args[0] == quiet.args[0] == m.assemble(), "the warning changed the prompt"
+    shown_quiet, shown_loud = ("\n".join(str(v) for v in out.ui.as_dict()["text"]) for out in (quiet, loud))
+    assert "the Masked Source warns: the part mask is in doubt on 3 of 9 frames" in shown_loud, shown_loud
+    assert "the Masked Source warns" not in shown_quiet, shown_quiet
+    assert shown_loud.index("the Masked Source warns") < shown_loud.index(m.assemble()[:40]), "the warning is not above the prompt"
     schema = node.define_schema()
     defaults = {i.id: getattr(i, "default", None) for i in schema.inputs if i.id != "source"}
     assert defaults == h3_config.MASKED_PROMPT, defaults

@@ -1,0 +1,7 @@
+bump: patch
+
+### Changed
+
+- A part mask that leaves the tracked subject uncovered now says so where a render is set up. With `replace` on `the wired parts`, `MiniMaxH3MaskedSource` counts how much of the tracker's mask the wired part covers before the part replaces the mask (`part_coverage.py`, the function the part node's own report uses), logs the figures under its name, and puts the one-line warning in its source record under `part_warning`: None when no frame is in doubt, on the other `replace` choices, and when the mask was kept from an earlier run, since no part mask arrives then. `MiniMaxH3MaskedPrompt` shows that line above the prompt and logs it, which is where a preview shows it; the `prompt` output is the same to the byte with and without it. `MiniMaxH3AudioFreezeSong` shows it in the source block at the top of a render's report; a preview's song node has no source and cannot. One function, `part_coverage.record_line`, words the line for both. It is a warning: nothing is refused and no mask changes. No input, output or default moves.
+- `video_mask.py`'s docstring lists what the source record carries beyond the node's inputs, now that three keys have been added to it in two days.
+- `bench/check_video_mask.py` and `bench/check_masked_prompt.py` hold it: the record's warning equal to the function's on a part that is a sliver on one frame, the key present and None otherwise, the shown line above an unchanged prompt. The song node's line is held by its source text; no check runs that node with a source. Not run on the card.
