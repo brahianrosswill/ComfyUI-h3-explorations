@@ -255,12 +255,33 @@ def frames_kept(covered: int, track_seconds: float) -> int:
     is past the track and every frame is kept. When it is not, the frames past its end are
     dropped from the last window before it is encoded, so the finished video ends with its
     track, on a whole frame (`loop_output.join_and_mux` says why not in the join). A last
-    window that a run before 2026-10-06 stored holds its tail still, and nothing renders it
-    again while its key matches: reused under a track that ends first, which is the usual
-    whole-track song queued again unchanged, it is cut in the join, which leaves a stray
-    frame or two past the cut. Not handled yet; `reuse_windows` off for one run rewrites it.
+    window that a run before 2026-10-06 stored holds its tail still, under a key that still
+    matches: it is not reused, and renders once more (`loop_resume.stored_frames`).
     """
     return min(int(covered), int(math.ceil(float(track_seconds) * FPS)))
+
+
+def frames_written(lengths: list[int], context_frames: int, kept: int) -> list[int]:
+    """What each window of a run writes to its file, in order: its length less the context it
+    shares with the window before, and for the last, less the frames past `kept`
+    (`frames_kept`). The sum is `kept`.
+
+    The song node cuts a window to this, stores the count with it and reuses a stored window
+    only when its file holds this many, so the join copies whole files. A cut that reached
+    what the last window writes is refused here, before anything is encoded: the planner
+    never plans one (`bench/check_audio_freeze.py` holds that over every window length), and
+    a slice with a negative end would write the wrong frames without a word.
+    """
+    writes = [int(n) - (int(context_frames) if i else 0) for i, n in enumerate(lengths)]
+    if not writes:
+        return writes
+    cut = frames_covered(lengths, context_frames) - int(kept)
+    if not 0 <= cut < writes[-1]:
+        raise ValueError(f"windows {list(lengths)} with {context_frames} of context cover "
+                         f"{frames_covered(lengths, context_frames)} frames and {kept} are kept: a cut of {cut} "
+                         f"does not fit the {writes[-1]} frames the last window writes")
+    writes[-1] -= cut
+    return writes
 
 
 def extent_shortfall(track_seconds: float, asked_seconds: float | None, total_frames: int,

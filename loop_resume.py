@@ -31,6 +31,11 @@ head; the prefix rule never reuses past a render.
 **What the key cannot see.** A file replaced on disk under the same name (a
 checkpoint, a LoRA, a reference still) leaves every key unchanged. The node's
 `reuse_windows` switch is the way out.
+
+**A key says how a window was sampled, not how its file was cut.** The frames
+a window's video holds are stored beside the key (`written`), and a window is
+reused only when that is what this run would write (`stored_frames`). It
+matters for one window, the last, when the track ends inside it.
 """
 
 from __future__ import annotations
@@ -121,23 +126,25 @@ def window_paths(work_dir: str, filename: str, number: int) -> tuple[str, str]:
 
 
 def save_window(work_dir: str, filename: str, number: int, key: str, samples, trim: int,
-                next_start: float) -> str:
+                next_start: float, written: int) -> str:
     """Store a rendered window's sampled latent and what the next window needs from it.
 
     Written after the window's video, so a latent on disk means its video
-    finished.
+    finished. `written` is how many frames that video holds (`stored_frames`).
     """
     _video, latent_path = window_paths(work_dir, filename, number)
     streams = samples.unbind() if getattr(samples, "is_nested", False) else [samples]
     tensors = {f"stream_{i}": s.detach().cpu().contiguous() for i, s in enumerate(streams)}
     meta = {"key": key, "trim": str(int(trim)), "next_start": repr(float(next_start)),
-            "nested": str(bool(getattr(samples, "is_nested", False)))}
+            "nested": str(bool(getattr(samples, "is_nested", False))), "written": str(int(written))}
     comfy.utils.save_torch_file(tensors, latent_path, metadata=meta)
     return latent_path
 
 
 def read_window(work_dir: str, filename: str, number: int) -> dict | None:
-    """The stored key, trim and next start of window `number`, without loading its tensors."""
+    """The stored key, trim, next start and frame count of window `number`, without loading its tensors.
+
+    `written` is None for a store from before 2026-10-06, which did not record it."""
     video_path, latent_path = window_paths(work_dir, filename, number)
     if not (os.path.isfile(video_path) and os.path.isfile(latent_path)):
         return None
@@ -146,9 +153,24 @@ def read_window(work_dir: str, filename: str, number: int) -> dict | None:
         with safe_open(latent_path, framework="pt") as f:
             meta = f.metadata() or {}
         return {"key": meta["key"], "trim": int(meta["trim"]), "next_start": float(meta["next_start"]),
+                "written": int(meta["written"]) if "written" in meta else None,
                 "video": video_path, "latent": latent_path}
     except Exception:  # noqa: BLE001 -- an unreadable store is a store to render over, not an error
         return None
+
+
+def stored_frames(stored: dict, frames: int) -> int:
+    """How many frames a stored window's video holds, for a window `frames` long.
+
+    What it was written with; or, for a store from before 2026-10-06, which did not record
+    it, the whole window less the context trimmed from its head, since nothing came off a
+    tail then. The song node reuses a stored window only when this equals what the run
+    would write (`loop_plan.frames_written`). Without it a last window stored whole, under
+    a track that ends inside it, has a key that matches for ever and a file that is too
+    long: it never renders again, and the join cannot cut a copied stream cleanly
+    (`loop_output.join_and_mux`).
+    """
+    return int(stored["written"]) if stored.get("written") is not None else int(frames) - int(stored["trim"])
 
 
 def load_window_latent(latent_path: str) -> dict:

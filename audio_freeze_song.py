@@ -313,21 +313,31 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
             for w in windows:
                 keys.append(loop_resume.window_key(root, w.number, w.text, w.frames, w.start,
                                                    int(seed) + w.number - 1, keys[-1] if keys else None))
+        total = loop_plan.frames_covered([w.frames for w in windows], context_frames)
+        # what is written of that: every frame, or as far as the track runs when it ends first;
+        # the frames past it come off the last window's tail before it is encoded
+        kept_frames = loop_plan.frames_kept(total, track_seconds)
+        writes = loop_plan.frames_written([w.frames for w in windows], context_frames, kept_frames)
+        again = None
         if reuse_windows and root is not None:
             for w in windows:
                 stored = loop_resume.read_window(work_dir, filename, w.number)
                 if stored is None or stored["key"] != keys[w.number - 1]:
                     break
+                holds = loop_resume.stored_frames(stored, w.frames)
+                if holds != writes[w.number - 1]:
+                    # sampled the same way, cut differently: a last window stored whole before
+                    # 2026-10-06 under a track that ends inside it. Its key matches for ever, so
+                    # it is refused here and renders once more, cut at the frames.
+                    again = (w.number, holds)
+                    break
                 reused.append(stored)
         first = len(reused)
 
         clock = loop_plan.clock
-        total = loop_plan.frames_covered([w.frames for w in windows], context_frames)
-        # what is written of that: every frame, or as far as the track runs when it ends first;
-        # the frames past it come off the last window's tail before it is encoded
-        kept_frames = loop_plan.frames_kept(total, track_seconds)
         lines = [f"{n_windows} windows {[w.frames for w in windows]} with {context_frames}-frame context, "
-                 f"{total} frames ({total / FPS:.2f}s) over {seconds:.2f}s of track"]
+                 f"{total} frames ({total / FPS:.2f}s) over {seconds:.2f}s of track"
+                 + (f"; {kept_frames} are written, the track ends first" if kept_frames < total else "")]
         # A run that cannot cover what it was asked for says so here, second line of the report,
         # and in the log: it is not refused (`loop_plan.extent_shortfall`). On a masked graph the
         # usual cause is the loader's frame cap left under a raised extent; the two are separate
@@ -353,7 +363,10 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
             end = w.first_frame + w.frames - (context_frames if w.number > 1 else 0)
             lines.append(f"[{w.number}] {clock(w.first_frame / FPS)}-{clock(end / FPS)}, {w.frames} frames"
                          + (f", {entries[w.entry][1]}" if w.entry is not None else "")
-                         + (", reused" if w.number <= first else ", renders"))
+                         + (", reused" if w.number <= first
+                            else f", renders again: its stored file holds {again[1]} frames and this run "
+                                 f"writes {writes[w.number - 1]}" if again and again[0] == w.number
+                            else ", renders"))
             if preview:
                 lines.append("    " + w.text.replace("\n", "\n    "))
         lines += list(list_lines)
@@ -488,8 +501,11 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                 src_pixels, src_encode, src_tokens, src_mask, held = video_mask.window(
                     source, int(round(w.start * FPS)), w.frames, width, height, *empty_video.shape[2:])
                 if held:
+                    # of the frames the source cannot give, those past the track are sampled on and dropped
+                    past = min(int(held), w.frames - (context_frames if i else 0) - writes[i])
                     reports.append(f"[{w.number}] the source ends {held} frames before this window does; "
-                                   "its last frame is held, unmasked")
+                                   "its last frame is held, unmasked"
+                                   + (f" ({past} of them are past the track's end and are not written)" if past else ""))
                 # The plate's encode does not depend on the seed or the schedule: under `reuse_windows`
                 # an earlier run's is reused (`window_keep.py`). Kept as the VAE returned it, before the
                 # late start's multiply below; the window node copies the video before it writes context in.
@@ -584,10 +600,11 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
                 del alpha
                 mark("composite")
             images = images[int(trim):]
-            if w.number == n_windows and total > kept_frames:
+            overrun = int(images.shape[0]) - writes[i]
+            if w.number == n_windows and overrun > 0:
                 # past the track's end: dropped here, at the frames, so the join copies whole windows
-                images = images[:int(images.shape[0]) - (total - kept_frames)]
-                reports.append(f"[{w.number}] the track ends {total - kept_frames} frames before this window "
+                images = images[:writes[i]]
+                reports.append(f"[{w.number}] the track ends {overrun} frames before this window "
                                "does; they are not written")
             video_path, latent_path = loop_resume.window_paths(work_dir, filename, w.number)
             # the old latent goes first: a latent on disk must mean its video finished
@@ -597,7 +614,7 @@ class MiniMaxH3AudioFreezeSong(io.ComfyNode):
             files.append(video_path)
             if root is not None:
                 stored_latents.append(loop_resume.save_window(work_dir, filename, w.number, keys[i], samples,
-                                                              trim, next_start))
+                                                              trim, next_start, written))
             reports.append(f"[{w.number}] wrote {written} frames to {os.path.basename(video_path)}")
             del images
             comfy.model_management.soft_empty_cache()

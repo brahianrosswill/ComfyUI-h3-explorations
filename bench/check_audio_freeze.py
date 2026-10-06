@@ -46,7 +46,11 @@ things here, each a way the freeze could look present and not be:
    back, evenly spaced, and the track padded or cut to the video. Under
    `-shortest` the first two lost a frame to four (2026-10-06). And
    `loop_plan.frames_kept`: every covered frame, or as far as the track runs,
-   which is where a short track is cut, at the frames.
+   which is where a short track is cut, at the frames; `loop_plan.frames_written`,
+   what each window's file holds, with a cut that never reaches what the last
+   window writes on any window length, context or track length; and a stored
+   window whose file holds another count (one stored whole before the cut
+   existed) is not what the run would write, so it is not reused.
 
 The encoder is faked (zeros of the right shape) so this runs with no model,
 no CUDA and no server; the real audio VAE is exercised by
@@ -441,15 +445,24 @@ def check_resume(problems):
         if lr.read_window(d, "song", 1) is not None:
             _fail(problems, "resume: an empty store read as a window")
         open(video_path, "wb").close()
-        lr.save_window(d, "song", 1, k1, samples, 39, 5.875)
+        lr.save_window(d, "song", 1, k1, samples, 39, 5.875, 97)
         got = lr.read_window(d, "song", 1)
-        if got is None or (got["key"], got["trim"], got["next_start"]) != (k1, 39, 5.875):
+        if got is None or (got["key"], got["trim"], got["next_start"], got["written"]) != (k1, 39, 5.875, 97):
             _fail(problems, f"resume: a stored window read back as {got}")
+        elif lr.stored_frames(got, 141) != 97:
+            _fail(problems, "resume: a stored window does not hold the frames it was written with")
         else:
             back = lr.load_window_latent(got["latent"])["samples"]
             if not getattr(back, "is_nested", False) or not all(
                     torch.equal(a, b) for a, b in zip(back.unbind(), (video, audio))):
                 _fail(problems, "resume: a stored latent did not round-trip")
+        # A store from before 2026-10-06 has no `written`: it reads back as None and holds its
+        # whole length less its head trim, which is what was written then.
+        comfy.utils.save_torch_file({"stream_0": video}, _latent,
+                                    metadata={"key": k1, "trim": "39", "next_start": "5.875", "nested": "False"})
+        old = lr.read_window(d, "song", 1)
+        if old is None or old["written"] is not None or lr.stored_frames(old, 141) != 102:
+            _fail(problems, f"resume: a window stored before its frame count was recorded read back as {old}")
         os.remove(video_path)
         if lr.read_window(d, "song", 1) is not None:
             _fail(problems, "resume: a latent whose video is gone read as a finished window")
@@ -492,52 +505,63 @@ def check_join(problems):
 
     The cases that lost frames under `-shortest` (2026-10-06): two windows under a track exactly as long
     as the video and under a shorter one, on noisy frames and on flat ones, which x264 packs differently.
+    Reading a red against the old command: "exactly as long" fails because of where ffmpeg stops a copied
+    stream, which is the bug; "a second shorter" fails by construction, since the old join cut the video
+    to its track on purpose and the new one is handed frames already cut, so that case states the contract.
+    A `loop_output.py` from before the change is a TypeError at the call, not a FAIL line.
+
+    The windows are written by the song node's own writer and the files are read back by the ffmpeg
+    the node uses (`audio_freeze._ffmpeg`), as packets, so the case runs wherever the node does and a
+    changed encoder flag is tested as changed. The last pair of lengths ends on a one-frame file, which
+    a context of 90 or 141 can plan.
     """
-    import importlib.util
-    import shutil
+    import importlib
+    import re
     import subprocess
     import tempfile
-    if shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None:
-        _fail(problems, "join: ffmpeg and ffprobe are needed to hold the join and are not on PATH")
-        return
-    pkg = sys.modules.get("_h3pack")
-    spec = importlib.util.spec_from_file_location("_h3pack.loop_output", REPO / "loop_output.py")
-    lo = importlib.util.module_from_spec(spec)
-    sys.modules["_h3pack.loop_output"] = lo
-    assert pkg is not None and spec.loader is not None
-    spec.loader.exec_module(lo)
-    lengths, fps = (22, 17), int(lo.FPS)       # the sizes the loss was first seen at, with a 5-frame trim
-    total = sum(lengths)
+    assert "_h3pack" in sys.modules
+    lo = importlib.import_module("_h3pack.loop_output")
+    song = importlib.import_module("_h3pack.audio_freeze_song")
+    ffmpeg, fps = lo._ffmpeg(), int(lo.FPS)
+
+    def packets(path: str, stream: str) -> tuple[list[int], float]:
+        """(every packet's timestamp, the stream's end in seconds) of one stream, copied to ffmpeg's framecrc."""
+        text = subprocess.run([ffmpeg, "-v", "error", "-i", path, "-map", f"0:{stream}:0", "-c", "copy", "-f", "framecrc", "-"],
+                              capture_output=True, text=True).stdout
+        base = re.search(r"#tb 0: (\d+)/(\d+)", text)
+        rows = [[int(x) for x in line.split(",")[:4]] for line in text.splitlines() if line and not line.startswith("#")]
+        if base is None or not rows:
+            return [], 0.0
+        end = max(pts + duration for _stream, _dts, pts, duration in rows) * int(base.group(1)) / int(base.group(2))
+        return sorted(pts for _stream, _dts, pts, _duration in rows), end
+
     torch.manual_seed(0)
     with tempfile.TemporaryDirectory() as tmp:
-        for kind in ("noisy", "flat"):
-            files = []
-            for i, n in enumerate(lengths):
-                path = str(Path(tmp) / f"{kind}_{i}.mp4")
-                frames = torch.rand(n, 96, 160, 3) if kind == "noisy" else torch.full((n, 96, 160, 3), 0.5)
-                raw = (frames * 255).round().to(torch.uint8).numpy().tobytes()
-                made = subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", "160x96",
-                                       "-r", str(fps), "-i", "-", "-c:v", "libx264", "-preset", "medium", "-crf", "19",
-                                       "-pix_fmt", "yuv420p", *lo.CLEAN_OUTPUT_ARGS, path], input=raw, capture_output=True)
-                if made.returncode != 0:
-                    _fail(problems, f"join: could not write a test window: {made.stderr.decode(errors='replace')[-200:]}")
-                    return
-                files.append(path)
-            for label, seconds in (("exactly as long as the video", total / fps), ("a second shorter", total / fps - 1.0),
-                                   ("a second longer", total / fps + 1.0)):
-                out = str(Path(tmp) / "joined.mp4")
-                lo.join_and_mux(files, torch.zeros(1, 2, int(round(44100 * seconds))), 44100, out, tmp, "joined", total)
-                got = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
-                                      "frame=best_effort_timestamp", "-of", "csv=p=0", out], capture_output=True, text=True).stdout.split()
-                stamps = sorted(int(x.strip(",")) for x in got)
-                steps = {b - a for a, b in zip(stamps, stamps[1:])}
-                if len(stamps) != total or len(steps) != 1:
-                    _fail(problems, f"join: {kind} windows of {lengths} under a track {label} came back with "
-                                    f"{len(stamps)} frames of {total}" + ("" if len(steps) == 1 else ", not evenly spaced"))
-                audio = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a:0", "-show_entries", "stream=duration",
-                                        "-of", "csv=p=0", out], capture_output=True, text=True).stdout.strip().strip(",")
-                if abs(float(audio) - total / fps) > 0.05:
-                    _fail(problems, f"join: the track under {kind} windows is {audio}s for a {total / fps:.3f}s video")
+        # (22, 17): the sizes the loss was first seen at, with a 5-frame trim; (22, 1): the shortest last file
+        for lengths in ((22, 17), (22, 1)):
+            total = sum(lengths)
+            for kind in ("noisy", "flat"):
+                files = []
+                for i, n in enumerate(lengths):
+                    path = str(Path(tmp) / f"{kind}_{i}.mp4")
+                    frames = torch.rand(n, 96, 160, 3) if kind == "noisy" else torch.full((n, 96, 160, 3), 0.5)
+                    if song._write_frames_mp4(path, frames, 19) != n:
+                        _fail(problems, f"join: the writer did not report the {n} frames it was given")
+                    files.append(path)
+                for label, seconds in (("exactly as long as the video", total / fps), ("a second shorter", total / fps - 1.0),
+                                       ("a second longer", total / fps + 1.0)):
+                    out = str(Path(tmp) / "joined.mp4")
+                    samples = max(int(round(44100 * seconds)), 1)
+                    lo.join_and_mux(files, torch.zeros(1, 2, samples), 44100, out, tmp, "joined", total)
+                    stamps, _end = packets(out, "v")
+                    steps = {b - a for a, b in zip(stamps, stamps[1:])}
+                    if len(stamps) != total or len(steps) != 1:
+                        _fail(problems, f"join: {kind} windows of {lengths} under a track {label} came back with "
+                                        f"{len(stamps)} frames of {total}" + ("" if len(steps) == 1 else ", not evenly spaced"))
+                    _stamps, audio = packets(out, "a")
+                    if abs(audio - total / fps) > 0.05:
+                        _fail(problems, f"join: the track under {kind} windows of {lengths} ends at {audio:.3f}s "
+                                        f"for a {total / fps:.3f}s video")
 
 
 def check_song_plan(problems):
@@ -670,10 +694,62 @@ def check_song_plan(problems):
         if lp.frames_kept(covered, track) != want:
             _fail(problems, f"frames kept: {covered} frames under a {track}s track keeps "
                             f"{lp.frames_kept(covered, track)}, not {want}")
+    # What each window's file holds (`frames_written`), and that the cut the song node makes on a
+    # short track's last window, AFTER its head trim, never reaches what that window writes: a
+    # planner property, held for every window length, three contexts and a spread of track lengths
+    # with and without a timeline. (mrop's review of the cut, 2026-10-06.)
+    for window in lp.CHAIN_LENGTHS:
+        for context in (39, 90, 141):
+            if context >= window:
+                continue
+            for spread in ("", "00:00 a\n00:20 b", "00:00 a\n00:12 b\n00:40 c"):
+                marks = lp.parse_timeline(spread)
+                for track in range(1, 2200):
+                    try:
+                        parts = lp.plan_windows(track, window, context, marks)
+                    except ValueError:
+                        continue            # an entry too short for one window: refused, not planned
+                    lengths = [n for _entry, each in parts for n in each]
+                    covered = lp.frames_covered(lengths, context)
+                    kept = lp.frames_kept(covered, track / lp.FPS)      # the most a run can cut: its track is never shorter
+                    try:
+                        writes = lp.frames_written(lengths, context, kept)
+                    except ValueError as exc:
+                        _fail(problems, f"frames written: a {track}-frame track at windows of {window}: {exc}")
+                        break
+                    whole = [n - (context if i else 0) for i, n in enumerate(lengths)]
+                    if sum(writes) != kept or min(writes) < 1 or writes[:-1] != whole[:-1] or writes[-1] > whole[-1]:
+                        _fail(problems, f"frames written: a {track}-frame track at windows of {window} with {context} of "
+                                        f"context plans {lengths} and writes {writes}, which is not {kept} frames cut "
+                                        "from the last window's tail alone")
+                        break
+    if lp.frames_written([345, 345, 141], ctx, 753) != [345, 306, 102] or lp.frames_written([345, 345, 141], ctx, 720) != [345, 306, 69] \
+            or lp.frames_written([], ctx, 0) != []:
+        _fail(problems, "frames written: the shipped thirty seconds does not write what its windows hold")
+    for lengths, kept in (([345, 141], 345 + 141 - ctx - (141 - ctx)), ([345], 0), ([345], 346)):
+        try:
+            lp.frames_written(lengths, ctx, kept)
+        except ValueError:
+            continue
+        _fail(problems, f"frames written: windows {lengths} keeping {kept} frames was not refused")
+    # The stored window the cut leaves behind: a last window stored whole, before its frame count
+    # was recorded, holds more than a run under a short track writes, so the song node does not
+    # reuse it; every other stored window, and one stored with the right count, is what the run writes.
+    import loop_resume as lr
+    short = lp.frames_written([345, 345, 141], ctx, 720)
+    before = [{"trim": 0, "written": None}, {"trim": ctx, "written": None}, {"trim": ctx, "written": None}]
+    if [lr.stored_frames(s, n) == w for s, n, w in zip(before, (345, 345, 141), short)] != [True, True, False]:
+        _fail(problems, "frames written: a last window stored whole under a track that ends first would be reused")
+    if lr.stored_frames({"trim": ctx, "written": short[-1]}, 141) != short[-1] \
+            or lr.stored_frames(before[-1], 141) != lp.frames_written([345, 345, 141], ctx, 753)[-1]:
+        _fail(problems, "frames written: a window stored with the frames this run writes would not be reused")
     song_source = (REPO / "audio_freeze_song.py").read_text(encoding="utf-8")
     if "join_and_mux(files, waveform, rate, out_path, work_dir, stem, kept_frames)" not in song_source \
-            or "images[:int(images.shape[0]) - (total - kept_frames)]" not in song_source:
+            or "images = images[:writes[i]]" not in song_source \
+            or "writes = loop_plan.frames_written([w.frames for w in windows], context_frames, kept_frames)" not in song_source:
         _fail(problems, "frames kept: the song node no longer cuts the last window at the frames and joins that many")
+    if "if holds != writes[w.number - 1]:" not in song_source or "trim, next_start, written))" not in song_source:
+        _fail(problems, "frames written: the song node no longer stores a window's frame count or refuses one that differs")
     if "loop_plan.extent_shortfall(" not in song_source or "logger.warning(\"[h3] MiniMaxH3AudioFreezeSong: %s\", shortfall)" not in song_source:
         _fail(problems, "shortfall: the song node no longer prints and logs the line")
 
