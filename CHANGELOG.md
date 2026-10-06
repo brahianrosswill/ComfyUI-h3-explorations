@@ -7,6 +7,13 @@ artifact.
 <!-- To add an entry: write a file in changelog.d/ (changelog.d/README.md has the three steps) and run
      bench/build_changelog.py. Do not type an entry in here: the newest entries below are generated. -->
 
+## 0.203.2
+<!-- changelog.d/mrsun-frozen-cache-stage-timers.md -->
+
+### Changed
+
+- `MiniMaxH3FrozenVideoCache`: with `verify` on, each cached step's seconds are split by stage (`frozen_video_cache.STAGES`: the kept states brought to the card, qkv over every row, the attention, the live rows' own work, and everything between blocks), on the call's record and in the log. Only a verified step waits for the card between stages, so a plain run's timing is untouched. `bench/check_frozen_video_cache.py` item 8 holds that the stages add up to the call and that nothing is timed with `verify` off. Checked on the CPU only; no card run yet.
+
 ## 0.203.1
 <!-- changelog.d/mryellow-jr-conditioning-seconds-per-window.md -->
 

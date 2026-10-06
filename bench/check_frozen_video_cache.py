@@ -31,6 +31,11 @@ way the sampler would, and grades:
    OUTER_SAMPLE wrapper frees the store when the pass ends.
 7. **The codecs round-trip within their bounds**, and `verify` records the
    cosine it promises.
+8. **`verify` times the cached step by stage, and only `verify` does.** A
+   verified cached call records every name in `STAGES`, and they add up to
+   the call's own seconds; a build, and a cached call with `verify` off,
+   record none. The control: a stage's lap removed from the block must leave
+   that stage at zero, so the check would see a stage that was never timed.
 
 **What this does NOT establish:** anything on the card. These stay unverified
 until a live run: the kitchen backend with a query shorter than the keys, the
@@ -246,6 +251,33 @@ def main() -> int:
     if not v or not (0.0 < v["audio_cos"] <= 1.0 + 1e-6):
         fail(f"verify did not record a cosine: {st_v.calls[-1]}")
 
+    # 8. the stage split: there under verify on a cached call, adding up, and nowhere else
+    built_rec, cached_rec = st_v.calls[-2], st_v.calls[-1]
+    stages = cached_rec.get("stages")
+    if "stages" in built_rec:
+        fail(f"a build call recorded stages: {built_rec['stages']}")
+    if not stages or tuple(stages) != fvc.STAGES:
+        fail(f"a verified cached call did not record {fvc.STAGES}: {stages}")
+    else:
+        total = sum(stages.values())
+        if min(stages.values()) <= 0.0:
+            fail(f"a stage was never timed: {stages}")
+        if not 0.9 * cached_rec["seconds"] <= total <= cached_rec["seconds"] + 1e-3:
+            fail(f"the stages add up to {total:.4f} s and the call took {cached_rec['seconds']:.4f} s")
+    if any("stages" in r for r in st.calls):
+        fail("a call with verify off recorded stages, so it waited for the card")
+    saved_lap = fvc._lap
+    try:
+        fvc._lap = lambda state, name, device: None if name == "attention" else saved_lap(state, name, device)
+        m_c, st_c = cached(verify=True)
+        call(m_c, video, audio, context, 0.5)
+        call(m_c, video, audio2, context, 0.3)
+        if st_c.calls[-1].get("stages", {}).get("attention", 1.0) != 0.0:
+            fail(f"control: with the attention lap removed the stage still reads "
+                 f"{st_c.calls[-1].get('stages')}; item 8 cannot see an untimed stage")
+    finally:
+        fvc._lap = saved_lap
+
     print(f"  floor {floor:.3g}, moved audio {err_moved:.3g}, text live {e_live:.3g} "
           f"against text cached {e_dead:.3g}, verify cosine {v['audio_cos'] if v else None}")
     if problems:
@@ -256,7 +288,8 @@ def main() -> int:
     print("  ok    the gate sends stock what it should; the build is stock bit for bit; a "
           "cached step matches stock when nothing moved and visibly departs when the audio "
           "does; text live beats text cached; a moved pin rebuilds; foreign patches are "
-          "refused; the pass frees the store; codecs and verify hold")
+          "refused; the pass frees the store; codecs and verify hold; verify alone times "
+          "the cached step, by stage")
     return 0
 
 

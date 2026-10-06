@@ -15,6 +15,8 @@ later call (a cached step) computes only the live rows, text and audio, and
 their queries attend against K/V rebuilt from the kept hidden state with the
 live rows written in. The cached rows stop reacting to the new audio and text:
 that is the approximation, and the `verify` switch measures it on a render.
+`verify` also splits each cached step's time into `STAGES`, which is the only
+place the step waits for the card between stages.
 
 **Ported from** Adudeguyman's ComfyUI-H3-AudioRefine (`frozen_cache.py`,
 `coderef/ComfyUI-H3-AudioRefine`), MIT, notice below. The codecs are theirs
@@ -289,6 +291,7 @@ class _State:
         self.slot_key = None
         self.live_idx = None
         self.live_segs = None
+        self.stages = None                  # seconds by stage of a cached pass, while verify times one
         self.counts = {"build": 0, "cached": 0, "stock": 0}
         self.calls = deque(maxlen=64)       # per-call records, read by the check
         self.verify_log = deque(maxlen=64)
@@ -349,6 +352,30 @@ def _dense_options(transformer_options):
     return opts
 
 
+#: The stages `verify` splits a cached step into, in the order a block meets
+#: them. `between blocks` is everything outside this module's block: core's
+#: loop and prefetch, the embedding before the first block and the final
+#: layer after the last.
+STAGES = ("between blocks", "live rows", "store to card", "qkv, every row", "attention")
+
+
+def _lap(state, name, device):
+    """Charge the time since the last lap to `name`. A no-op unless `verify` is timing a cached pass.
+
+    It waits for the card each time, which is why an unverified run never
+    does it: the stage split comes from the verify arm and the step's cost
+    from the plain one.
+    """
+    st = state.stages
+    if st is None:
+        return
+    if device.type == "cuda":
+        torch.cuda.synchronize(device)
+    now = time.perf_counter()
+    st[name] = st.get(name, 0.0) + now - st["_t"]
+    st["_t"] = now
+
+
 def _build_block(state, i, args, extra):
     blk = state.dm.blocks[i]
     slot = state.slot
@@ -367,18 +394,22 @@ def _cached_block(state, i, args):
     x = args["img"]
     rope_freqs = args["rope_freqs"]
     idx, segs, slot = state.live_idx, state.live_segs, state.slot
+    _lap(state, "between blocks", x.device)
 
     shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = blk.adaln_proj(args["t_emb"])
     xl = x.index_select(0, idx)
     h = mm_h3._mod_scale_shift(blk.norm1(xl), shift_msa, scale_msa, segs)
+    _lap(state, "live rows", x.device)
 
     if slot.dq is None or slot.dq.dtype != x.dtype or slot.dq.device != x.device:
         slot.dq = torch.empty((x.shape[0], h.shape[1]), dtype=x.dtype, device=x.device)
     payload, scales = slot.h[i]
     hf = _dequantize_from_host(slot.codec, payload, scales, slot.dq)
     hf.index_copy_(0, idx, h.to(hf.dtype))
+    _lap(state, "store to card", x.device)
     q, k, v = _qkv_rope(attn, hf, rope_freqs)
     q = q.index_select(0, idx)
+    _lap(state, "qkv, every row", x.device)
 
     q = AttentionTensorContainer(q.transpose(0, 1).unsqueeze(0))
     k = AttentionTensorContainer(k.transpose(0, 1).unsqueeze(0))
@@ -386,10 +417,12 @@ def _cached_block(state, i, args):
     out = optimized_attention(q, k, v, attn.heads, preferred_attention=attn.comfy_attention,
                               mask=None, skip_reshape=True,
                               transformer_options=_dense_options(args["transformer_options"]))
+    _lap(state, "attention", x.device)
     xl = mm_h3._mod_gate(xl, gate_msa, attn.out_proj(out.squeeze(0)), segs)
     h = mm_h3._mod_scale_shift(blk.norm2(xl), shift_mlp, scale_mlp, segs)
     xl = mm_h3._mod_gate(xl, gate_mlp, blk.mlp(h), segs)
     x.index_copy_(0, idx, xl)
+    _lap(state, "live rows", x.device)
     return {"img": x}
 
 
@@ -508,6 +541,9 @@ def _make_diffusion_wrapper(state):
                 ref = [t.detach().clone() for t in ref]
                 state.mode = mode
                 state.counts = {"build": 0, "cached": 0, "stock": 0}
+                if x[0].device.type == "cuda":
+                    torch.cuda.synchronize(x[0].device)
+                state.stages = {"_t": time.perf_counter()}
 
             t0 = time.perf_counter()
             try:
@@ -518,11 +554,16 @@ def _make_diffusion_wrapper(state):
                 raise
             finally:
                 slot.dq = None
+            _lap(state, "between blocks", x[0].device)
             if x[0].device.type == "cuda":
                 torch.cuda.synchronize(x[0].device)
             record["mode"] = state.mode
             record["counts"] = dict(state.counts)
             record["seconds"] = time.perf_counter() - t0
+            if state.stages is not None:
+                if state.mode == "cached":
+                    record["stages"] = {k: state.stages.get(k, 0.0) for k in STAGES}
+                state.stages = None
             if state.mode == "build":
                 slot.complete = all(e is not None for e in slot.h)
                 record["cache_bytes"] = slot.nbytes()
@@ -537,11 +578,15 @@ def _make_diffusion_wrapper(state):
                 log.info("[h3] frozen video cache: verify, sigma %.4f, audio velocity "
                          "cosine %.6f, relative L2 %.4g against the stock step",
                          1.0 - t_v, cos, rel)
+                if "stages" in record:
+                    log.info("[h3] frozen video cache: cached step %.2f s: %s", record["seconds"],
+                             ", ".join(f"{k} {v:.2f} s" for k, v in record["stages"].items()))
             state.calls.append(record)
             return out
         finally:
             state.mode = "off"
             state.slot = None
+            state.stages = None
     return wrapper
 
 
@@ -627,7 +672,8 @@ class MiniMaxH3FrozenVideoCache(io.ComfyNode):
                              tooltip="Cached steps between rebuilds, when `refresh` is on."),
                 io.Boolean.Input("verify", default=False, advanced=True,
                                  tooltip="Also run each cached step stock and log the audio "
-                                         "velocity's cosine against it. Costs a full step each."),
+                                         "velocity's cosine against it, and where the cached "
+                                         "step's time went. Costs a full step each."),
             ],
             outputs=[io.Model.Output(display_name="model")],
         )
